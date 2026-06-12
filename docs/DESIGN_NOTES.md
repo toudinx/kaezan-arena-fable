@@ -228,6 +228,19 @@ inventados em 4 profundos, e novas classes entram **aos poucos** (ex.: Necromanc
 sem refatorar. Ver ROADMAP T-52. **Mecânica-chave a preservar:** a stance (postura) — é o que dá
 profundidade tática ("luto em Gelo ou em Terra?") e amarra com a postura de boss e as reações (F-E).
 
+### d) Persistência em MySQL — banco separado, estado mutável só (não conteúdo)
+
+O dono tem MySQL rodando (XAMPP; o Canary usa o banco `otservbr-global`). Decisão: criar um banco
+**`kaezan_fable` separado** para o estado mutável do jogador (conta, roster, equipamento,
+inventário, maestria, pity/histórico de gacha, bestiário, dailies, run_results, replays,
+leaderboard). Duas fronteiras inegociáveis:
+- **Banco separado, nunca dentro de `otservbr-global`** — só compartilham a instância MySQL.
+- **DB = estado mutável; conteúdo de design fica em código/JSON** (monstros, itens, defs de
+  waifu/classe, cards, biomas). Balance e determinismo não devem depender de escrever no DB.
+- **Nada de DB dentro do tick.** Já é assim: a conta é lida 1× no join (snapshot p/ o `GameWorld`)
+  e escrita 1× no fim (`RewardService`). MySQL só troca o backing de `AccountStore`; a fronteira de
+  determinismo já está de pé. Mantém-se o fallback JSON (boot sem MySQL). Ver ROADMAP T-54.
+
 ### c) Montaria = equipamento (reaproveitar visual subutilizado)
 
 No Tibia montarias são cosméticas e subutilizadas. Decisão: viram um **slot de equipamento** que

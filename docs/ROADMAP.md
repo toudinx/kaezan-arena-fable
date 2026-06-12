@@ -72,34 +72,39 @@ A tabela-mestra de atribuição (todas as tasks `T-*` + features `F-*`) está no
 2. **T-53** — fidelidade de IA/kit de monstro do Canary. _Fable 5._ Faz **todo** combate ficar
    real (bosses com kit de verdade); **absorve T-14**; é pré-requisito de qualidade de F-A.
    _(T-52 e T-53 são independentes entre si — podem ir em paralelo por owners diferentes.)_
+3. **T-54** — persistência em MySQL (banco `kaezan_fable` separado). _Opus._ **Track paralelo**:
+   não depende de T-52/T-53 e pode rodar junto. Deve **preceder** T-51/T-23/F-B/F-C (todos
+   guardam estado novo) — senão construímos equipamento/maestria/leaderboard sobre JSON e
+   retrabalhamos. Risco baixo (a persistência já está nas fronteiras da run, não no tick).
 
 **Onda 2 — Itemização e elenco sobre a fundação (P0/P1):**
-3. **T-11** — atributos/preços de item. _Codex._ Desbloqueia equipamento.
-4. **T-51** — equipamento 6 slots + mount-as-gear. _Codex→Opus._ Dá propósito ao loot.
-5. **T-50** — ícones de equipamento (extractor por `clothes.slot`). _Sonnet._ Pareia com T-51.
-6. **T-10** — +30 monstros (refatorada — ver abaixo; agora herdam kit real via T-53). _Codex._
-7. **T-13** — novas waifus = skins de classe (trivial após T-52). _Sonnet→Codex._
+4. **T-11** — atributos/preços de item. _Codex._ Desbloqueia equipamento.
+5. **T-51** — equipamento 6 slots + mount-as-gear. _Codex→Opus._ Dá propósito ao loot. _(Após T-54.)_
+6. **T-50** — ícones de equipamento (extractor por `clothes.slot`). _Sonnet._ Pareia com T-51.
+7. **T-10** — +30 monstros (refatorada — ver abaixo; agora herdam kit real via T-53). _Codex._
+8. **T-13** — novas waifus = skins de classe (trivial após T-52). _Sonnet→Codex._
 
 **Onda 3 — Feature flagship de produto (P0 de valor):**
-8. **F-A** — Echo Team (seu time de waifus luta junto). _Fable 5._ A ponte coleção→gameplay; a
+9. **F-A** — Echo Team (seu time de waifus luta junto). _Fable 5._ A ponte coleção→gameplay; a
    feature de maior valor do projeto. Depende de T-52 + T-53.
 
 **Onda 4 — Profundidade de combate e recompensa (P1):**
-9. **F-E** — postura completa + reações elementais. _Opus._ **Inclui o que era T-31** (faça a
+10. **F-E** — postura completa + reações elementais. _Opus._ **Inclui o que era T-31** (faça a
    postura completa de uma vez, não o MVP em separado). Idealmente junto/depois de T-52.
-10. **T-30** — Sealed Reward + reroll (gacha-dentro-da-run). _Codex→Opus._
-11. **F-B** — árvore de Maestria por waifu. _Opus._
+11. **T-30** — Sealed Reward + reroll (gacha-dentro-da-run). _Codex→Opus._ _(Após T-54.)_
+12. **F-B** — árvore de Maestria por waifu. _Opus._ _(Após T-54.)_
 
 **Onda 5 — Juice/UX/robustez (P1, PARALELIZÁVEL a qualquer momento).** Não bloqueiam nada e
 podem ser feitas por Sonnet/Codex entre as ondas:
-- T-20 (juice de combate), T-21 (HUD informativo), T-22 (fog of war), T-23 (cerimônia do gacha),
-  T-24 (polish de meta), T-41 (fallback de asset).
+- T-20 (juice de combate), T-21 (HUD informativo), T-22 (fog of war), T-23 (cerimônia do gacha
+  — histórico de pulls depende de T-54), T-24 (polish de meta), T-41 (fallback de asset).
 
 **Onda 6 — Determinismo, desafio e geração (P1/P2, depois de haver o que simular):**
-12. **F-C** — determinismo de ouro + Desafio Diário + harness. _Fable 5._ **Inclui T-33** (replay).
-13. **T-40** — testes de determinismo/regras. _Opus→Fable._
-14. **F-D** — geração procedural v2 (prefabs/pacing/set-pieces). _Opus→Fable._
-15. **T-12** (biomas) e **T-32** (imbuements) e **T-42** (limpeza de dívida) — encaixar quando fizer sentido.
+13. **F-C** — determinismo de ouro + Desafio Diário + harness. _Fable 5._ **Inclui T-33** (replay).
+   Leaderboard do desafio assume T-54 (tabela de scores).
+14. **T-40** — testes de determinismo/regras. _Opus→Fable._
+15. **F-D** — geração procedural v2 (prefabs/pacing/set-pieces). _Opus→Fable._
+16. **T-12** (biomas) e **T-32** (imbuements) e **T-42** (limpeza de dívida) — encaixar quando fizer sentido.
 
 **Tasks supersedidas/absorvidas (não fazer isoladas):**
 - **T-14** (DoT do player) → subconjunto de **T-53**; faça dentro dela.
@@ -774,6 +779,72 @@ Cura pode tornar salas intransponíveis — capar e testar. Não introduzir não
 risco). Não recriar comportamento "à mão" quando o `.lua` já define — a fonte de verdade é o dado
 convertido.
 
+### [ ] T-54 — Persistência em MySQL: banco `kaezan_fable` separado (sair do JSON)
+**Owner: Opus** · **P0 · L · backend (infra) ·** **Onda 1 (fundação — track paralelo, independe de T-52/T-53)**
+
+**Reasoning do owner.** É arquitetura de dados com decisões reais (schema, separação de fronteiras,
+migração do JSON, manter a abstração) e alto raio de explosão (camada de dados de todo o `Meta`).
+Não é determinismo-crítico (fica **fora** do tick), então não é Fable; mas pede julgamento de
+design → **Opus**. A fiação mecânica do EF Core, depois do schema decidido, um Codex toca.
+
+**Contexto.** Hoje a conta é um **único JSON** (`Meta/AccountStore.cs` → `.data/account.json`,
+reescrito inteiro a cada mutação). Funciona para 1 conta local, mas não escala para o que vem:
+equipamento por waifu (T-51), maestria (F-B), histórico de gacha (T-23), replays e **leaderboard
+do Desafio Diário** (F-C) — leaderboard precisa de query ("top 100 de hoje"), que JSON não dá. O
+usuário já tem **MySQL rodando no XAMPP** (o Canary usa o banco `otservbr-global`).
+
+**Duas decisões de arquitetura (as partes que importam):**
+1. **Banco SEPARADO `kaezan_fable` — nunca dentro de `otservbr-global`.** O banco do Canary é
+   outro app, com schema/migrations próprios; misturar arriscaria corromper o servidor e seria um
+   pesadelo de manutenção. Confirma o instinto do dono ("outro banco de dados"). Só compartilham a
+   instância MySQL.
+2. **DB = estado MUTÁVEL do jogador; conteúdo continua em código/JSON.** Vai para o banco: contas,
+   roster/ascensão, equipamento, inventário, maestria, pity/histórico de gacha, bestiário,
+   contratos diários, run_results, replays, scores de desafio. **NÃO** vai para o banco o
+   **conteúdo de design** (monstros, itens, defs de waifu/classe, cards, biomas) — isso é versionado
+   com o código (determinismo e balance não devem depender de escrever no DB). Static = código;
+   dinâmico = DB.
+
+**Por que o risco é baixo (já confirmado no código).** A persistência já vive **só nas fronteiras
+da run**: `GameHub.JoinRun` lê a conta **uma vez** para construir o `GameWorld` (passa um snapshot
+de bestiário); `RewardService.Apply` escreve **uma vez** no fim. **Nada de DB dentro do tick.**
+Trocar JSON→MySQL é só trocar o backing de `AccountStore` — a fronteira de determinismo já está de pé.
+
+**Instruções.**
+1. **Abstração primeiro:** introduza `IAccountRepository` (ou reuse o padrão `IAccountStatePersistence`
+   do kaezan-arena). Duas implementações: `JsonFileAccountRepository` (default, zero-dependência —
+   preserva o boot sem MySQL para CI/clone rápido) e `MySqlAccountRepository`. Seleção por
+   connection string em `appsettings.json` + override por env var; sem connection string → JSON.
+2. **EF Core + Pomelo (`Pomelo.EntityFrameworkCore.MySql`)**: `DbContext` + migrations. Schema
+   inicial (player state):
+   - `accounts(id, level, xp, gold, kaeros, active_waifu_id, daily_date, runs_played, runs_won, ...)`
+   - `account_waifus(account_id, waifu_id, ascension, shards)`
+   - `account_equipment(account_id, waifu_id, slot, item_id)` — os 6 slots (T-51)
+   - `account_inventory(account_id, item_id, count)`
+   - `account_mastery(account_id, waifu_id, node_id)` + `account_mastery_points(account_id, waifu_id, points, spent)` (F-B)
+   - `gacha_pity(account_id, banner_id, since_5, since_4, guaranteed, total)`
+   - `gacha_history(id, account_id, banner_id, waifu_id, rarity, ts)` (T-23)
+   - `bestiary(account_id, species, kills)`
+   - `daily_contracts(account_id, date, contract_id, progress, claimed)`
+   - `run_results(id, account_id, seed, tier, waifu_id, outcome, kills, run_level, duration_ms, ts)`
+   - `replays(id, account_id, seed, tier, commands_json, final_hash, ts)` (F-C)
+   - `daily_challenge_scores(date, account_id, score, time_ms)` — índice por (date, score) p/ leaderboard (F-C)
+3. **Migração one-shot:** se `.data/account.json` existir e o banco estiver vazio, importar para o
+   MySQL no primeiro boot (não perder a conta local de testes).
+4. **Manter a API de `AccountStore`** (`Read`/`Mutate`) como fachada — o resto do `Meta` não muda;
+   só o backing. Transações onde fizer sentido (ex.: pull de 10 + atualização de pity atômicos).
+5. **Não tocar no `Engine`.** Nenhum `using` de EF/DB em `Engine/`. Reforce isso com um comentário
+   no `GameWorld` e, se possível, um teste que falhe se `Engine` referenciar `Meta`/DB.
+
+**Aceite.** Com connection string configurada, conta/roster/inventário/pity persistem no banco
+`kaezan_fable` (separado do `otservbr-global`); sem connection string, o jogo ainda boota em JSON;
+a conta local existente é migrada; nenhum acesso a DB dentro do tick; `dotnet build` verde e uma
+run completa (join → matar boss → reward) persiste corretamente.
+
+**Armadilhas.** **Jamais** criar tabelas dentro de `otservbr-global`. Não mover conteúdo de design
+para o DB (vira acoplamento + quebra de determinismo/balance). Não acessar o DB no `GameWorld`/tick.
+Não tornar o MySQL obrigatório para o boot (manter o fallback JSON).
+
 ---
 
 ## Tabela-mestra de atribuição (todas as tasks e features)
@@ -805,6 +876,7 @@ convertido.
 | **T-51** | **Equipamento (6 slots, mount-as-gear)** | **Codex → Opus** | Spec fechável, mas cross-cutting e toca a fórmula de poder. |
 | **T-52** | **Refundação de classes + stance** | **Opus → Fable 5** | Refactor de combate com design real; coração do `GameWorld`. |
 | **T-53** | **Fidelidade de IA/kit de monstro** | **Fable 5** | Determinismo-crítico no hot path; IA central. |
+| **T-54** | **Persistência MySQL (banco `kaezan_fable` separado)** | **Opus** | Arquitetura de dados; fora do tick (não é Fable), mas alto raio e decisões de schema/migração. |
 | F-A | Echo Team (companions) | **Fable 5** | IA de aliado determinística + anti-bodyblock + balance. Flagship. |
 | F-B | Árvore de Maestria | **Opus** | Design-heavy, mas fora do hot path determinístico. |
 | F-C | Determinismo + Desafio Diário + harness | **Fable 5** | Literalmente sobre o invariante de determinismo. |
@@ -816,12 +888,15 @@ convertido.
   de F-A/F-B (time e maestria assumem o modelo de classe).
 - **T-53 (kit de monstro)** é pré-requisito de qualidade para F-A (a IA aliada e inimiga
   compartilham padrões) e para F-C (replay com summons).
+- **T-54 (MySQL)** deve **preceder** T-51 (equipamento), T-23 (histórico de gacha), F-B (maestria)
+  e F-C (leaderboard) — todos guardam estado novo. É track paralelo, não bloqueia T-52/T-53.
 - **T-11 (preços/atributos)** é pré-requisito de **T-51 (equipamento)** (stats vêm dos atributos).
 - **T-50 (assets)** destrava UI melhor para T-24/T-23/Mochila/Bestiário.
 
 **Sequência de execução:** ver **§0.7 Ordem de execução** (a fonte da verdade). Resumo das ondas:
-Onda 1 fundação **T-52 + T-53** → Onda 2 itemização/elenco **T-11 → T-51 → T-50 → T-10 → T-13** →
-Onda 3 **F-A** → Onda 4 **F-E → T-30 → F-B** → Onda 5 juice/UX (paralelo) → Onda 6 **F-C/F-D/T-40**.
+Onda 1 fundação **T-52 + T-53 + T-54** → Onda 2 itemização/elenco **T-11 → T-51 → T-50 → T-10 →
+T-13** → Onda 3 **F-A** → Onda 4 **F-E → T-30 → F-B** → Onda 5 juice/UX (paralelo) → Onda 6
+**F-C/F-D/T-40**.
 
 ---
 

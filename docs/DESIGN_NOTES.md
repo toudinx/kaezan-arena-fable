@@ -195,6 +195,45 @@ determinísticos/dia alimentados pelo resultado da run). Ideias ainda não porta
 
 ---
 
+## 7.5 Decisões de fundação (correções de v0 — pedidas pelo dono)
+
+> Estado: 🔜 viram trabalho na **Fase 6** do [ROADMAP.md](ROADMAP.md) (T-50..T-53).
+
+Três decisões de design/arquitetura que corrigem atalhos rasos do v0:
+
+### a) Estratégia híbrida de assets — animado no mundo, estático na UI
+
+Existe uma biblioteca **estática** já exportada em `C:\xampp\htdocs\assets` (31k ícones de item,
++ outfits/mounts/creatures + `outfit_layers` de recolor). Ela é **estática** (1 frame, sem
+direção/animação). Decisão:
+
+- **Mundo (canvas):** atlases **animados** do `tools/AssetExtractor` (direções, fases, FX). Não troca.
+- **UI (Mochila, gacha, Kaelis, bestiário):** thumbnails **estáticos** do xampp — cobertura enorme
+  e custo zero de recolor/animação para um ícone parado.
+
+O princípio: **animação só onde o olho percebe movimento** (o mundo); a UI usa o retrato estático.
+Isso aproveita 31k ícones prontos em vez de extrair um a um.
+
+### b) Waifu = skin de uma das 4 classes Kaeli (não um kit raso por waifu)
+
+O v0 inventou ~19 kits rasos. O **Kaezan World** já tinha 4 classes reais com kits espelhados de
+spells do Tibia e **stance** (Tab troca o elemento dos slots 1-4): **Warrior · Sentinel · Shaman ·
+Wizard** (`mapping/changes/features/kaeli_spell_library/`). Decisão: a waifu vira **skin** (nome,
+raridade, outfit, stats-base, afinidade) de **uma classe**; o kit vem da classe. Colapsa 19 kits
+inventados em 4 profundos, e novas classes entram **aos poucos** (ex.: Necromancer para `death`)
+sem refatorar. Ver ROADMAP T-52. **Mecânica-chave a preservar:** a stance (postura) — é o que dá
+profundidade tática ("luto em Gelo ou em Terra?") e amarra com a postura de boss e as reações (F-E).
+
+### c) Montaria = equipamento (reaproveitar visual subutilizado)
+
+No Tibia montarias são cosméticas e subutilizadas. Decisão: viram um **slot de equipamento** que
+dá **stats** e reaproveita o **visual** (`lookMount` — o `AssetExtractor` já lê patterns de mount).
+A waifu aparece montada no mundo quando há mount equipado. Equipamento total é enxuto de propósito:
+**6 slots** (`helmet, armor, weapon, necklace, ring, mount`) — itemização com identidade sem virar
+um Diablo de afixos. Ver ROADMAP T-51.
+
+---
+
 ## 8. Padrões de UX do OTClient que valem adotar
 
 > Origem: `mapping/canary/client/` (ui_system, hud, visuals). Estado no Fable: vários ✅/🔜.
@@ -246,6 +285,10 @@ ele renderiza o que o servidor descreve. É exatamente o nosso invariante "backe
 | Imbuements/Forge | §9 | ROADMAP T-32 (lite) |
 | Daily encadeado / elemento do dia / streak | §7, §9 | ROADMAP backlog |
 | Padrões de HUD/UX do OTClient | §8 | ROADMAP T-20/T-21/T-22 |
+| Assets híbridos (animado×estático) | §7.5a | ROADMAP T-50 |
+| Waifu = skin de classe + stance | §7.5b | ROADMAP T-52 |
+| Montaria como equipamento (6 slots) | §7.5c | ROADMAP T-51 |
+| Kit/IA fiel de monstro do Canary | §8 (princípio cliente-burro) | ROADMAP T-53 |
 
 ---
 

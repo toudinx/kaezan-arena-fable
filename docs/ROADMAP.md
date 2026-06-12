@@ -30,13 +30,40 @@ Esforço: S (< 1 sessão), M (1 sessão), L (1 sessão cheia, escopo apertado).
 
 ---
 
+## 0.5 Modelo de owners (qual modelo implementa o quê)
+
+Cada task/feature tem um **owner** sugerido. A regra é **escalar o modelo com a complexidade**:
+tarefa mecânica não justifica modelo caro; feature determinismo-crítica não deve ir para o
+modelo mais barato. O gradiente:
+
+| Owner | Sweet spot | Reasoning |
+|---|---|---|
+| **Sonnet 4.6** | Mecânico, bounded, baixo risco: copiar/fiar assets, thumbnails, UI simples, polish, limpeza de dívida. | Rápido e barato. Tarefas sem ambiguidade de design não pagam um modelo premium. |
+| **Codex (GPT 5.5)** | Implementação de spec fechada, tamanho médio, sistema isolado: conteúdo, endpoints, juice, features com instruções claras. | Forte em executar specs bem-escritas de ponta a ponta. É o owner default do ROADMAP. |
+| **Opus 4.8** | Cross-cutting com **julgamento de design/balance**, mas escopo definível: refatorar sistemas, novas mecânicas de combate/itemização, UI complexa. | Raciocínio de arquitetura e design sem o custo do topo. Faz boas decisões onde a spec deixa margem. |
+| **Fable 5** | **Determinismo-crítico**, algoritmicamente difícil, alto raio de explosão: IA dentro do tick, geração procedural com garantias, hardening de simulação. | Onde errar quebra replay/balance/perf. Vale o modelo mais forte. Ver [FABLE_TRACK.md](FABLE_TRACK.md). |
+
+**Como ler a etiqueta de owner:** `Owner: Codex → Opus` significa "Codex se a spec abaixo for
+seguida à risca; escale para Opus se aparecer decisão de design não coberta". O primeiro nome é
+o piso recomendado.
+
+> Regra de bolso para escalar: se a task **não pode quebrar o determinismo** (roda no `GameWorld`
+> e afeta replay), o piso é **Opus** e o teto é **Fable 5**. Se é puramente de apresentação
+> (frontend/asset/UI) sem lógica de simulação, o piso é **Sonnet**.
+
+A tabela-mestra de atribuição (todas as tasks `T-*` + features `F-*`) está no fim deste documento.
+
+---
+
 ## Fase 1 — Fluidez de gameplay e movimento (P0)
 
 A maior alavanca de qualidade percebida. O jogo funciona, mas o "game feel" tem atritos
 conhecidos, listados task a task.
 
-### [ ] T-01 — Movimento fluido: buffer de passo no servidor + tuning de cadência
+### [x] T-01 — Movimento fluido: buffer de passo no servidor + tuning de cadência
 **P0 · M · backend (+frontend leve)**
+
+**Concluída:** passos encadeados no tempo exato, grace de 80ms, heartbeat de input e tuning final `MinStepMs=160`/diagonal `1.4`.
 
 **Contexto.** Hoje `GameWorld.TickPlayerMovement()` (em
 `backend/src/KaezanArenaFable.Api/Engine/GameWorld.cs`) só inicia um passo novo se o anterior
@@ -64,8 +91,10 @@ a ponta sem regressão.
 **Armadilhas.** Não introduza client-side prediction (fora de escopo; quebra o modelo
 autoritativo). `StepStartMs` no passado é esperado pelo renderer (interp clampa em 0..1).
 
-### [ ] T-02 — IA de monstros: anti-empilhamento, perda de aggro e desvio
+### [x] T-02 — IA de monstros: anti-empilhamento, perda de aggro e desvio
 **P0 · M · backend**
+
+**Concluída:** IA ganhou candidatos menos congestionados, desvio lateral via RNG, perda de aggro por distância/LOS e `staticAttackChance`.
 
 **Contexto.** `TickMonsters()`/`StepToward()` usam passo greedy (sinal de dx/dy). Resultado
 visível: mobs formam fila indiana em corredores e travam uns nos outros; aggro nunca é perdido
@@ -88,8 +117,10 @@ visível: mobs formam fila indiana em corredores e travam uns nos outros; aggro 
 sala e quebrar LOS por ~6s faz os mobs desistirem; archers param para atirar. Determinismo
 preservado (só `_rng`).
 
-### [ ] T-03 — Escolha de card sem morrer: pausa tática
+### [x] T-03 — Escolha de card sem morrer: pausa tática
 **P0 · S · backend**
+
+**Concluída:** ofertas congelam o relógio da simulação e autoescolhem deterministicamente a primeira opção após 20s.
 
 **Contexto.** A oferta de cards (`_pendingOffer`) não pausa nada — o player apanha enquanto lê.
 Decisão original era "action roguelike", mas em tier alto é punitivo demais.
@@ -106,8 +137,10 @@ após escolher, tudo retoma; timeout de 20s auto-escolhe.
 **Armadilhas.** Não usar tempo real para o timeout — contar ticks (`TickCount`), senão quebra
 determinismo de replay futuro.
 
-### [ ] T-04 — Reconexão de run (refresh não mata a run)
+### [x] T-04 — Reconexão de run (refresh não mata a run)
 **P1 · M · backend + frontend**
+
+**Concluída:** runs desconectadas ficam órfãs/pausadas por 60s, podem ser reassociadas e exibem o toast "Run retomada".
 
 **Contexto.** `RunManager.DropRun` trata desconexão como abandono imediato. Um F5 acidental
 destrói a run.
@@ -463,6 +496,249 @@ Checklist objetiva (tudo pequeno):
   (já é o padrão; revise `items/sell` e `active-waifu`).
 - [ ] Remova `window.__kaezanRenderer`? **Não** — mantenha; é o hook de verificação headless.
   Documente-o com comentário apontando para o ROADMAP §0.4.
+
+---
+
+## Fase 6 — Refundação de conteúdo (correções de fundação do v0)
+
+Quatro features pedidas pelo dono do projeto que corrigem decisões rasas do v0. São
+**fundacionais** — várias outras tasks dependem delas, então têm prioridade alta apesar de
+algumas serem grandes. Ordenadas por complexidade crescente (e por owner crescente, conforme
+§0.5).
+
+### [ ] T-50 — Assets híbridos: thumbnails estáticos do xampp para toda a UI
+**Owner: Sonnet 4.6** (ou Codex) · **P0 · M · tools + frontend**
+
+**Reasoning do owner.** É trabalho mecânico de cópia + fiação, sem decisão de design nem lógica
+de simulação. Cabe no modelo mais barato. O único cuidado (estático vs. animado) está totalmente
+especificado abaixo.
+
+**Contexto.** Existe uma biblioteca **estática** já exportada em `C:\xampp\htdocs\assets`:
+- `thumbnails/items/` — **31131** PNGs por client id (`<id>.png`). Cobre praticamente todo item.
+- `thumbnails/outfits/` (248), `thumbnails/mounts/` (235), `thumbnails/creatures/` (807) — retratos.
+- `outfit_layers/` — `<lookType>_<n>_base.png` + `_template.png` (camadas de recolor, estáticas).
+- `equipment-thumbnails/` — 1694 PNGs (subset de equipamento).
+
+**O ponto de atenção (decisão de arquitetura — estratégia híbrida).** Esses thumbnails são
+**estáticos** (1 frame, sem direção/animação). Portanto:
+- **Mundo (canvas da run)** → continua usando os **atlases animados** do `tools/AssetExtractor`
+  (direções, fases, FX, missiles). **Não trocar.**
+- **UI/menus** (ícones de item na Mochila, retratos de waifu no gacha/Kaelis, ícones de mount,
+  cards de bestiário) → passam a usar os **thumbnails estáticos do xampp**: muito mais cobertura
+  (31k itens prontos vs. extrair um a um) e sem custo de recolor/animação para um ícone parado.
+
+> Já existe um começo: o `AssetExtractor` ganhou um flag `--static-items` (ver README) que
+> normaliza thumbnails de item. Esta task **generaliza** isso para outfits/mounts/creatures/
+> equipment e conecta no frontend.
+
+**Instruções.**
+1. Tool `tools/import-thumbnails.mjs` (Node): copia de `C:\xampp\htdocs\assets` para
+   `frontend/public/assets/tibia/ui/{items,outfits,mounts,creatures}/<id>.png` (normalize tamanho
+   se preciso; transparência preservada). Gere um `ui-manifest.json` com os ids presentes.
+2. Não copie os 31k itens cegamente: copie **sob demanda** — só os ids referenciados por
+   `monsters.json` (loot/corpse), `items.json` (T-11), waifus (lookType) e mounts usados. Adicione
+   um modo `--all` para o caso de querer o catálogo inteiro.
+3. Frontend: `AssetsService` ganha `uiIcon(category, id)` que serve o thumbnail estático; os
+   componentes de **UI** (`ItemIcon`, retratos no Recruit/Kaelis/Home, Bestiário) passam a usá-lo.
+   O **renderer do mundo** não muda.
+4. Fallback: se o thumbnail não existir, cair para o atlas animado (frame 0) ou placeholder (T-41).
+
+**Aceite.** Mochila e bestiário mostram ícones nítidos de itens que antes não tínhamos extraído;
+retratos de waifu/mount na UI vêm dos thumbnails; o **mundo continua animado** (criaturas andam
+em 8 direções); nenhum caminho externo ao repo é referenciado em runtime.
+
+**Armadilhas.** Não substituir os atlases animados do mundo pelos estáticos (regrediria a
+animação). Não commitar 31k PNGs sem necessidade — copiar só o referenciado (modo default).
+
+### [ ] T-51 — Equipamento simplificado: 6 slots + montaria-como-equipamento
+**Owner: Codex → Opus** · **P1 · L · backend + frontend**
+
+**Reasoning do owner.** A spec é fechável (slots fixos, stats vêm dos atributos do Tibia), mas é
+**cross-cutting** (drops → inventário → equipar → agregação de stats na run → render de mount) e
+toca a fórmula de poder. Codex consegue com a spec abaixo; escale para Opus se as decisões de
+balance (quanto cada slot/raridade vale) exigirem julgamento.
+
+**Contexto.** Já temos dungeons e drops do Tibia, mas o loot só serve para vender. Vamos dar
+propósito com um sistema de **equipamento enxuto**. O usuário pediu **simplicidade**: apenas
+**6 slots** — `helmet, armor, weapon, necklace, ring, mount`. E uma ideia-chave: **montarias do
+Tibia são subutilizadas; viram equipamento** (dão status e reaproveitam o visual via `lookMount`).
+
+**Instruções.**
+1. **Stats de item vêm do Tibia.** O `items.xml` do Canary tem atributos reais
+   (`attack`, `armor`, `defense`, `weaponType`, slot via `AppearanceFlagClothes.slot`). Estenda o
+   `AssetExtractor`/`items.json` (T-11) para incluir, por item: `slot` (derivado), `weaponType`,
+   `attack`, `armor`, `defense`. Para montarias, derive um stat sintético (ver passo 4).
+2. **Modelo de conta:** `AccountState.Equipment[waifuId] = { helmet, armor, weapon, necklace,
+   ring, mount }` (cada um um itemId ou vazio). Equipamento é **por waifu** (combina com a
+   identidade) — ou por conta, se preferir simplicidade; decida e documente (sugestão: por waifu).
+3. **Agregação de stats na run:** ao iniciar a run (`GameWorld`), some os stats do equipamento da
+   waifu ativa à fórmula de poder existente (junto de ascensão/cards). Centralize num
+   `EquipmentStats` (espelha o `EquipmentStatAggregator` do kaezan-arena). Determinístico: stats
+   entram como números no início da run, não mudam durante.
+4. **Montaria-como-equipamento:** o slot `mount` aceita itens-montaria (derivados dos mounts do
+   Tibia). Dá stats (ex.: velocidade de movimento, HP) **e** troca o `lookMount` renderizado — o
+   `AssetExtractor` já lê patterns de mount; a waifu passa a aparecer montada no mundo quando há
+   mount equipado. Reaproveita visual ocioso e dá um slot cosmético-funcional.
+5. **Drops alimentam o sistema:** equipamento cai como loot (já temos o pipeline de loot); itens
+   equipáveis aparecem na Mochila com seus stats; UI de equipar na página Kaelis (paperdoll de 6
+   slots, drag/drop ou clique). Vender continua existindo para o que não serve.
+6. **Raridade/tiers:** mantenha simples no MVP — o valor do item vem dos atributos do Tibia
+   (uma `dragon scale legs` é naturalmente melhor que `leather armor`). Sem afixos aleatórios
+   ainda (isso é o Forge, ROADMAP T-32 / futuro).
+
+**Aceite.** Equipar um helmet dropado muda os números da run de forma verificável; equipar uma
+montaria dá stats **e** faz a waifu aparecer montada no mundo; os 6 slots funcionam na página
+Kaelis; loot equipável é distinguível do loot de venda; determinismo preservado.
+
+**Armadilhas.** Não explodir o escopo para um sistema de itemização completo (afixos, sets,
+sockets) — isso é o Forge, fora daqui. Manter exatamente 6 slots. Stats entram no início da run
+(nunca recalcular no meio, para não quebrar replay).
+
+### [ ] T-52 — Refundação de classes: 4 Kaelis canônicas + stance (substituir kits rasos)
+**Owner: Opus → Fable 5** · **P1 · L · backend + frontend**
+
+**Reasoning do owner.** É um **refactor de combate com design real**: colapsar ~19 kits inventados
+rasos em 4 classes profundas com mecânica de stance, migrar todas as waifus, e manter o combate
+balanceado. Exige julgamento de design e toca o coração do `GameWorld`. Opus como piso; Fable se
+a composição com postura/reações (F-E) for feita junto.
+
+**Contexto.** No v0 inventei um kit raso por waifu (`Domain/Waifus.cs`, `Domain/Skills`). O
+**Kaezan World** já tinha 4 classes ("Kaelis") com kits reais, espelhados de spells do Tibia
+(geometria/dano/cooldown reais), com **stance** (postura): Tab troca o elemento dos slots 1-4.
+Fonte: `kaezan/mapping/changes/features/kaeli_spell_library/`. O usuário quer **usar essas 4 como
+fundação e criar novas aos poucos**, em vez de muitos kits rasos.
+
+As 4 classes e seus kits (resumo da fonte):
+| Classe | Postura(s) | Kit (slots 1-4 + R) |
+|---|---|---|
+| **Warrior** | — (sem stance) | Groundshaker (nova) · Chivalrous Challenge (taunt) · Front Sweep (cone) · Fierce Berserk · R: Blood Rage (buff) |
+| **Sentinel** | Holy ↔ Physical | Divine/Storm Missile (single) · Grenade (area) · Caldera (AoE) · Barrage · R: Sentinel Aegis (buff) |
+| **Shaman** | Ice ↔ Earth | Avalanche/Stone Shower · Forked Glacier/Earth Wave · Ice/Terra Burst · Strong Ice Wave/Earth Storm · R: Nature's Embrace (heal) |
+| **Wizard** | Energy ↔ Fire | Thunderstorm/Great Fireball · Energy/Fire Wave · Energy/Fire Beam · Rage of Skies/Hell's Core · R: aura (uma por elemento) |
+
+**Instruções.**
+1. **Modelo:** introduza `Domain/Classes.cs` com as 4 classes, cada uma com kit por **stance**
+   (Warrior tem 1 stance "fixa"). As skills continuam **data-driven por shape** (`single|beam|nova|
+   area|cone|buff`) — reaproveite o dispatch existente; não crie switch paralelo. Cada slot tem
+   versão por elemento da stance.
+2. **Stance (Tab):** comando de hub `ToggleStance`; troca os slots 1-4 entre os dois elementos da
+   classe (sem afetar R, que para o Wizard tem aura por elemento). Cooldowns persistem por slot ao
+   trocar (não resetar — senão vira exploit). HUD mostra a stance ativa.
+3. **Waifu = skin de uma classe.** `WaifuDef` ganha `classId` (warrior|sentinel|shaman|wizard). A
+   waifu mantém identidade (nome, raridade, outfit, stats-base, afinidade elemental) mas **o kit
+   vem da classe**. Isso colapsa os 19 kits inventados em 4 reais. Migre cada waifu existente para
+   a classe de melhor encaixe (melee→warrior; holy/phys ranged→sentinel; ice/earth→shaman;
+   fire/energy/death→wizard) e documente o mapeamento.
+4. **Geometria/dano/cooldown** das spells: use os valores do Tibia como referência (o
+   `kaeli_spell_library` lista quais spells legacy cada uma espelha) e os FX já extraídos
+   (`effectId`/`missileId`). Adicione `effectIds/missileIds` faltantes ao content-config e re-extraia.
+5. **Frontend:** Kaelis mostra a classe da waifu e o kit por stance; HUD de run mostra a stance e
+   permite Tab; preview de skills atualiza ao trocar.
+6. **Novas classes "aos poucos":** deixe o modelo aberto para uma 5ª classe (ex.: Necromancer para
+   `death`) sem refatorar — só adicionar uma entrada em `Classes.cs`.
+
+**Aceite.** As 4 classes jogáveis com kits reais e stance funcional (Tab troca elemento dos slots
+1-4); toda waifu aponta para uma classe; nenhum kit raro inventado remanescente; combate continua
+balanceado (jogar tiers 1-5); determinismo preservado.
+
+**Armadilhas.** Não perder a identidade das waifus (elas não viram "4 personagens" — são skins com
+stats/visual próprios de uma das 4 classes). Não recriar o dispatch de skill por classe (manter os
+shapes). Cooldown ao trocar de stance não pode resetar.
+
+### [ ] T-53 — Fidelidade de IA/kit de monstro do Canary (parar de inventar comportamento)
+**Owner: Fable 5** · **P1 · L · tools + backend (engine)**
+
+**Reasoning do owner.** É **determinismo-crítico no hot path** do tick, algoritmicamente sutil
+(executar fielmente conditions/summons/healing/speed sem alocar nem desestabilizar a ordem), e de
+alto raio de explosão (mexe na IA central de combate que toda run usa). É o perfil clássico Fable 5.
+
+**Contexto.** O usuário apontou: "um demon no canary já possui habilidades e comportamentos
+definidos — não precisa recriar essa AI. Você está fazendo isso?" **Resposta honesta: só em
+parte.** O `tools/convert-monsters` extrai os *dados* de ataque do `.lua` (interval/chance/range/
+dano/elemento/FX), e o `GameWorld.TickMonsters` usa parte disso — mas roda uma **IA genérica** e
+**ignora**: `condition` (poison/fire/energy DoT, paralyze), `summon` (spawns), ataques de **cura**
+(o boss/healer curando aliados), `speed` (debuff de lentidão), e a distinção fina de
+`targetDistance`/estratégias de alvo. Ou seja, hoje um Demon do Canary perde quase toda a sua
+identidade de kit.
+
+**Instruções.**
+1. **Conversor:** parar de descartar campos. Estender `convert.mjs` para emitir, por ataque:
+   `condition { type, totalDamage, tickMs, duration }`, `summon { name, max, chance, interval }`,
+   `isHealing` (dano negativo em aliado), `speedChange`, `needTarget`, `areaSpread/length`. (T-14
+   cobre só DoT do player; aqui é o kit **completo** do monstro.)
+2. **Engine — executar o kit fielmente** dentro do tick, determinístico:
+   - **Conditions:** aplicar DoT/paralyze ao player conforme o ataque (compõe com T-14).
+   - **Summons:** o monstro invoca outras espécies (respeitando `max` vivo) — novos atores no
+     `GameWorld`, contados no orçamento. (Plague Titan/Necromancer ganham vida.)
+   - **Healing:** ataques de cura curam o aliado ferido mais próximo (o "Echo Doc"/healer real).
+   - **Speed:** debuff de movimento no player por duração.
+   - **targetDistance/estratégia:** ranged mantém distância (compõe com `staticAttackChance` do
+     T-02); caster fica fora de alcance corpo a corpo.
+3. **Mapa de FX/efeitos:** garantir que os `CONST_ME_*`/`CONST_ANI_*` de cada ataque (já no JSON)
+   sejam emitidos — o kit do monstro deve **parecer** o do Tibia (a bola de morte do Demon, etc.).
+4. **Determinismo:** toda decisão e roll usa o `Rng` da run; summons entram em ordem estável; sem
+   `Random`/iteração instável. Isto é pré-requisito de F-A (Echo Team) e F-C (replay).
+5. **Bosses ganham kit real:** os 5 bosses passam a usar seus ataques completos do Canary
+   (summons do Plague Titan, etc.) em vez do ataque único atual — substitui parte do ROADMAP T-31
+   improvisado e dá identidade real a cada luta.
+
+**Aceite.** Um Demon usa seu kit do Canary (death AoE, summons se houver, etc.); Necromancer
+invoca; um healer cura aliados; veneno/lentidão funcionam; tudo com os FX corretos do Tibia; e o
+teste de determinismo (F-C/T-40) continua verde com summons na cena.
+
+**Armadilhas.** Summons podem explodir a contagem de atores/perf — respeitar `max` e o orçamento.
+Cura pode tornar salas intransponíveis — capar e testar. Não introduzir não-determinismo (o maior
+risco). Não recriar comportamento "à mão" quando o `.lua` já define — a fonte de verdade é o dado
+convertido.
+
+---
+
+## Tabela-mestra de atribuição (todas as tasks e features)
+
+> Visão única de quem implementa o quê. `→` = piso → teto (escale se a spec deixar margem de
+> design). Tasks `T-*` neste arquivo; features `F-*` em [FABLE_TRACK.md](FABLE_TRACK.md).
+
+| Item | Título curto | Owner | Por quê (reasoning) |
+|---|---|---|---|
+| T-01..T-04 | Movimento, IA, pausa de card, reconexão | **Codex** ✅ | Specs fechadas; já concluídas. (T-04 toca determinismo levemente → ok Codex.) |
+| T-10 | +30 monstros | **Codex** | Curadoria + re-rodar tools; spec clara. |
+| T-11 | Preços reais de itens | **Codex** | Extração + fiação; bounded. |
+| T-12 | Biomas + cantos de parede | **Opus** | Geração com curadoria visual e mapeamento de tiles; decisão de design. |
+| T-13 | 6 waifus novas | **Sonnet → Codex** | Conteúdo declarativo; vira trivial **depois** de T-52 (waifu = skin de classe). |
+| T-14 | Condições (poison/burn) do player | **Codex** | Bounded; mas é subconjunto de T-53 — fazer T-53 pode absorvê-la. |
+| T-20 | Juice de combate | **Sonnet → Codex** | Apresentação no renderer; sem lógica de simulação. |
+| T-21 | HUD informativo | **Codex** | Frontend bounded. |
+| T-22 | Minimapa fog of war | **Sonnet** | Pequeno, isolado, frontend. |
+| T-23 | Cerimônia do gacha | **Codex** | Frontend com alguma orquestração. |
+| T-24 | Polish de meta | **Sonnet** | Itens pequenos de UI. |
+| T-30 | Sealed Reward + reroll | **Codex → Opus** | Backend+frontend bounded; design de tabela de loot pode pedir Opus. |
+| T-31 | Boss Posture (MVP) | **Opus** | Mecânica de combate nova; será estendida/absorvida por F-E. |
+| T-32 | Imbuements lite | **Opus** | Economia + balance; cross-cutting. |
+| T-33 | Replay determinístico | **Fable 5** | Determinismo-crítico; base do harness. Faz parte de F-C. |
+| T-40 | Testes (determinismo/regras) | **Opus → Fable 5** | Testes de determinismo exigem entender o invariante a fundo. |
+| T-41 | Fallback de asset + diagnóstico | **Sonnet** | Pequeno, frontend+tool. |
+| T-42 | Limpeza de dívidas | **Sonnet → Codex** | Itens pontuais; alguns tocam o engine (facing) → Codex nesses. |
+| **T-50** | **Assets híbridos (xampp)** | **Sonnet** | Mecânico, sem design nem simulação. |
+| **T-51** | **Equipamento (6 slots, mount-as-gear)** | **Codex → Opus** | Spec fechável, mas cross-cutting e toca a fórmula de poder. |
+| **T-52** | **Refundação de classes + stance** | **Opus → Fable 5** | Refactor de combate com design real; coração do `GameWorld`. |
+| **T-53** | **Fidelidade de IA/kit de monstro** | **Fable 5** | Determinismo-crítico no hot path; IA central. |
+| F-A | Echo Team (companions) | **Fable 5** | IA de aliado determinística + anti-bodyblock + balance. Flagship. |
+| F-B | Árvore de Maestria | **Opus** | Design-heavy, mas fora do hot path determinístico. |
+| F-C | Determinismo + Desafio Diário + harness | **Fable 5** | Literalmente sobre o invariante de determinismo. |
+| F-D | Geração procedural v2 | **Opus → Fable 5** | Algorítmico com garantias; roda no seed. |
+| F-E | Postura completa + reações elementais | **Opus** | Composicional; ancorada pelo MVP T-31. Fable se feita junto com T-52. |
+
+**Dependências que afetam a ordem:**
+- **T-52 (classes)** deve vir **antes** de T-13 (waifus novas viram triviais) e idealmente antes
+  de F-A/F-B (time e maestria assumem o modelo de classe).
+- **T-53 (kit de monstro)** é pré-requisito de qualidade para F-A (a IA aliada e inimiga
+  compartilham padrões) e para F-C (replay com summons).
+- **T-11 (preços/atributos)** é pré-requisito de **T-51 (equipamento)** (stats vêm dos atributos).
+- **T-50 (assets)** destrava UI melhor para T-24/T-23/Mochila/Bestiário.
+
+**Sequência sugerida de fundação:** T-50 → T-11 → T-51 → T-52 → T-53 → (F-E/F-A) — assets e
+preços primeiro, depois equipamento, depois a refundação de classes e a IA fiel, e só então as
+features de combate de topo.
 
 ---
 

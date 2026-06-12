@@ -38,6 +38,10 @@ F-C se beneficia de F-A/F-E já existirem para ter o que simular).
 
 ## F-A — Echo Team: seus waifus lutam juntos (companions IA)
 
+**Owner: Fable 5.** IA de aliado determinística no hot path + anti-bodyblock + balanceamento de
+um time de 3 — determinismo-crítico e algoritmicamente difícil. Depende de T-52 (modelo de
+classe) e se beneficia de T-53 (IA fiel) já existirem.
+
 **Tier-justificativa:** cross-cutting (engine IA + snapshot + meta de seleção + frontend
 render/HUD) · determinismo-crítica · algoritmicamente difícil (IA de aliado boa) · design-ambígua
 (balanceamento de um time de 3) · composicional (interage com postura, cards, maestria).
@@ -115,6 +119,9 @@ cada pull num impacto direto de gameplay. É o elo que liga o **lado gacha** ao 
 
 ## F-B — Árvore de Maestria (Eco): progressão persistente por waifu
 
+**Owner: Opus 4.8.** Design-heavy (desenhar e balancear árvores) e cross-cutting, mas fora do
+caminho determinístico do tick — não exige o modelo de topo. Assume o modelo de classe (T-52).
+
 **Tier-justificativa:** composicional (entra na fórmula de dano junto com cards+ascensão) ·
 design-ambígua (desenhar uma árvore boa e balanceada) · cross-cutting (meta + engine + frontend
 de árvore) · alto raio (mexe na fórmula de poder).
@@ -170,6 +177,9 @@ com escolha** — diferente da ascensão (linear) e dos cards (efêmeros).
 ---
 
 ## F-C — Determinismo de ouro + Desafio Diário + harness de simulação
+
+**Owner: Fable 5.** É literalmente sobre o invariante de determinismo — caçar fontes sutis de
+não-reprodutibilidade e endurecer o coração do engine. Máximo cuidado exigido.
 
 **Tier-justificativa:** determinismo-crítica por definição · alto raio (mexe no coração do
 engine) · algoritmicamente sutil (achar fontes de não-determinismo) · habilita produto novo
@@ -227,6 +237,10 @@ engine) · algoritmicamente sutil (achar fontes de não-determinismo) · habilit
 
 ## F-D — Geração procedural v2: prefabs, pacing e set-pieces
 
+**Owner: Opus 4.8 → Fable 5.** Algorítmico com garantias (conectividade, pacing) e rodando no
+seed (determinístico). Opus dá conta do desenho; escale para Fable se o encaixe de prefabs +
+garantias formais ficarem espinhosos.
+
 **Tier-justificativa:** algoritmicamente difícil (geração com garantias + intenção de design) ·
 determinismo-crítica (roda no seed) · design-ambígua (o que é uma dungeon "divertida"?) · alto
 valor de variedade.
@@ -280,6 +294,10 @@ set-pieces nem ritmo. Falta o que torna roguelikes rejogáveis: **layouts com pr
 ---
 
 ## F-E — Postura completa + sistema de reações elementais
+
+**Owner: Opus 4.8** (Fable 5 se feita junto com T-52). Composicional e ancorada pelo MVP do
+ROADMAP T-31; Opus dá conta. Se for implementada na mesma leva que a refundação de classes
+(T-52), o acoplamento elemento×stance×postura justifica subir para Fable 5.
 
 **Tier-justificativa:** composicional (amarra elemento × postura × cards × ultimate × time) ·
 design-ambígua (matriz de reações + tuning de janelas) · cross-cutting (engine + DTO + HUD/FX).

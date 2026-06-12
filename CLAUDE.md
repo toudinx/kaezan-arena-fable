@@ -5,8 +5,10 @@ Instruções para assistentes de IA trabalhando neste repo.
 ## Primeiros passos (toda sessão)
 
 1. Leia `README.md` — é a documentação viva. Confie nele acima de qualquer outro `.md`.
-2. Leia `docs/GDD.md` para entender o design e o roadmap.
+2. Se a tarefa vier do roadmap, leia `docs/ROADMAP.md` §0 (regras de trabalho) e a task inteira
+   antes de codar. `docs/GDD.md` dá o contexto de design.
 3. Não leia arquivos especulativamente; só o que a tarefa pede.
+4. Ao concluir uma task do roadmap, marque-a `[x]` no ROADMAP.md com 1 linha de resumo.
 
 ## Invariantes inegociáveis
 

@@ -68,7 +68,8 @@ frontend/src/app/
 tools/
   AssetExtractor/     C#: things/1500 do otclient → PNG atlases + manifest.json
   convert-monsters/   Node+wasmoon: monster .lua do canary → monsters.json
-docs/GDD.md           design, melhorias propostas e roadmap
+docs/GDD.md           design e mapeamento kaezan-arena × Tibia
+docs/ROADMAP.md       fila de trabalho com tasks detalhadas para agentes (Codex/Claude)
 ```
 
 ## Pipeline de assets (re-rodar quando quiser mais conteúdo)

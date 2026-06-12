@@ -31,6 +31,37 @@ public static class GameConfig
     public const int VoiceIntervalMs = 9000;
     public const int VoiceChancePercent = 4;
 
+    // ---- monster kit fidelity (T-53: conditions/summons/healing/speed from canary data) ----
+    /// <summary>Tames raw tibia damage numbers into arena pacing (applies to hits and DoTs).</summary>
+    public const double MonsterDamageTuning = 0.35;
+    public const int ConditionMaxTicks = 10;
+    public const int ConditionDefaultTickMs = 2000;
+    public const double ConditionResistCap = 0.85;
+    /// <summary>Canary speedChange is an absolute speed delta; divide by this to get a factor.</summary>
+    public const double SpeedChangeReference = 600.0;
+    public const double SlowFactorFloor = 0.40;
+    public const double HasteFactorCap = 1.5;
+    public const int SlowDurationCapMs = 6000;
+    public const int DefaultHasteDurationMs = 5000;
+    public const int MaxAliveSummons = 8;
+    public const int SummonMinIntervalMs = 1000;
+    /// <summary>Single heal proc never restores more than this fraction of the monster's max HP.</summary>
+    public const double MonsterHealCapFraction = 0.10;
+
+    /// <summary>Per-tick FX by condition type (tibia CONST_ME ids).</summary>
+    public static readonly IReadOnlyDictionary<string, int> ConditionTickFx = new Dictionary<string, int>
+    {
+        ["poison"] = 17, ["fire"] = 16, ["energy"] = 12, ["bleed"] = 1,
+        ["curse"] = 18, ["freeze"] = 44, ["drown"] = 54, ["dazzle"] = 40,
+    };
+
+    /// <summary>PT-BR labels for run-end reason ("morta por veneno").</summary>
+    public static readonly IReadOnlyDictionary<string, string> ConditionLabelPt = new Dictionary<string, string>
+    {
+        ["poison"] = "veneno", ["fire"] = "queimadura", ["energy"] = "eletrocussão", ["bleed"] = "sangramento",
+        ["curse"] = "maldição", ["freeze"] = "congelamento", ["drown"] = "afogamento", ["dazzle"] = "ofuscamento",
+    };
+
     // ---- run / leveling ----
     public const int MaxRunLevel = 30;
     public static long XpForRunLevel(int level) => (long)(40 * Math.Pow(level, 1.65));

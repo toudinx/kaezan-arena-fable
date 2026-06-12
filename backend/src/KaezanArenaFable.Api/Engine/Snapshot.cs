@@ -29,7 +29,7 @@ public sealed record PlayerDto(
     double Gauge, List<SkillStateDto> Skills,
     string ClassId, string ClassName,
     string StanceId, string StanceName, string StanceElement, bool CanToggleStance,
-    long AutoAttackReadyInMs, List<string> ActiveBuffs);
+    long AutoAttackReadyInMs, List<string> ActiveBuffs, List<string> ActiveConditions);
 
 public sealed record SkillStateDto(
     string Id, string Name, string Element, string Description,

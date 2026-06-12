@@ -31,6 +31,9 @@
     "dragons/dragon_lord.lua",
     "vermins/giant_spider.lua",
     "raids/rotworm_queen.lua",
-    "bosses/black_knight.lua"
+    "bosses/black_knight.lua",
+    "elementals/fire_elemental.lua",
+    "undeads/ghost.lua",
+    "undeads/mummy.lua"
   ]
 }

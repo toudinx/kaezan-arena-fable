@@ -70,6 +70,11 @@ const DAMAGE_TYPES = {
   COMBAT_MANADRAIN: "manadrain", COMBAT_HEALING: "healing", COMBAT_DROWNDAMAGE: "drown",
   COMBAT_ICEDAMAGE: "ice", COMBAT_HOLYDAMAGE: "holy", COMBAT_DEATHDAMAGE: "death",
 };
+const CONDITION_TYPES = {
+  CONDITION_POISON: "poison", CONDITION_FIRE: "fire", CONDITION_ENERGY: "energy",
+  CONDITION_BLEEDING: "bleed", CONDITION_CURSED: "curse", CONDITION_DAZZLED: "dazzle",
+  CONDITION_FREEZING: "freeze", CONDITION_DROWN: "drown",
+};
 
 const BOOTSTRAP = readFileSync(join(here, "bootstrap.lua"), "utf8");
 
@@ -100,13 +105,27 @@ function convertMonster(raw, items) {
     mitigation: toNum(raw.defenses?.mitigation),
     isBoss: raw.flags?.rewardBoss === true,
     bestiaryClass: raw.Bestiary?.class ?? "",
+    maxSummons: toNum(raw.summon?.maxSummons),
+    summons: [],
     attacks: [],
+    defenses: [],
     elements: {},
     loot: [],
     voices: [],
   };
 
+  for (const s of raw.summon?.summons ?? []) {
+    if (typeof s?.name !== "string") continue;
+    out.summons.push({
+      name: s.name,
+      chance: toNum(s.chance, 10),
+      intervalMs: toNum(s.interval, 2000),
+      count: toNum(s.count, 1),
+    });
+  }
+
   for (const atk of raw.attacks ?? []) {
+    const condType = CONDITION_TYPES[atk.condition?.type];
     const a = {
       kind: atk.name === "melee" ? "melee" : "spell",
       label: typeof atk.name === "string" ? atk.name : "combat",
@@ -122,9 +141,40 @@ function convertMonster(raw, items) {
       damageType: DAMAGE_TYPES[atk.type] ?? "physical",
       shootEffect: MISSILES[atk.shootEffect] ?? 0,
       areaEffect: MAGIC_EFFECTS[atk.effect] ?? 0,
+      condition: condType
+        ? {
+            type: condType,
+            totalDamage: Math.abs(toNum(atk.condition.totalDamage)),
+            tickMs: toNum(atk.condition.interval, 2000),
+            durationMs: toNum(atk.condition.duration),
+          }
+        : null,
+      speedChange: toNum(atk.speedChange),
+      durationMs: toNum(atk.duration),
+      isHealing: DAMAGE_TYPES[atk.type] === "healing",
     };
-    // skip pure utility attacks (speed debuffs etc.) with no damage
-    if (a.maxDamage > 0 || a.kind === "melee") out.attacks.push(a);
+    // no mana on the arena side: mana drain attacks have no equivalent
+    if (a.damageType === "manadrain") continue;
+    // keep anything with a gameplay payload; drop pure field attacks (firefield etc.)
+    if (a.maxDamage > 0 || a.kind === "melee" || a.condition || a.speedChange !== 0 || a.isHealing)
+      out.attacks.push(a);
+  }
+
+  // defenses array part: self-heals and self-haste (the monster's reactive kit)
+  for (const d of raw.defenses?.__items ?? []) {
+    const isHealing = DAMAGE_TYPES[d.type] === "healing";
+    const speedChange = toNum(d.speedChange);
+    if (!isHealing && speedChange === 0) continue;
+    out.defenses.push({
+      kind: isHealing ? "healing" : "speed",
+      intervalMs: toNum(d.interval, 2000),
+      chance: toNum(d.chance, 100),
+      minValue: Math.abs(toNum(d.minDamage)),
+      maxValue: Math.abs(toNum(d.maxDamage)),
+      speedChange,
+      durationMs: toNum(d.duration),
+      areaEffect: MAGIC_EFFECTS[d.effect] ?? 0,
+    });
   }
 
   for (const el of raw.elements ?? []) {
@@ -169,7 +219,13 @@ for (const rel of config.monsters) {
     if (!raw || !raw.__name) throw new Error("no monster registered");
     const converted = convertMonster(raw, items);
     results.push(converted);
-    console.log(`ok: ${converted.name} (lookType ${converted.outfit.lookType}, hp ${converted.health}, ${converted.attacks.length} attacks, ${converted.loot.length} loot)`);
+    const kit = [
+      converted.attacks.some((a) => a.condition) ? "cond" : null,
+      converted.attacks.some((a) => a.speedChange < 0) ? "slow" : null,
+      converted.summons.length ? `summons:${converted.summons.length}` : null,
+      converted.defenses.length ? `defenses:${converted.defenses.length}` : null,
+    ].filter(Boolean).join(",");
+    console.log(`ok: ${converted.name} (lookType ${converted.outfit.lookType}, hp ${converted.health}, ${converted.attacks.length} attacks, ${converted.loot.length} loot${kit ? ", " + kit : ""})`);
   } catch (err) {
     console.error(`FAIL ${rel}: ${err.message}`);
   } finally {

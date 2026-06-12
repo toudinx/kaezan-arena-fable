@@ -37,6 +37,9 @@ const RESUME_TOAST_MS = 2500;
           }
           <div class="buffs">
             @for (b of s.player.activeBuffs; track b) { <span class="buff">{{ buffLabel(b) }}</span> }
+            @for (c of s.player.activeConditions; track c) {
+              <span class="buff cond" [class]="'buff cond cond-' + c">{{ condLabel(c) }}</span>
+            }
           </div>
           <button class="stance" [class.fixed]="!s.player.canToggleStance"
                   [disabled]="!s.player.canToggleStance" (click)="toggleStance()"
@@ -146,6 +149,11 @@ const RESUME_TOAST_MS = 2500;
     .bar.boss { height: 12px; }
     .buffs { display: flex; gap: 6px; }
     .buff { background: rgba(45, 212, 191, 0.18); border: 1px solid #2dd4bf; color: #2dd4bf; font-size: 11px; font-weight: 800; border-radius: 6px; padding: 3px 8px; }
+    .buff.cond { background: rgba(255, 93, 93, 0.18); border-color: #ff5d5d; color: #ff5d5d; }
+    .buff.cond-poison { background: rgba(110, 231, 110, 0.18); border-color: #6ee76e; color: #6ee76e; }
+    .buff.cond-fire { background: rgba(255, 140, 60, 0.18); border-color: #ff8c3c; color: #ff8c3c; }
+    .buff.cond-energy { background: rgba(196, 125, 255, 0.18); border-color: #c47dff; color: #c47dff; }
+    .buff.cond-slow { background: rgba(125, 240, 255, 0.18); border-color: #7df0ff; color: #7df0ff; }
     .stance {
       pointer-events: auto; min-width: 116px; border: 1px solid #2dd4bf; border-radius: 9px;
       background: rgba(10, 30, 32, 0.92); color: #b8fff5; padding: 6px 10px;
@@ -374,6 +382,13 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
       atk: 'ATK+', haste: 'VEL+', atkspeed: 'AS+', shield: 'ESCUDO', crit: 'CRIT+',
       bloodrage: 'BLOOD RAGE', aegis: 'AEGIS',
     }[buff] ?? buff;
+  }
+
+  condLabel(condition: string): string {
+    return {
+      poison: 'PSN', fire: 'BRN', energy: 'ZAP', slow: 'SLOW', bleed: 'BLD',
+      curse: 'CURSE', freeze: 'FRZ', drown: 'DRW', dazzle: 'DZL',
+    }[condition] ?? condition.toUpperCase();
   }
 
   elementLabel(element: string): string {

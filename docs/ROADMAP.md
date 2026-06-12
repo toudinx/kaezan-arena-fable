@@ -325,8 +325,11 @@ As paredes usam só 3 variantes (pole/horizontal/vertical) — sem cantos, o con
 no Kaelis/preview com addons; nenhuma waifu com kit próprio inventado (todas herdam da classe);
 pull do banner pode tirar as novas.
 
-### [~] T-14 — Condições do Tibia: poison/burn como DoT — **ABSORVIDA POR T-53**
+### [x] T-14 — Condições do Tibia: poison/burn como DoT — **ABSORVIDA POR T-53**
 **Owner: Fable 5 (dentro de T-53)**
+
+**Concluída (2026-06-12) dentro da T-53:** DoT por tipo com FX 17/16/12, chip no HUD,
+cor de dano por tipo no renderer e `card:antidote` no pool.
 
 > **Não fazer isolada (2026-06-12).** Condições (DoT) são um subconjunto do **kit completo de
 > monstro** que a **T-53** executa. Fazer T-14 separada criaria um caminho de condição que a T-53
@@ -735,8 +738,16 @@ balanceado (jogar tiers 1-5); determinismo preservado.
 stats/visual próprios de uma das 4 classes). Não recriar o dispatch de skill por classe (manter os
 shapes). Cooldown ao trocar de stance não pode resetar.
 
-### [ ] T-53 — Fidelidade de IA/kit de monstro do Canary (parar de inventar comportamento)
+### [x] T-53 — Fidelidade de IA/kit de monstro do Canary (parar de inventar comportamento)
 **Owner: Fable 5** · **P0 · L · tools + backend (engine)** · **Onda 1 (fundação — fazer cedo)**
+
+**Concluída (2026-06-12):** conversor emite condition/summon/healing/speed/defenses; engine executa
+o kit completo (DoT+chip+FX no player, slow, summons determinísticos com `max`+orçamento global,
+self-heal capado a 10% do MaxHp, haste, fuga por `runHealth`); `card:antidote`; +3 espécies
+summonáveis (fire elemental, ghost, mummy). Verificado in-game via bot headless (poison DoT,
+Necromancer invocando Ghost, self-heal de Ghoul) e determinismo 2×200 ticks idênticos (tiers 3/5).
+Gaps registrados: ataques `manadrain` descartados (sem mana no arena) e field attacks (firefield)
+fora de escopo.
 
 **Reasoning do owner.** É **determinismo-crítico no hot path** do tick, algoritmicamente sutil
 (executar fielmente conditions/summons/healing/speed sem alocar nem desestabilizar a ordem), e de

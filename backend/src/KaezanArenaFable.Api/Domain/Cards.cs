@@ -19,6 +19,7 @@ public static class Cards
         new("card:lifesteal", "Sede Vampírica", "3% do dano vira vida", "lifesteal", 0.03),
         new("card:armor", "Pele de Pedra", "-8% de dano recebido", "damageReduction", 0.08),
         new("card:gold", "Faro de Tesouro", "+20% de ouro saqueado", "goldPercent", 0.20),
+        new("card:antidote", "Antídoto", "-50% de dano de condições (veneno, queimadura...)", "conditionResist", 0.50),
     ];
 
     public static readonly IReadOnlyDictionary<string, CardDef> ById = All.ToDictionary(c => c.Id);

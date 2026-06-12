@@ -28,8 +28,26 @@ public sealed class Actor
     public bool IsBossActor;
     public double StatMult = 1.0;
 
+    // monster kit (T-53): reactive defenses, summon timers, self-haste
+    public long[] DefenseReadyAtMs = [];
+    public long[] SummonReadyAtMs = [];
+    public int OwnerId; // > 0 when this actor was summoned by another monster
+    public long HasteUntilMs;
+    public double HasteFactor = 1.0;
+
+    public bool IsSummon => OwnerId != 0;
     public bool IsMoving(long nowMs) => nowMs < StepStartMs + StepDurMs;
     public bool IsStunned(long nowMs) => nowMs < StunUntilMs;
+}
+
+/// <summary>A DoT ticking on the player (tibia condition applied by a monster attack).</summary>
+public sealed class ActiveCondition
+{
+    public string Type = "";
+    public int DamagePerTick;
+    public int TicksLeft;
+    public int TickMs;
+    public long NextTickAtMs;
 }
 
 public sealed class GroundItem
@@ -111,6 +129,9 @@ public sealed class GameWorld
     private long _moveDirChangedAtMs;
     private readonly Dictionary<string, long> _buffsUntilMs = [];
     private double _regenCarry;
+    private readonly List<ActiveCondition> _playerConditions = [];
+    private long _playerSlowUntilMs;
+    private double _playerSlowFactor = 1.0;
 
     public RunEndDto? Ended { get; private set; }
     public bool MapDirty { get; private set; } = true;
@@ -212,6 +233,8 @@ public sealed class GameWorld
                 Hp = (int)(species.Health * mult),
                 MaxHp = (int)(species.Health * mult),
                 AttackReadyAtMs = new long[Math.Max(species.Attacks.Count, 1)],
+                DefenseReadyAtMs = new long[species.Defenses.Count],
+                SummonReadyAtMs = new long[species.Summons.Count],
                 NextWanderAtMs = _rng.Range(0, GameConfig.MonsterWanderIntervalMs),
                 IsBossActor = isBoss,
                 StatMult = mult,
@@ -321,6 +344,7 @@ public sealed class GameWorld
                 if (_pendingOffer is null)
                 {
                     TickPlayerRegen();
+                    TickPlayerConditions();
                     TickMonsters();
                     TickPickup();
                 }
@@ -413,7 +437,15 @@ public sealed class GameWorld
     {
         var speed = GameConfig.PlayerBaseSpeed * (1 + CardValue("moveSpeedPercent"));
         if (IsBuffActive("haste")) speed *= 1.30;
+        if (NowMs < _playerSlowUntilMs) speed *= _playerSlowFactor;
         return (int)speed;
+    }
+
+    private int MonsterSpeed(Actor monster)
+    {
+        var speed = monster.Species!.Speed * GameConfig.MonsterSpeedMultiplier;
+        if (NowMs < monster.HasteUntilMs) speed = (int)(speed * monster.HasteFactor);
+        return speed;
     }
 
     private void TickPlayerMovement()
@@ -727,7 +759,7 @@ public sealed class GameWorld
         GainXp(Math.Max(xp, 1));
         _gauge = Math.Min(_gauge + GameConfig.GaugeFillPerKill * (1 + CardValue("gaugePercent")), GameConfig.UltimateGaugeMax);
 
-        DropLoot(monster);
+        if (!monster.IsSummon) DropLoot(monster); // summons give xp but no loot (anti-farm)
 
         if (monster.IsBossActor)
             EndRun(true, $"{monster.Species.Name} derrotado");
@@ -826,12 +858,85 @@ public sealed class GameWorld
         }
     }
 
+    // ---- conditions on the player (T-53/T-14: tibia DoT + slow) ----
+
+    private void ApplyConditionToPlayer(MonsterCondition cond, Actor source)
+    {
+        var tickMs = cond.TickMs > 0 ? cond.TickMs : GameConfig.ConditionDefaultTickMs;
+        var ticks = cond.DurationMs > 0 ? Math.Max(cond.DurationMs / tickMs, 1) : GameConfig.ConditionMaxTicks;
+        ticks = Math.Min(ticks, GameConfig.ConditionMaxTicks);
+        var perTick = Math.Max(
+            (int)(cond.TotalDamage / (double)ticks * source.StatMult * GameConfig.MonsterDamageTuning), 1);
+
+        // reapplying never stacks: it replaces only if the new condition is at least as strong
+        var existing = _playerConditions.FirstOrDefault(c => c.Type == cond.Type);
+        if (existing is not null)
+        {
+            if ((long)perTick * ticks < (long)existing.DamagePerTick * existing.TicksLeft) return;
+            _playerConditions.Remove(existing);
+        }
+
+        _playerConditions.Add(new ActiveCondition
+        {
+            Type = cond.Type, DamagePerTick = perTick, TicksLeft = ticks,
+            TickMs = tickMs, NextTickAtMs = NowMs + tickMs,
+        });
+        if (GameConfig.ConditionTickFx.TryGetValue(cond.Type, out var fx))
+            Emit("effect", Player.X, Player.Y, 0, 0, fx);
+    }
+
+    private void TickPlayerConditions()
+    {
+        if (Player.Hp <= 0 || _playerConditions.Count == 0) return;
+        var resist = Math.Min(CardValue("conditionResist"), GameConfig.ConditionResistCap);
+        for (var i = _playerConditions.Count - 1; i >= 0; i--)
+        {
+            var cond = _playerConditions[i];
+            if (NowMs < cond.NextTickAtMs) continue;
+            cond.NextTickAtMs += cond.TickMs;
+            if (--cond.TicksLeft <= 0) _playerConditions.RemoveAt(i);
+
+            var damage = Math.Max((int)(cond.DamagePerTick * (1 - resist)), 1);
+            Player.Hp -= damage;
+            _gauge = Math.Min(_gauge + damage * GameConfig.GaugeFillPerDamageTaken * (1 + CardValue("gaugePercent")), GameConfig.UltimateGaugeMax);
+            Emit("damage", Player.X, Player.Y, 0, 0, damage, cond.Type, Player.Id);
+            if (GameConfig.ConditionTickFx.TryGetValue(cond.Type, out var fx))
+                Emit("effect", Player.X, Player.Y, 0, 0, fx);
+
+            if (Player.Hp <= 0)
+            {
+                Player.Hp = 0;
+                Emit("effect", Player.X, Player.Y, 0, 0, 18); // mort area
+                EndRun(false, $"morta por {GameConfig.ConditionLabelPt.GetValueOrDefault(cond.Type, cond.Type)}");
+                return;
+            }
+        }
+    }
+
+    /// <summary>Condition/slow payloads that ride on an attack that connected with the player.</summary>
+    private void ApplyAttackSideEffects(Actor monster, MonsterAttack attack)
+    {
+        if (Player.Hp <= 0) return;
+        if (attack.Condition is { } cond) ApplyConditionToPlayer(cond, monster);
+        if (attack.SpeedChange < 0)
+        {
+            var duration = attack.DurationMs > 0 ? Math.Min(attack.DurationMs, GameConfig.SlowDurationCapMs) : GameConfig.SlowDurationCapMs;
+            _playerSlowUntilMs = NowMs + duration;
+            _playerSlowFactor = Math.Clamp(1 + attack.SpeedChange / GameConfig.SpeedChangeReference, GameConfig.SlowFactorFloor, 1.0);
+            Emit("text", Player.X, Player.Y, 0, 0, 0, "LENTIDÃO");
+        }
+    }
+
     // ---- combat: monsters ----
 
     private void TickMonsters()
     {
-        foreach (var monster in _monsters)
+        // indexed loop with a fixed upper bound: summons spawned this tick are appended
+        // at the end of the list and only start acting next tick (stable, deterministic order)
+        var count = _monsters.Count;
+        for (var idx = 0; idx < count; idx++)
         {
+            var monster = _monsters[idx];
             if (monster.Hp <= 0 || monster.Floor != _currentFloor) continue;
             var species = monster.Species!;
             var dist = Chebyshev(monster, Player);
@@ -883,9 +988,19 @@ public sealed class GameWorld
             }
 
             TryMonsterAttacks(monster);
+            TickMonsterDefenses(monster);
+            TickMonsterSummons(monster);
+
+            if (monster.IsMoving(NowMs)) continue;
+
+            // low-health flight (tibia runHealth: dragons & co. retreat while still attacking)
+            if (species.RunOnHealth > 0 && monster.Hp <= species.RunOnHealth * monster.StatMult)
+            {
+                StepAway(monster, Player.X, Player.Y);
+                continue;
+            }
 
             // chase: move toward player keeping targetDistance for ranged species
-            if (monster.IsMoving(NowMs)) continue;
             if (CanAttackPlayer(monster, dist, hasLos)
                 && _rng.Chance(Math.Clamp(species.StaticAttackChance, 0, 100) / 100.0))
             {
@@ -942,12 +1057,27 @@ public sealed class GameWorld
             if (NowMs < monster.AttackReadyAtMs[i]) continue;
             var dist = Chebyshev(monster, Player);
 
+            if (attack.IsHealing)
+            {
+                // support kit: heal the most wounded ally in range (the "Echo Doc" pattern)
+                monster.AttackReadyAtMs[i] = NowMs + attack.Interval;
+                if (!_rng.Chance(Math.Min(attack.Chance, 100) / 100.0)) continue;
+                var range = attack.Range > 0 ? attack.Range : 7;
+                var ally = MostWoundedAlly(monster, range);
+                if (ally is null) continue;
+                var amount = (int)(_rng.Range(Math.Min(attack.MinDamage, attack.MaxDamage),
+                    Math.Max(attack.MinDamage, attack.MaxDamage)) * monster.StatMult);
+                HealMonster(ally, amount);
+                if (attack.AreaEffect > 0) Emit("effect", ally.X, ally.Y, 0, 0, attack.AreaEffect);
+                continue;
+            }
+
             if (attack.Kind == "melee")
             {
                 if (dist > 1) continue;
                 monster.AttackReadyAtMs[i] = NowMs + attack.Interval;
                 if (!_rng.Chance(Math.Min(attack.Chance, 100) / 100.0)) continue;
-                DamagePlayer(RollMonsterDamage(monster, attack), attack.DamageType, monster);
+                HitPlayerWithAttack(monster, attack);
                 Emit("effect", Player.X, Player.Y, 0, 0, 1); // blood
             }
             else
@@ -973,7 +1103,7 @@ public sealed class GameWorld
                         if (attack.AreaEffect > 0) Emit("effect", tx, ty, 0, 0, attack.AreaEffect);
                         if (tx == Player.X && ty == Player.Y) hitPlayer = true;
                     }
-                    if (hitPlayer) DamagePlayer(RollMonsterDamage(monster, attack), attack.DamageType, monster);
+                    if (hitPlayer) HitPlayerWithAttack(monster, attack);
                 }
                 else if (attack.Radius > 0)
                 {
@@ -985,15 +1115,140 @@ public sealed class GameWorld
                         if (attack.AreaEffect > 0) Emit("effect", tx, ty, 0, 0, attack.AreaEffect);
                         if (tx == Player.X && ty == Player.Y) hitPlayer = true;
                     }
-                    if (hitPlayer) DamagePlayer(RollMonsterDamage(monster, attack), attack.DamageType, monster);
+                    if (hitPlayer) HitPlayerWithAttack(monster, attack);
                 }
                 else
                 {
                     if (attack.AreaEffect > 0) Emit("effect", Player.X, Player.Y, 0, 0, attack.AreaEffect);
-                    DamagePlayer(RollMonsterDamage(monster, attack), attack.DamageType, monster);
+                    HitPlayerWithAttack(monster, attack);
                 }
             }
         }
+    }
+
+    /// <summary>An attack connected with the player: damage (if any) + condition/slow payloads.</summary>
+    private void HitPlayerWithAttack(Actor monster, MonsterAttack attack)
+    {
+        if (attack.MaxDamage > 0 || attack.Kind == "melee")
+            DamagePlayer(RollMonsterDamage(monster, attack), attack.DamageType, monster);
+        ApplyAttackSideEffects(monster, attack);
+    }
+
+    private Actor? MostWoundedAlly(Actor healer, int range)
+    {
+        Actor? best = null;
+        var bestMissing = 0;
+        foreach (var m in _monsters)
+        {
+            if (m.Hp <= 0 || m.Floor != healer.Floor) continue;
+            if (Chebyshev(m, healer) > range) continue;
+            var missing = m.MaxHp - m.Hp;
+            if (missing > bestMissing) { bestMissing = missing; best = m; }
+        }
+        return best;
+    }
+
+    private void HealMonster(Actor monster, int amount)
+    {
+        var cap = Math.Max((int)(monster.MaxHp * GameConfig.MonsterHealCapFraction), 1);
+        var healed = Math.Min(Math.Clamp(amount, 1, cap), monster.MaxHp - monster.Hp);
+        if (healed <= 0) return;
+        monster.Hp += healed;
+        Emit("heal", monster.X, monster.Y, 0, 0, healed, "", monster.Id);
+    }
+
+    private void TickMonsterDefenses(Actor monster)
+    {
+        var defenses = monster.Species!.Defenses;
+        for (var i = 0; i < defenses.Count; i++)
+        {
+            var defense = defenses[i];
+            if (NowMs < monster.DefenseReadyAtMs[i]) continue;
+            monster.DefenseReadyAtMs[i] = NowMs + defense.IntervalMs;
+            if (!_rng.Chance(Math.Min(defense.Chance, 100) / 100.0)) continue;
+
+            if (defense.Kind == "healing")
+            {
+                if (monster.Hp >= monster.MaxHp) continue;
+                var amount = (int)(_rng.Range(Math.Min(defense.MinValue, defense.MaxValue),
+                    Math.Max(defense.MinValue, defense.MaxValue)) * monster.StatMult);
+                HealMonster(monster, amount);
+                if (defense.AreaEffect > 0) Emit("effect", monster.X, monster.Y, 0, 0, defense.AreaEffect);
+            }
+            else if (defense.SpeedChange > 0)
+            {
+                monster.HasteUntilMs = NowMs + (defense.DurationMs > 0 ? defense.DurationMs : GameConfig.DefaultHasteDurationMs);
+                monster.HasteFactor = Math.Clamp(1 + defense.SpeedChange / GameConfig.SpeedChangeReference, 1.0, GameConfig.HasteFactorCap);
+                if (defense.AreaEffect > 0) Emit("effect", monster.X, monster.Y, 0, 0, defense.AreaEffect);
+            }
+        }
+    }
+
+    private void TickMonsterSummons(Actor monster)
+    {
+        var species = monster.Species!;
+        if (species.Summons.Count == 0) return;
+        for (var i = 0; i < species.Summons.Count; i++)
+        {
+            var summon = species.Summons[i];
+            if (NowMs < monster.SummonReadyAtMs[i]) continue;
+            monster.SummonReadyAtMs[i] = NowMs + Math.Max(summon.IntervalMs, GameConfig.SummonMinIntervalMs);
+            if (!_data.Monsters.ContainsKey(summon.Name)) continue; // species not converted yet
+            if (CountOwnedSummons(monster.Id) >= Math.Max(species.MaxSummons, 1)) continue;
+            if (CountAliveSummons() >= GameConfig.MaxAliveSummons) continue;
+            if (!_rng.Chance(Math.Min(summon.Chance, 100) / 100.0)) continue;
+
+            for (var c = 0; c < Math.Max(summon.Count, 1); c++)
+            {
+                if (CountOwnedSummons(monster.Id) >= Math.Max(species.MaxSummons, 1)) break;
+                if (CountAliveSummons() >= GameConfig.MaxAliveSummons) break;
+                if (SpawnSummon(monster, summon.Name) is null) break;
+            }
+        }
+    }
+
+    private int CountOwnedSummons(int ownerId) =>
+        _monsters.Count(m => m.OwnerId == ownerId && m.Hp > 0);
+
+    private int CountAliveSummons() =>
+        _monsters.Count(m => m.IsSummon && m.Hp > 0);
+
+    private Actor? SpawnSummon(Actor owner, string speciesName)
+    {
+        var species = _data.Get(speciesName);
+        var floor = _floors[owner.Floor];
+        // deterministic ring scan around the summoner (radius 1 then 2, fixed order)
+        for (var radius = 1; radius <= 2; radius++)
+            for (var dy = -radius; dy <= radius; dy++)
+                for (var dx = -radius; dx <= radius; dx++)
+                {
+                    if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != radius) continue;
+                    var x = owner.X + dx;
+                    var y = owner.Y + dy;
+                    if (floor.IsBlocked(x, y) || OccupiedBy(owner.Floor, x, y) is not null) continue;
+
+                    var actor = new Actor
+                    {
+                        Id = _nextActorId++,
+                        Species = species,
+                        Floor = owner.Floor,
+                        X = x, Y = y, FromX = x, FromY = y,
+                        Hp = (int)(species.Health * owner.StatMult),
+                        MaxHp = (int)(species.Health * owner.StatMult),
+                        AttackReadyAtMs = new long[Math.Max(species.Attacks.Count, 1)],
+                        DefenseReadyAtMs = new long[species.Defenses.Count],
+                        SummonReadyAtMs = new long[species.Summons.Count],
+                        NextWanderAtMs = _rng.Range(0, GameConfig.MonsterWanderIntervalMs),
+                        StatMult = owner.StatMult,
+                        OwnerId = owner.Id,
+                        Facing = (Dir)_rng.Next(4)
+                    };
+                    AcquirePlayer(actor);
+                    _monsters.Add(actor);
+                    Emit("effect", x, y, 0, 0, 11); // teleport poof
+                    return actor;
+                }
+        return null;
     }
 
     private int RollMonsterDamage(Actor monster, MonsterAttack attack)
@@ -1001,8 +1256,7 @@ public sealed class GameWorld
         var min = Math.Min(attack.MinDamage, attack.MaxDamage);
         var max = Math.Max(attack.MinDamage, attack.MaxDamage);
         var roll = _rng.Range(min, max) * monster.StatMult;
-        // tame raw tibia numbers into arena pacing
-        return Math.Max((int)(roll * 0.35), 1);
+        return Math.Max((int)(roll * GameConfig.MonsterDamageTuning), 1);
     }
 
     private void DamagePlayer(int damage, string damageType, Actor source)
@@ -1033,14 +1287,14 @@ public sealed class GameWorld
         if (!_rng.Chance(0.4)) return;
         var dx = _rng.Range(-1, 1);
         var dy = _rng.Range(-1, 1);
-        TryStep(monster, dx, dy, monster.Species!.Speed * GameConfig.MonsterSpeedMultiplier);
+        TryStep(monster, dx, dy, MonsterSpeed(monster));
     }
 
     private void StepToward(Actor monster, int tx, int ty)
     {
         var dx = Math.Sign(tx - monster.X);
         var dy = Math.Sign(ty - monster.Y);
-        var speed = monster.Species!.Speed * GameConfig.MonsterSpeedMultiplier;
+        var speed = MonsterSpeed(monster);
         var forward = new List<(int Dx, int Dy)>(3);
         AddStepCandidate(forward, dx, dy);
         AddStepCandidate(forward, dx, 0);
@@ -1096,7 +1350,7 @@ public sealed class GameWorld
     {
         var dx = -Math.Sign(tx - monster.X);
         var dy = -Math.Sign(ty - monster.Y);
-        TryStep(monster, dx, dy, monster.Species!.Speed * GameConfig.MonsterSpeedMultiplier);
+        TryStep(monster, dx, dy, MonsterSpeed(monster));
     }
 
     // ---- pickup / POIs ----
@@ -1312,6 +1566,13 @@ public sealed class GameWorld
                 .ToList());
     }
 
+    private List<string> BuildActiveConditions()
+    {
+        var conditions = _playerConditions.Select(c => c.Type).ToList();
+        if (NowMs < _playerSlowUntilMs) conditions.Add("slow");
+        return conditions;
+    }
+
     private SnapshotDto BuildSnapshot()
     {
         var skillBar = CurrentSkillBar();
@@ -1338,7 +1599,8 @@ public sealed class GameWorld
             PlayerClass.Id, PlayerClass.Name,
             CurrentStance.Id, CurrentStance.Name, CurrentStance.Element, PlayerClass.CanToggleStance,
             Math.Max(_autoAttackReadyAtMs - NowMs, 0),
-            _buffsUntilMs.Where(b => NowMs < b.Value).Select(b => b.Key).ToList());
+            _buffsUntilMs.Where(b => NowMs < b.Value).Select(b => b.Key).ToList(),
+            BuildActiveConditions());
 
         var monsters = _monsters
             .Where(m => m.Hp > 0 && m.Floor == _currentFloor)

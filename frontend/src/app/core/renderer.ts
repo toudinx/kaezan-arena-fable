@@ -5,6 +5,14 @@ const TILE = 32;
 const SCALE = 2;
 const TS = TILE * SCALE; // screen px per tile
 
+/** Tibia-style damage number colors by damage/condition type (player hits only). */
+const DAMAGE_TYPE_COLORS: Record<string, string> = {
+  poison: '#6ee76e', earth: '#6ee76e', fire: '#ff8c3c', energy: '#c47dff',
+  ice: '#7df0ff', freeze: '#7df0ff', holy: '#ffe87d', dazzle: '#ffe87d',
+  death: '#9b7dff', curse: '#9b7dff', lifedrain: '#ff5d8c', drown: '#5d9bff',
+  bleed: '#ff5d5d', physical: '#ff5d5d',
+};
+
 interface ActiveEffect { x: number; y: number; id: number; start: number; }
 interface ActiveProjectile { fromX: number; fromY: number; toX: number; toY: number; id: number; start: number; dur: number; }
 interface FloatText { x: number; y: number; text: string; color: string; start: number; }
@@ -59,9 +67,14 @@ export class GameRenderer {
       case 'damage':
         this.texts.push({
           x: ev.x, y: ev.y, text: String(ev.value),
-          color: ev.actorId === this.snapshot?.player.id ? '#ff5d5d' : ev.crit ? '#ffd35d' : '#ffffff',
+          color: ev.actorId === this.snapshot?.player.id
+            ? DAMAGE_TYPE_COLORS[ev.text] ?? '#ff5d5d'
+            : ev.crit ? '#ffd35d' : '#ffffff',
           start: now,
         });
+        break;
+      case 'heal':
+        this.texts.push({ x: ev.x, y: ev.y, text: `+${ev.value}`, color: '#6ee76e', start: now });
         break;
       case 'text':
         this.texts.push({ x: ev.x, y: ev.y, text: ev.text, color: '#7df0ff', start: now });

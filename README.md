@@ -60,6 +60,12 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
   enquanto uma tecla de movimento estiver pressionada.
 - Monstros desviam de bloqueios e aglomerações, perdem aggro após distância/LOS prolongados e
   respeitam `staticAttackChance` para sustentar posições de ataque.
+- **Kit real do Canary** (T-53): cada espécie executa o kit do seu `.lua` — condições viram DoT
+  no player (veneno/fogo/energia, com chip no HUD, FX e cor de dano por tipo), ataques `speed`
+  aplicam lentidão, invocadores summonam de verdade (Necromancer → Ghoul/Ghost/Mummy, Demon →
+  Fire Elemental, respeitando `maxSummons` + orçamento global; summons dão XP mas não loot),
+  curandeiros se curam (capado a 10% do HP máx por proc), `defenses` de haste aceleram o monstro
+  e espécies com `runHealth` fogem com vida baixa. O card `Antídoto` reduz dano de condições.
 - Ofertas de card pausam o relógio da simulação; após 20s sem escolha, a primeira opção é aplicada.
 - Atualizar a página preserva a run por até 60s e retoma o mesmo mapa, HP e estado do mundo.
 

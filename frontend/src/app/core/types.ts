@@ -231,6 +231,7 @@ export interface PlayerDto {
   canToggleStance: boolean;
   autoAttackReadyInMs: number;
   activeBuffs: string[];
+  activeConditions: string[];
 }
 
 export interface MonsterDto {

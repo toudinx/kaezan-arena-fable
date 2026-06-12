@@ -201,18 +201,22 @@ determinísticos/dia alimentados pelo resultado da run). Ideias ainda não porta
 
 Três decisões de design/arquitetura que corrigem atalhos rasos do v0:
 
-### a) Estratégia híbrida de assets — animado no mundo, estático na UI
+### a) Um pipeline só de assets — o extractor animado, auto-curado por slot
 
-Existe uma biblioteca **estática** já exportada em `C:\xampp\htdocs\assets` (31k ícones de item,
-+ outfits/mounts/creatures + `outfit_layers` de recolor). Ela é **estática** (1 frame, sem
-direção/animação). Decisão:
+Existe uma biblioteca **estática** em `C:\xampp\htdocs\assets` (31k ícones de item + outfits/
+mounts/creatures + `outfit_layers`). Avaliamos usá-la para a UI e **descartamos** (decisão de
+2026-06-12; ver ROADMAP T-50):
 
-- **Mundo (canvas):** atlases **animados** do `tools/AssetExtractor` (direções, fases, FX). Não troca.
-- **UI (Mochila, gacha, Kaelis, bestiário):** thumbnails **estáticos** do xampp — cobertura enorme
-  e custo zero de recolor/animação para um ícone parado.
+- Tudo que é **animado** (outfits/Kaelis, monstros, FX, missiles) fica no `AssetExtractor` — o
+  xampp é estático e achataria a animação.
+- Os **ícones de item** a UI já obtém do próprio extractor (categoria `objects`, single-frame
+  limpo). Com equipamento reduzido a **6 slots sem backpack/legs/boots**, não há cobertura em
+  massa a fazer; e o extractor pode **se auto-curar** por `clothes.slot`.
+- Importar do xampp daria **mais** trabalho (normalizar framing + segunda fonte de verdade), não
+  menos. Logo: **um pipeline só**; o xampp fica como referência/fallback, não como produção.
 
-O princípio: **animação só onde o olho percebe movimento** (o mundo); a UI usa o retrato estático.
-Isso aproveita 31k ícones prontos em vez de extrair um a um.
+Princípio: **animação onde o olho percebe movimento; uma única fonte de verdade de assets**
+(things/1500 via extractor), em vez de dois pipelines a sincronizar.
 
 ### b) Waifu = skin de uma das 4 classes Kaeli (não um kit raso por waifu)
 
@@ -285,7 +289,7 @@ ele renderiza o que o servidor descreve. É exatamente o nosso invariante "backe
 | Imbuements/Forge | §9 | ROADMAP T-32 (lite) |
 | Daily encadeado / elemento do dia / streak | §7, §9 | ROADMAP backlog |
 | Padrões de HUD/UX do OTClient | §8 | ROADMAP T-20/T-21/T-22 |
-| Assets híbridos (animado×estático) | §7.5a | ROADMAP T-50 |
+| Um pipeline de assets (xampp descartado) | §7.5a | ROADMAP T-50 |
 | Waifu = skin de classe + stance | §7.5b | ROADMAP T-52 |
 | Montaria como equipamento (6 slots) | §7.5c | ROADMAP T-51 |
 | Kit/IA fiel de monstro do Canary | §8 (princípio cliente-burro) | ROADMAP T-53 |

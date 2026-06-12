@@ -506,49 +506,47 @@ Quatro features pedidas pelo dono do projeto que corrigem decisões rasas do v0.
 algumas serem grandes. Ordenadas por complexidade crescente (e por owner crescente, conforme
 §0.5).
 
-### [ ] T-50 — Assets híbridos: thumbnails estáticos do xampp para toda a UI
-**Owner: Sonnet 4.6** (ou Codex) · **P0 · M · tools + frontend**
+### [ ] T-50 — Cobertura de ícones de equipamento via AssetExtractor (auto-curado por slot)
+**Owner: Sonnet 4.6** (ou Codex) · **P1 · S · tools**
 
-**Reasoning do owner.** É trabalho mecânico de cópia + fiação, sem decisão de design nem lógica
-de simulação. Cabe no modelo mais barato. O único cuidado (estático vs. animado) está totalmente
-especificado abaixo.
+**Decisão tomada (2026-06-12):** **não** construir um pipeline de importação estática a partir de
+`C:\xampp\htdocs\assets`. Analisado e descartado — ver reasoning abaixo. O escopo desta task
+encolheu para uma extensão pequena do extractor existente.
 
-**Contexto.** Existe uma biblioteca **estática** já exportada em `C:\xampp\htdocs\assets`:
-- `thumbnails/items/` — **31131** PNGs por client id (`<id>.png`). Cobre praticamente todo item.
-- `thumbnails/outfits/` (248), `thumbnails/mounts/` (235), `thumbnails/creatures/` (807) — retratos.
-- `outfit_layers/` — `<lookType>_<n>_base.png` + `_template.png` (camadas de recolor, estáticas).
-- `equipment-thumbnails/` — 1694 PNGs (subset de equipamento).
+**Reasoning da decisão (por que NÃO usar o xampp como fonte de produção).**
+- Tudo que é **animado** (outfits/Kaelis, monstros, FX, missiles) **fica no `AssetExtractor`** —
+  o xampp é estático e achataria a animação. Isso não está em questão.
+- A única coisa que o xampp poderia substituir são **ícones estáticos de item**. Mas o extractor
+  **já** exporta itens (categoria `objects`) como PNG single-frame limpo (magenta→transparente,
+  ancorado), e a Mochila/`ItemIcon` já consomem isso.
+- Com o escopo de equipamento reduzido a **6 slots sem backpack/legs/boots**, **não precisamos**
+  dos 31k itens do xampp — só de um subconjunto curado de equipáveis + o loot que já cai.
+- O proto tem a flag `clothes.slot` por item → o extractor pode **se auto-curar**: extrair todo
+  item com `clothes.slot` nos slots que usamos, **sem listar ID a ID e sem o xampp**.
+- Importar do xampp daria **mais** trabalho (normalizar framing inconsistente — é por isso que o
+  flag `--static-items` "normaliza" thumbnails — + manter uma **segunda fonte de verdade**), não
+  menos. Um pipeline só é mais simples e mais consistente.
+- **Conclusão:** o xampp fica como **referência/fallback** (folha de contato para escolher IDs de
+  equipamento; plano B se um item específico falhar no decode), **não** como pipeline.
 
-**O ponto de atenção (decisão de arquitetura — estratégia híbrida).** Esses thumbnails são
-**estáticos** (1 frame, sem direção/animação). Portanto:
-- **Mundo (canvas da run)** → continua usando os **atlases animados** do `tools/AssetExtractor`
-  (direções, fases, FX, missiles). **Não trocar.**
-- **UI/menus** (ícones de item na Mochila, retratos de waifu no gacha/Kaelis, ícones de mount,
-  cards de bestiário) → passam a usar os **thumbnails estáticos do xampp**: muito mais cobertura
-  (31k itens prontos vs. extrair um a um) e sem custo de recolor/animação para um ícone parado.
+**Instruções (escopo enxuto).**
+1. No `AssetExtractor`, ler a flag `clothes` (`AppearanceFlagClothes.slot`, campo 34) ao exportar
+   `objects` e expô-la no manifest por item.
+2. Modo `--equipment`: extrair automaticamente todo item cujo `clothes.slot` mapeie para os nossos
+   slots úteis — **helmet, armor, weapon, amulet/necklace, ring** (ignorar legs/feet/backpack). É a
+   fonte de ícones + base de stats para T-51, sem curadoria manual de IDs.
+3. Mounts: continuam vindo da categoria creature (animados, via `lookMount`) — o slot `mount` da
+   T-51 reaproveita isso; nenhum thumbnail estático de mount é necessário.
+4. (Opcional, fallback) deixar documentado no README que, se um item específico não decodificar,
+   pode-se copiar o thumbnail correspondente de `C:\xampp\htdocs\assets/thumbnails/items/<id>.png`
+   como tapa-buraco pontual — não como fluxo padrão.
 
-> Já existe um começo: o `AssetExtractor` ganhou um flag `--static-items` (ver README) que
-> normaliza thumbnails de item. Esta task **generaliza** isso para outfits/mounts/creatures/
-> equipment e conecta no frontend.
+**Aceite.** `--equipment` extrai os equipáveis dos 5 slots de inventário (sem legs/boots/backpack)
+com `clothes.slot` no manifest; nenhum segundo pipeline/fonte de assets introduzido; o mundo
+continua 100% animado pelo extractor.
 
-**Instruções.**
-1. Tool `tools/import-thumbnails.mjs` (Node): copia de `C:\xampp\htdocs\assets` para
-   `frontend/public/assets/tibia/ui/{items,outfits,mounts,creatures}/<id>.png` (normalize tamanho
-   se preciso; transparência preservada). Gere um `ui-manifest.json` com os ids presentes.
-2. Não copie os 31k itens cegamente: copie **sob demanda** — só os ids referenciados por
-   `monsters.json` (loot/corpse), `items.json` (T-11), waifus (lookType) e mounts usados. Adicione
-   um modo `--all` para o caso de querer o catálogo inteiro.
-3. Frontend: `AssetsService` ganha `uiIcon(category, id)` que serve o thumbnail estático; os
-   componentes de **UI** (`ItemIcon`, retratos no Recruit/Kaelis/Home, Bestiário) passam a usá-lo.
-   O **renderer do mundo** não muda.
-4. Fallback: se o thumbnail não existir, cair para o atlas animado (frame 0) ou placeholder (T-41).
-
-**Aceite.** Mochila e bestiário mostram ícones nítidos de itens que antes não tínhamos extraído;
-retratos de waifu/mount na UI vêm dos thumbnails; o **mundo continua animado** (criaturas andam
-em 8 direções); nenhum caminho externo ao repo é referenciado em runtime.
-
-**Armadilhas.** Não substituir os atlases animados do mundo pelos estáticos (regrediria a
-animação). Não commitar 31k PNGs sem necessidade — copiar só o referenciado (modo default).
+**Armadilhas.** Não reintroduzir importação estática em massa. Não extrair slots que não usamos
+(legs/feet/backpack) — mantém o repo enxuto e o paperdoll coerente com os 6 slots da T-51.
 
 ### [ ] T-51 — Equipamento simplificado: 6 slots + montaria-como-equipamento
 **Owner: Codex → Opus** · **P1 · L · backend + frontend**
@@ -718,7 +716,7 @@ convertido.
 | T-40 | Testes (determinismo/regras) | **Opus → Fable 5** | Testes de determinismo exigem entender o invariante a fundo. |
 | T-41 | Fallback de asset + diagnóstico | **Sonnet** | Pequeno, frontend+tool. |
 | T-42 | Limpeza de dívidas | **Sonnet → Codex** | Itens pontuais; alguns tocam o engine (facing) → Codex nesses. |
-| **T-50** | **Assets híbridos (xampp)** | **Sonnet** | Mecânico, sem design nem simulação. |
+| **T-50** | **Ícones de equipamento via extractor (auto-curado por slot)** | **Sonnet** | Extensão pequena do extractor; importação estática do xampp avaliada e descartada (um pipeline só). |
 | **T-51** | **Equipamento (6 slots, mount-as-gear)** | **Codex → Opus** | Spec fechável, mas cross-cutting e toca a fórmula de poder. |
 | **T-52** | **Refundação de classes + stance** | **Opus → Fable 5** | Refactor de combate com design real; coração do `GameWorld`. |
 | **T-53** | **Fidelidade de IA/kit de monstro** | **Fable 5** | Determinismo-crítico no hot path; IA central. |

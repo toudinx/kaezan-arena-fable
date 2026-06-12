@@ -55,6 +55,59 @@ A tabela-mestra de atribuição (todas as tasks `T-*` + features `F-*`) está no
 
 ---
 
+## 0.7 Ordem de execução (prioridade real — SOBREPÕE a ordem das Fases)
+
+> **Leia isto antes de pegar qualquer task.** As "Fases" mais abaixo são um **catálogo
+> temático** (agrupam por assunto), **não** a ordem de fazer. A ordem real é esta. Motivo: o
+> roadmap foi escrito em ordem de sprint natural (conteúdo → UI → sistemas → fundação), mas as
+> features **mais fundacionais e de maior valor caíram no fim** (Fase 6 e FABLE_TRACK). Construir
+> conteúdo (T-10/T-13) sobre sistemas rasos seria refazer trabalho. Então **a fundação vem
+> primeiro**.
+
+**Onda 0 — concluída:** T-01..T-04 (fluidez de movimento/IA/pausa/reconexão). ✅
+
+**Onda 1 — Fundação de combate (P0, fazer AGORA).** Desbloqueiam quase tudo:
+1. **T-52** — refundação de classes (4 Kaelis + stance). _Opus._ Base de todo personagem; sem
+   ela, T-13 e F-A/F-B assumem um modelo errado.
+2. **T-53** — fidelidade de IA/kit de monstro do Canary. _Fable 5._ Faz **todo** combate ficar
+   real (bosses com kit de verdade); **absorve T-14**; é pré-requisito de qualidade de F-A.
+   _(T-52 e T-53 são independentes entre si — podem ir em paralelo por owners diferentes.)_
+
+**Onda 2 — Itemização e elenco sobre a fundação (P0/P1):**
+3. **T-11** — atributos/preços de item. _Codex._ Desbloqueia equipamento.
+4. **T-51** — equipamento 6 slots + mount-as-gear. _Codex→Opus._ Dá propósito ao loot.
+5. **T-50** — ícones de equipamento (extractor por `clothes.slot`). _Sonnet._ Pareia com T-51.
+6. **T-10** — +30 monstros (refatorada — ver abaixo; agora herdam kit real via T-53). _Codex._
+7. **T-13** — novas waifus = skins de classe (trivial após T-52). _Sonnet→Codex._
+
+**Onda 3 — Feature flagship de produto (P0 de valor):**
+8. **F-A** — Echo Team (seu time de waifus luta junto). _Fable 5._ A ponte coleção→gameplay; a
+   feature de maior valor do projeto. Depende de T-52 + T-53.
+
+**Onda 4 — Profundidade de combate e recompensa (P1):**
+9. **F-E** — postura completa + reações elementais. _Opus._ **Inclui o que era T-31** (faça a
+   postura completa de uma vez, não o MVP em separado). Idealmente junto/depois de T-52.
+10. **T-30** — Sealed Reward + reroll (gacha-dentro-da-run). _Codex→Opus._
+11. **F-B** — árvore de Maestria por waifu. _Opus._
+
+**Onda 5 — Juice/UX/robustez (P1, PARALELIZÁVEL a qualquer momento).** Não bloqueiam nada e
+podem ser feitas por Sonnet/Codex entre as ondas:
+- T-20 (juice de combate), T-21 (HUD informativo), T-22 (fog of war), T-23 (cerimônia do gacha),
+  T-24 (polish de meta), T-41 (fallback de asset).
+
+**Onda 6 — Determinismo, desafio e geração (P1/P2, depois de haver o que simular):**
+12. **F-C** — determinismo de ouro + Desafio Diário + harness. _Fable 5._ **Inclui T-33** (replay).
+13. **T-40** — testes de determinismo/regras. _Opus→Fable._
+14. **F-D** — geração procedural v2 (prefabs/pacing/set-pieces). _Opus→Fable._
+15. **T-12** (biomas) e **T-32** (imbuements) e **T-42** (limpeza de dívida) — encaixar quando fizer sentido.
+
+**Tasks supersedidas/absorvidas (não fazer isoladas):**
+- **T-14** (DoT do player) → subconjunto de **T-53**; faça dentro dela.
+- **T-31** (Boss Posture MVP) → faça direto a **F-E** (postura completa); não há ganho em fazer o MVP antes.
+- **T-33** (replay) → parte de **F-C**.
+
+---
+
 ## Fase 1 — Fluidez de gameplay e movimento (P0)
 
 A maior alavanca de qualidade percebida. O jogo funciona, mas o "game feel" tem atritos
@@ -164,11 +217,18 @@ O pipeline existe; estas tasks são principalmente **curadoria + re-rodar tools*
 código. São as de melhor custo-benefício do roadmap.
 
 ### [ ] T-10 — +30 monstros do Tibia (preencher os 5 tiers)
-**P0 · M · tools + backend (dados)**
+**P1 · M · tools + backend (dados) · Owner: Codex**
+
+> **Refatorada (2026-06-12) — depende de T-53.** Faça **depois** de T-53 (fidelidade de kit/IA).
+> Antes, adicionar 30 monstros só dava 30 sacos de HP na IA genérica. Com T-53 no lugar, cada
+> espécie nova **herda automaticamente o kit real do Canary** (conditions/summons/healing/FX) —
+> esta task volta a ser só **curadoria + re-rodar tools**, e o conteúdo já entra "vivo". Por isso
+> deixou de ser P0 (a fundação é T-52/T-53) e virou P1 logo após a itemização.
 
 **Contexto.** `tools/convert-monsters/config.json` lista 29 espécies. Os tiers em
 `GameConfig.Tiers` reusam poucas espécies. Fonte: `C:\Kaezan\kaezan\canary-3.4.1\data-otservbr-global\monster\`
-(use `find` por nome de arquivo).
+(use `find` por nome de arquivo). **Pré-requisito:** T-53 já mergeada (o conversor já emite
+condition/summon/healing/speed e o engine já os executa).
 
 **Instruções.**
 1. Adicione ao config (verifique existência do arquivo antes; nomes em snake_case):
@@ -185,11 +245,13 @@ código. São as de melhor custo-benefício do roadmap.
 5. Jogue 1 run em cada tier desbloqueável e confirme que tudo renderiza (sem sprites invisíveis).
 
 **Aceite.** ≥55 espécies em `monsters.json`; cada tier com ≥5 commons e ≥3 elites distintos;
-manifest atualizado; runs nos tiers 1-2 verificadas em jogo.
+manifest atualizado; runs nos tiers 1-2 verificadas em jogo, e os mobs com kit especial
+(ex.: shaman que invoca, witch que envenena) **exibem esse kit** graças a T-53.
 
-**Armadilhas.** Monstros com `summon`/invisibilidade/healing funcionam mas ignoram essas
-mecânicas (ok por ora). Bosses de raid têm HP estranho — confira `BossHpScale` se promover
-algum a boss de tier.
+**Armadilhas.** Não reimplementar comportamento "à mão" — a fonte de verdade é o dado convertido
++ o executor de kit da T-53. Se um monstro novo tiver mecânica que a T-53 ainda não cobre,
+**registre como gap na T-53**, não invente um caso especial aqui. Bosses de raid têm HP estranho
+— confira `BossHpScale` se promover algum a boss de tier.
 
 ### [ ] T-11 — Preços reais de itens (npcsaledata) + items.json
 **P0 · M · tools + backend + frontend**
@@ -235,31 +297,42 @@ As paredes usam só 3 variantes (pole/horizontal/vertical) — sem cantos, o con
 (sem "dentes" visuais nas quinas das salas); caminho sempre transitável.
 
 ### [ ] T-13 — 6 novas waifus (expansão do elenco gacha)
-**P1 · M · backend (dados) + frontend leve**
+**P1 · S · backend (dados) + frontend leve · Owner: Sonnet → Codex**
 
-**Contexto.** 13 waifus em `Domain/Waifus.cs`. Outfits femininos já extraídos e ainda não
-usados: 140 (noblewoman), 150 (oriental), 157 (beggar), 158 (shaman), 270 (jester),
-279 (brotherhood), 288 (demonhunter).
+> **Refatorada (2026-06-12) — depende de T-52.** Faça **depois** de T-52 (waifu = skin de uma das
+> 4 classes). Com isso, "nova waifu" deixa de exigir um kit inventado — vira **declarativa**:
+> escolher classe + outfit + raridade + stats-base + paleta. Por isso o esforço caiu de **M para
+> S**. **Não** crie kits novos por waifu (isso violaria T-52).
+
+**Contexto.** Outfits femininos já extraídos e ainda não usados: 140 (noblewoman), 150 (oriental),
+157 (beggar), 158 (shaman), 270 (jester), 279 (brotherhood), 288 (demonhunter).
 
 **Instruções.**
-1. Crie 6 waifus (2× 3★, 3× 4★, 1× 5★) usando esses lookTypes, com identidade de elemento/arma
-   que preencha lacunas do elenco (hoje falta: 5★ melee, 4★ earth, ice wand…). Skills: monte
-   kits com os shapes existentes (`single|beam|nova|area|cone|buff`) e FX já extraídos —
-   só adicione `effectIds`/`missileIds` novos ao content-config se necessário (e re-extraia).
-2. Nomes/títulos/descrições em PT-BR no tom do elenco atual (1 linha de lore com personalidade).
-3. Cores de outfit (head/body/legs/feet 0-132): escolha paletas distintas; valide no preview
-   da página Kaelis.
-4. A nova 5★ entra no pool do banner padrão; avalie criar um segundo banner promocional
-   rotativo em `GachaService.Banners` (id estável `banner:<tema>`).
+1. Crie 6 waifus (2× 3★, 3× 4★, 1× 5★) usando esses lookTypes. Cada uma aponta para uma das 4
+   **classes** (T-52: warrior/sentinel/shaman/wizard) — o kit vem da classe, não da waifu.
+   Distribua para cobrir lacunas (ex.: uma 5★ warrior; uma 4★ shaman para a stance ice/earth).
+2. Identidade própria: nome/título/descrição PT-BR (1 linha de lore), raridade, stats-base e
+   **paleta de outfit** (head/body/legs/feet 0-132) distinta — valide no preview da Kaelis.
+3. A nova 5★ entra no pool do banner padrão; avalie um segundo banner promocional rotativo em
+   `GachaService.Banners` (id estável `banner:<tema>`).
 
-**Aceite.** 19 waifus no catálogo; todas renderizam no Kaelis/preview com addons; pull do
-banner pode tirar as novas; nenhuma skill órfã (todo kit referencia skills existentes).
+**Aceite.** ≥19 waifus no catálogo, cada uma vinculada a uma classe existente; todas renderizam
+no Kaelis/preview com addons; nenhuma waifu com kit próprio inventado (todas herdam da classe);
+pull do banner pode tirar as novas.
 
-### [ ] T-14 — Condições do Tibia: poison/burn como DoT
-**P1 · M · tools + backend + frontend leve**
+### [~] T-14 — Condições do Tibia: poison/burn como DoT — **ABSORVIDA POR T-53**
+**Owner: Fable 5 (dentro de T-53)**
 
-**Contexto.** O converter (`tools/convert-monsters/convert.mjs`) descarta o campo `condition`
-dos ataques (ex.: snake/poison spider aplicam veneno no Tibia). O engine não tem DoT.
+> **Não fazer isolada (2026-06-12).** Condições (DoT) são um subconjunto do **kit completo de
+> monstro** que a **T-53** executa. Fazer T-14 separada criaria um caminho de condição que a T-53
+> teria que reescrever. **Implemente o conteúdo abaixo como parte da T-53** (a T-53 já manda
+> emitir `condition` no conversor e executá-la no engine). Mantida aqui só como checklist do que
+> a T-53 deve cobrir para o lado do player: poison/fire/energy DoT + FX (17/16/12) + chip no HUD
+> + card `card:antidote` (-50% dano de condição).
+
+**Contexto (referência para a T-53).** O converter (`tools/convert-monsters/convert.mjs`) descarta
+o campo `condition` dos ataques (ex.: snake/poison spider aplicam veneno no Tibia). O engine não
+tem DoT.
 
 **Instruções.**
 1. Converter: quando o ataque tiver `condition = { type = "CONDITION_POISON"|..., totalDamage/
@@ -380,11 +453,16 @@ N slots revelados um a um; 1 reroll grátis em um slot.
 **Aceite.** Vitória mostra o ritual de revelação; reroll funciona 1x e persiste o resultado
 final na conta; derrota não gera sealed reward.
 
-### [ ] T-31 — Boss Posture (Echo Break)
-**P1 · M · backend + frontend**
+### [~] T-31 — Boss Posture (Echo Break) — **SUBSTITUÍDA POR F-E**
+**Owner: Opus (como F-E)**
 
-**Contexto.** Inspiração: `kaezan/mapping/changes/features/boss_posture/`. Barra secundária
-do boss que enche com hits; cheia = boss quebrado (stun longo + dano amplificado).
+> **Não fazer o MVP isolado (2026-06-12).** Faça direto a **F-E** ([FABLE_TRACK.md](FABLE_TRACK.md)),
+> que entrega a postura **completa** (ciclos com multiplicador, fraqueza elemental, decaimento) +
+> reações elementais. Não há ganho em construir o MVP de postura para depois reescrevê-lo — a F-E
+> referencia este contexto como ponto de partida.
+
+**Contexto (referência para a F-E).** Inspiração: `kaezan/mapping/changes/features/boss_posture/`.
+Barra secundária do boss que enche com hits; cheia = boss quebrado (stun longo + dano amplificado).
 
 **Instruções.**
 1. Backend: `PostureMax` por boss (escala com tier; constante base em `GameConfig`). Cada hit
@@ -412,11 +490,14 @@ consumo de itens do inventário com confirmação.
 **Aceite.** Aplicar um imbuement consome itens, persiste, afeta o dano em run (verificável
 nos números), e aparece no detalhe da waifu.
 
-### [ ] T-33 — Replay determinístico
-**P2 · M · backend**
+### [~] T-33 — Replay determinístico — **PARTE DE F-C**
+**Owner: Fable 5 (dentro de F-C)**
 
-**Contexto.** O engine já é determinístico por seed+comandos; falta gravar/reproduzir
-(kaezan-arena tinha; ver `InMemoryBattleStore.Replay.cs` lá como referência de shape).
+> **Não fazer isolada (2026-06-12).** O replay é a entrega 2 da **F-C** (determinismo + desafio
+> diário + harness). Faça lá, onde o hardening de determinismo que o replay exige já está no escopo.
+
+**Contexto (referência para a F-C).** O engine já é determinístico por seed+comandos; falta
+gravar/reproduzir (kaezan-arena tinha; ver `InMemoryBattleStore.Replay.cs` lá como referência de shape).
 
 **Instruções.** Grave `(tick, Command)` de cada run em memória; ao fim, persista JSON em
 `.data/replays/` (`seed`, `tier`, `waifu`, `ascension`, `commands[]`, hash do estado final).
@@ -506,6 +587,10 @@ Quatro features pedidas pelo dono do projeto que corrigem decisões rasas do v0.
 algumas serem grandes. Ordenadas por complexidade crescente (e por owner crescente, conforme
 §0.5).
 
+> **Atenção à ordem:** apesar de catalogadas aqui na "Fase 6", **T-52 e T-53 são Onda 1** (fazer
+> primeiro) e **T-51/T-50 são Onda 2** — ver **§0.7 Ordem de execução**. O número da Fase é só
+> agrupamento temático, não ordem de fazer.
+
 ### [ ] T-50 — Cobertura de ícones de equipamento via AssetExtractor (auto-curado por slot)
 **Owner: Sonnet 4.6** (ou Codex) · **P1 · S · tools**
 
@@ -593,7 +678,7 @@ sockets) — isso é o Forge, fora daqui. Manter exatamente 6 slots. Stats entra
 (nunca recalcular no meio, para não quebrar replay).
 
 ### [ ] T-52 — Refundação de classes: 4 Kaelis canônicas + stance (substituir kits rasos)
-**Owner: Opus → Fable 5** · **P1 · L · backend + frontend**
+**Owner: Opus → Fable 5** · **P0 · L · backend + frontend** · **Onda 1 (fundação — fazer cedo)**
 
 **Reasoning do owner.** É um **refactor de combate com design real**: colapsar ~19 kits inventados
 rasos em 4 classes profundas com mecânica de stance, migrar todas as waifus, e manter o combate
@@ -644,7 +729,7 @@ stats/visual próprios de uma das 4 classes). Não recriar o dispatch de skill p
 shapes). Cooldown ao trocar de stance não pode resetar.
 
 ### [ ] T-53 — Fidelidade de IA/kit de monstro do Canary (parar de inventar comportamento)
-**Owner: Fable 5** · **P1 · L · tools + backend (engine)**
+**Owner: Fable 5** · **P0 · L · tools + backend (engine)** · **Onda 1 (fundação — fazer cedo)**
 
 **Reasoning do owner.** É **determinismo-crítico no hot path** do tick, algoritmicamente sutil
 (executar fielmente conditions/summons/healing/speed sem alocar nem desestabilizar a ordem), e de
@@ -699,20 +784,20 @@ convertido.
 | Item | Título curto | Owner | Por quê (reasoning) |
 |---|---|---|---|
 | T-01..T-04 | Movimento, IA, pausa de card, reconexão | **Codex** ✅ | Specs fechadas; já concluídas. (T-04 toca determinismo levemente → ok Codex.) |
-| T-10 | +30 monstros | **Codex** | Curadoria + re-rodar tools; spec clara. |
+| T-10 | +30 monstros | **Codex** | Curadoria + re-rodar tools; **depois de T-53** (herdam kit real). |
 | T-11 | Preços reais de itens | **Codex** | Extração + fiação; bounded. |
 | T-12 | Biomas + cantos de parede | **Opus** | Geração com curadoria visual e mapeamento de tiles; decisão de design. |
 | T-13 | 6 waifus novas | **Sonnet → Codex** | Conteúdo declarativo; vira trivial **depois** de T-52 (waifu = skin de classe). |
-| T-14 | Condições (poison/burn) do player | **Codex** | Bounded; mas é subconjunto de T-53 — fazer T-53 pode absorvê-la. |
+| T-14 | Condições (poison/burn) do player | **(absorvida por T-53)** | Subconjunto do kit de monstro; não fazer isolada. |
 | T-20 | Juice de combate | **Sonnet → Codex** | Apresentação no renderer; sem lógica de simulação. |
 | T-21 | HUD informativo | **Codex** | Frontend bounded. |
 | T-22 | Minimapa fog of war | **Sonnet** | Pequeno, isolado, frontend. |
 | T-23 | Cerimônia do gacha | **Codex** | Frontend com alguma orquestração. |
 | T-24 | Polish de meta | **Sonnet** | Itens pequenos de UI. |
 | T-30 | Sealed Reward + reroll | **Codex → Opus** | Backend+frontend bounded; design de tabela de loot pode pedir Opus. |
-| T-31 | Boss Posture (MVP) | **Opus** | Mecânica de combate nova; será estendida/absorvida por F-E. |
+| T-31 | Boss Posture (MVP) | **(substituída por F-E)** | Fazer a postura completa direto na F-E. |
 | T-32 | Imbuements lite | **Opus** | Economia + balance; cross-cutting. |
-| T-33 | Replay determinístico | **Fable 5** | Determinismo-crítico; base do harness. Faz parte de F-C. |
+| T-33 | Replay determinístico | **(parte de F-C)** | Entrega 2 da F-C; não fazer isolada. |
 | T-40 | Testes (determinismo/regras) | **Opus → Fable 5** | Testes de determinismo exigem entender o invariante a fundo. |
 | T-41 | Fallback de asset + diagnóstico | **Sonnet** | Pequeno, frontend+tool. |
 | T-42 | Limpeza de dívidas | **Sonnet → Codex** | Itens pontuais; alguns tocam o engine (facing) → Codex nesses. |
@@ -734,9 +819,9 @@ convertido.
 - **T-11 (preços/atributos)** é pré-requisito de **T-51 (equipamento)** (stats vêm dos atributos).
 - **T-50 (assets)** destrava UI melhor para T-24/T-23/Mochila/Bestiário.
 
-**Sequência sugerida de fundação:** T-50 → T-11 → T-51 → T-52 → T-53 → (F-E/F-A) — assets e
-preços primeiro, depois equipamento, depois a refundação de classes e a IA fiel, e só então as
-features de combate de topo.
+**Sequência de execução:** ver **§0.7 Ordem de execução** (a fonte da verdade). Resumo das ondas:
+Onda 1 fundação **T-52 + T-53** → Onda 2 itemização/elenco **T-11 → T-51 → T-50 → T-10 → T-13** →
+Onda 3 **F-A** → Onda 4 **F-E → T-30 → F-B** → Onda 5 juice/UX (paralelo) → Onda 6 **F-C/F-D/T-40**.
 
 ---
 

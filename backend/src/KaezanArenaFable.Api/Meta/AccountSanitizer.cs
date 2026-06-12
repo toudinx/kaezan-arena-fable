@@ -1,0 +1,92 @@
+using KaezanArenaFable.Api.Domain;
+
+namespace KaezanArenaFable.Api.Meta;
+
+/// <summary>
+/// Repara contas após mudanças de roster (refundação 2026-06-12: Tessa, Nyx, Lyra e Rosa
+/// saíram do jogo). Kaelis desconhecidas são removidas com refund em Kaeros; equipamento
+/// delas volta para a Mochila; referências órfãs (skins, maestria, afinidade) são limpas.
+/// Roda uma vez no boot, fora do tick.
+/// </summary>
+public static class AccountSanitizer
+{
+    public static bool Sanitize(AccountState state, GameData data)
+    {
+        var changed = false;
+
+        // Kaelis removidas do roster: refund + devolução de equipamento
+        var unknown = state.OwnedWaifus.Where(id => !Waifus.ById.ContainsKey(id)).ToList();
+        foreach (var waifuId in unknown)
+        {
+            state.OwnedWaifus.Remove(waifuId);
+            state.Kaeros += GameConfig.CutKaeliRefundKaeros;
+            state.Shards.Remove(waifuId);
+            state.Ascension.Remove(waifuId);
+            state.AffinityXp.Remove(waifuId);
+            state.GiftsToday.Remove(waifuId);
+            state.SelectedSkins.Remove(waifuId);
+            state.Mastery.Remove(waifuId);
+
+            if (state.Equipment.Remove(waifuId, out var loadout))
+            {
+                foreach (var itemId in loadout.Values)
+                {
+                    if (!data.Items.TryGetValue(itemId, out var item)) continue;
+                    if (state.Inventory.TryGetValue(itemId, out var stack)) stack.Count++;
+                    else state.Inventory[itemId] = new InventoryStack
+                    {
+                        ItemId = item.ItemId, Name = item.Name, Count = 1
+                    };
+                }
+            }
+            changed = true;
+        }
+
+        if (state.OwnedWaifus.Count == 0)
+        {
+            state.OwnedWaifus.Add(Waifus.StarterWaifuId);
+            changed = true;
+        }
+
+        if (!state.OwnedWaifus.Contains(state.ActiveWaifuId))
+        {
+            state.ActiveWaifuId = state.OwnedWaifus.Contains(Waifus.StarterWaifuId)
+                ? Waifus.StarterWaifuId
+                : state.OwnedWaifus[0];
+            changed = true;
+        }
+
+        // skins órfãs ou que não pertencem mais à Kaeli selecionada
+        var badSkins = state.OwnedSkins.Where(id => !Waifus.SkinById.ContainsKey(id)).ToList();
+        foreach (var skinId in badSkins)
+        {
+            state.OwnedSkins.Remove(skinId);
+            changed = true;
+        }
+        var badSelections = state.SelectedSkins
+            .Where(kv => !Waifus.SkinById.ContainsKey(kv.Value)
+                         || Waifus.SkinOwner.GetValueOrDefault(kv.Value) != kv.Key)
+            .Select(kv => kv.Key)
+            .ToList();
+        foreach (var waifuId in badSelections)
+        {
+            state.SelectedSkins.Remove(waifuId);
+            changed = true;
+        }
+
+        // nodes de maestria que não existem mais: devolve os pontos
+        foreach (var (waifuId, mastery) in state.Mastery)
+        {
+            var invalid = mastery.Nodes.Where(id => !Mastery.NodeById.ContainsKey(id)).ToList();
+            if (invalid.Count == 0) continue;
+            foreach (var nodeId in invalid) mastery.Nodes.Remove(nodeId);
+            var validCost = mastery.Nodes.Sum(id => Mastery.NodeById[id].Cost);
+            mastery.Points += Math.Max(mastery.Spent - validCost, 0);
+            mastery.Spent = validCost;
+            changed = true;
+            _ = waifuId;
+        }
+
+        return changed;
+    }
+}

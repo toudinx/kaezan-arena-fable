@@ -119,6 +119,14 @@ cada pull num impacto direto de gameplay. É o elo que liga o **lado gacha** ao 
 
 ## F-B — Árvore de Maestria (Eco): progressão persistente por waifu
 
+> ✅ **ENTREGUE 2026-06-12 (Fable 5)**, como parte da refundação de Kaelis
+> ([DESIGN_NOTES §11](DESIGN_NOTES.md#11)): árvore de 3 ramos × 4 nodes por Kaeli em
+> `Domain/Mastery.cs` (template por classe + ramo Eco que amplifica o trait de assinatura),
+> pontos por run (vitória 3 / derrota 1), respec por ouro, agregados aplicados via
+> `KaeliLoadout` no início da run (zero DB no tick). A mesma leva entregou: roster 13→9 com
+> lore/traits/presentes, afinidade 1-10 e skins por outfit. Skill-mods são por slot
+> (`slot:0..3`/`ultimate`) — compõem com as posturas sem dispatch paralelo.
+
 **Owner: Opus 4.8.** Design-heavy (desenhar e balancear árvores) e cross-cutting, mas fora do
 caminho determinístico do tick — não exige o modelo de topo. Assume o modelo de classe (T-52).
 

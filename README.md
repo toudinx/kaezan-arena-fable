@@ -83,36 +83,49 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
 4. **Recrutar** — banners com pity (4★ a cada 10; 5★ hard 80 / soft 65; 50/50 com garantia).
    Dupes viram Echo Shards → **Ascensão** (+8% stats; A2/A4 desbloqueiam os addons visuais
    do outfit do Tibia, visíveis em jogo).
-5. **Mochila** — inventário com sprites reais + bestiário (ranks por abates = dano permanente).
+5. **Kaelis (profundidade)** — cada Kaeli tem **trait de assinatura** (passiva única no engine),
+   **afinidade** 1-10 (XP por runs com ela ativa + **presentes** — itens da Mochila, favoritos
+   ×2, máx. 3/dia; níveis destravam **ecos de memória** (lore), Kaeros, skins e +1% ATK/HP por
+   nível), **skins por outfit** (padrão / afinidade / compradas com ouro ou Kaeros — a skin em
+   uso aparece no Hub e dentro das runs) e a **Maestria de Eco**: árvore de 3 ramos
+   (Ofensiva/Defensiva/Eco) com pontos por run (vitória +3 / derrota +1) e respec por ouro.
+6. **Mochila** — inventário com sprites reais + bestiário (ranks por abates = dano permanente).
    Itens são vendidos pelos preços reais dos NPCs do Tibia; itens sem comprador valem 5 ouro.
    Loot equipável exibe os atributos do Tibia e pode ser colocado, por Kaeli, nos slots
    `helmet`, `armor`, `weapon`, `necklace`, `ring` e `mount`.
-6. **Equipamento** — o paperdoll da página Kaelis troca itens por clique. Os bônus são congelados
+7. **Equipamento** — o paperdoll da página Kaelis troca itens por clique. Os bônus são congelados
    ao iniciar a run e aparecem no HUD; montarias raras de boss dão HP/velocidade e também mudam
    o visual da Kaeli no mundo.
 
-## Classes e posturas
+## Kaelis: roster enxuto e profundo
 
-Cada Kaeli mantém nome, raridade, visual, stats, arma e afinidade, mas usa o kit completo de uma
-das quatro classes canônicas do Kaezan World:
+Refundação 2026-06-12: o roster foi cortado de 13 para **9 Kaelis** (3 por raridade), cada uma
+com trait de assinatura, personalidade, 4 ecos de memória (lore por afinidade), presentes
+favoritos e 2-3 skins. Tessa, Nyx, Lyra e Rosa saíram (contas antigas recebem 600 Kaeros por
+Kaeli removida via sanitização automática no boot). Kaela foi promovida a 5★.
 
-| Classe | Posturas | Kaelis atuais |
-|---|---|---|
-| Warrior | Physical (fixa) | Mira, Tessa, Nyx, Kaela, Mirai |
-| Sentinel | Holy ↔ Physical | Wren, Rosa, Aurora |
-| Shaman | Ice ↔ Earth | Sage, Sylwen |
-| Wizard | Energy ↔ Fire | Lyra, Ember, Velvet |
+Cada Kaeli usa o kit completo de uma das quatro classes canônicas do Kaezan World:
+
+| Classe | Posturas | Kaelis | Traits |
+|---|---|---|---|
+| Warrior | Physical (fixa) | Mira 3★, Mirai 4★, Kaela 5★ | Coração Valente (DR com HP baixo) · Instinto de Matilha (+dano cercada) · Última Muralha (-12% dano) |
+| Sentinel | Holy ↔ Physical | Wren 3★, Aurora 5★ | Olho de Águia (+crit à distância) · Luz Purificadora (+dano em undead) |
+| Shaman | Ice ↔ Earth | Sage 3★, Sylwen 4★ | Seiva Vital (skills curam) · Mordida do Norte (gelo aplica slow) |
+| Wizard | Energy ↔ Fire | Ember 4★, Velvet 5★ | Combustão (gauge +30%) · Fome do Abismo (+dano em alvos <30% HP) |
 
 Os cooldowns pertencem aos slots 1-4 e continuam correndo ao trocar de postura; alternar com
-`Tab` não reseta habilidades. A página Kaelis permite visualizar os dois kits elementais.
+`Tab` não reseta habilidades. A página Kaelis (abas Perfil / Skins / Maestria / Equipamento)
+permite visualizar os dois kits elementais, presentear, trocar skins e gastar pontos de maestria.
 
 ## Estrutura
 
 ```
 backend/src/KaezanArenaFable.Api/
-  Domain/    GameConfig (TODAS as constantes), Waifus, Cards, GameData (monsters.json)
+  Domain/    GameConfig (TODAS as constantes), Waifus (roster+traits+skins+lore), Mastery
+             (árvores de maestria), Cards, GameData (monsters.json)
   Engine/    GameWorld (tick/movimento/IA/combate), DungeonGenerator, Rng, RunManager, GameDtos
-  Meta/      AccountStore (JSON), GachaService, DailyService, RewardService
+  Meta/      AccountStore (JSON/MySQL), GachaService, KaeliService (presentes/skins/maestria),
+             AccountSanitizer, DailyService, RewardService
   Hubs/      GameHub (SignalR)
   Api/       MetaEndpoints (REST /api/v1)
 frontend/src/app/

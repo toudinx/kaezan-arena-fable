@@ -11,6 +11,7 @@ builder.Services.AddSingleton<GameData>();
 builder.Services.AddAccountPersistence(builder.Configuration);
 builder.Services.AddSingleton<AccountStore>();
 builder.Services.AddSingleton<GachaService>();
+builder.Services.AddSingleton<KaeliService>();
 builder.Services.AddSingleton<DailyService>();
 builder.Services.AddSingleton<RewardService>();
 builder.Services.AddSingleton<RunManager>();

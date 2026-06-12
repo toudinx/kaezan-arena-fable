@@ -25,6 +25,27 @@ public static class MetaEndpoints
             addonAscensions = new[] { GameConfig.AddonOneAscension, GameConfig.AddonTwoAscension },
             bestiaryRanks = GameConfig.BestiaryRankKills,
             itemFallbackSalePrice = GameConfig.ItemFallbackSalePrice,
+            masteryTrees = Mastery.TreeByWaifu,
+            affinity = new
+            {
+                maxLevel = GameConfig.AffinityMaxLevel,
+                xpPerLevel = Enumerable.Range(1, GameConfig.AffinityMaxLevel - 1)
+                    .Select(GameConfig.XpForAffinityLevel).ToArray(),
+                statBonusPerLevel = GameConfig.AffinityStatBonusPerLevel,
+                loreLevels = GameConfig.AffinityLoreLevels,
+                kaerosRewards = GameConfig.AffinityKaerosRewards,
+                giftsPerDay = GameConfig.GiftsPerKaeliPerDay,
+                giftFavoriteMultiplier = GameConfig.GiftFavoriteMultiplier,
+                giftBaseXp = GameConfig.GiftBaseXp,
+                giftXpPerGold = GameConfig.GiftXpPerGold,
+                giftXpCap = GameConfig.GiftXpCap
+            },
+            mastery = new
+            {
+                respecGold = GameConfig.MasteryRespecGold,
+                pointsPerVictory = GameConfig.MasteryPointsPerVictory,
+                pointsPerDefeat = GameConfig.MasteryPointsPerDefeat
+            },
             items = data.Items.Values.Select(i => new
             {
                 i.ItemId,
@@ -67,6 +88,19 @@ public static class MetaEndpoints
                 s.Shards,
                 s.Ascension,
                 s.ActiveWaifuId,
+                s.AffinityXp,
+                affinity = s.OwnedWaifus.ToDictionary(id => id, id =>
+                {
+                    var xp = s.AffinityXp.GetValueOrDefault(id);
+                    var (into, toNext) = KaeliService.AffinityProgress(xp);
+                    return new { level = KaeliService.AffinityLevelFor(xp), xpIntoLevel = into, xpToNext = toNext };
+                }),
+                giftsToday = s.GiftsDate == DateTime.UtcNow.ToString("yyyy-MM-dd")
+                    ? s.GiftsToday
+                    : new Dictionary<string, int>(),
+                s.OwnedSkins,
+                s.SelectedSkins,
+                mastery = s.Mastery,
                 s.BestiaryKills,
                 inventory = s.Inventory.Values,
                 s.Equipment,
@@ -99,6 +133,37 @@ public static class MetaEndpoints
         api.MapPost("/waifus/ascend", (AscendRequest req, GachaService gacha) =>
         {
             try { return Results.Ok(gacha.Ascend(req.WaifuId)); }
+            catch (Exception ex) { return Results.BadRequest(new { error = ex.Message }); }
+        });
+
+        // ---- kaeli depth: presentes / skins / maestria ----
+        api.MapPost("/kaelis/gift", (GiftRequest req, KaeliService kaelis) =>
+        {
+            try { return Results.Ok(kaelis.Gift(req.WaifuId, req.ItemId)); }
+            catch (Exception ex) { return Results.BadRequest(new { error = ex.Message }); }
+        });
+
+        api.MapPost("/kaelis/skin/select", (SkinRequest req, KaeliService kaelis) =>
+        {
+            try { return Results.Ok(kaelis.SelectSkin(req.WaifuId, req.SkinId)); }
+            catch (Exception ex) { return Results.BadRequest(new { error = ex.Message }); }
+        });
+
+        api.MapPost("/kaelis/skin/buy", (SkinRequest req, KaeliService kaelis) =>
+        {
+            try { return Results.Ok(kaelis.BuySkin(req.WaifuId, req.SkinId)); }
+            catch (Exception ex) { return Results.BadRequest(new { error = ex.Message }); }
+        });
+
+        api.MapPost("/kaelis/mastery/unlock", (MasteryNodeRequest req, KaeliService kaelis) =>
+        {
+            try { return Results.Ok(kaelis.UnlockMasteryNode(req.WaifuId, req.NodeId)); }
+            catch (Exception ex) { return Results.BadRequest(new { error = ex.Message }); }
+        });
+
+        api.MapPost("/kaelis/mastery/respec", (MasteryRespecRequest req, KaeliService kaelis) =>
+        {
+            try { return Results.Ok(kaelis.RespecMastery(req.WaifuId)); }
             catch (Exception ex) { return Results.BadRequest(new { error = ex.Message }); }
         });
 
@@ -184,6 +249,10 @@ public static class MetaEndpoints
     }
 
     public sealed record ActiveWaifuRequest(string WaifuId);
+    public sealed record GiftRequest(string WaifuId, int ItemId);
+    public sealed record SkinRequest(string WaifuId, string SkinId);
+    public sealed record MasteryNodeRequest(string WaifuId, string NodeId);
+    public sealed record MasteryRespecRequest(string WaifuId);
     public sealed record PullRequest(string BannerId, int Count);
     public sealed record AscendRequest(string WaifuId);
     public sealed record ClaimRequest(string ContractId);

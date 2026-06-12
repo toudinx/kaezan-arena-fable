@@ -19,6 +19,14 @@ public sealed class DailyContract
     public bool Claimed { get; set; }
 }
 
+/// <summary>Maestria de Eco por Kaeli: pontos disponíveis, gastos e nodes destravados.</summary>
+public sealed class MasteryState
+{
+    public int Points { get; set; }
+    public int Spent { get; set; }
+    public List<string> Nodes { get; set; } = [];
+}
+
 public sealed class AccountState
 {
     public string Id { get; set; } = "local";
@@ -31,6 +39,14 @@ public sealed class AccountState
     public Dictionary<string, int> Shards { get; set; } = [];
     public Dictionary<string, int> Ascension { get; set; } = [];
     public string ActiveWaifuId { get; set; } = "";
+
+    // kaeli depth: afinidade (xp acumulado), presentes do dia, skins e maestria
+    public Dictionary<string, long> AffinityXp { get; set; } = [];
+    public string GiftsDate { get; set; } = "";
+    public Dictionary<string, int> GiftsToday { get; set; } = [];
+    public List<string> OwnedSkins { get; set; } = [];
+    public Dictionary<string, string> SelectedSkins { get; set; } = [];
+    public Dictionary<string, MasteryState> Mastery { get; set; } = [];
 
     public Dictionary<string, PityState> Pity { get; set; } = [];
     public Dictionary<string, long> BestiaryKills { get; set; } = [];

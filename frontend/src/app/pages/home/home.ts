@@ -13,9 +13,11 @@ import { RARITY_COLORS } from '../../core/types';
       <section class="showcase panel">
         @if (activeWaifu(); as w) {
           <div class="stage">
-            <app-outfit-preview
-              [lookType]="w.lookType" [head]="w.head" [body]="w.body"
-              [legs]="w.legs" [feet]="w.feet" [addons]="activeAddons()" [size]="180" />
+            @if (activeSkin(); as skin) {
+              <app-outfit-preview
+                [lookType]="skin.lookType" [head]="skin.head" [body]="skin.body"
+                [legs]="skin.legs" [feet]="skin.feet" [addons]="activeAddons()" [size]="180" />
+            }
           </div>
           <div class="who">
             <div class="stars" [style.color]="rarityColor(w.rarity)">{{ '★'.repeat(w.rarity) }}</div>
@@ -128,6 +130,12 @@ export class HomePage {
     const cat = this.api.catalog();
     if (!acc || !cat) return null;
     return cat.waifus.find((w) => w.id === acc.activeWaifuId) ?? null;
+  });
+  readonly activeSkin = computed(() => {
+    const w = this.activeWaifu();
+    if (!w) return null;
+    const selectedId = this.api.account()?.selectedSkins?.[w.id];
+    return w.skins.find((s) => s.id === selectedId) ?? w.skins[0] ?? null;
   });
   readonly activeAddons = computed(() => {
     const acc = this.api.account();

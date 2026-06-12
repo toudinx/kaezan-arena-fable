@@ -10,10 +10,12 @@ public sealed class AccountStore
     private readonly object _lock = new();
     private AccountState _state;
 
-    public AccountStore(IAccountRepository repository)
+    public AccountStore(IAccountRepository repository, Domain.GameData data)
     {
         _repository = repository;
         _state = repository.LoadOrCreate();
+        if (AccountSanitizer.Sanitize(_state, data))
+            _repository.Save(_state);
     }
 
     public T Read<T>(Func<AccountState, T> reader)
@@ -46,6 +48,19 @@ public sealed class AccountStore
         Shards = source.Shards.ToDictionary(),
         Ascension = source.Ascension.ToDictionary(),
         ActiveWaifuId = source.ActiveWaifuId,
+        AffinityXp = source.AffinityXp.ToDictionary(),
+        GiftsDate = source.GiftsDate,
+        GiftsToday = source.GiftsToday.ToDictionary(),
+        OwnedSkins = [.. source.OwnedSkins],
+        SelectedSkins = source.SelectedSkins.ToDictionary(),
+        Mastery = source.Mastery.ToDictionary(
+            entry => entry.Key,
+            entry => new MasteryState
+            {
+                Points = entry.Value.Points,
+                Spent = entry.Value.Spent,
+                Nodes = [.. entry.Value.Nodes]
+            }),
         Pity = source.Pity.ToDictionary(
             entry => entry.Key,
             entry => new PityState

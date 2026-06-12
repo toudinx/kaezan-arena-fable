@@ -25,16 +25,20 @@ public sealed class GameHub(RunManager runs, GameData data, AccountStore store) 
             };
         }
 
-        var (accountLevel, waifuId, ascension, bestiary, equipment) = store.Read(s =>
-        {
-            s.Equipment.TryGetValue(s.ActiveWaifuId, out var loadout);
-            return (
-                s.AccountLevel,
-                s.ActiveWaifuId,
-                s.Ascension.GetValueOrDefault(s.ActiveWaifuId),
-                new Dictionary<string, long>(s.BestiaryKills),
-                loadout?.ToDictionary() ?? []);
-        });
+        var (accountLevel, waifuId, ascension, bestiary, equipment, affinityXp, masteryNodes, skinId) =
+            store.Read(s =>
+            {
+                s.Equipment.TryGetValue(s.ActiveWaifuId, out var loadout);
+                return (
+                    s.AccountLevel,
+                    s.ActiveWaifuId,
+                    s.Ascension.GetValueOrDefault(s.ActiveWaifuId),
+                    new Dictionary<string, long>(s.BestiaryKills),
+                    loadout?.ToDictionary() ?? [],
+                    s.AffinityXp.GetValueOrDefault(s.ActiveWaifuId),
+                    s.Mastery.TryGetValue(s.ActiveWaifuId, out var mastery) ? mastery.Nodes.ToList() : [],
+                    s.SelectedSkins.GetValueOrDefault(s.ActiveWaifuId));
+            });
 
         if (accountLevel < tierDef.RequiredAccountLevel)
             throw new HubException($"requer conta nível {tierDef.RequiredAccountLevel}");
@@ -42,8 +46,16 @@ public sealed class GameHub(RunManager runs, GameData data, AccountStore store) 
         var waifu = Waifus.ById.GetValueOrDefault(waifuId) ?? Waifus.ById[Waifus.StarterWaifuId];
         var runSeed = seed ?? Random.Shared.NextInt64(1, long.MaxValue);
 
+        var skin = skinId is not null
+            ? waifu.Skins.FirstOrDefault(s => s.Id == skinId) ?? waifu.DefaultSkin
+            : waifu.DefaultSkin;
+        var kaeliLoadout = new KaeliLoadout(
+            KaeliService.AffinityLevelFor(affinityXp),
+            Mastery.Aggregate(waifu.Id, masteryNodes),
+            skin);
+
         var equipmentStats = EquipmentStatAggregator.Aggregate(equipment, data.Items);
-        var world = new GameWorld(runSeed, tierDef, waifu, ascension, data, bestiary, equipmentStats);
+        var world = new GameWorld(runSeed, tierDef, waifu, ascension, data, bestiary, equipmentStats, kaeliLoadout);
         runs.StartRun(Context.ConnectionId, world);
         return new { seed = runSeed, tier = tierDef.Tier, tierName = tierDef.Name, waifuId = waifu.Id, resumed = false };
     }

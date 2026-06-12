@@ -1,5 +1,28 @@
 // ---- REST DTOs ----
 
+export interface TraitDef {
+  id: string;
+  name: string;
+  kind: string;
+  value: number;
+  param: number;
+  tag: string;
+  description: string;
+}
+
+export interface SkinDef {
+  id: string;
+  name: string;
+  description: string;
+  lookType: number;
+  head: number;
+  body: number;
+  legs: number;
+  feet: number;
+  unlock: 'default' | 'affinity' | 'gold' | 'kaeros';
+  unlockValue: number;
+}
+
 export interface WaifuDef {
   id: string;
   name: string;
@@ -16,6 +39,54 @@ export interface WaifuDef {
   baseHp: number;
   classId: string;
   description: string;
+  personality: string;
+  trait: TraitDef;
+  lore: string[];
+  favoriteGiftItemIds: number[];
+  skins: SkinDef[];
+}
+
+export interface MasteryNodeDef {
+  id: string;
+  branch: 'off' | 'def' | 'eco';
+  order: number;
+  name: string;
+  description: string;
+  cost: number;
+  effectKind: string;
+  effectTarget: string;
+  value: number;
+}
+
+export interface AffinityConfig {
+  maxLevel: number;
+  xpPerLevel: number[];
+  statBonusPerLevel: number;
+  loreLevels: number[];
+  kaerosRewards: Record<string, number>;
+  giftsPerDay: number;
+  giftFavoriteMultiplier: number;
+  giftBaseXp: number;
+  giftXpPerGold: number;
+  giftXpCap: number;
+}
+
+export interface MasteryConfig {
+  respecGold: number;
+  pointsPerVictory: number;
+  pointsPerDefeat: number;
+}
+
+export interface AffinityProgress {
+  level: number;
+  xpIntoLevel: number;
+  xpToNext: number;
+}
+
+export interface MasteryState {
+  points: number;
+  spent: number;
+  nodes: string[];
 }
 
 export interface ClassStanceDef {
@@ -116,6 +187,9 @@ export interface Catalog {
   addonAscensions: number[];
   bestiaryRanks: number[];
   itemFallbackSalePrice: number;
+  masteryTrees: Record<string, MasteryNodeDef[]>;
+  affinity: AffinityConfig;
+  mastery: MasteryConfig;
   items: ItemCatalogEntry[];
   monsters: MonsterCatalogEntry[];
 }
@@ -154,6 +228,12 @@ export interface Account {
   shards: Record<string, number>;
   ascension: Record<string, number>;
   activeWaifuId: string;
+  affinityXp: Record<string, number>;
+  affinity: Record<string, AffinityProgress>;
+  giftsToday: Record<string, number>;
+  ownedSkins: string[];
+  selectedSkins: Record<string, string>;
+  mastery: Record<string, MasteryState>;
   bestiaryKills: Record<string, number>;
   inventory: InventoryStack[];
   equipment: Record<string, EquipmentLoadout>;

@@ -35,6 +35,10 @@ public sealed class Actor
     public long HasteUntilMs;
     public double HasteFactor = 1.0;
 
+    // slow applied by the player (trait chiller)
+    public long SlowUntilMs;
+    public double SlowFactor = 1.0;
+
     public bool IsSummon => OwnerId != 0;
     public bool IsMoving(long nowMs) => nowMs < StepStartMs + StepDurMs;
     public bool IsStunned(long nowMs) => nowMs < StunUntilMs;
@@ -85,6 +89,11 @@ public sealed class GameWorld
     public readonly ClassDef PlayerClass;
     public readonly int Ascension;
     public readonly EquipmentStats EquipmentStats;
+    public readonly KaeliLoadout Loadout;
+    private readonly TraitDef _trait;
+    private readonly double _traitMult;        // amplificação do trait via maestria (ramo Eco)
+    private readonly double _affinityStatBonus; // +1% ATK/HP por nível de afinidade acima de 1
+    private readonly double _gaugeRate;        // maestria × trait overcharge
     private readonly GameData _data;
     private readonly Rng _rng;
     private readonly IReadOnlyDictionary<string, long> _bestiaryKills;
@@ -139,7 +148,7 @@ public sealed class GameWorld
 
     public GameWorld(long seed, DungeonTier tier, WaifuDef waifu, int ascension,
         GameData data, IReadOnlyDictionary<string, long> bestiaryKills,
-        EquipmentStats? equipmentStats = null)
+        EquipmentStats? equipmentStats = null, KaeliLoadout? loadout = null)
     {
         Seed = seed;
         Tier = tier;
@@ -149,13 +158,20 @@ public sealed class GameWorld
         _stanceId = PlayerClass.InitialStance(waifu.Element).Id;
         Ascension = ascension;
         EquipmentStats = equipmentStats ?? Domain.EquipmentStats.Empty;
+        Loadout = loadout ?? KaeliLoadout.Default(waifu);
+        _trait = waifu.Trait;
+        _traitMult = Loadout.Mastery.TraitMult;
+        _affinityStatBonus = (Loadout.AffinityLevel - 1) * GameConfig.AffinityStatBonusPerLevel;
+        _gaugeRate = Loadout.Mastery.GaugeMult
+                     * (_trait.Kind == "overcharge" ? 1 + _trait.Value * _traitMult : 1);
         _data = data;
         _bestiaryKills = bestiaryKills;
         _rng = new Rng((ulong)seed);
 
         _floors = [DungeonGenerator.Generate(_rng, 0, false), DungeonGenerator.Generate(_rng, 1, true)];
 
-        var hp = (int)(waifu.BaseHp * (1 + ascension * GameConfig.AscensionAtkBonus))
+        var hp = (int)(waifu.BaseHp * (1 + ascension * GameConfig.AscensionAtkBonus)
+                       * (1 + _affinityStatBonus) * Loadout.Mastery.HpMult)
                  + EquipmentStats.MaxHpBonus;
         Player = new Actor
         {
@@ -450,6 +466,7 @@ public sealed class GameWorld
     {
         var speed = monster.Species!.Speed * GameConfig.MonsterSpeedMultiplier;
         if (NowMs < monster.HasteUntilMs) speed = (int)(speed * monster.HasteFactor);
+        if (NowMs < monster.SlowUntilMs) speed = (int)(speed * monster.SlowFactor);
         return speed;
     }
 
@@ -521,7 +538,15 @@ public sealed class GameWorld
         var atk = (Waifu.BaseAtk + EquipmentStats.AttackBonus)
                   * (1 + GameConfig.AtkPerRunLevel * (_runLevel - 1))
                   * (1 + Ascension * GameConfig.AscensionAtkBonus)
+                  * (1 + _affinityStatBonus)
+                  * Loadout.Mastery.AtkMult
                   * (1 + CardValue("atkPercent"));
+        if (_trait.Kind == "pack_hunter")
+        {
+            var packed = _monsters.Count(m => m.Hp > 0 && m.Floor == Player.Floor
+                                              && Chebyshev(m, Player) <= 2);
+            atk *= 1 + Math.Min(packed * _trait.Value, _trait.Param) * _traitMult;
+        }
         if (IsBuffActive("atk")) atk *= 1.35;
         if (IsBuffActive("bloodrage")) atk *= GameConfig.BloodRageAttackMultiplier;
         if (IsBuffActive("aegis")) atk *= GameConfig.SentinelAegisAttackMultiplier;
@@ -530,7 +555,7 @@ public sealed class GameWorld
 
     private double CritChance()
     {
-        var crit = GameConfig.CritChance + CardValue("critChance");
+        var crit = GameConfig.CritChance + CardValue("critChance") + Loadout.Mastery.CritChanceBonus;
         if (IsBuffActive("crit")) crit += 0.20;
         return crit;
     }
@@ -590,23 +615,25 @@ public sealed class GameWorld
         if (skill.Shape is "area" && Chebyshev(Player, target!) > skill.Range) return;
 
         if (isUlt) _gauge = 0;
-        else _skillReadyAtMs[slot] = NowMs + skill.CooldownMs;
+        else _skillReadyAtMs[slot] = NowMs + (long)(skill.CooldownMs * Loadout.Mastery.CooldownMult);
 
         Emit("skill_cast", Player.X, Player.Y, 0, 0, 0, skill.Name);
         if (target is not null)
             Player.Facing = FacingFrom(target.X - Player.X, target.Y - Player.Y);
 
-        var damage = PlayerAttack() * skill.Power;
+        // maestria: slots 1-4 multiplicam o Power; a ultimate amplifica duração/cura (ultmod)
+        var ultScale = isUlt ? Loadout.Mastery.UltimatePowerMult : 1.0;
+        var damage = PlayerAttack() * skill.Power * (isUlt ? 1.0 : Loadout.Mastery.SlotPowerMult(slot));
         switch (skill.Shape)
         {
             case "buff":
                 if (skill.Buff == "heal")
                 {
-                    HealPlayer((int)Math.Ceiling(Player.MaxHp * GameConfig.NaturesEmbraceHealFraction));
+                    HealPlayer((int)Math.Ceiling(Player.MaxHp * GameConfig.NaturesEmbraceHealFraction * ultScale));
                 }
                 else if (skill.Buff is not null)
                 {
-                    _buffsUntilMs[skill.Buff] = NowMs + skill.BuffMs;
+                    _buffsUntilMs[skill.Buff] = NowMs + (long)(skill.BuffMs * ultScale);
                 }
                 Emit("effect", Player.X, Player.Y, 0, 0, skill.EffectId);
                 break;
@@ -614,7 +641,7 @@ public sealed class GameWorld
             case "single":
                 if (skill.MissileId > 0) Emit("projectile", Player.X, Player.Y, target!.X, target.Y, skill.MissileId);
                 Emit("effect", target!.X, target.Y, 0, 0, skill.EffectId);
-                HitMonster(target, damage, skill);
+                HitMonster(target, damage, skill, ultScale);
                 break;
 
             case "area":
@@ -624,7 +651,7 @@ public sealed class GameWorld
                 {
                     Emit("effect", tx, ty, 0, 0, skill.EffectId);
                     var victim = MonsterAt(tx, ty);
-                    if (victim is not null) HitMonster(victim, damage, skill);
+                    if (victim is not null) HitMonster(victim, damage, skill, ultScale);
                 }
                 break;
             }
@@ -636,7 +663,7 @@ public sealed class GameWorld
                     if (tx == Player.X && ty == Player.Y) continue;
                     Emit("effect", tx, ty, 0, 0, skill.EffectId);
                     var victim = MonsterAt(tx, ty);
-                    if (victim is not null) HitMonster(victim, damage, skill);
+                    if (victim is not null) HitMonster(victim, damage, skill, ultScale);
                 }
                 break;
             }
@@ -651,7 +678,7 @@ public sealed class GameWorld
                     if (Floor.IsBlocked(tx, ty)) break;
                     Emit("effect", tx, ty, 0, 0, skill.EffectId);
                     var victim = MonsterAt(tx, ty);
-                    if (victim is not null) HitMonster(victim, damage, skill);
+                    if (victim is not null) HitMonster(victim, damage, skill, ultScale);
                 }
                 break;
             }
@@ -664,17 +691,17 @@ public sealed class GameWorld
                 {
                     Emit("effect", tx, ty, 0, 0, skill.EffectId);
                     var victim = MonsterAt(tx, ty);
-                    if (victim is not null) HitMonster(victim, damage, skill);
+                    if (victim is not null) HitMonster(victim, damage, skill, ultScale);
                 }
                 break;
             }
         }
     }
 
-    private void HitMonster(Actor monster, double damage, SkillDef skill)
+    private void HitMonster(Actor monster, double damage, SkillDef skill, double buffScale = 1.0)
     {
         if (skill.Power > 0)
-            DealDamageToMonster(monster, damage, skill.Element, 0);
+            DealDamageToMonster(monster, damage, skill.Element, 0, fromSkill: true);
         if (monster.Hp <= 0) return;
 
         switch (skill.Buff)
@@ -683,10 +710,10 @@ public sealed class GameWorld
                 AcquirePlayer(monster);
                 break;
             case "exposed":
-                monster.ExposedUntilMs = NowMs + skill.BuffMs;
+                monster.ExposedUntilMs = NowMs + (long)(skill.BuffMs * buffScale);
                 break;
             case "sapped":
-                monster.SappedUntilMs = NowMs + skill.BuffMs;
+                monster.SappedUntilMs = NowMs + (long)(skill.BuffMs * buffScale);
                 break;
         }
 
@@ -697,13 +724,24 @@ public sealed class GameWorld
         }
     }
 
-    private void DealDamageToMonster(Actor monster, double raw, string element, int hitEffect)
+    private void DealDamageToMonster(Actor monster, double raw, string element, int hitEffect,
+        bool fromSkill = false)
     {
         var roll = raw * (GameConfig.DamageRollMin + _rng.NextDouble() * (GameConfig.DamageRollMax - GameConfig.DamageRollMin));
         if (NowMs < monster.ExposedUntilMs)
             roll *= GameConfig.ExposedWeaknessDamageMultiplier;
-        var crit = _rng.Chance(CritChance());
+
+        // trait: deadeye soma crit por distância; executioner/slayer multiplicam o roll
+        var critChance = CritChance();
+        if (_trait.Kind == "deadeye" && Chebyshev(Player, monster) >= (int)_trait.Param)
+            critChance += _trait.Value * _traitMult;
+        var crit = _rng.Chance(critChance);
         if (crit) roll *= GameConfig.CritMultiplier;
+
+        if (_trait.Kind == "executioner" && monster.Hp < monster.MaxHp * _trait.Param)
+            roll *= 1 + _trait.Value * _traitMult;
+        if (_trait.Kind == "slayer" && monster.Species!.BestiaryClass == _trait.Tag)
+            roll *= 1 + _trait.Value * _traitMult;
 
         // element bonus card
         if (element == Waifu.Element) roll *= 1 + CardValue("elementPercent");
@@ -731,6 +769,15 @@ public sealed class GameWorld
 
         var lifesteal = CardValue("lifesteal");
         if (lifesteal > 0) HealPlayer((int)Math.Max(final * lifesteal, 0));
+
+        // traits pós-dano: seiva vital (lifesteal de skill) e mordida do norte (slow de gelo)
+        if (fromSkill && _trait.Kind == "skill_lifesteal")
+            HealPlayer((int)Math.Max(final * _trait.Value * _traitMult, 0));
+        if (_trait.Kind == "chiller" && element == "ice" && monster.Hp > 0)
+        {
+            monster.SlowUntilMs = NowMs + (long)_trait.Param;
+            monster.SlowFactor = Math.Max(1 - _trait.Value * _traitMult, GameConfig.SlowFactorFloor);
+        }
 
         // aggro: damaged monsters retaliate
         if (monster.TargetId == 0) AcquirePlayer(monster);
@@ -762,7 +809,7 @@ public sealed class GameWorld
         // xp + gauge
         var xp = (long)(monster.Species.Experience * Tier.StatMultiplier * (1 + CardValue("xpPercent")));
         GainXp(Math.Max(xp, 1));
-        _gauge = Math.Min(_gauge + GameConfig.GaugeFillPerKill * (1 + CardValue("gaugePercent")), GameConfig.UltimateGaugeMax);
+        _gauge = Math.Min(_gauge + GameConfig.GaugeFillPerKill * (1 + CardValue("gaugePercent")) * _gaugeRate, GameConfig.UltimateGaugeMax);
 
         if (!monster.IsSummon) DropLoot(monster); // summons give xp but no loot (anti-farm)
 
@@ -915,7 +962,7 @@ public sealed class GameWorld
 
             var damage = Math.Max((int)(cond.DamagePerTick * (1 - resist)), 1);
             Player.Hp -= damage;
-            _gauge = Math.Min(_gauge + damage * GameConfig.GaugeFillPerDamageTaken * (1 + CardValue("gaugePercent")), GameConfig.UltimateGaugeMax);
+            _gauge = Math.Min(_gauge + damage * GameConfig.GaugeFillPerDamageTaken * (1 + CardValue("gaugePercent")) * _gaugeRate, GameConfig.UltimateGaugeMax);
             Emit("damage", Player.X, Player.Y, 0, 0, damage, cond.Type, Player.Id);
             if (GameConfig.ConditionTickFx.TryGetValue(cond.Type, out var fx))
                 Emit("effect", Player.X, Player.Y, 0, 0, fx);
@@ -1279,8 +1326,15 @@ public sealed class GameWorld
     private void DamagePlayer(int damage, string damageType, Actor source)
     {
         if (Player.Hp <= 0) return;
+        var traitReduction = _trait.Kind switch
+        {
+            "fortress" => _trait.Value * _traitMult,
+            "bulwark" when Player.Hp < Player.MaxHp * _trait.Param => _trait.Value * _traitMult,
+            _ => 0
+        };
         var reduction = Math.Min(
-            CardValue("damageReduction") + EquipmentStats.DamageReduction,
+            CardValue("damageReduction") + EquipmentStats.DamageReduction
+            + Loadout.Mastery.DamageReductionBonus + traitReduction,
             GameConfig.PlayerDamageReductionCap);
         var final = damage * (1 - reduction);
         if (NowMs < source.SappedUntilMs)
@@ -1289,7 +1343,7 @@ public sealed class GameWorld
         var value = Math.Max((int)final, 1);
 
         Player.Hp -= value;
-        _gauge = Math.Min(_gauge + value * GameConfig.GaugeFillPerDamageTaken * (1 + CardValue("gaugePercent")), GameConfig.UltimateGaugeMax);
+        _gauge = Math.Min(_gauge + value * GameConfig.GaugeFillPerDamageTaken * (1 + CardValue("gaugePercent")) * _gaugeRate, GameConfig.UltimateGaugeMax);
         Emit("damage", Player.X, Player.Y, 0, 0, value, damageType, Player.Id);
 
         if (Player.Hp <= 0)
@@ -1607,9 +1661,10 @@ public sealed class GameWorld
             var isUlt = i == 4;
             var remaining = isUlt ? 0 : Math.Max(_skillReadyAtMs[i] - NowMs, 0);
             var ready = isUlt ? _gauge >= GameConfig.UltimateGaugeMax : remaining == 0;
+            var cooldownTotal = isUlt ? skill.CooldownMs : (int)(skill.CooldownMs * Loadout.Mastery.CooldownMult);
             skills.Add(new SkillStateDto(
                 skill.Id, skill.Name, skill.Element, skill.Description,
-                remaining, skill.CooldownMs, ready));
+                remaining, cooldownTotal, ready));
         }
 
         var boss = _monsters.FirstOrDefault(m => m.IsBossActor && m.Floor == _currentFloor);
@@ -1617,7 +1672,8 @@ public sealed class GameWorld
         var player = new PlayerDto(
             Player.Id, Player.X, Player.Y, (int)Player.Facing, Player.Hp, Player.MaxHp,
             Player.FromX, Player.FromY, Player.StepDurMs, Player.StepStartMs,
-            new OutfitDto(Waifu.LookType, Waifu.Head, Waifu.Body, Waifu.Legs, Waifu.Feet,
+            new OutfitDto(Loadout.Skin.LookType, Loadout.Skin.Head, Loadout.Skin.Body,
+                Loadout.Skin.Legs, Loadout.Skin.Feet,
                 Ascension >= GameConfig.AddonTwoAscension ? 3 : Ascension >= GameConfig.AddonOneAscension ? 1 : 0,
                 EquipmentStats.MountLookType),
             Player.TargetId, _gauge, skills,

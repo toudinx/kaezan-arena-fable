@@ -181,6 +181,34 @@ public static class GameConfig
     public const int AddonOneAscension = 2;
     public const int AddonTwoAscension = 4;
 
+    // ---- kaeli depth: afinidade / presentes / skins / maestria (refundação 2026-06-12) ----
+    public const int AffinityMaxLevel = 10;
+    /// <summary>XP necessário para ir do nível N para o N+1.</summary>
+    public static long XpForAffinityLevel(int level) => (long)(40 * Math.Pow(level, 1.35));
+    /// <summary>+1% ATK e HP por nível de afinidade, aplicado no início da run.</summary>
+    public const double AffinityStatBonusPerLevel = 0.01;
+    public const long AffinityXpVictory = 50;
+    public const long AffinityXpDefeat = 20;
+    public const long AffinityXpPerRunLevel = 2;
+    /// <summary>Níveis de afinidade que destravam os fragmentos de lore 1..4.</summary>
+    public static readonly int[] AffinityLoreLevels = [2, 4, 6, 8];
+    /// <summary>Kaeros entregues ao alcançar o nível (marcos de afinidade).</summary>
+    public static readonly IReadOnlyDictionary<int, int> AffinityKaerosRewards =
+        new Dictionary<int, int> { [3] = 200, [5] = 400, [7] = 600, [10] = 1000 };
+
+    public const int GiftsPerKaeliPerDay = 3;
+    public const double GiftBaseXp = 15;
+    public const double GiftXpPerGold = 0.5;
+    public const double GiftFavoriteMultiplier = 2.0;
+    public const long GiftXpCap = 400;
+
+    public const int MasteryPointsPerVictory = 3;
+    public const int MasteryPointsPerDefeat = 1;
+    public const long MasteryRespecGold = 1000;
+
+    /// <summary>Kaeros devolvidos por Kaeli removida do roster encontrada numa conta antiga.</summary>
+    public const int CutKaeliRefundKaeros = 600;
+
     // ---- dailies ----
     public const int DailyContractCount = 3;
     public const int DailyKaerosReward = 100;

@@ -24,6 +24,17 @@ public sealed class RewardService(AccountStore store, DailyService dailies)
             state.Kaeros += end.KaerosEarned;
             GrantAccountXp(state, end.AccountXpEarned);
 
+            // kaeli depth: afinidade por uso + pontos de maestria para a Kaeli da run
+            var affinityXp = (end.Victory ? GameConfig.AffinityXpVictory : GameConfig.AffinityXpDefeat)
+                             + GameConfig.AffinityXpPerRunLevel * end.RunLevel;
+            KaeliService.GrantAffinityXp(state, world.Waifu, affinityXp, notes);
+
+            var masteryPoints = end.Victory ? GameConfig.MasteryPointsPerVictory : GameConfig.MasteryPointsPerDefeat;
+            if (!state.Mastery.TryGetValue(world.Waifu.Id, out var mastery))
+                state.Mastery[world.Waifu.Id] = mastery = new MasteryState();
+            mastery.Points += masteryPoints;
+            notes.Add($"{world.Waifu.Name}: +{affinityXp} afinidade · +{masteryPoints} ponto(s) de maestria");
+
             foreach (var (species, kills) in world.KillsBySpecies)
                 state.BestiaryKills[species] = state.BestiaryKills.GetValueOrDefault(species) + kills;
 

@@ -294,7 +294,8 @@ ele renderiza o que o servidor descreve. É exatamente o nosso invariante "backe
 | Ideia (origem) | Documentada em | Vira trabalho em |
 |---|---|---|
 | Companions / Echo Team | §4 | **FABLE_TRACK F-A** |
-| Mastery / Wheel | §6 | **FABLE_TRACK F-B** |
+| Mastery / Wheel | §6 | **FABLE_TRACK F-B** → ✅ Maestria de Eco (§11) |
+| Kaeli profunda: traits/lore/afinidade/presentes/skins | §11 | ✅ refundação 2026-06-12 |
 | Dojo + Level sync + Desafio | §2 | **FABLE_TRACK F-C** (desafio diário/leaderboard) |
 | Geração de dungeon com intenção | (Tibia caves) | **FABLE_TRACK F-D** |
 | Boss Posture completo + reações elementais | §3 | ROADMAP T-31 (MVP) → **FABLE_TRACK F-E** |
@@ -306,6 +307,73 @@ ele renderiza o que o servidor descreve. É exatamente o nosso invariante "backe
 | Waifu = skin de classe + stance | §7.5b | ROADMAP T-52 |
 | Montaria como equipamento (6 slots) | §7.5c | ROADMAP T-51 |
 | Kit/IA fiel de monstro do Canary | §8 (princípio cliente-burro) | ROADMAP T-53 |
+
+---
+
+## 11. Profundidade de Kaeli — skins, afinidade, presentes e maestria (refundação 2026-06-12)
+
+> Origem: pedido do dono ("poucas Kaelis, mas profundas" — inspiração Wuthering Waves) +
+> Kaezan World (mastery §6). Estado no Fable: ✅ implementado.
+
+**Decisão central: cortar para 9 e aprofundar.** O roster caiu de 13 para **9 Kaelis (3 por
+raridade, todas as 4 classes cobertas)**; Tessa, Nyx, Lyra e Rosa saíram (sanitização de conta
+devolve `CutKaeliRefundKaeros` por Kaeli removida). Em um gacha, o personagem É o produto —
+um roster pequeno em que cada unidade tem identidade mecânica + narrativa vale mais que um
+catálogo raso. Cada Kaeli agora tem **cinco eixos de identidade**:
+
+1. **Trait de assinatura** (`TraitDef`, engine-suportado): a passiva que a diferencia dentro da
+   classe — ex.: Velvet executa alvos <30% HP, Sylwen congela, Kaela é a tanque de -12% dano.
+   Kinds data-driven (executioner/fortress/bulwark/pack_hunter/deadeye/slayer/skill_lifesteal/
+   chiller/overcharge); novos traits = dado novo + 1 ponto de aplicação no GameWorld.
+2. **Lore em camadas**: bio + personalidade + **4 ecos de memória** destravados por afinidade
+   (níveis 2/4/6/8). Os ecos se cruzam (Mira recusou o convite de Kaela; Aurora sela a cripta
+   do tier 3) — o roster é um elenco, não uma lista.
+3. **Afinidade 1-10** (xp por run com ela ativa + presentes; marcos pagam Kaeros; +1% ATK/HP
+   por nível na run). **Presentes**: qualquer item da Mochila (XP ∝ preço NPC), favoritos ×2,
+   cap de 3/dia por Kaeli — dá uso afetivo ao loot do Tibia e cria sessão diária curta.
+4. **Skins por outfit** (`SkinDef`): cada Kaeli tem 2-3 outfits do pipeline (os 7 outfits
+   extraídos sem uso + recolors da paleta HSI). Unlock por afinidade (vínculo), ouro ou Kaeros
+   (sink de moedas). A skin em uso vai no `KaeliLoadout` e renderiza no Hub e na run; addons de
+   ascensão aplicam por cima de qualquer skin.
+5. **Maestria de Eco** (= FABLE_TRACK F-B): árvore de 3 ramos × 4 nodes (Ofensiva / Defensiva /
+   Eco), template por classe com nomes amarrados às skills reais e ramo Eco que **amplifica o
+   trait**. Pontos por run (vitória 3 / derrota 1, com ela ativa), respec por ouro. Efeitos
+   agregados em `MasteryAggregates` no início da run — nada de dispatch paralelo, nada de DB
+   no tick.
+
+**Camadas de progressão por Kaeli (ordem de horizonte):** cards de run (efêmero) → maestria
+(permanente, com escolha) → ascensão (permanente, linear) → afinidade (permanente, afetiva).
+
+---
+
+## 12. Notas de mercado gacha — o que copiar e o que evitar
+
+> Referências estudadas: Wuthering Waves, Genshin/HSR/ZZZ (HoYo), Arknights, Blue Archive,
+> Nikke, FGO, Azur Lane. Estado: guia para as próximas decisões de produto.
+
+**O que os líderes fazem e já adotamos:**
+- **Poucos personagens, identidade altíssima** (WuWa/ZZZ): roster pequeno, cada unidade com
+  passiva única + animações/skins próprias. → traits + skins + lore (✅ §11).
+- **Afinidade com recompensa narrativa** (Blue Archive cafés, Nikke advise, FGO bond): jogar
+  com o personagem desbloqueia história dele, não só stat. → ecos de memória (✅).
+- **Dupes nunca são lixo** (universal): shards → ascensão (✅).
+- **Pity transparente** (todos pós-Genshin): contador visível, 50/50 com garantia (✅).
+
+**Próximos passos sugeridos, em ordem de impacto:**
+1. **Echo Team (F-A) continua sendo o maior salto** — todo gacha de sucesso deixa a coleção
+   lutar junta; é o elo coleção→gameplay.
+2. **Banner rotativo com rerun** — hoje só Velvet tem banner. Rotação quinzenal determinística
+   (seed da data) de 4★ em destaque + rerun do 5★ dá motivo de retorno sem conteúdo novo.
+3. **Skins de evento/estação** (líder de receita em todo o gênero; aqui, líder de retenção):
+   o pipeline de outfits torna barato lançar "skin do festival" sazonal — amarrar ao
+   elemento-do-dia/eventos (§9) em vez de FOMO pago.
+4. **Trilha de novato** ("login de 7 dias" / missões de tutorial que pagam um 4★ à escolha):
+   padrão Arknights/HSR; barato e resolve o early-game.
+5. **Modo de teste de Kaeli** (test drive de banner, padrão HoYo): deixar jogar 1 sala com a
+   Kaeli em destaque mesmo sem possuí-la — vende o pull melhor que qualquer vitrine.
+6. **Evitar**: stamina/energia (mata o "less grinding"), pity que reseta entre banners,
+   dailies >15 min, e power creep de banner (cada 5★ nova invalidando a anterior — preferir
+   nichos por trait/elemento, estilo Arknights).
 
 ---
 

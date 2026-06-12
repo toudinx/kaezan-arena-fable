@@ -47,6 +47,33 @@ export class ApiService {
     await this.refreshAccount();
   }
 
+  async giftItem(waifuId: string, itemId: number): Promise<{ xpGained: number; favorite: boolean; level: number; giftsLeftToday: number; notes: string[] }> {
+    const res = await this.request<{ xpGained: number; favorite: boolean; level: number; giftsLeftToday: number; notes: string[] }>(
+      'POST', '/kaelis/gift', { waifuId, itemId });
+    await this.refreshAccount();
+    return res;
+  }
+
+  async selectSkin(waifuId: string, skinId: string): Promise<void> {
+    await this.request('POST', '/kaelis/skin/select', { waifuId, skinId });
+    await this.refreshAccount();
+  }
+
+  async buySkin(waifuId: string, skinId: string): Promise<void> {
+    await this.request('POST', '/kaelis/skin/buy', { waifuId, skinId });
+    await this.refreshAccount();
+  }
+
+  async unlockMasteryNode(waifuId: string, nodeId: string): Promise<void> {
+    await this.request('POST', '/kaelis/mastery/unlock', { waifuId, nodeId });
+    await this.refreshAccount();
+  }
+
+  async respecMastery(waifuId: string): Promise<void> {
+    await this.request('POST', '/kaelis/mastery/respec', { waifuId });
+    await this.refreshAccount();
+  }
+
   async claimDaily(contractId: string): Promise<void> {
     await this.request('POST', '/dailies/claim', { contractId });
     await this.refreshAccount();

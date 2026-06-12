@@ -6,6 +6,7 @@ public sealed class AccountDbContext(DbContextOptions<AccountDbContext> options)
 {
     public DbSet<AccountRow> Accounts => Set<AccountRow>();
     public DbSet<AccountWaifuRow> AccountWaifus => Set<AccountWaifuRow>();
+    public DbSet<AccountSkinRow> AccountSkins => Set<AccountSkinRow>();
     public DbSet<AccountEquipmentRow> AccountEquipment => Set<AccountEquipmentRow>();
     public DbSet<AccountInventoryRow> AccountInventory => Set<AccountInventoryRow>();
     public DbSet<AccountMasteryRow> AccountMastery => Set<AccountMasteryRow>();
@@ -39,6 +40,8 @@ public sealed class AccountDbContext(DbContextOptions<AccountDbContext> options)
             entity.Property(row => row.Kaeros).HasColumnName("kaeros");
             entity.Property(row => row.ActiveWaifuId).HasColumnName("active_waifu_id").HasMaxLength(64);
             entity.Property(row => row.DailyDate).HasColumnName("daily_date").HasMaxLength(10);
+            entity.Property(row => row.GiftsDate).HasColumnName("gifts_date").HasMaxLength(10)
+                .HasDefaultValue("");
             entity.Property(row => row.RunsPlayed).HasColumnName("runs_played");
             entity.Property(row => row.RunsWon).HasColumnName("runs_won");
         });
@@ -54,6 +57,18 @@ public sealed class AccountDbContext(DbContextOptions<AccountDbContext> options)
             entity.Property(row => row.WaifuId).HasColumnName("waifu_id").HasMaxLength(64);
             entity.Property(row => row.Ascension).HasColumnName("ascension");
             entity.Property(row => row.Shards).HasColumnName("shards");
+            entity.Property(row => row.AffinityXp).HasColumnName("affinity_xp").HasDefaultValue(0L);
+            entity.Property(row => row.GiftsToday).HasColumnName("gifts_today").HasDefaultValue(0);
+            entity.Property(row => row.SelectedSkinId).HasColumnName("selected_skin_id")
+                .HasMaxLength(96).HasDefaultValue("");
+        });
+
+        modelBuilder.Entity<AccountSkinRow>(entity =>
+        {
+            entity.ToTable("account_skins");
+            entity.HasKey(row => new { row.AccountId, row.SkinId });
+            AccountForeignKey(entity);
+            entity.Property(row => row.SkinId).HasColumnName("skin_id").HasMaxLength(96);
         });
 
         modelBuilder.Entity<AccountInventoryRow>(entity =>

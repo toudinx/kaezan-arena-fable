@@ -46,6 +46,9 @@ public sealed class MySqlAccountRepository(
         db.SaveChanges();
 
         db.AccountWaifus.Where(row => row.AccountId == state.Id).ExecuteDelete();
+        db.AccountSkins.Where(row => row.AccountId == state.Id).ExecuteDelete();
+        db.AccountMastery.Where(row => row.AccountId == state.Id).ExecuteDelete();
+        db.AccountMasteryPoints.Where(row => row.AccountId == state.Id).ExecuteDelete();
         db.AccountEquipment.Where(row => row.AccountId == state.Id).ExecuteDelete();
         db.AccountInventory.Where(row => row.AccountId == state.Id).ExecuteDelete();
         db.GachaPity.Where(row => row.AccountId == state.Id).ExecuteDelete();
@@ -61,7 +64,28 @@ public sealed class MySqlAccountRepository(
                 AccountId = state.Id,
                 WaifuId = waifuId,
                 Ascension = state.Ascension.GetValueOrDefault(waifuId),
-                Shards = state.Shards.GetValueOrDefault(waifuId)
+                Shards = state.Shards.GetValueOrDefault(waifuId),
+                AffinityXp = state.AffinityXp.GetValueOrDefault(waifuId),
+                GiftsToday = state.GiftsToday.GetValueOrDefault(waifuId),
+                SelectedSkinId = state.SelectedSkins.GetValueOrDefault(waifuId, "")
+            }));
+        db.AccountSkins.AddRange(state.OwnedSkins.Distinct(StringComparer.Ordinal).Select(skinId =>
+            new AccountSkinRow { AccountId = state.Id, SkinId = skinId }));
+        db.AccountMastery.AddRange(state.Mastery.SelectMany(entry =>
+            entry.Value.Nodes.Select(nodeId => new AccountMasteryRow
+            {
+                AccountId = state.Id,
+                WaifuId = entry.Key,
+                NodeId = nodeId
+            })));
+        db.AccountMasteryPoints.AddRange(state.Mastery
+            .Where(entry => entry.Value.Points != 0 || entry.Value.Spent != 0)
+            .Select(entry => new AccountMasteryPointsRow
+            {
+                AccountId = state.Id,
+                WaifuId = entry.Key,
+                Points = entry.Value.Points,
+                Spent = entry.Value.Spent
             }));
         db.AccountInventory.AddRange(state.Inventory.Values.Select(stack => new AccountInventoryRow
         {
@@ -135,6 +159,7 @@ public sealed class MySqlAccountRepository(
             Kaeros = account.Kaeros,
             ActiveWaifuId = account.ActiveWaifuId,
             DailyDate = account.DailyDate,
+            GiftsDate = account.GiftsDate,
             RunsPlayed = account.RunsPlayed,
             RunsWon = account.RunsWon
         };
@@ -144,6 +169,23 @@ public sealed class MySqlAccountRepository(
             state.OwnedWaifus.Add(row.WaifuId);
             if (row.Ascension != 0) state.Ascension[row.WaifuId] = row.Ascension;
             if (row.Shards != 0) state.Shards[row.WaifuId] = row.Shards;
+            if (row.AffinityXp != 0) state.AffinityXp[row.WaifuId] = row.AffinityXp;
+            if (row.GiftsToday != 0) state.GiftsToday[row.WaifuId] = row.GiftsToday;
+            if (!string.IsNullOrEmpty(row.SelectedSkinId)) state.SelectedSkins[row.WaifuId] = row.SelectedSkinId;
+        }
+
+        foreach (var row in db.AccountSkins.AsNoTracking().Where(row => row.AccountId == account.Id))
+            state.OwnedSkins.Add(row.SkinId);
+
+        foreach (var row in db.AccountMasteryPoints.AsNoTracking().Where(row => row.AccountId == account.Id))
+            state.Mastery[row.WaifuId] = new MasteryState { Points = row.Points, Spent = row.Spent };
+
+        foreach (var row in db.AccountMastery.AsNoTracking()
+                     .Where(row => row.AccountId == account.Id).OrderBy(row => row.NodeId))
+        {
+            if (!state.Mastery.TryGetValue(row.WaifuId, out var mastery))
+                state.Mastery[row.WaifuId] = mastery = new MasteryState();
+            mastery.Nodes.Add(row.NodeId);
         }
 
         foreach (var row in db.AccountInventory.AsNoTracking().Where(row => row.AccountId == account.Id))
@@ -199,6 +241,7 @@ public sealed class MySqlAccountRepository(
         account.Kaeros = state.Kaeros;
         account.ActiveWaifuId = state.ActiveWaifuId;
         account.DailyDate = state.DailyDate;
+        account.GiftsDate = state.GiftsDate;
         account.RunsPlayed = state.RunsPlayed;
         account.RunsWon = state.RunsWon;
     }

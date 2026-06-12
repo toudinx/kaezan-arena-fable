@@ -9,6 +9,7 @@ public sealed class AccountRow
     public long Kaeros { get; set; }
     public string ActiveWaifuId { get; set; } = "";
     public string DailyDate { get; set; } = "";
+    public string GiftsDate { get; set; } = "";
     public int RunsPlayed { get; set; }
     public int RunsWon { get; set; }
 }
@@ -19,6 +20,15 @@ public sealed class AccountWaifuRow
     public string WaifuId { get; set; } = "";
     public int Ascension { get; set; }
     public int Shards { get; set; }
+    public long AffinityXp { get; set; }
+    public int GiftsToday { get; set; }
+    public string SelectedSkinId { get; set; } = "";
+}
+
+public sealed class AccountSkinRow
+{
+    public string AccountId { get; set; } = "";
+    public string SkinId { get; set; } = "";
 }
 
 public sealed class AccountEquipmentRow

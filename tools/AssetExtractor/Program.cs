@@ -21,7 +21,7 @@ internal static class Program
 
     private static int Main(string[] args)
     {
-        string? thingsDir = null, outDir = null, configPath = null, monstersPath = null, staticItemsDir = null;
+        string? thingsDir = null, outDir = null, configPath = null, monstersPath = null, itemsOutPath = null, staticItemsDir = null;
         var dumpNames = false;
         for (var i = 0; i < args.Length; i++)
         {
@@ -31,6 +31,7 @@ internal static class Program
                 case "--out": outDir = args[++i]; break;
                 case "--config": configPath = args[++i]; break;
                 case "--monsters": monstersPath = args[++i]; break;
+                case "--items-out": itemsOutPath = args[++i]; break;
                 case "--static-items": staticItemsDir = args[++i]; break;
                 case "--dump-names": dumpNames = true; break;
             }
@@ -41,6 +42,7 @@ internal static class Program
             Console.Error.WriteLine(
                 "usage: AssetExtractor --things <things/1500 dir> --out <output dir> " +
                 "[--config content-config.json] [--monsters monsters.json] " +
+                "[--items-out items.json] " +
                 "[--static-items <legacy assets dir>] [--dump-names]");
             return 1;
         }
@@ -69,6 +71,7 @@ internal static class Program
 
         var outfitIds = new SortedSet<uint>(ReadIdList(config, "outfitIds"));
         var objectIds = new SortedSet<uint>(ReadIdList(config, "objectIds"));
+        var lootNames = new Dictionary<uint, string>();
         if (monstersPath is not null)
         {
             var monsters = JsonNode.Parse(File.ReadAllText(monstersPath))!.AsArray();
@@ -81,7 +84,10 @@ internal static class Program
                 foreach (var lootEntry in m["loot"]?.AsArray() ?? new JsonArray())
                 {
                     var itemId = lootEntry!["itemId"]?.GetValue<uint>() ?? 0;
-                    if (itemId > 0) objectIds.Add(itemId);
+                    if (itemId == 0) continue;
+                    objectIds.Add(itemId);
+                    var lootName = lootEntry["name"]?.GetValue<string>() ?? "";
+                    if (lootName.Length > 0) lootNames.TryAdd(itemId, lootName);
                 }
             }
         }
@@ -126,6 +132,11 @@ internal static class Program
 
         File.WriteAllText(Path.Combine(outDir, "manifest.json"), manifest.ToJsonString(new JsonSerializerOptions { WriteIndented = false }));
         Console.WriteLine($"manifest written to {Path.Combine(outDir, "manifest.json")}");
+        if (monstersPath is not null)
+        {
+            itemsOutPath ??= Path.Combine(Path.GetDirectoryName(Path.GetFullPath(monstersPath))!, "items.json");
+            ExportItems(appearances.Object, objectIds, lootNames, itemsOutPath);
+        }
         if (staticItems is not null)
             Console.WriteLine($"static item thumbnails imported: {staticItems.Imported}");
         return 0;
@@ -133,6 +144,35 @@ internal static class Program
 
     private static IEnumerable<uint> ReadIdList(JsonObject config, string key) =>
         config[key]?.AsArray().Select(v => v!.GetValue<uint>()) ?? Enumerable.Empty<uint>();
+
+    private static void ExportItems(
+        IEnumerable<Appearance> objects, IEnumerable<uint> ids,
+        IReadOnlyDictionary<uint, string> lootNames, string outputPath)
+    {
+        var byId = objects.ToDictionary(a => a.Id);
+        var items = new JsonArray();
+        foreach (var id in ids.Distinct().OrderBy(i => i))
+        {
+            if (!byId.TryGetValue(id, out var app)) continue;
+            var appearanceName = app.Name?.ToStringUtf8() ?? "";
+            var name = appearanceName.Length > 0
+                ? appearanceName
+                : lootNames.GetValueOrDefault(id, $"item {id}");
+            var salePrice = app.Flags?.Npcsaledata.Count > 0
+                ? app.Flags.Npcsaledata.Max(npc => npc.SalePrice)
+                : 0;
+            items.Add(new JsonObject
+            {
+                ["itemId"] = id,
+                ["name"] = name,
+                ["salePrice"] = salePrice
+            });
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outputPath))!);
+        File.WriteAllText(outputPath, items.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine($"items: exported {items.Count} entries to {outputPath}");
+    }
 
     // ----- catalog -----
 

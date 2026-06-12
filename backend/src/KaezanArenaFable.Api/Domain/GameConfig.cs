@@ -144,6 +144,7 @@ public static class GameConfig
     public const double FourStarBaseRate = 0.06;
     public const int StartingKaeros = 4000;
     public const int StartingGold = 500;
+    public const int ItemFallbackSalePrice = 5;
     public static readonly Dictionary<int, int> DupeShards = new() { [3] = 5, [4] = 20, [5] = 50 };
     public static readonly int[] AscensionShardCost = [10, 15, 25, 40, 60, 80]; // A1..A6
     public const int AddonOneAscension = 2;

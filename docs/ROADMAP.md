@@ -258,8 +258,11 @@ manifest atualizado; runs nos tiers 1-2 verificadas em jogo, e os mobs com kit e
 **registre como gap na T-53**, não invente um caso especial aqui. Bosses de raid têm HP estranho
 — confira `BossHpScale` se promover algum a boss de tier.
 
-### [ ] T-11 — Preços reais de itens (npcsaledata) + items.json
+### [x] T-11 — Preços reais de itens (npcsaledata) + items.json
 **P0 · M · tools + backend + frontend**
+
+**Concluída (2026-06-12):** extractor gera `items.json` com o maior `sale_price` dos NPCs,
+backend vende pelo catálogo com fallback 5 e a Mochila exibe o ganho por unidade e pela pilha.
 
 **Contexto.** `MetaEndpoints.ItemValue` é um placeholder (`15 + itemId % 35`). O protobuf de
 appearances tem `AppearanceFlagNPC npcsaledata` com `sale_price`/`buy_price` por item

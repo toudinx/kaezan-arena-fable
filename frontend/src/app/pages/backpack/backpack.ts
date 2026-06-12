@@ -19,9 +19,13 @@ import { ItemIcon } from '../../core/item-icon';
               <span class="count">×{{ item.count }}</span>
             </div>
             <div class="actions">
-              <button class="btn secondary" [disabled]="busy()" (click)="sell(item.itemId, 1)">Vender 1</button>
+              <button class="btn secondary" [disabled]="busy()" (click)="sell(item.itemId, 1)">
+                Vender 1 (+{{ salePrice(item.itemId) }} 🪙)
+              </button>
               @if (item.count > 1) {
-                <button class="btn secondary" [disabled]="busy()" (click)="sell(item.itemId, item.count)">Tudo</button>
+                <button class="btn secondary" [disabled]="busy()" (click)="sell(item.itemId, item.count)">
+                  Tudo (+{{ salePrice(item.itemId) * item.count }} 🪙)
+                </button>
               }
             </div>
           </div>
@@ -66,6 +70,9 @@ import { ItemIcon } from '../../core/item-icon';
 export class BackpackPage {
   readonly inventory = computed(() => this.api.account()?.inventory ?? []);
   readonly busy = signal(false);
+  readonly salePrices = computed(() =>
+    new Map((this.api.catalog()?.items ?? []).map((item) => [item.itemId, item.salePrice])),
+  );
 
   readonly bestiary = computed(() => {
     const kills = this.api.account()?.bestiaryKills ?? {};
@@ -80,6 +87,12 @@ export class BackpackPage {
   });
 
   constructor(private readonly api: ApiService) {}
+
+  salePrice(itemId: number): number {
+    return this.salePrices().get(itemId)
+      ?? this.api.catalog()?.itemFallbackSalePrice
+      ?? 0;
+  }
 
   async sell(itemId: number, count: number): Promise<void> {
     this.busy.set(true);

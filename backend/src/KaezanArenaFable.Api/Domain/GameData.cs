@@ -25,6 +25,7 @@ public sealed record MonsterAttack(
     bool IsHealing = false);
 
 public sealed record MonsterLoot(int ItemId, string Name, int Chance, int MaxCount);
+public sealed record ItemType(int ItemId, string Name, int SalePrice);
 
 public sealed record MonsterType(
     string Name, string Description, int Experience, int Health, int Speed, int Corpse,
@@ -41,16 +42,25 @@ public sealed record MonsterType(
 public sealed class GameData
 {
     public IReadOnlyDictionary<string, MonsterType> Monsters { get; }
+    public IReadOnlyDictionary<int, ItemType> Items { get; }
 
     public GameData(IWebHostEnvironment env)
     {
-        var path = Path.Combine(env.ContentRootPath, "Data", "monsters.json");
-        var json = File.ReadAllText(path);
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        var list = JsonSerializer.Deserialize<List<MonsterType>>(json, options)
-                   ?? throw new InvalidOperationException("monsters.json missing or invalid");
-        Monsters = list.ToDictionary(m => m.Name, StringComparer.OrdinalIgnoreCase);
+        var dataPath = Path.Combine(env.ContentRootPath, "Data");
+        var monsters = JsonSerializer.Deserialize<List<MonsterType>>(
+                           File.ReadAllText(Path.Combine(dataPath, "monsters.json")), options)
+                       ?? throw new InvalidOperationException("monsters.json missing or invalid");
+        var items = JsonSerializer.Deserialize<List<ItemType>>(
+                        File.ReadAllText(Path.Combine(dataPath, "items.json")), options)
+                    ?? throw new InvalidOperationException("items.json missing or invalid");
+        Monsters = monsters.ToDictionary(m => m.Name, StringComparer.OrdinalIgnoreCase);
+        Items = items.ToDictionary(i => i.ItemId);
     }
 
     public MonsterType Get(string name) => Monsters[name];
+    public int ItemValue(int itemId) =>
+        Items.TryGetValue(itemId, out var item) && item.SalePrice > 0
+            ? item.SalePrice
+            : GameConfig.ItemFallbackSalePrice;
 }

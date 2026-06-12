@@ -24,6 +24,13 @@ public static class MetaEndpoints
             ascensionShardCost = GameConfig.AscensionShardCost,
             addonAscensions = new[] { GameConfig.AddonOneAscension, GameConfig.AddonTwoAscension },
             bestiaryRanks = GameConfig.BestiaryRankKills,
+            itemFallbackSalePrice = GameConfig.ItemFallbackSalePrice,
+            items = data.Items.Values.Select(i => new
+            {
+                i.ItemId,
+                i.Name,
+                salePrice = data.ItemValue(i.ItemId)
+            }),
             monsters = data.Monsters.Values.Select(m => new
             {
                 m.Name,
@@ -95,21 +102,18 @@ public static class MetaEndpoints
         });
 
         // ---- inventory ----
-        api.MapPost("/items/sell", (SellRequest req, AccountStore store) =>
+        api.MapPost("/items/sell", (SellRequest req, AccountStore store, GameData data) =>
             store.Mutate(s =>
             {
                 if (!s.Inventory.TryGetValue(req.ItemId, out var stack) || stack.Count < req.Count || req.Count <= 0)
                     return Results.BadRequest(new { error = "quantidade inválida" });
                 stack.Count -= req.Count;
                 if (stack.Count == 0) s.Inventory.Remove(req.ItemId);
-                var gold = (long)req.Count * ItemValue(req.ItemId);
+                var gold = (long)req.Count * data.ItemValue(req.ItemId);
                 s.Gold += gold;
                 return Results.Ok(new { goldGained = gold, s.Gold });
             }));
     }
-
-    /// <summary>Flat sell value; loot rarity comes from drop chance, not price tables.</summary>
-    private static int ItemValue(int itemId) => 15 + itemId % 35;
 
     public sealed record ActiveWaifuRequest(string WaifuId);
     public sealed record PullRequest(string BannerId, int Count);

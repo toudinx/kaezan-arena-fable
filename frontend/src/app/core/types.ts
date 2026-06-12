@@ -88,6 +88,12 @@ export interface MonsterCatalogEntry {
   loot: { itemId: number; name: string; chance: number }[];
 }
 
+export interface ItemCatalogEntry {
+  itemId: number;
+  name: string;
+  salePrice: number;
+}
+
 export interface Catalog {
   waifus: WaifuDef[];
   classes: ClassDef[];
@@ -99,6 +105,8 @@ export interface Catalog {
   ascensionShardCost: number[];
   addonAscensions: number[];
   bestiaryRanks: number[];
+  itemFallbackSalePrice: number;
+  items: ItemCatalogEntry[];
   monsters: MonsterCatalogEntry[];
 }
 

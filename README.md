@@ -82,6 +82,7 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
    Dupes viram Echo Shards → **Ascensão** (+8% stats; A2/A4 desbloqueiam os addons visuais
    do outfit do Tibia, visíveis em jogo).
 5. **Mochila** — inventário com sprites reais + bestiário (ranks por abates = dano permanente).
+   Itens são vendidos pelos preços reais dos NPCs do Tibia; itens sem comprador valem 5 ouro.
 
 ## Classes e posturas
 

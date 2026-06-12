@@ -644,8 +644,11 @@ continua 100% animado pelo extractor.
 **Armadilhas.** Não reintroduzir importação estática em massa. Não extrair slots que não usamos
 (legs/feet/backpack) — mantém o repo enxuto e o paperdoll coerente com os 6 slots da T-51.
 
-### [ ] T-51 — Equipamento simplificado: 6 slots + montaria-como-equipamento
+### [x] T-51 — Equipamento simplificado: 6 slots + montaria-como-equipamento
 **Owner: Codex → Opus** · **P1 · L · backend + frontend**
+
+**Concluída (2026-06-12):** equipamento por Kaeli com 6 slots, stats do Tibia congelados por run,
+paperdoll/Mochila, persistência JSON+MySQL e montarias de boss com bônus e visual no mundo.
 
 **Reasoning do owner.** A spec é fechável (slots fixos, stats vêm dos atributos do Tibia), mas é
 **cross-cutting** (drops → inventário → equipar → agregação de stats na run → render de mount) e

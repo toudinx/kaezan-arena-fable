@@ -64,6 +64,9 @@ public sealed class AccountStore
                 Name = entry.Value.Name,
                 Count = entry.Value.Count
             }),
+        Equipment = source.Equipment.ToDictionary(
+            entry => entry.Key,
+            entry => entry.Value.ToDictionary()),
         DailyDate = source.DailyDate,
         Dailies = source.Dailies.Select(contract => new DailyContract
         {

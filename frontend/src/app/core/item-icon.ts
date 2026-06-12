@@ -1,4 +1,5 @@
 import { AfterViewInit, Component, ElementRef, ViewChild, input } from '@angular/core';
+import { ApiService } from './api.service';
 import { AssetsService } from './assets.service';
 
 /** Static Tibia item sprite (object category) rendered into a small canvas. */
@@ -14,7 +15,10 @@ export class ItemIcon implements AfterViewInit {
 
   @ViewChild('cv') cv!: ElementRef<HTMLCanvasElement>;
 
-  constructor(private readonly assets: AssetsService) {}
+  constructor(
+    private readonly assets: AssetsService,
+    private readonly api: ApiService,
+  ) {}
 
   ngAfterViewInit(): void {
     void this.assets.load().then(() => {
@@ -26,7 +30,16 @@ export class ItemIcon implements AfterViewInit {
         const ctx = canvas.getContext('2d')!;
         ctx.imageSmoothingEnabled = false;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        this.assets.drawObject(ctx, this.itemId(), 0, 0, this.size() / 32);
+        const item = this.api.catalog()?.items.find((entry) => entry.itemId === this.itemId());
+        if (item?.mountLookType) {
+          const scale = this.size() / 48;
+          const offset = (this.size() - 32 * scale) / 2;
+          this.assets.drawOutfit(
+            ctx, item.mountLookType, offset, offset, scale, 2, false, 0,
+          );
+        } else {
+          this.assets.drawObject(ctx, this.itemId(), 0, 0, this.size() / 32);
+        }
         if (++tries < 10) setTimeout(tick, 200);
       };
       tick();

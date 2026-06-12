@@ -92,7 +92,17 @@ export interface ItemCatalogEntry {
   itemId: number;
   name: string;
   salePrice: number;
+  slot: EquipmentSlot | null;
+  weaponType: string | null;
+  attack: number;
+  armor: number;
+  defense: number;
+  mountLookType: number;
+  mountSpeed: number;
 }
+
+export type EquipmentSlot = 'helmet' | 'armor' | 'weapon' | 'necklace' | 'ring' | 'mount';
+export type EquipmentLoadout = Partial<Record<EquipmentSlot, number>>;
 
 export interface Catalog {
   waifus: WaifuDef[];
@@ -146,6 +156,7 @@ export interface Account {
   activeWaifuId: string;
   bestiaryKills: Record<string, number>;
   inventory: InventoryStack[];
+  equipment: Record<string, EquipmentLoadout>;
   runsPlayed: number;
   runsWon: number;
   tierClears: Record<string, number>;
@@ -180,6 +191,14 @@ export interface OutfitDto {
   legs: number;
   feet: number;
   addons: number;
+  mountLookType: number;
+}
+
+export interface EquipmentStatsDto {
+  attackBonus: number;
+  maxHpBonus: number;
+  damageReduction: number;
+  moveSpeedPercent: number;
 }
 
 export interface PoiDto {
@@ -240,6 +259,7 @@ export interface PlayerDto {
   autoAttackReadyInMs: number;
   activeBuffs: string[];
   activeConditions: string[];
+  equipmentStats: EquipmentStatsDto;
 }
 
 export interface MonsterDto {

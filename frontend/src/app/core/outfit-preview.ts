@@ -15,6 +15,7 @@ export class OutfitPreview implements AfterViewInit, OnDestroy {
   legs = input(0);
   feet = input(0);
   addons = input(0);
+  mountLookType = input(0);
   size = input(96);
   animate = input(true);
 
@@ -24,7 +25,7 @@ export class OutfitPreview implements AfterViewInit, OnDestroy {
   constructor(private readonly assets: AssetsService) {
     effect(() => {
       // re-render when inputs change
-      this.lookType(); this.head(); this.body(); this.legs(); this.feet(); this.addons();
+      this.lookType(); this.head(); this.body(); this.legs(); this.feet(); this.addons(); this.mountLookType();
     });
   }
 
@@ -47,6 +48,7 @@ export class OutfitPreview implements AfterViewInit, OnDestroy {
     this.assets.drawOutfit(
       ctx, this.lookType(), 0, 0, scale, dir, this.animate(), now,
       this.head(), this.body(), this.legs(), this.feet(), this.addons(),
+      this.mountLookType(),
     );
     ctx.restore();
 

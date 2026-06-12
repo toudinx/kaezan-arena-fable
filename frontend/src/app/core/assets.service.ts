@@ -270,7 +270,7 @@ export class AssetsService {
   drawOutfit(
     ctx: CanvasRenderingContext2D, lookType: number, dx: number, dy: number, scale: number,
     dir: number, moving: boolean, phaseTimeMs: number,
-    head = 0, body = 0, legs = 0, feet = 0, addons = 0,
+    head = 0, body = 0, legs = 0, feet = 0, addons = 0, mountLookType = 0,
   ): void {
     const entry = this.entry('outfits', lookType);
     if (!entry) return;
@@ -285,7 +285,27 @@ export class AssetsService {
     const phase = Math.floor(phaseTimeMs / phaseDur) % phases;
     const px = Math.min(dir, group.patternX - 1);
 
+    if (mountLookType > 0) {
+      const mountEntry = this.entry('outfits', mountLookType);
+      const mountImage = mountEntry ? this.imageSync(mountEntry.file) : null;
+      const mountGroup = mountEntry?.groups.find((g) => g.kind === (moving ? 'moving' : 'idle'))
+        ?? mountEntry?.groups[0];
+      if (mountEntry && mountImage && mountGroup) {
+        const mountPhases = Math.max(
+          mountGroup.count
+            / (mountGroup.patternX * mountGroup.patternY * mountGroup.patternZ * mountGroup.layers),
+          1,
+        );
+        const mountDuration = mountGroup.phases[0]?.[0] || (moving ? 110 : 300);
+        const mountPhase = Math.floor(phaseTimeMs / mountDuration) % mountPhases;
+        const mountX = Math.min(dir, mountGroup.patternX - 1);
+        const mountIndex = mountGroup.start + this.spriteIndex(mountGroup, mountPhase, mountX, 0, 0, 0);
+        this.drawCell(ctx, mountImage, mountEntry, mountIndex, dx, dy, scale);
+      }
+    }
+
     const source = this.coloredAtlas(lookType, entry, img, head, body, legs, feet);
+    const pz = mountLookType > 0 ? Math.min(1, group.patternZ - 1) : 0;
 
     const rows: number[] = [0];
     if (group.patternY > 1 && addons) {
@@ -295,7 +315,7 @@ export class AssetsService {
 
     for (const py of rows) {
       if (py >= group.patternY) continue;
-      const index = group.start + this.spriteIndex(group, phase, px, py, 0, 0);
+      const index = group.start + this.spriteIndex(group, phase, px, py, pz, 0);
       if (index >= group.start + group.count) continue;
       this.drawCell(ctx, source, entry, index, dx, dy, scale);
     }

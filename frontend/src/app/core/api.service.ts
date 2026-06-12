@@ -56,4 +56,14 @@ export class ApiService {
     await this.request('POST', '/items/sell', { itemId, count });
     await this.refreshAccount();
   }
+
+  async equipItem(waifuId: string, slot: string, itemId: number): Promise<void> {
+    await this.request('POST', '/equipment/equip', { waifuId, slot, itemId });
+    await this.refreshAccount();
+  }
+
+  async unequipItem(waifuId: string, slot: string): Promise<void> {
+    await this.request('POST', '/equipment/unequip', { waifuId, slot });
+    await this.refreshAccount();
+  }
 }

@@ -35,6 +35,7 @@ public sealed class AccountState
     public Dictionary<string, PityState> Pity { get; set; } = [];
     public Dictionary<string, long> BestiaryKills { get; set; } = [];
     public Dictionary<int, InventoryStack> Inventory { get; set; } = [];
+    public Dictionary<string, Dictionary<string, int>> Equipment { get; set; } = [];
 
     public string DailyDate { get; set; } = "";
     public List<DailyContract> Dailies { get; set; } = [];

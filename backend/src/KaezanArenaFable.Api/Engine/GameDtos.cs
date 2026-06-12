@@ -1,7 +1,5 @@
 namespace KaezanArenaFable.Api.Engine;
 
-// ---- map payload (sent on join / floor change) ----
-
 public sealed record MapDto(
     int Floor, int W, int H,
     ushort[] Ground, ushort[] Wall, ushort[] Decor, bool[] Blocked,
@@ -9,8 +7,6 @@ public sealed record MapDto(
     List<PoiDto> Pois);
 
 public sealed record PoiDto(int Id, string Kind, int X, int Y, int ItemId, bool Used);
-
-// ---- per-tick snapshot ----
 
 public sealed record SnapshotDto(
     long Tick, long SimulationMs, int Floor,
@@ -20,7 +16,12 @@ public sealed record SnapshotDto(
     List<EventDto> Events,
     RunStateDto Run);
 
-public sealed record OutfitDto(int LookType, int Head, int Body, int Legs, int Feet, int Addons);
+public sealed record OutfitDto(
+    int LookType, int Head, int Body, int Legs, int Feet, int Addons,
+    int MountLookType = 0);
+
+public sealed record EquipmentStatsDto(
+    double AttackBonus, int MaxHpBonus, double DamageReduction, double MoveSpeedPercent);
 
 public sealed record PlayerDto(
     int Id, int X, int Y, int Dir, int Hp, int MaxHp,
@@ -29,7 +30,8 @@ public sealed record PlayerDto(
     double Gauge, List<SkillStateDto> Skills,
     string ClassId, string ClassName,
     string StanceId, string StanceName, string StanceElement, bool CanToggleStance,
-    long AutoAttackReadyInMs, List<string> ActiveBuffs, List<string> ActiveConditions);
+    long AutoAttackReadyInMs, List<string> ActiveBuffs, List<string> ActiveConditions,
+    EquipmentStatsDto EquipmentStats);
 
 public sealed record SkillStateDto(
     string Id, string Name, string Element, string Description,
@@ -42,7 +44,6 @@ public sealed record MonsterDto(
 
 public sealed record GroundItemDto(int Id, int X, int Y, int ItemId, int Count);
 
-/// <summary>Generic event bag; renderer switches on Kind.</summary>
 public sealed record EventDto(
     string Kind, int X, int Y, int ToX, int ToY, int Value,
     string Text, int ActorId, bool Crit);

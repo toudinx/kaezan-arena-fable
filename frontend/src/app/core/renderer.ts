@@ -225,6 +225,7 @@ export class GameRenderer {
             ctx, p.outfit.lookType, Math.round(pos.x * TS - cam.x), Math.round(pos.y * TS - cam.y), SCALE,
             p.dir, moving, moving ? serverNow : nowPerf,
             p.outfit.head, p.outfit.body, p.outfit.legs, p.outfit.feet, p.outfit.addons,
+            p.outfit.mountLookType,
           );
         },
       });

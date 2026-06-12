@@ -28,6 +28,9 @@ const RESUME_TOAST_MS = 2500;
             <div class="bar hp"><div class="fill" [style.width.%]="(100 * s.player.hp) / s.player.maxHp"></div></div>
             <div class="bar xp"><div class="fill" [style.width.%]="(100 * s.run.xp) / s.run.xpNext"></div></div>
             <div class="sub">Lv {{ s.run.level }} · {{ s.run.kills }} abates · 🪙 {{ s.run.gold }} · {{ s.run.tierName }}</div>
+            @if (hasEquipmentStats(s.player.equipmentStats)) {
+              <div class="gear-stats">{{ equipmentStatsLabel(s.player.equipmentStats) }}</div>
+            }
           </div>
           @if (s.run.bossHp !== null) {
             <div class="bossbar">
@@ -144,6 +147,7 @@ const RESUME_TOAST_MS = 2500;
     .bar.xp .fill { background: #7df0ff; }
     .bar.boss .fill { background: linear-gradient(90deg, #f97316, #b91c1c); }
     .sub { font-size: 11px; color: #9c9ab0; margin-top: 4px; }
+    .gear-stats { color: #2dd4bf; font-size: 10px; margin-top: 3px; }
     .bossbar { flex: 1; max-width: 420px; background: rgba(10,10,16,0.8); border: 1px solid #432; border-radius: 10px; padding: 8px 12px; }
     .bname { font-size: 13px; font-weight: 800; color: #ff8c4d; }
     .bar.boss { height: 12px; }
@@ -401,6 +405,20 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   formatTime(ms: number): string {
     const s = Math.floor(ms / 1000);
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  hasEquipmentStats(stats: { attackBonus: number; maxHpBonus: number; damageReduction: number; moveSpeedPercent: number }): boolean {
+    return !!(stats.attackBonus || stats.maxHpBonus || stats.damageReduction || stats.moveSpeedPercent);
+  }
+
+  equipmentStatsLabel(stats: { attackBonus: number; maxHpBonus: number; damageReduction: number; moveSpeedPercent: number }): string {
+    const values = [
+      stats.attackBonus ? `+${stats.attackBonus.toFixed(1)} ATK` : '',
+      stats.maxHpBonus ? `+${stats.maxHpBonus} HP` : '',
+      stats.damageReduction ? `${(stats.damageReduction * 100).toFixed(1)}% DEF` : '',
+      stats.moveSpeedPercent ? `+${(stats.moveSpeedPercent * 100).toFixed(1)}% VEL` : '',
+    ].filter(Boolean);
+    return `Equip: ${values.join(' · ')}`;
   }
 
   async again(): Promise<void> {

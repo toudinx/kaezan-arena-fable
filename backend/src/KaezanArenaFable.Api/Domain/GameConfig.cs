@@ -95,6 +95,27 @@ public static class GameConfig
     public const double NaturesEmbraceHealFraction = 0.45;
     public const double ExposedWeaknessDamageMultiplier = 1.15;
     public const double SappedStrengthDamageMultiplier = 0.90;
+    public const double PlayerDamageReductionCap = 0.60;
+
+    // ---- equipment (T-51: raw tibia attributes converted to arena-scale bonuses) ----
+    public const double EquipmentAttackScale = 0.25;
+    public const int EquipmentHpPerArmor = 6;
+    public const int EquipmentHpPerDefense = 2;
+    public const double EquipmentDamageReductionPerArmor = 0.004;
+    public const double EquipmentDamageReductionPerDefense = 0.002;
+    public const double EquipmentDamageReductionCap = 0.35;
+    public const int MountHpPerSpeed = 2;
+    public const double MountMoveSpeedPercentPerSpeed = 0.005;
+    public const double BossMountDropChance = 0.20;
+    public static int MountItemId(int lookType) => -lookType;
+    public static readonly IReadOnlyDictionary<int, int> TierMountLookTypes = new Dictionary<int, int>
+    {
+        [1] = 368, // Widow Queen
+        [2] = 370, // War Bear
+        [3] = 390, // Crystal Wolf
+        [4] = 506, // Dragonling
+        [5] = 626, // Flamesteed
+    };
 
     // ---- death / rewards ----
     public const double DefeatGoldKeptFraction = 0.5;

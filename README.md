@@ -83,6 +83,11 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
    do outfit do Tibia, visíveis em jogo).
 5. **Mochila** — inventário com sprites reais + bestiário (ranks por abates = dano permanente).
    Itens são vendidos pelos preços reais dos NPCs do Tibia; itens sem comprador valem 5 ouro.
+   Loot equipável exibe os atributos do Tibia e pode ser colocado, por Kaeli, nos slots
+   `helmet`, `armor`, `weapon`, `necklace`, `ring` e `mount`.
+6. **Equipamento** — o paperdoll da página Kaelis troca itens por clique. Os bônus são congelados
+   ao iniciar a run e aparecem no HUD; montarias raras de boss dão HP/velocidade e também mudam
+   o visual da Kaeli no mundo.
 
 ## Classes e posturas
 
@@ -104,7 +109,7 @@ Os cooldowns pertencem aos slots 1-4 e continuam correndo ao trocar de postura; 
 ```
 backend/src/KaezanArenaFable.Api/
   Domain/    GameConfig (TODAS as constantes), Waifus, Cards, GameData (monsters.json)
-  Engine/    GameWorld (tick/movimento/IA/combate), DungeonGenerator, Rng, RunManager, Snapshot
+  Engine/    GameWorld (tick/movimento/IA/combate), DungeonGenerator, Rng, RunManager, GameDtos
   Meta/      AccountStore (JSON), GachaService, DailyService, RewardService
   Hubs/      GameHub (SignalR)
   Api/       MetaEndpoints (REST /api/v1)
@@ -145,14 +150,17 @@ dotnet run -- --things "C:\Kaezan\kaezan\otclient-4.0\data\things\1500" `
   --out "..\..\frontend\public\assets\tibia" `
   --config content-config.json `
   --monsters "..\..\backend\src\KaezanArenaFable.Api\Data\monsters.json" `
-  --static-items "C:\xampp\htdocs\assets"
+  --items-out "..\..\backend\src\KaezanArenaFable.Api\Data\items.json" `
+  --items-xml "C:\Kaezan\kaezan\canary-3.4.1\data\items\items.xml" `
+  --mounts-xml "C:\Kaezan\kaezan\canary-3.4.1\data\XML\mounts.xml"
 ```
 
 O extractor decodifica o formato moderno do Tibia (catalog-content.json + appearances.dat
 protobuf + sheets BMP comprimidas com LZMA1 raw + header CIP) — mesmo algoritmo do
 `spriteappearances.cpp` do OTClient. O manifest descreve patterns (direções, addons,
 camada de máscara de cor) e o frontend recoloriza outfits em runtime com a paleta HSI
-de 133 cores do Tibia.
+de 133 cores do Tibia. O mesmo comando cruza `items.xml` para gerar slots e atributos reais,
+além dos itens sintéticos de montaria usados pelo equipamento.
 
 `--static-items` é uma fonte opcional de importação: para objetos simples de um único frame,
 o extractor normaliza os thumbnails antigos em células transparentes ancoradas no canto

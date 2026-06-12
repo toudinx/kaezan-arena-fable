@@ -46,6 +46,7 @@ public sealed class MySqlAccountRepository(
         db.SaveChanges();
 
         db.AccountWaifus.Where(row => row.AccountId == state.Id).ExecuteDelete();
+        db.AccountEquipment.Where(row => row.AccountId == state.Id).ExecuteDelete();
         db.AccountInventory.Where(row => row.AccountId == state.Id).ExecuteDelete();
         db.GachaPity.Where(row => row.AccountId == state.Id).ExecuteDelete();
         db.Bestiary.Where(row => row.AccountId == state.Id).ExecuteDelete();
@@ -69,6 +70,14 @@ public sealed class MySqlAccountRepository(
             Name = stack.Name,
             Count = stack.Count
         }));
+        db.AccountEquipment.AddRange(state.Equipment.SelectMany(waifu =>
+            waifu.Value.Select(slot => new AccountEquipmentRow
+            {
+                AccountId = state.Id,
+                WaifuId = waifu.Key,
+                Slot = slot.Key,
+                ItemId = slot.Value
+            })));
         db.GachaPity.AddRange(state.Pity.Select(entry => new GachaPityRow
         {
             AccountId = state.Id,
@@ -139,6 +148,13 @@ public sealed class MySqlAccountRepository(
 
         foreach (var row in db.AccountInventory.AsNoTracking().Where(row => row.AccountId == account.Id))
             state.Inventory[row.ItemId] = new InventoryStack { ItemId = row.ItemId, Name = row.Name, Count = row.Count };
+
+        foreach (var row in db.AccountEquipment.AsNoTracking().Where(row => row.AccountId == account.Id))
+        {
+            if (!state.Equipment.TryGetValue(row.WaifuId, out var loadout))
+                state.Equipment[row.WaifuId] = loadout = [];
+            loadout[row.Slot] = row.ItemId;
+        }
 
         foreach (var row in db.GachaPity.AsNoTracking().Where(row => row.AccountId == account.Id))
         {

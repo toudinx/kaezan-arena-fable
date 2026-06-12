@@ -84,6 +84,7 @@ public sealed class GameWorld
     public readonly WaifuDef Waifu;
     public readonly ClassDef PlayerClass;
     public readonly int Ascension;
+    public readonly EquipmentStats EquipmentStats;
     private readonly GameData _data;
     private readonly Rng _rng;
     private readonly IReadOnlyDictionary<string, long> _bestiaryKills;
@@ -137,7 +138,8 @@ public sealed class GameWorld
     public bool MapDirty { get; private set; } = true;
 
     public GameWorld(long seed, DungeonTier tier, WaifuDef waifu, int ascension,
-        GameData data, IReadOnlyDictionary<string, long> bestiaryKills)
+        GameData data, IReadOnlyDictionary<string, long> bestiaryKills,
+        EquipmentStats? equipmentStats = null)
     {
         Seed = seed;
         Tier = tier;
@@ -146,13 +148,15 @@ public sealed class GameWorld
                       ?? throw new InvalidOperationException($"classe desconhecida: {waifu.ClassId}");
         _stanceId = PlayerClass.InitialStance(waifu.Element).Id;
         Ascension = ascension;
+        EquipmentStats = equipmentStats ?? Domain.EquipmentStats.Empty;
         _data = data;
         _bestiaryKills = bestiaryKills;
         _rng = new Rng((ulong)seed);
 
         _floors = [DungeonGenerator.Generate(_rng, 0, false), DungeonGenerator.Generate(_rng, 1, true)];
 
-        var hp = (int)(waifu.BaseHp * (1 + ascension * GameConfig.AscensionAtkBonus));
+        var hp = (int)(waifu.BaseHp * (1 + ascension * GameConfig.AscensionAtkBonus))
+                 + EquipmentStats.MaxHpBonus;
         Player = new Actor
         {
             Id = _nextActorId++,
@@ -435,7 +439,8 @@ public sealed class GameWorld
 
     private int PlayerSpeed()
     {
-        var speed = GameConfig.PlayerBaseSpeed * (1 + CardValue("moveSpeedPercent"));
+        var speed = GameConfig.PlayerBaseSpeed
+                    * (1 + EquipmentStats.MoveSpeedPercent + CardValue("moveSpeedPercent"));
         if (IsBuffActive("haste")) speed *= 1.30;
         if (NowMs < _playerSlowUntilMs) speed *= _playerSlowFactor;
         return (int)speed;
@@ -513,7 +518,7 @@ public sealed class GameWorld
 
     private double PlayerAttack()
     {
-        var atk = Waifu.BaseAtk
+        var atk = (Waifu.BaseAtk + EquipmentStats.AttackBonus)
                   * (1 + GameConfig.AtkPerRunLevel * (_runLevel - 1))
                   * (1 + Ascension * GameConfig.AscensionAtkBonus)
                   * (1 + CardValue("atkPercent"));
@@ -787,6 +792,18 @@ public sealed class GameWorld
                 Count = count,
                 Name = entry.Name
             });
+        }
+
+        if (monster.IsBossActor
+            && GameConfig.TierMountLookTypes.TryGetValue(Tier.Tier, out var mountLookType)
+            && _rng.Chance(GameConfig.BossMountDropChance))
+        {
+            var itemId = GameConfig.MountItemId(mountLookType);
+            if (_data.Items.TryGetValue(itemId, out var mount))
+            {
+                AddLootedItem(mount.ItemId, mount.Name, 1);
+                Emit("pickup", monster.X, monster.Y, 0, 0, mount.ItemId, mount.Name);
+            }
         }
     }
 
@@ -1262,7 +1279,10 @@ public sealed class GameWorld
     private void DamagePlayer(int damage, string damageType, Actor source)
     {
         if (Player.Hp <= 0) return;
-        var final = damage * (1 - Math.Min(CardValue("damageReduction"), 0.6));
+        var reduction = Math.Min(
+            CardValue("damageReduction") + EquipmentStats.DamageReduction,
+            GameConfig.PlayerDamageReductionCap);
+        var final = damage * (1 - reduction);
         if (NowMs < source.SappedUntilMs)
             final *= GameConfig.SappedStrengthDamageMultiplier;
         if (IsBuffActive("shield")) final *= 0.5;
@@ -1363,18 +1383,22 @@ public sealed class GameWorld
             var item = _groundItems[i];
             if (item.Floor != Player.Floor || item.X != Player.X || item.Y != Player.Y) continue;
             _groundItems.RemoveAt(i);
-            var existing = ItemsLooted.FirstOrDefault(r => r.ItemId == item.ItemId);
-            if (existing is not null)
-            {
-                ItemsLooted.Remove(existing);
-                ItemsLooted.Add(existing with { Count = existing.Count + item.Count });
-            }
-            else
-            {
-                ItemsLooted.Add(new RewardItemDto(item.ItemId, item.Name, item.Count));
-            }
+            AddLootedItem(item.ItemId, item.Name, item.Count);
             Emit("pickup", Player.X, Player.Y, 0, 0, item.ItemId, item.Name);
         }
+    }
+
+    private void AddLootedItem(int itemId, string name, int count)
+    {
+        var existing = ItemsLooted.FirstOrDefault(item => item.ItemId == itemId);
+        if (existing is null)
+        {
+            ItemsLooted.Add(new RewardItemDto(itemId, name, count));
+            return;
+        }
+
+        ItemsLooted.Remove(existing);
+        ItemsLooted.Add(existing with { Count = existing.Count + count });
     }
 
     private void TryInteract(int x, int y)
@@ -1594,13 +1618,19 @@ public sealed class GameWorld
             Player.Id, Player.X, Player.Y, (int)Player.Facing, Player.Hp, Player.MaxHp,
             Player.FromX, Player.FromY, Player.StepDurMs, Player.StepStartMs,
             new OutfitDto(Waifu.LookType, Waifu.Head, Waifu.Body, Waifu.Legs, Waifu.Feet,
-                Ascension >= GameConfig.AddonTwoAscension ? 3 : Ascension >= GameConfig.AddonOneAscension ? 1 : 0),
+                Ascension >= GameConfig.AddonTwoAscension ? 3 : Ascension >= GameConfig.AddonOneAscension ? 1 : 0,
+                EquipmentStats.MountLookType),
             Player.TargetId, _gauge, skills,
             PlayerClass.Id, PlayerClass.Name,
             CurrentStance.Id, CurrentStance.Name, CurrentStance.Element, PlayerClass.CanToggleStance,
             Math.Max(_autoAttackReadyAtMs - NowMs, 0),
             _buffsUntilMs.Where(b => NowMs < b.Value).Select(b => b.Key).ToList(),
-            BuildActiveConditions());
+            BuildActiveConditions(),
+            new EquipmentStatsDto(
+                EquipmentStats.AttackBonus,
+                EquipmentStats.MaxHpBonus,
+                EquipmentStats.DamageReduction,
+                EquipmentStats.MoveSpeedPercent));
 
         var monsters = _monsters
             .Where(m => m.Hp > 0 && m.Floor == _currentFloor)

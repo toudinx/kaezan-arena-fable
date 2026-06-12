@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Xml.Linq;
 using Canary.Protobuf.Appearances;
 using SharpCompress.Compressors.LZMA;
 using SixLabors.ImageSharp;
@@ -21,8 +22,10 @@ internal static class Program
 
     private static int Main(string[] args)
     {
-        string? thingsDir = null, outDir = null, configPath = null, monstersPath = null, itemsOutPath = null, staticItemsDir = null;
+        string? thingsDir = null, outDir = null, configPath = null, monstersPath = null, itemsOutPath = null;
+        string? itemsXmlPath = null, mountsXmlPath = null, staticItemsDir = null;
         var dumpNames = false;
+        var itemsOnly = false;
         for (var i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -32,17 +35,21 @@ internal static class Program
                 case "--config": configPath = args[++i]; break;
                 case "--monsters": monstersPath = args[++i]; break;
                 case "--items-out": itemsOutPath = args[++i]; break;
+                case "--items-xml": itemsXmlPath = args[++i]; break;
+                case "--mounts-xml": mountsXmlPath = args[++i]; break;
+                case "--items-only": itemsOnly = true; break;
                 case "--static-items": staticItemsDir = args[++i]; break;
                 case "--dump-names": dumpNames = true; break;
             }
         }
 
-        if (thingsDir is null || outDir is null)
+        if (thingsDir is null || (!itemsOnly && outDir is null))
         {
             Console.Error.WriteLine(
                 "usage: AssetExtractor --things <things/1500 dir> --out <output dir> " +
                 "[--config content-config.json] [--monsters monsters.json] " +
-                "[--items-out items.json] " +
+                "[--items-out items.json] [--items-xml items.xml] [--mounts-xml mounts.xml] " +
+                "[--items-only] " +
                 "[--static-items <legacy assets dir>] [--dump-names]");
             return 1;
         }
@@ -50,6 +57,34 @@ internal static class Program
         var catalog = LoadCatalog(thingsDir);
         var appearances = LoadAppearances(thingsDir, catalog);
         Console.WriteLine($"appearances: {appearances.Object.Count} objects, {appearances.Outfit.Count} outfits, {appearances.Effect.Count} effects, {appearances.Missile.Count} missiles");
+
+        if (configPath is null)
+        {
+            Console.Error.WriteLine("--config is required unless --dump-names is used");
+            return 1;
+        }
+
+        var config = JsonNode.Parse(File.ReadAllText(configPath))!.AsObject();
+        var (lootIds, lootNames) = ReadLootItems(monstersPath);
+        var mountIds = ReadIdList(config, "mountIds").ToArray();
+
+        if (itemsOnly)
+        {
+            if (itemsOutPath is null)
+            {
+                Console.Error.WriteLine("--items-out is required with --items-only");
+                return 1;
+            }
+            ExportItems(
+                appearances.Object,
+                lootIds,
+                lootNames,
+                mountIds,
+                itemsXmlPath,
+                mountsXmlPath,
+                itemsOutPath);
+            return 0;
+        }
 
         var sheets = new SheetCache(thingsDir, catalog);
 
@@ -59,38 +94,14 @@ internal static class Program
             return 0;
         }
 
-        if (configPath is null)
-        {
-            Console.Error.WriteLine("--config is required unless --dump-names is used");
-            return 1;
-        }
-
-        var config = JsonNode.Parse(File.ReadAllText(configPath))!.AsObject();
         var manifest = new JsonObject();
         var staticItems = staticItemsDir is null ? null : new StaticItemSource(staticItemsDir);
 
         var outfitIds = new SortedSet<uint>(ReadIdList(config, "outfitIds"));
+        foreach (var mountId in mountIds) outfitIds.Add(mountId);
         var objectIds = new SortedSet<uint>(ReadIdList(config, "objectIds"));
-        var lootNames = new Dictionary<uint, string>();
-        if (monstersPath is not null)
-        {
-            var monsters = JsonNode.Parse(File.ReadAllText(monstersPath))!.AsArray();
-            foreach (var m in monsters)
-            {
-                var lt = m!["outfit"]?["lookType"]?.GetValue<uint>() ?? 0;
-                if (lt > 0) outfitIds.Add(lt);
-                var corpse = m["corpse"]?.GetValue<uint>() ?? 0;
-                if (corpse > 0) objectIds.Add(corpse);
-                foreach (var lootEntry in m["loot"]?.AsArray() ?? new JsonArray())
-                {
-                    var itemId = lootEntry!["itemId"]?.GetValue<uint>() ?? 0;
-                    if (itemId == 0) continue;
-                    objectIds.Add(itemId);
-                    var lootName = lootEntry["name"]?.GetValue<string>() ?? "";
-                    if (lootName.Length > 0) lootNames.TryAdd(itemId, lootName);
-                }
-            }
-        }
+        foreach (var id in lootIds) objectIds.Add(id);
+        AddMonsterAssets(monstersPath, outfitIds, objectIds);
         var objectsByName = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
         var wantedNames = config["objectsByName"]?.AsArray().Select(n => n!.GetValue<string>()).ToHashSet(StringComparer.OrdinalIgnoreCase)
                           ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -135,7 +146,14 @@ internal static class Program
         if (monstersPath is not null)
         {
             itemsOutPath ??= Path.Combine(Path.GetDirectoryName(Path.GetFullPath(monstersPath))!, "items.json");
-            ExportItems(appearances.Object, objectIds, lootNames, itemsOutPath);
+            ExportItems(
+                appearances.Object,
+                objectIds,
+                lootNames,
+                mountIds,
+                itemsXmlPath,
+                mountsXmlPath,
+                itemsOutPath);
         }
         if (staticItems is not null)
             Console.WriteLine($"static item thumbnails imported: {staticItems.Imported}");
@@ -145,34 +163,172 @@ internal static class Program
     private static IEnumerable<uint> ReadIdList(JsonObject config, string key) =>
         config[key]?.AsArray().Select(v => v!.GetValue<uint>()) ?? Enumerable.Empty<uint>();
 
+    private static (SortedSet<uint> Ids, Dictionary<uint, string> Names) ReadLootItems(string? monstersPath)
+    {
+        var ids = new SortedSet<uint>();
+        var names = new Dictionary<uint, string>();
+        if (monstersPath is null) return (ids, names);
+
+        var monsters = JsonNode.Parse(File.ReadAllText(monstersPath))!.AsArray();
+        foreach (var monster in monsters)
+        foreach (var lootEntry in monster!["loot"]?.AsArray() ?? new JsonArray())
+        {
+            var itemId = lootEntry!["itemId"]?.GetValue<uint>() ?? 0;
+            if (itemId == 0) continue;
+            ids.Add(itemId);
+            var name = lootEntry["name"]?.GetValue<string>() ?? "";
+            if (name.Length > 0) names.TryAdd(itemId, name);
+        }
+        return (ids, names);
+    }
+
+    private static void AddMonsterAssets(
+        string? monstersPath, ISet<uint> outfitIds, ISet<uint> objectIds)
+    {
+        if (monstersPath is null) return;
+        var monsters = JsonNode.Parse(File.ReadAllText(monstersPath))!.AsArray();
+        foreach (var monster in monsters)
+        {
+            var lookType = monster!["outfit"]?["lookType"]?.GetValue<uint>() ?? 0;
+            if (lookType > 0) outfitIds.Add(lookType);
+            var corpse = monster["corpse"]?.GetValue<uint>() ?? 0;
+            if (corpse > 0) objectIds.Add(corpse);
+        }
+    }
+
     private static void ExportItems(
         IEnumerable<Appearance> objects, IEnumerable<uint> ids,
-        IReadOnlyDictionary<uint, string> lootNames, string outputPath)
+        IReadOnlyDictionary<uint, string> lootNames, IEnumerable<uint> mountIds,
+        string? itemsXmlPath, string? mountsXmlPath, string outputPath)
     {
         var byId = objects.ToDictionary(a => a.Id);
+        var xmlItems = LoadXmlItems(itemsXmlPath);
         var items = new JsonArray();
         foreach (var id in ids.Distinct().OrderBy(i => i))
         {
             if (!byId.TryGetValue(id, out var app)) continue;
+            xmlItems.TryGetValue(id, out var xml);
             var appearanceName = app.Name?.ToStringUtf8() ?? "";
-            var name = appearanceName.Length > 0
+            var name = xml?.Name ?? (appearanceName.Length > 0
                 ? appearanceName
-                : lootNames.GetValueOrDefault(id, $"item {id}");
+                : lootNames.GetValueOrDefault(id, $"item {id}"));
             var salePrice = app.Flags?.Npcsaledata.Count > 0
                 ? app.Flags.Npcsaledata.Max(npc => npc.SalePrice)
                 : 0;
+            var slot = EquipmentSlot(app.Flags?.Clothes?.Slot ?? 0) ?? xml?.Slot;
+            if (slot == "weapon"
+                && string.Equals(xml?.WeaponType, "shield", StringComparison.OrdinalIgnoreCase))
+                slot = null;
             items.Add(new JsonObject
             {
                 ["itemId"] = id,
                 ["name"] = name,
-                ["salePrice"] = salePrice
+                ["salePrice"] = salePrice,
+                ["slot"] = slot,
+                ["weaponType"] = xml?.WeaponType,
+                ["attack"] = xml?.Attack ?? 0,
+                ["armor"] = xml?.Armor ?? 0,
+                ["defense"] = xml?.Defense ?? 0,
+                ["mountLookType"] = 0,
+                ["mountSpeed"] = 0
+            });
+        }
+
+        foreach (var mount in LoadMounts(mountsXmlPath, mountIds))
+        {
+            items.Add(new JsonObject
+            {
+                ["itemId"] = -(int)mount.LookType,
+                ["name"] = mount.Name,
+                ["salePrice"] = 0,
+                ["slot"] = "mount",
+                ["weaponType"] = null,
+                ["attack"] = 0,
+                ["armor"] = 0,
+                ["defense"] = 0,
+                ["mountLookType"] = mount.LookType,
+                ["mountSpeed"] = mount.Speed
             });
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outputPath))!);
-        File.WriteAllText(outputPath, items.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        var temporaryPath = outputPath + ".tmp";
+        File.WriteAllText(temporaryPath, items.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        File.Move(temporaryPath, outputPath, true);
         Console.WriteLine($"items: exported {items.Count} entries to {outputPath}");
     }
+
+    private sealed record XmlItem(
+        string Name, string? Slot, string? WeaponType, int Attack, int Armor, int Defense);
+    private sealed record MountItem(uint LookType, string Name, int Speed);
+
+    private static Dictionary<uint, XmlItem> LoadXmlItems(string? path)
+    {
+        if (path is null || !File.Exists(path)) return [];
+        return XDocument.Load(path).Root!.Elements("item")
+            .Where(item => uint.TryParse(item.Attribute("id")?.Value, out _))
+            .ToDictionary(
+                item => uint.Parse(item.Attribute("id")!.Value),
+                item =>
+                {
+                    var attributes = item.Elements("attribute")
+                        .Where(attribute => attribute.Attribute("key") is not null)
+                        .GroupBy(
+                            attribute => attribute.Attribute("key")!.Value,
+                            StringComparer.OrdinalIgnoreCase);
+                    var values = attributes.ToDictionary(
+                        group => group.Key,
+                        group => group.Last().Attribute("value")?.Value ?? "",
+                        StringComparer.OrdinalIgnoreCase);
+                    return new XmlItem(
+                        item.Attribute("name")?.Value ?? "",
+                        NormalizeXmlSlot(item.Descendants("attribute")
+                            .LastOrDefault(attribute =>
+                                string.Equals(attribute.Attribute("key")?.Value, "slot", StringComparison.OrdinalIgnoreCase))
+                            ?.Attribute("value")?.Value),
+                        values.GetValueOrDefault("weaponType"),
+                        ParseInt(values.GetValueOrDefault("attack")),
+                        ParseInt(values.GetValueOrDefault("armor")),
+                        ParseInt(values.GetValueOrDefault("defense")));
+                });
+    }
+
+    private static IEnumerable<MountItem> LoadMounts(string? path, IEnumerable<uint> wantedIds)
+    {
+        if (path is null || !File.Exists(path)) return [];
+        var wanted = wantedIds.ToHashSet();
+        return XDocument.Load(path).Root!.Elements("mount")
+            .Select(mount => new MountItem(
+                uint.Parse(mount.Attribute("clientid")!.Value),
+                mount.Attribute("name")?.Value ?? "Mount",
+                ParseInt(mount.Attribute("speed")?.Value)))
+            .Where(mount => wanted.Contains(mount.LookType))
+            .OrderBy(mount => mount.LookType)
+            .ToArray();
+    }
+
+    private static int ParseInt(string? value) =>
+        int.TryParse(value, out var parsed) ? parsed : 0;
+
+    private static string? EquipmentSlot(uint slot) => slot switch
+    {
+        1 => "helmet",
+        2 => "necklace",
+        4 => "armor",
+        5 or 6 => "weapon",
+        9 => "ring",
+        _ => null
+    };
+
+    private static string? NormalizeXmlSlot(string? slot) => slot?.ToLowerInvariant() switch
+    {
+        "head" => "helmet",
+        "armor" => "armor",
+        "hand" => "weapon",
+        "necklace" => "necklace",
+        "ring" => "ring",
+        _ => null
+    };
 
     // ----- catalog -----
 

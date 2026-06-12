@@ -25,8 +25,16 @@ public sealed class GameHub(RunManager runs, GameData data, AccountStore store) 
             };
         }
 
-        var (accountLevel, waifuId, ascension, bestiary) = store.Read(s =>
-            (s.AccountLevel, s.ActiveWaifuId, s.Ascension.GetValueOrDefault(s.ActiveWaifuId), new Dictionary<string, long>(s.BestiaryKills)));
+        var (accountLevel, waifuId, ascension, bestiary, equipment) = store.Read(s =>
+        {
+            s.Equipment.TryGetValue(s.ActiveWaifuId, out var loadout);
+            return (
+                s.AccountLevel,
+                s.ActiveWaifuId,
+                s.Ascension.GetValueOrDefault(s.ActiveWaifuId),
+                new Dictionary<string, long>(s.BestiaryKills),
+                loadout?.ToDictionary() ?? []);
+        });
 
         if (accountLevel < tierDef.RequiredAccountLevel)
             throw new HubException($"requer conta nível {tierDef.RequiredAccountLevel}");
@@ -34,7 +42,8 @@ public sealed class GameHub(RunManager runs, GameData data, AccountStore store) 
         var waifu = Waifus.ById.GetValueOrDefault(waifuId) ?? Waifus.ById[Waifus.StarterWaifuId];
         var runSeed = seed ?? Random.Shared.NextInt64(1, long.MaxValue);
 
-        var world = new GameWorld(runSeed, tierDef, waifu, ascension, data, bestiary);
+        var equipmentStats = EquipmentStatAggregator.Aggregate(equipment, data.Items);
+        var world = new GameWorld(runSeed, tierDef, waifu, ascension, data, bestiary, equipmentStats);
         runs.StartRun(Context.ConnectionId, world);
         return new { seed = runSeed, tier = tierDef.Tier, tierName = tierDef.Name, waifuId = waifu.Id, resumed = false };
     }

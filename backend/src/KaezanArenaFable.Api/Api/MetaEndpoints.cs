@@ -29,7 +29,14 @@ public static class MetaEndpoints
             {
                 i.ItemId,
                 i.Name,
-                salePrice = data.ItemValue(i.ItemId)
+                salePrice = data.ItemValue(i.ItemId),
+                i.Slot,
+                i.WeaponType,
+                i.Attack,
+                i.Armor,
+                i.Defense,
+                i.MountLookType,
+                i.MountSpeed
             }),
             monsters = data.Monsters.Values.Select(m => new
             {
@@ -62,6 +69,7 @@ public static class MetaEndpoints
                 s.ActiveWaifuId,
                 s.BestiaryKills,
                 inventory = s.Inventory.Values,
+                s.Equipment,
                 s.RunsPlayed,
                 s.RunsWon,
                 s.TierClears,
@@ -113,6 +121,66 @@ public static class MetaEndpoints
                 s.Gold += gold;
                 return Results.Ok(new { goldGained = gold, s.Gold });
             }));
+
+        api.MapPost("/equipment/equip", (EquipRequest req, AccountStore store, GameData data) =>
+            store.Mutate(s =>
+            {
+                if (!s.OwnedWaifus.Contains(req.WaifuId))
+                    return Results.BadRequest(new { error = "Kaeli não possuída" });
+                if (!EquipmentSlots.IsValid(req.Slot))
+                    return Results.BadRequest(new { error = "slot inválido" });
+                if (!data.Items.TryGetValue(req.ItemId, out var item) || item.Slot != req.Slot)
+                    return Results.BadRequest(new { error = "item incompatível com o slot" });
+                if (!s.Inventory.TryGetValue(req.ItemId, out var stack) || stack.Count <= 0)
+                    return Results.BadRequest(new { error = "item não está na Mochila" });
+
+                if (!s.Equipment.TryGetValue(req.WaifuId, out var loadout))
+                    s.Equipment[req.WaifuId] = loadout = [];
+
+                stack.Count--;
+                if (stack.Count == 0) s.Inventory.Remove(req.ItemId);
+
+                if (loadout.TryGetValue(req.Slot, out var previousItemId)
+                    && data.Items.TryGetValue(previousItemId, out var previous))
+                {
+                    if (s.Inventory.TryGetValue(previousItemId, out var previousStack))
+                        previousStack.Count++;
+                    else
+                        s.Inventory[previousItemId] = new InventoryStack
+                        {
+                            ItemId = previous.ItemId,
+                            Name = previous.Name,
+                            Count = 1
+                        };
+                }
+
+                loadout[req.Slot] = req.ItemId;
+                return Results.Ok(new { req.WaifuId, req.Slot, req.ItemId });
+            }));
+
+        api.MapPost("/equipment/unequip", (UnequipRequest req, AccountStore store, GameData data) =>
+            store.Mutate(s =>
+            {
+                if (!EquipmentSlots.IsValid(req.Slot))
+                    return Results.BadRequest(new { error = "slot inválido" });
+                if (!s.Equipment.TryGetValue(req.WaifuId, out var loadout)
+                    || !loadout.Remove(req.Slot, out var itemId)
+                    || !data.Items.TryGetValue(itemId, out var item))
+                    return Results.BadRequest(new { error = "slot vazio" });
+
+                if (s.Inventory.TryGetValue(itemId, out var stack))
+                    stack.Count++;
+                else
+                    s.Inventory[itemId] = new InventoryStack
+                    {
+                        ItemId = item.ItemId,
+                        Name = item.Name,
+                        Count = 1
+                    };
+
+                if (loadout.Count == 0) s.Equipment.Remove(req.WaifuId);
+                return Results.Ok(new { req.WaifuId, req.Slot, itemId });
+            }));
     }
 
     public sealed record ActiveWaifuRequest(string WaifuId);
@@ -120,4 +188,6 @@ public static class MetaEndpoints
     public sealed record AscendRequest(string WaifuId);
     public sealed record ClaimRequest(string ContractId);
     public sealed record SellRequest(int ItemId, int Count);
+    public sealed record EquipRequest(string WaifuId, string Slot, int ItemId);
+    public sealed record UnequipRequest(string WaifuId, string Slot);
 }

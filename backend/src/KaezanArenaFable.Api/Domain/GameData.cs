@@ -25,7 +25,17 @@ public sealed record MonsterAttack(
     bool IsHealing = false);
 
 public sealed record MonsterLoot(int ItemId, string Name, int Chance, int MaxCount);
-public sealed record ItemType(int ItemId, string Name, int SalePrice);
+public sealed record ItemType(
+    int ItemId,
+    string Name,
+    int SalePrice,
+    string? Slot = null,
+    string? WeaponType = null,
+    int Attack = 0,
+    int Armor = 0,
+    int Defense = 0,
+    int MountLookType = 0,
+    int MountSpeed = 0);
 
 public sealed record MonsterType(
     string Name, string Description, int Experience, int Health, int Speed, int Corpse,
@@ -59,6 +69,7 @@ public sealed class GameData
     }
 
     public MonsterType Get(string name) => Monsters[name];
+    public ItemType GetItem(int itemId) => Items[itemId];
     public int ItemValue(int itemId) =>
         Items.TryGetValue(itemId, out var item) && item.SalePrice > 0
             ? item.SalePrice

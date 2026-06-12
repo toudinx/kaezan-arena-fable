@@ -2,1091 +2,2677 @@
   {
     "itemId": 236,
     "name": "strong health potion",
-    "salePrice": 115
+    "salePrice": 115,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 237,
     "name": "strong mana potion",
-    "salePrice": 108
+    "salePrice": 108,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 238,
     "name": "great mana potion",
-    "salePrice": 158
+    "salePrice": 158,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 266,
     "name": "health potion",
-    "salePrice": 50
+    "salePrice": 50,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 268,
     "name": "mana potion",
-    "salePrice": 56
+    "salePrice": 56,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 307,
     "name": "item 307",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 308,
     "name": "item 308",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 309,
     "name": "item 309",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 310,
     "name": "item 310",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 311,
     "name": "item 311",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 312,
     "name": "item 312",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 313,
     "name": "item 313",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 314,
     "name": "item 314",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 315,
     "name": "item 315",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 351,
     "name": "item 351",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 352,
     "name": "item 352",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 353,
     "name": "item 353",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 354,
     "name": "item 354",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 355,
     "name": "item 355",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 356,
     "name": "item 356",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 357,
     "name": "item 357",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 358,
     "name": "item 358",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 359,
     "name": "item 359",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 360,
     "name": "item 360",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 361,
     "name": "item 361",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 362,
     "name": "item 362",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 363,
     "name": "item 363",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 364,
     "name": "item 364",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 365,
     "name": "item 365",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 366,
     "name": "item 366",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 367,
     "name": "item 367",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 369,
     "name": "item 369",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 386,
-    "name": "item 386",
-    "salePrice": 0
+    "name": "dirt floor",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 416,
-    "name": "item 416",
-    "salePrice": 0
+    "name": "stone floor",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 418,
-    "name": "item 418",
-    "salePrice": 0
+    "name": "stone floor",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 433,
-    "name": "item 433",
-    "salePrice": 0
+    "name": "ladder",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 499,
     "name": "item 499",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 500,
     "name": "item 500",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 501,
     "name": "item 501",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 502,
     "name": "item 502",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 503,
     "name": "item 503",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 504,
     "name": "item 504",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 727,
     "name": "item 727",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 728,
     "name": "item 728",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 729,
     "name": "item 729",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 730,
     "name": "item 730",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 958,
-    "name": "item 958",
-    "salePrice": 0
+    "name": "dead tree",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1047,
     "name": "item 1047",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1048,
     "name": "item 1048",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1112,
     "name": "item 1112",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1113,
     "name": "item 1113",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1114,
     "name": "item 1114",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1115,
     "name": "item 1115",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1116,
     "name": "item 1116",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1117,
     "name": "item 1117",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1118,
     "name": "item 1118",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1119,
     "name": "item 1119",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1120,
     "name": "item 1120",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1121,
     "name": "item 1121",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1122,
     "name": "item 1122",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1772,
     "name": "item 1772",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1773,
     "name": "item 1773",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1774,
     "name": "item 1774",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 1775,
     "name": "item 1775",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 2472,
     "name": "chest",
-    "salePrice": 10
+    "salePrice": 10,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 2478,
     "name": "treasure chest",
-    "salePrice": 1000
+    "salePrice": 1000,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 2828,
     "name": "book",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 2842,
     "name": "book",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 2920,
     "name": "torch",
-    "salePrice": 5
+    "salePrice": 5,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3003,
     "name": "rope",
-    "salePrice": 100
+    "salePrice": 100,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3007,
     "name": "crystal ring",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": "ring",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3017,
     "name": "silver brooch",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3027,
     "name": "black pearl",
-    "salePrice": 560
+    "salePrice": 560,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3029,
     "name": "small sapphire",
-    "salePrice": 500
+    "salePrice": 500,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3031,
     "name": "gold coin",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3033,
     "name": "small amethyst",
-    "salePrice": 400
+    "salePrice": 400,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3035,
     "name": "platinum coin",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3045,
     "name": "strange talisman",
-    "salePrice": 100
+    "salePrice": 100,
+    "slot": "necklace",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3046,
     "name": "magic light wand",
-    "salePrice": 120
+    "salePrice": 120,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3051,
     "name": "energy ring",
-    "salePrice": 2000
+    "salePrice": 2000,
+    "slot": "ring",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3069,
     "name": "necrotic rod",
-    "salePrice": 5000
+    "salePrice": 5000,
+    "slot": "weapon",
+    "weaponType": "wand",
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3114,
     "name": "skull",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3115,
     "name": "bone",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3147,
     "name": "blank rune",
-    "salePrice": 20
+    "salePrice": 20,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3264,
     "name": "sword",
-    "salePrice": 85
+    "salePrice": 85,
+    "slot": "weapon",
+    "weaponType": "sword",
+    "attack": 14,
+    "armor": 0,
+    "defense": 12,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3265,
     "name": "two handed sword",
-    "salePrice": 950
+    "salePrice": 950,
+    "slot": null,
+    "weaponType": "sword",
+    "attack": 30,
+    "armor": 0,
+    "defense": 25,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3266,
     "name": "battle axe",
-    "salePrice": 235
+    "salePrice": 235,
+    "slot": null,
+    "weaponType": "axe",
+    "attack": 25,
+    "armor": 0,
+    "defense": 10,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3269,
     "name": "halberd",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": "axe",
+    "attack": 35,
+    "armor": 0,
+    "defense": 14,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3273,
     "name": "sabre",
-    "salePrice": 35
+    "salePrice": 35,
+    "slot": "weapon",
+    "weaponType": "sword",
+    "attack": 12,
+    "armor": 0,
+    "defense": 10,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3274,
     "name": "axe",
-    "salePrice": 20
+    "salePrice": 20,
+    "slot": "weapon",
+    "weaponType": "axe",
+    "attack": 12,
+    "armor": 0,
+    "defense": 6,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3275,
     "name": "double axe",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": "axe",
+    "attack": 35,
+    "armor": 0,
+    "defense": 12,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3276,
     "name": "hatchet",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": "weapon",
+    "weaponType": "axe",
+    "attack": 15,
+    "armor": 0,
+    "defense": 8,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3277,
     "name": "spear",
-    "salePrice": 10
+    "salePrice": 10,
+    "slot": "weapon",
+    "weaponType": "distance",
+    "attack": 25,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3282,
     "name": "morning star",
-    "salePrice": 430
+    "salePrice": 430,
+    "slot": "weapon",
+    "weaponType": "club",
+    "attack": 25,
+    "armor": 0,
+    "defense": 11,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3285,
     "name": "longsword",
-    "salePrice": 160
+    "salePrice": 160,
+    "slot": "weapon",
+    "weaponType": "sword",
+    "attack": 17,
+    "armor": 0,
+    "defense": 14,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3286,
     "name": "mace",
-    "salePrice": 90
+    "salePrice": 90,
+    "slot": "weapon",
+    "weaponType": "club",
+    "attack": 16,
+    "armor": 0,
+    "defense": 11,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3287,
     "name": "throwing star",
-    "salePrice": 42
+    "salePrice": 42,
+    "slot": "weapon",
+    "weaponType": "distance",
+    "attack": 30,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3292,
     "name": "combat knife",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": "weapon",
+    "weaponType": "sword",
+    "attack": 8,
+    "armor": 0,
+    "defense": 6,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3294,
     "name": "short sword",
-    "salePrice": 30
+    "salePrice": 30,
+    "slot": "weapon",
+    "weaponType": "sword",
+    "attack": 11,
+    "armor": 0,
+    "defense": 11,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3300,
     "name": "katana",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": "weapon",
+    "weaponType": "sword",
+    "attack": 16,
+    "armor": 0,
+    "defense": 12,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3307,
     "name": "scimitar",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": "weapon",
+    "weaponType": "sword",
+    "attack": 19,
+    "armor": 0,
+    "defense": 13,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3308,
     "name": "machete",
-    "salePrice": 35
+    "salePrice": 35,
+    "slot": "weapon",
+    "weaponType": "sword",
+    "attack": 12,
+    "armor": 0,
+    "defense": 9,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3311,
     "name": "clerical mace",
-    "salePrice": 540
+    "salePrice": 540,
+    "slot": "weapon",
+    "weaponType": "club",
+    "attack": 28,
+    "armor": 0,
+    "defense": 15,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3316,
     "name": "orcish axe",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": "weapon",
+    "weaponType": "axe",
+    "attack": 23,
+    "armor": 0,
+    "defense": 12,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3347,
     "name": "hunting spear",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": "weapon",
+    "weaponType": "distance",
+    "attack": 32,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3349,
     "name": "crossbow",
-    "salePrice": 500
+    "salePrice": 500,
+    "slot": null,
+    "weaponType": "distance",
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3351,
     "name": "steel helmet",
-    "salePrice": 580
+    "salePrice": 580,
+    "slot": "helmet",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 6,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3354,
     "name": "brass helmet",
-    "salePrice": 120
+    "salePrice": 120,
+    "slot": "helmet",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 3,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3355,
     "name": "leather helmet",
-    "salePrice": 12
+    "salePrice": 12,
+    "slot": "helmet",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 1,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3357,
     "name": "plate armor",
-    "salePrice": 1200
+    "salePrice": 1200,
+    "slot": "armor",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 10,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3358,
     "name": "chain armor",
-    "salePrice": 200
+    "salePrice": 200,
+    "slot": "armor",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 6,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3362,
     "name": "studded legs",
-    "salePrice": 50
+    "salePrice": 50,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 2,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3367,
     "name": "viking helmet",
-    "salePrice": 265
+    "salePrice": 265,
+    "slot": "helmet",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 4,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3372,
     "name": "brass legs",
-    "salePrice": 195
+    "salePrice": 195,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 5,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3374,
     "name": "legion helmet",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": "helmet",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 4,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3376,
     "name": "studded helmet",
-    "salePrice": 63
+    "salePrice": 63,
+    "slot": "helmet",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 2,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3377,
     "name": "scale armor",
-    "salePrice": 260
+    "salePrice": 260,
+    "slot": "armor",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 9,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3378,
     "name": "studded armor",
-    "salePrice": 90
+    "salePrice": 90,
+    "slot": "armor",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 5,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3409,
     "name": "steel shield",
-    "salePrice": 240
+    "salePrice": 240,
+    "slot": null,
+    "weaponType": "shield",
+    "attack": 0,
+    "armor": 0,
+    "defense": 21,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3410,
     "name": "plate shield",
-    "salePrice": 125
+    "salePrice": 125,
+    "slot": null,
+    "weaponType": "shield",
+    "attack": 0,
+    "armor": 0,
+    "defense": 17,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3413,
     "name": "battle shield",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": "shield",
+    "attack": 0,
+    "armor": 0,
+    "defense": 23,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3426,
     "name": "studded shield",
-    "salePrice": 50
+    "salePrice": 50,
+    "slot": null,
+    "weaponType": "shield",
+    "attack": 0,
+    "armor": 0,
+    "defense": 15,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3432,
     "name": "ancient shield",
-    "salePrice": 5000
+    "salePrice": 5000,
+    "slot": null,
+    "weaponType": "shield",
+    "attack": 0,
+    "armor": 0,
+    "defense": 27,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3446,
     "name": "bolt",
-    "salePrice": 4
+    "salePrice": 4,
+    "slot": null,
+    "weaponType": "ammunition",
+    "attack": 30,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3448,
     "name": "poison arrow",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": "ammunition",
+    "attack": 23,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3449,
     "name": "burst arrow",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": "ammunition",
+    "attack": 27,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3450,
     "name": "power bolt",
-    "salePrice": 7
+    "salePrice": 7,
+    "slot": null,
+    "weaponType": "ammunition",
+    "attack": 40,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3471,
     "name": "cleaver",
-    "salePrice": 15
+    "salePrice": 15,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3492,
     "name": "worm",
-    "salePrice": 2
+    "salePrice": 2,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3557,
     "name": "plate legs",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 7,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3559,
     "name": "leather legs",
-    "salePrice": 10
+    "salePrice": 10,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 1,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3565,
     "name": "cape",
-    "salePrice": 9
+    "salePrice": 9,
+    "slot": "armor",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 1,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3574,
     "name": "mystic turban",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": "helmet",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 1,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3577,
     "name": "meat",
-    "salePrice": 15
+    "salePrice": 15,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3578,
     "name": "fish",
-    "salePrice": 10
+    "salePrice": 10,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3582,
     "name": "ham",
-    "salePrice": 16
+    "salePrice": 16,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3583,
     "name": "dragon ham",
-    "salePrice": 25
+    "salePrice": 25,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3595,
     "name": "carrot",
-    "salePrice": 8
+    "salePrice": 8,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3598,
     "name": "cookie",
-    "salePrice": 7
+    "salePrice": 7,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3602,
     "name": "brown bread",
-    "salePrice": 6
+    "salePrice": 6,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3607,
     "name": "cheese",
-    "salePrice": 12
+    "salePrice": 12,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3661,
     "name": "grave flower",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3731,
     "name": "fire mushroom",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3732,
     "name": "green mushroom",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3740,
     "name": "shadow herb",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 3998,
     "name": "dead snake",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5878,
     "name": "minotaur leather",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5879,
     "name": "spider silk",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5909,
     "name": "white piece of cloth",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5913,
     "name": "brown piece of cloth",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5954,
     "name": "demon horn",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5961,
-    "name": "item 5961",
-    "salePrice": 0
+    "name": "dead spider",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5962,
-    "name": "item 5962",
-    "salePrice": 0
+    "name": "dead cyclops",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5963,
-    "name": "item 5963",
-    "salePrice": 0
+    "name": "slain skeleton",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5964,
-    "name": "item 5964",
-    "salePrice": 0
+    "name": "dead rat",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5966,
-    "name": "item 5966",
-    "salePrice": 0
+    "name": "dead orc",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5967,
-    "name": "item 5967",
-    "salePrice": 0
+    "name": "dead rotworm",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5969,
-    "name": "item 5969",
-    "salePrice": 0
+    "name": "dead minotaur",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5972,
-    "name": "item 5972",
-    "salePrice": 0
+    "name": "slain skeleton",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5973,
-    "name": "item 5973",
-    "salePrice": 0
+    "name": "dead dragon",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5974,
-    "name": "item 5974",
-    "salePrice": 0
+    "name": "dead spider",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5976,
-    "name": "item 5976",
-    "salePrice": 0
+    "name": "slain ghoul",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5977,
-    "name": "item 5977",
-    "salePrice": 0
+    "name": "dead giant spider",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5979,
-    "name": "item 5979",
-    "salePrice": 0
+    "name": "dead orc",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5980,
-    "name": "item 5980",
-    "salePrice": 0
+    "name": "dead orc",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5981,
-    "name": "item 5981",
-    "salePrice": 0
+    "name": "dead minotaur",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5982,
-    "name": "item 5982",
-    "salePrice": 0
+    "name": "dead minotaur",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5984,
-    "name": "item 5984",
-    "salePrice": 0
+    "name": "dead dragon",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5985,
-    "name": "item 5985",
-    "salePrice": 0
+    "name": "dead fire devil",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5993,
-    "name": "item 5993",
-    "salePrice": 0
+    "name": "remains of a ghost",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5995,
-    "name": "item 5995",
-    "salePrice": 0
+    "name": "slain demon",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5996,
-    "name": "item 5996",
-    "salePrice": 0
+    "name": "dead orc",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 5999,
-    "name": "item 5999",
-    "salePrice": 0
+    "name": "dead behemoth",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 6004,
-    "name": "item 6004",
-    "salePrice": 0
+    "name": "remains of a mummy",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 6006,
-    "name": "item 6006",
-    "salePrice": 0
+    "name": "slain vampire",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 6008,
-    "name": "item 6008",
-    "salePrice": 0
+    "name": "dead orc",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 6069,
-    "name": "item 6069",
-    "salePrice": 0
+    "name": "dead carrion worm",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 7363,
     "name": "piercing bolt",
-    "salePrice": 5
+    "salePrice": 5,
+    "slot": null,
+    "weaponType": "ammunition",
+    "attack": 33,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 7368,
     "name": "assassin star",
-    "salePrice": 100
+    "salePrice": 100,
+    "slot": "weapon",
+    "weaponType": "distance",
+    "attack": 65,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 7378,
     "name": "royal spear",
-    "salePrice": 15
+    "salePrice": 15,
+    "slot": "weapon",
+    "weaponType": "distance",
+    "attack": 35,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 7642,
     "name": "great spirit potion",
-    "salePrice": 254
+    "salePrice": 254,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 7643,
     "name": "ultimate health potion",
-    "salePrice": 379
+    "salePrice": 379,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 8031,
     "name": "spider fangs",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 8119,
-    "name": "item 8119",
-    "salePrice": 0
+    "name": "dead rotworm queen",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 8136,
-    "name": "item 8136",
-    "salePrice": 0
+    "name": "remains of an elemental",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 8143,
     "name": "gland",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 9647,
     "name": "demonic skeletal hand",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 9649,
     "name": "gauze bandage",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 9657,
     "name": "cyclops toe",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 9685,
     "name": "vampire teeth",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 9690,
     "name": "ghostly tissue",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 9692,
     "name": "lump of dirt",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 10196,
     "name": "orc tooth",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 10275,
     "name": "carrion worm fang",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 10291,
     "name": "rotten piece of cloth",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 10320,
     "name": "book of necromantic rituals",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11447,
     "name": "battle stone",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11449,
     "name": "blood preservation",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11451,
     "name": "broken crossbow",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11453,
     "name": "broken helmet",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11457,
     "name": "dragon\u0027s tail",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11466,
     "name": "flask of embalming fluid",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11467,
     "name": "ghoul snack",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11472,
     "name": "minotaur horn",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11473,
     "name": "purple robe",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11475,
     "name": "necromantic robe",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11477,
     "name": "orcish gear",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11479,
     "name": "orc leather",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11480,
     "name": "skull belt",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11481,
     "name": "pelvis bone",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11483,
     "name": "piece of archer armor",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11485,
     "name": "poison spider shell",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 11513,
     "name": "small pitchfork",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 12600,
     "name": "coal",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 18074,
-    "name": "item 18074",
-    "salePrice": 0
+    "name": "dead black knight",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 18174,
-    "name": "item 18174",
-    "salePrice": 0
+    "name": "dead necromancer",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 23986,
     "name": "heavy old tome",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
   },
   {
     "itemId": 50194,
     "name": "light bandana",
-    "salePrice": 0
+    "salePrice": 0,
+    "slot": "helmet",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 3,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": -368,
+    "name": "Widow Queen",
+    "salePrice": 0,
+    "slot": "mount",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 368,
+    "mountSpeed": 10
+  },
+  {
+    "itemId": -370,
+    "name": "War Bear",
+    "salePrice": 0,
+    "slot": "mount",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 370,
+    "mountSpeed": 10
+  },
+  {
+    "itemId": -390,
+    "name": "Crystal Wolf",
+    "salePrice": 0,
+    "slot": "mount",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 390,
+    "mountSpeed": 10
+  },
+  {
+    "itemId": -506,
+    "name": "Dragonling",
+    "salePrice": 0,
+    "slot": "mount",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 506,
+    "mountSpeed": 10
+  },
+  {
+    "itemId": -626,
+    "name": "Flamesteed",
+    "salePrice": 0,
+    "slot": "mount",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 626,
+    "mountSpeed": 10
   }
 ]

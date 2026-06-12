@@ -1,5 +1,5 @@
 import { AssetsService } from './assets.service';
-import { EventDto, MapDto, MonsterDto, PlayerDto, SnapshotDto, TICK_MS } from './types';
+import { EventDto, MapDto, MonsterDto, PlayerDto, SnapshotDto } from './types';
 
 const TILE = 32;
 const SCALE = 2;
@@ -88,7 +88,8 @@ export class GameRenderer {
 
   private serverNow(nowPerf: number): number {
     if (!this.snapshot) return 0;
-    return this.snapshot.tick * TICK_MS + (nowPerf - this.snapArrival);
+    if (this.snapshot.run.offer) return this.snapshot.simulationMs;
+    return this.snapshot.simulationMs + (nowPerf - this.snapArrival);
   }
 
   private actorRenderPos(a: PlayerDto | MonsterDto, serverNow: number): { x: number; y: number } {

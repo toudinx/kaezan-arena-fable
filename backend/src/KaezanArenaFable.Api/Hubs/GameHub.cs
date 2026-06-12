@@ -8,10 +8,22 @@ namespace KaezanArenaFable.Api.Hubs;
 /// <summary>Realtime game channel: one active run per connection.</summary>
 public sealed class GameHub(RunManager runs, GameData data, AccountStore store) : Hub
 {
-    public object JoinRun(int tier, long? seed)
+    public object JoinRun(int tier, long? seed = null, bool resume = false)
     {
         var tierDef = GameConfig.Tiers.FirstOrDefault(t => t.Tier == tier)
                       ?? throw new HubException("tier desconhecido");
+
+        if (resume && runs.TryResumeRun(Context.ConnectionId, out var resumedWorld) && resumedWorld is not null)
+        {
+            return new
+            {
+                seed = resumedWorld.Seed,
+                tier = resumedWorld.Tier.Tier,
+                tierName = resumedWorld.Tier.Name,
+                waifuId = resumedWorld.Waifu.Id,
+                resumed = true
+            };
+        }
 
         var (accountLevel, waifuId, ascension, bestiary) = store.Read(s =>
             (s.AccountLevel, s.ActiveWaifuId, s.Ascension.GetValueOrDefault(s.ActiveWaifuId), new Dictionary<string, long>(s.BestiaryKills)));
@@ -24,7 +36,7 @@ public sealed class GameHub(RunManager runs, GameData data, AccountStore store) 
 
         var world = new GameWorld(runSeed, tierDef, waifu, ascension, data, bestiary);
         runs.StartRun(Context.ConnectionId, world);
-        return new { seed = runSeed, tier = tierDef.Tier, tierName = tierDef.Name, waifuId = waifu.Id };
+        return new { seed = runSeed, tier = tierDef.Tier, tierName = tierDef.Name, waifuId = waifu.Id, resumed = false };
     }
 
     public void Move(int dx, int dy) =>
@@ -36,14 +48,16 @@ public sealed class GameHub(RunManager runs, GameData data, AccountStore store) 
     public void CastSkill(int slot) =>
         runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.CastSkill, slot, 0, null));
 
+    public void ToggleStance() =>
+        runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.ToggleStance, 0, 0, null));
+
     public void Interact(int x, int y) =>
         runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.Interact, x, y, null));
 
     public void ChooseCard(string cardId) =>
         runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.ChooseCard, 0, 0, cardId));
 
-    public void Abandon() =>
-        runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.Abandon, 0, 0, null));
+    public void Abandon() => runs.AbandonRun(Context.ConnectionId);
 
     public override Task OnDisconnectedAsync(Exception? exception)
     {

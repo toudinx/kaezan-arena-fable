@@ -15,7 +15,8 @@ public static class MetaEndpoints
         api.MapGet("/catalog", (GameData data) => Results.Ok(new
         {
             waifus = Waifus.All,
-            skills = Waifus.Skills.Values,
+            classes = Classes.All,
+            skills = Classes.Skills.Values,
             cards = Cards.All,
             tiers = GameConfig.Tiers,
             banners = GachaService.Banners,

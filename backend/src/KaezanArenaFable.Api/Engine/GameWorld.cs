@@ -21,6 +21,10 @@ public sealed class Actor
     public long NextWanderAtMs;
     public long NextVoiceAtMs;
     public int TargetId;
+    public long LastSawPlayerAtMs;
+    public long AggroOutOfRangeSinceMs;
+    public long ExposedUntilMs;
+    public long SappedUntilMs;
     public bool IsBossActor;
     public double StatMult = 1.0;
 
@@ -45,7 +49,7 @@ public sealed class Poi
     public bool Used;
 }
 
-public enum CommandKind { SetMoveDir, SetTarget, CastSkill, Interact, ChooseCard, Abandon }
+public enum CommandKind { SetMoveDir, SetTarget, CastSkill, ToggleStance, Interact, ChooseCard, Abandon }
 
 public sealed record Command(CommandKind Kind, int A, int B, string? S);
 
@@ -54,18 +58,21 @@ public sealed record Command(CommandKind Kind, int A, int B, string? S);
 /// Movement, monster AI, combat, loot and run-cards all live here.
 /// Deterministic for a given seed + command timeline.
 /// </summary>
+/// Persistence belongs to Meta and is only invoked at run boundaries; never add DB/EF access here.
 public sealed class GameWorld
 {
     public readonly long Seed;
     public readonly DungeonTier Tier;
     public readonly WaifuDef Waifu;
+    public readonly ClassDef PlayerClass;
     public readonly int Ascension;
     private readonly GameData _data;
     private readonly Rng _rng;
     private readonly IReadOnlyDictionary<string, long> _bestiaryKills;
 
     public long TickCount { get; private set; }
-    private long NowMs => TickCount * GameConfig.TickMs;
+    private long _simulationMs;
+    private long NowMs => _simulationMs;
 
     private readonly DungeonFloor[] _floors;
     private int _currentFloor;
@@ -87,6 +94,7 @@ public sealed class GameWorld
     private double _gauge;
     private readonly Dictionary<string, int> _cards = [];
     private List<CardOfferDto>? _pendingOffer;
+    private long _cardOfferStartedTick;
     private int _queuedOffers;
     public Dictionary<string, int> KillsBySpecies { get; } = [];
     public List<RewardItemDto> ItemsLooted { get; } = [];
@@ -94,10 +102,13 @@ public sealed class GameWorld
     public int ChestsOpened => _chestsOpened;
 
     // player combat state
-    private readonly SkillDef[] _skills;
     private readonly long[] _skillReadyAtMs = new long[4];
+    private string _stanceId;
     private long _autoAttackReadyAtMs;
     private int _moveDirX, _moveDirY; // held movement direction (-1..1)
+    private int _bufferedMoveDirX, _bufferedMoveDirY;
+    private bool _hasBufferedMoveDir;
+    private long _moveDirChangedAtMs;
     private readonly Dictionary<string, long> _buffsUntilMs = [];
     private double _regenCarry;
 
@@ -110,6 +121,9 @@ public sealed class GameWorld
         Seed = seed;
         Tier = tier;
         Waifu = waifu;
+        PlayerClass = Classes.ById.GetValueOrDefault(waifu.ClassId)
+                      ?? throw new InvalidOperationException($"classe desconhecida: {waifu.ClassId}");
+        _stanceId = PlayerClass.InitialStance(waifu.Element).Id;
         Ascension = ascension;
         _data = data;
         _bestiaryKills = bestiaryKills;
@@ -130,14 +144,6 @@ public sealed class GameWorld
             Hp = hp,
             MaxHp = hp
         };
-
-        _skills =
-        [
-            Waifus.Skills[waifu.Skill1],
-            Waifus.Skills[waifu.Skill2],
-            Waifus.Skills[waifu.Skill3],
-            Waifus.Skills[waifu.Ultimate]
-        ];
 
         SpawnFloorMonsters(0);
         SpawnFloorMonsters(1);
@@ -236,8 +242,9 @@ public sealed class GameWorld
         lock (_commandLock) _commands.Enqueue(cmd);
     }
 
-    private void DrainCommands()
+    private void DrainCommands(bool cardPauseAtStart)
     {
+        var cardPause = cardPauseAtStart;
         while (true)
         {
             Command cmd;
@@ -246,7 +253,12 @@ public sealed class GameWorld
                 if (_commands.Count == 0) return;
                 cmd = _commands.Dequeue();
             }
+
+            if (cardPause && cmd.Kind is not (CommandKind.SetMoveDir or CommandKind.ChooseCard or CommandKind.Abandon))
+                continue;
+
             Apply(cmd);
+            cardPause |= _pendingOffer is not null;
         }
     }
 
@@ -256,14 +268,16 @@ public sealed class GameWorld
         switch (cmd.Kind)
         {
             case CommandKind.SetMoveDir:
-                _moveDirX = Math.Clamp(cmd.A, -1, 1);
-                _moveDirY = Math.Clamp(cmd.B, -1, 1);
+                SetMoveDirection(cmd.A, cmd.B);
                 break;
             case CommandKind.SetTarget:
                 Player.TargetId = _monsters.Any(m => m.Id == cmd.A && m.Hp > 0) ? cmd.A : 0;
                 break;
             case CommandKind.CastSkill:
                 TryCastSkill(cmd.A);
+                break;
+            case CommandKind.ToggleStance:
+                ToggleStance();
                 break;
             case CommandKind.Interact:
                 TryInteract(cmd.A, cmd.B);
@@ -286,12 +300,31 @@ public sealed class GameWorld
 
         if (Ended is null)
         {
-            DrainCommands();
-            TickPlayerMovement();
-            TickPlayerCombat();
-            TickPlayerRegen();
-            TickMonsters();
-            TickPickup();
+            var cardPauseAtStart = _pendingOffer is not null;
+            if (!cardPauseAtStart)
+                _simulationMs += GameConfig.TickMs;
+
+            DrainCommands(cardPauseAtStart);
+
+            if (Ended is null && _pendingOffer is not null
+                && (TickCount - _cardOfferStartedTick) * GameConfig.TickMs >= GameConfig.CardOfferTimeoutMs)
+                ChooseCard(_pendingOffer[0].Id);
+
+            if (Ended is null && _pendingOffer is null)
+            {
+                if (cardPauseAtStart)
+                    _simulationMs += GameConfig.TickMs;
+
+                TickPlayerMovement();
+                TickPlayerCombat();
+
+                if (_pendingOffer is null)
+                {
+                    TickPlayerRegen();
+                    TickMonsters();
+                    TickPickup();
+                }
+            }
         }
 
         MapDto? map = null;
@@ -313,6 +346,29 @@ public sealed class GameWorld
         return _monsters.FirstOrDefault(m => m.Floor == floor && m.X == x && m.Y == y && m.Hp > 0);
     }
 
+    private void SetMoveDirection(int dx, int dy)
+    {
+        dx = Math.Clamp(dx, -1, 1);
+        dy = Math.Clamp(dy, -1, 1);
+        if (dx == _moveDirX && dy == _moveDirY) return;
+
+        _moveDirX = dx;
+        _moveDirY = dy;
+        _moveDirChangedAtMs = NowMs;
+
+        var remaining = Player.StepStartMs + Player.StepDurMs - NowMs;
+        if (Player.IsMoving(NowMs) && remaining <= GameConfig.StepGraceMs)
+        {
+            _bufferedMoveDirX = dx;
+            _bufferedMoveDirY = dy;
+            _hasBufferedMoveDir = true;
+        }
+        else
+        {
+            _hasBufferedMoveDir = false;
+        }
+    }
+
     private int StepDuration(int speed, bool diagonal)
     {
         var ms = 1000.0 * GameConfig.GroundFriction / Math.Max(speed, 30);
@@ -323,23 +379,34 @@ public sealed class GameWorld
     private static Dir FacingFrom(int dx, int dy) =>
         Math.Abs(dx) >= Math.Abs(dy) ? (dx >= 0 ? Dir.East : Dir.West) : (dy >= 0 ? Dir.South : Dir.North);
 
-    private bool TryStep(Actor actor, int dx, int dy, int speed)
+    private bool CanStep(Actor actor, int dx, int dy)
     {
         if (dx == 0 && dy == 0) return false;
         var nx = actor.X + dx;
         var ny = actor.Y + dy;
         var floor = _floors[actor.Floor];
-        if (floor.IsBlocked(nx, ny) || OccupiedBy(actor.Floor, nx, ny) is not null)
-            return false;
+        return !floor.IsBlocked(nx, ny) && OccupiedBy(actor.Floor, nx, ny) is null;
+    }
+
+    private bool TryStep(Actor actor, int dx, int dy, int speed, long? stepStartMs = null)
+    {
+        if (!CanStep(actor, dx, dy)) return false;
 
         actor.FromX = actor.X;
         actor.FromY = actor.Y;
-        actor.X = nx;
-        actor.Y = ny;
-        actor.StepStartMs = NowMs;
+        actor.X += dx;
+        actor.Y += dy;
+        actor.StepStartMs = stepStartMs ?? NowMs;
         actor.StepDurMs = StepDuration(speed, dx != 0 && dy != 0);
         actor.Facing = FacingFrom(dx, dy);
         return true;
+    }
+
+    private static void SettleStep(Actor actor)
+    {
+        actor.FromX = actor.X;
+        actor.FromY = actor.Y;
+        actor.StepDurMs = 0;
     }
 
     private int PlayerSpeed()
@@ -351,14 +418,36 @@ public sealed class GameWorld
 
     private void TickPlayerMovement()
     {
-        if (Player.Hp <= 0 || Player.IsMoving(NowMs) || Player.IsStunned(NowMs)) return;
-        if (_moveDirX == 0 && _moveDirY == 0) return;
+        if (Player.Hp <= 0 || Player.IsMoving(NowMs)) return;
+        if (Player.IsStunned(NowMs))
+        {
+            SettleStep(Player);
+            return;
+        }
+
+        var dx = _hasBufferedMoveDir ? _bufferedMoveDirX : _moveDirX;
+        var dy = _hasBufferedMoveDir ? _bufferedMoveDirY : _moveDirY;
+        _hasBufferedMoveDir = false;
+        if (dx == 0 && dy == 0)
+        {
+            SettleStep(Player);
+            return;
+        }
+
+        var previousStepEndMs = Player.StepStartMs + Player.StepDurMs;
+        var canChain = Player.StepDurMs > 0
+                       && previousStepEndMs <= NowMs
+                       && (_moveDirChangedAtMs <= previousStepEndMs
+                           || NowMs - previousStepEndMs <= GameConfig.StepGraceMs);
+        var stepStartMs = canChain ? previousStepEndMs : NowMs;
+        var speed = PlayerSpeed();
 
         // try the held direction; if diagonal is blocked, slide along an axis
-        if (!TryStep(Player, _moveDirX, _moveDirY, PlayerSpeed()))
+        if (!TryStep(Player, dx, dy, speed, stepStartMs))
         {
-            if (_moveDirX != 0 && TryStep(Player, _moveDirX, 0, PlayerSpeed())) return;
-            if (_moveDirY != 0) TryStep(Player, 0, _moveDirY, PlayerSpeed());
+            if (dx != 0 && TryStep(Player, dx, 0, speed, stepStartMs)) return;
+            if (dy != 0 && TryStep(Player, 0, dy, speed, stepStartMs)) return;
+            SettleStep(Player);
         }
     }
 
@@ -377,6 +466,19 @@ public sealed class GameWorld
 
     private bool IsBuffActive(string buff) => _buffsUntilMs.TryGetValue(buff, out var until) && NowMs < until;
 
+    private ClassStanceDef CurrentStance => PlayerClass.GetStance(_stanceId);
+
+    private SkillDef[] CurrentSkillBar() => Classes.SkillBar(CurrentStance);
+
+    private void ToggleStance()
+    {
+        if (!PlayerClass.CanToggleStance || Player.Hp <= 0) return;
+        var next = PlayerClass.NextStance(_stanceId);
+        _stanceId = next.Id;
+        Emit("text", Player.X, Player.Y, 0, 0, 0, $"STANCE: {next.Name}");
+        Emit("effect", Player.X, Player.Y, 0, 0, Classes.Skills[next.Slots[0]].EffectId);
+    }
+
     private double PlayerAttack()
     {
         var atk = Waifu.BaseAtk
@@ -384,6 +486,8 @@ public sealed class GameWorld
                   * (1 + Ascension * GameConfig.AscensionAtkBonus)
                   * (1 + CardValue("atkPercent"));
         if (IsBuffActive("atk")) atk *= 1.35;
+        if (IsBuffActive("bloodrage")) atk *= GameConfig.BloodRageAttackMultiplier;
+        if (IsBuffActive("aegis")) atk *= GameConfig.SentinelAegisAttackMultiplier;
         return atk;
     }
 
@@ -398,6 +502,7 @@ public sealed class GameWorld
     {
         var interval = GameConfig.PlayerAutoAttackMs / (1 + CardValue("atkSpeedPercent"));
         if (IsBuffActive("atkspeed")) interval /= 1.40;
+        if (IsBuffActive("aegis")) interval /= GameConfig.SentinelAegisAttackSpeedMultiplier;
         return (long)Math.Max(interval, 400);
     }
 
@@ -429,9 +534,9 @@ public sealed class GameWorld
 
     private void TryCastSkill(int slot)
     {
-        if (slot is < 0 or > 3 || Player.Hp <= 0 || Player.IsStunned(NowMs)) return;
-        var skill = _skills[slot];
-        var isUlt = slot == 3;
+        if (slot is < 0 or > 4 || Player.Hp <= 0 || Player.IsStunned(NowMs)) return;
+        var skill = CurrentSkillBar()[slot];
+        var isUlt = slot == 4;
 
         if (isUlt)
         {
@@ -455,19 +560,24 @@ public sealed class GameWorld
             Player.Facing = FacingFrom(target.X - Player.X, target.Y - Player.Y);
 
         var damage = PlayerAttack() * skill.Power;
-        var executeThreshold = skill.Id is "tessa_execute" or "mirai_bloodfang" ? 0.15 : 0.0;
-
         switch (skill.Shape)
         {
             case "buff":
-                _buffsUntilMs[skill.Buff!] = NowMs + skill.BuffMs;
+                if (skill.Buff == "heal")
+                {
+                    HealPlayer((int)Math.Ceiling(Player.MaxHp * GameConfig.NaturesEmbraceHealFraction));
+                }
+                else if (skill.Buff is not null)
+                {
+                    _buffsUntilMs[skill.Buff] = NowMs + skill.BuffMs;
+                }
                 Emit("effect", Player.X, Player.Y, 0, 0, skill.EffectId);
                 break;
 
             case "single":
                 if (skill.MissileId > 0) Emit("projectile", Player.X, Player.Y, target!.X, target.Y, skill.MissileId);
                 Emit("effect", target!.X, target.Y, 0, 0, skill.EffectId);
-                HitMonster(target, damage, skill, executeThreshold);
+                HitMonster(target, damage, skill);
                 break;
 
             case "area":
@@ -477,7 +587,7 @@ public sealed class GameWorld
                 {
                     Emit("effect", tx, ty, 0, 0, skill.EffectId);
                     var victim = MonsterAt(tx, ty);
-                    if (victim is not null) HitMonster(victim, damage, skill, executeThreshold);
+                    if (victim is not null) HitMonster(victim, damage, skill);
                 }
                 break;
             }
@@ -489,9 +599,8 @@ public sealed class GameWorld
                     if (tx == Player.X && ty == Player.Y) continue;
                     Emit("effect", tx, ty, 0, 0, skill.EffectId);
                     var victim = MonsterAt(tx, ty);
-                    if (victim is not null) HitMonster(victim, damage, skill, executeThreshold);
+                    if (victim is not null) HitMonster(victim, damage, skill);
                 }
-                if (skill.Buff is not null) _buffsUntilMs[skill.Buff] = NowMs + skill.BuffMs;
                 break;
             }
 
@@ -505,7 +614,7 @@ public sealed class GameWorld
                     if (Floor.IsBlocked(tx, ty)) break;
                     Emit("effect", tx, ty, 0, 0, skill.EffectId);
                     var victim = MonsterAt(tx, ty);
-                    if (victim is not null) HitMonster(victim, damage, skill, executeThreshold);
+                    if (victim is not null) HitMonster(victim, damage, skill);
                 }
                 break;
             }
@@ -518,31 +627,44 @@ public sealed class GameWorld
                 {
                     Emit("effect", tx, ty, 0, 0, skill.EffectId);
                     var victim = MonsterAt(tx, ty);
-                    if (victim is not null) HitMonster(victim, damage, skill, executeThreshold);
+                    if (victim is not null) HitMonster(victim, damage, skill);
                 }
                 break;
             }
         }
     }
 
-    private void HitMonster(Actor monster, double damage, SkillDef skill, double executeThreshold)
+    private void HitMonster(Actor monster, double damage, SkillDef skill)
     {
-        DealDamageToMonster(monster, damage, skill.Element, 0);
+        if (skill.Power > 0)
+            DealDamageToMonster(monster, damage, skill.Element, 0);
+        if (monster.Hp <= 0) return;
+
+        switch (skill.Buff)
+        {
+            case "taunt":
+                AcquirePlayer(monster);
+                break;
+            case "exposed":
+                monster.ExposedUntilMs = NowMs + skill.BuffMs;
+                break;
+            case "sapped":
+                monster.SappedUntilMs = NowMs + skill.BuffMs;
+                break;
+        }
+
         if (monster.Hp > 0 && skill.StunMs > 0)
         {
             monster.StunUntilMs = NowMs + skill.StunMs;
             Emit("effect", monster.X, monster.Y, 0, 0, 32); // stun stars
-        }
-        if (monster.Hp > 0 && executeThreshold > 0 && monster.Hp <= monster.MaxHp * executeThreshold)
-        {
-            Emit("text", monster.X, monster.Y, 0, 0, 0, "EXECUTADO!");
-            KillMonster(monster, overkill: true);
         }
     }
 
     private void DealDamageToMonster(Actor monster, double raw, string element, int hitEffect)
     {
         var roll = raw * (GameConfig.DamageRollMin + _rng.NextDouble() * (GameConfig.DamageRollMax - GameConfig.DamageRollMin));
+        if (NowMs < monster.ExposedUntilMs)
+            roll *= GameConfig.ExposedWeaknessDamageMultiplier;
         var crit = _rng.Chance(CritChance());
         if (crit) roll *= GameConfig.CritMultiplier;
 
@@ -574,7 +696,7 @@ public sealed class GameWorld
         if (lifesteal > 0) HealPlayer((int)Math.Max(final * lifesteal, 0));
 
         // aggro: damaged monsters retaliate
-        if (monster.TargetId == 0) monster.TargetId = Player.Id;
+        if (monster.TargetId == 0) AcquirePlayer(monster);
 
         if (monster.Hp <= 0) KillMonster(monster);
     }
@@ -661,6 +783,7 @@ public sealed class GameWorld
             .Take(GameConfig.CardChoicesPerOffer)
             .Select(c => new CardOfferDto(c.Id, c.Name, c.Description, _cards.GetValueOrDefault(c.Id)))
             .ToList();
+        _cardOfferStartedTick = TickCount;
     }
 
     private void ChooseCard(string cardId)
@@ -711,20 +834,45 @@ public sealed class GameWorld
         {
             if (monster.Hp <= 0 || monster.Floor != _currentFloor) continue;
             var species = monster.Species!;
+            var dist = Chebyshev(monster, Player);
+            var hasLos = HasLineOfSight(monster.X, monster.Y, Player.X, Player.Y);
 
             // voices (tibia flavor)
             if (species.Voices.Count > 0 && NowMs >= monster.NextVoiceAtMs)
             {
                 monster.NextVoiceAtMs = NowMs + GameConfig.VoiceIntervalMs + _rng.Next(6000);
-                if (Chebyshev(monster, Player) <= 9 && _rng.Chance(GameConfig.VoiceChancePercent / 100.0))
+                if (dist <= 9 && _rng.Chance(GameConfig.VoiceChancePercent / 100.0))
                     Emit("voice", monster.X, monster.Y, 0, 0, 0, _rng.Pick(species.Voices), monster.Id);
             }
 
             // acquire target (requires line of sight — no aggro through cave walls)
             if (monster.TargetId == 0 && Player.Hp > 0
-                && Chebyshev(monster, Player) <= GameConfig.MonsterAggroRange
-                && HasLineOfSight(monster.X, monster.Y, Player.X, Player.Y))
-                monster.TargetId = Player.Id;
+                && dist <= GameConfig.MonsterAggroRange
+                && hasLos)
+                AcquirePlayer(monster);
+
+            if (monster.TargetId != 0)
+            {
+                if (hasLos)
+                    monster.LastSawPlayerAtMs = NowMs;
+
+                if (dist > GameConfig.AggroDropRange)
+                {
+                    if (monster.AggroOutOfRangeSinceMs == 0)
+                        monster.AggroOutOfRangeSinceMs = NowMs;
+                }
+                else
+                {
+                    monster.AggroOutOfRangeSinceMs = 0;
+                }
+
+                var tooFarTooLong = monster.AggroOutOfRangeSinceMs > 0
+                                     && NowMs - monster.AggroOutOfRangeSinceMs >= GameConfig.AggroDropOutOfRangeMs;
+                var unseenTooLong = !hasLos
+                                    && NowMs - monster.LastSawPlayerAtMs >= GameConfig.AggroDropNoLosMs;
+                if (tooFarTooLong || unseenTooLong)
+                    DropAggro(monster);
+            }
 
             if (monster.IsStunned(NowMs)) continue;
 
@@ -738,7 +886,13 @@ public sealed class GameWorld
 
             // chase: move toward player keeping targetDistance for ranged species
             if (monster.IsMoving(NowMs)) continue;
-            var dist = Chebyshev(monster, Player);
+            if (CanAttackPlayer(monster, dist, hasLos)
+                && _rng.Chance(Math.Clamp(species.StaticAttackChance, 0, 100) / 100.0))
+            {
+                monster.Facing = FacingFrom(Player.X - monster.X, Player.Y - monster.Y);
+                continue;
+            }
+
             var desired = Math.Max(species.TargetDistance, 1);
             if (dist > desired)
                 StepToward(monster, Player.X, Player.Y);
@@ -747,6 +901,36 @@ public sealed class GameWorld
             else
                 monster.Facing = FacingFrom(Player.X - monster.X, Player.Y - monster.Y);
         }
+    }
+
+    private void AcquirePlayer(Actor monster)
+    {
+        monster.TargetId = Player.Id;
+        monster.LastSawPlayerAtMs = NowMs;
+        monster.AggroOutOfRangeSinceMs = 0;
+    }
+
+    private static void DropAggro(Actor monster)
+    {
+        monster.TargetId = 0;
+        monster.LastSawPlayerAtMs = 0;
+        monster.AggroOutOfRangeSinceMs = 0;
+    }
+
+    private bool CanAttackPlayer(Actor monster, int dist, bool hasLos)
+    {
+        foreach (var attack in monster.Species!.Attacks)
+        {
+            if (attack.Kind == "melee")
+            {
+                if (dist <= GameConfig.MeleeRange) return true;
+                continue;
+            }
+
+            var range = attack.Range > 0 ? attack.Range : (attack.Radius > 0 || attack.Length > 0 ? 7 : 1);
+            if (dist <= range && hasLos) return true;
+        }
+        return false;
     }
 
     private void TryMonsterAttacks(Actor monster)
@@ -825,6 +1009,8 @@ public sealed class GameWorld
     {
         if (Player.Hp <= 0) return;
         var final = damage * (1 - Math.Min(CardValue("damageReduction"), 0.6));
+        if (NowMs < source.SappedUntilMs)
+            final *= GameConfig.SappedStrengthDamageMultiplier;
         if (IsBuffActive("shield")) final *= 0.5;
         var value = Math.Max((int)final, 1);
 
@@ -855,10 +1041,56 @@ public sealed class GameWorld
         var dx = Math.Sign(tx - monster.X);
         var dy = Math.Sign(ty - monster.Y);
         var speed = monster.Species!.Speed * GameConfig.MonsterSpeedMultiplier;
-        if (TryStep(monster, dx, dy, speed)) return;
-        if (dx != 0 && TryStep(monster, dx, 0, speed)) return;
-        if (dy != 0) TryStep(monster, 0, dy, speed);
+        var forward = new List<(int Dx, int Dy)>(3);
+        AddStepCandidate(forward, dx, dy);
+        AddStepCandidate(forward, dx, 0);
+        AddStepCandidate(forward, 0, dy);
+        if (TryBestMonsterStep(monster, tx, ty, speed, forward)) return;
+
+        var lateral = new List<(int Dx, int Dy)>(2);
+        if (_rng.Next(2) == 0)
+        {
+            AddStepCandidate(lateral, -dy, dx);
+            AddStepCandidate(lateral, dy, -dx);
+        }
+        else
+        {
+            AddStepCandidate(lateral, dy, -dx);
+            AddStepCandidate(lateral, -dy, dx);
+        }
+        TryBestMonsterStep(monster, tx, ty, speed, lateral);
     }
+
+    private static void AddStepCandidate(List<(int Dx, int Dy)> candidates, int dx, int dy)
+    {
+        if ((dx != 0 || dy != 0) && !candidates.Contains((dx, dy)))
+            candidates.Add((dx, dy));
+    }
+
+    private bool TryBestMonsterStep(Actor monster, int tx, int ty, int speed,
+        List<(int Dx, int Dy)> candidates)
+    {
+        var open = candidates
+            .Where(c => CanStep(monster, c.Dx, c.Dy))
+            .Select(c => new
+            {
+                Step = c,
+                Distance = Chebyshev(monster.X + c.Dx, monster.Y + c.Dy, tx, ty),
+                Neighbors = AdjacentLivingMonsters(monster, monster.X + c.Dx, monster.Y + c.Dy)
+            })
+            .ToList();
+        if (open.Count == 0) return false;
+
+        var bestDistance = open.Min(c => c.Distance);
+        var sameDistance = open.Where(c => c.Distance == bestDistance).ToList();
+        var leastCrowded = sameDistance.Min(c => c.Neighbors);
+        var choice = sameDistance.First(c => c.Neighbors == leastCrowded);
+        return TryStep(monster, choice.Step.Dx, choice.Step.Dy, speed);
+    }
+
+    private int AdjacentLivingMonsters(Actor actor, int x, int y) =>
+        _monsters.Count(m => m.Id != actor.Id && m.Hp > 0 && m.Floor == actor.Floor
+                             && Chebyshev(m.X, m.Y, x, y) <= 1);
 
     private void StepAway(Actor monster, int tx, int ty)
     {
@@ -917,7 +1149,7 @@ public sealed class GameWorld
                 var mob = SpawnMonster(_currentFloor, _rng.Pick(Tier.CommonMobs), room);
                 if (mob is not null)
                 {
-                    mob.TargetId = Player.Id;
+                    AcquirePlayer(mob);
                     Emit("effect", mob.X, mob.Y, 0, 0, 11); // teleport
                 }
             }
@@ -1082,14 +1314,17 @@ public sealed class GameWorld
 
     private SnapshotDto BuildSnapshot()
     {
-        var skills = new List<SkillStateDto>(4);
-        for (var i = 0; i < 4; i++)
+        var skillBar = CurrentSkillBar();
+        var skills = new List<SkillStateDto>(5);
+        for (var i = 0; i < skillBar.Length; i++)
         {
-            var skill = _skills[i];
-            var isUlt = i == 3;
+            var skill = skillBar[i];
+            var isUlt = i == 4;
             var remaining = isUlt ? 0 : Math.Max(_skillReadyAtMs[i] - NowMs, 0);
             var ready = isUlt ? _gauge >= GameConfig.UltimateGaugeMax : remaining == 0;
-            skills.Add(new SkillStateDto(skill.Id, skill.Name, remaining, skill.CooldownMs, ready));
+            skills.Add(new SkillStateDto(
+                skill.Id, skill.Name, skill.Element, skill.Description,
+                remaining, skill.CooldownMs, ready));
         }
 
         var boss = _monsters.FirstOrDefault(m => m.IsBossActor && m.Floor == _currentFloor);
@@ -1100,6 +1335,8 @@ public sealed class GameWorld
             new OutfitDto(Waifu.LookType, Waifu.Head, Waifu.Body, Waifu.Legs, Waifu.Feet,
                 Ascension >= GameConfig.AddonTwoAscension ? 3 : Ascension >= GameConfig.AddonOneAscension ? 1 : 0),
             Player.TargetId, _gauge, skills,
+            PlayerClass.Id, PlayerClass.Name,
+            CurrentStance.Id, CurrentStance.Name, CurrentStance.Element, PlayerClass.CanToggleStance,
             Math.Max(_autoAttackReadyAtMs - NowMs, 0),
             _buffsUntilMs.Where(b => NowMs < b.Value).Select(b => b.Key).ToList());
 
@@ -1127,6 +1364,8 @@ public sealed class GameWorld
             boss?.Hp, boss?.MaxHp, boss?.Species!.Name,
             NowMs, Ended);
 
-        return new SnapshotDto(TickCount, _currentFloor, player, monsters, items, _events.ToList(), run);
+        return new SnapshotDto(TickCount, NowMs, _currentFloor, player, monsters, items, _events.ToList(), run);
     }
+
+    public void RequestMapRefresh() => MapDirty = true;
 }

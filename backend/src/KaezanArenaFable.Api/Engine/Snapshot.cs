@@ -13,7 +13,7 @@ public sealed record PoiDto(int Id, string Kind, int X, int Y, int ItemId, bool 
 // ---- per-tick snapshot ----
 
 public sealed record SnapshotDto(
-    long Tick, int Floor,
+    long Tick, long SimulationMs, int Floor,
     PlayerDto Player,
     List<MonsterDto> Monsters,
     List<GroundItemDto> Items,
@@ -27,9 +27,13 @@ public sealed record PlayerDto(
     int FromX, int FromY, int StepDurMs, long StepStartTick,
     OutfitDto Outfit, int TargetId,
     double Gauge, List<SkillStateDto> Skills,
+    string ClassId, string ClassName,
+    string StanceId, string StanceName, string StanceElement, bool CanToggleStance,
     long AutoAttackReadyInMs, List<string> ActiveBuffs);
 
-public sealed record SkillStateDto(string Id, string Name, long CooldownRemainingMs, long CooldownTotalMs, bool Ready);
+public sealed record SkillStateDto(
+    string Id, string Name, string Element, string Description,
+    long CooldownRemainingMs, long CooldownTotalMs, bool Ready);
 
 public sealed record MonsterDto(
     int Id, string Species, int X, int Y, int Dir, int Hp, int MaxHp,

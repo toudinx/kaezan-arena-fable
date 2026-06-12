@@ -2,6 +2,14 @@ import { Injectable, signal } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { MapDto, SnapshotDto } from './types';
 
+export interface JoinRunResult {
+  seed: number;
+  tier: number;
+  tierName: string;
+  waifuId: string;
+  resumed: boolean;
+}
+
 /** SignalR channel for the live dungeon run. */
 @Injectable({ providedIn: 'root' })
 export class GameClientService {
@@ -25,16 +33,18 @@ export class GameClientService {
     this.connected.set(true);
   }
 
-  async joinRun(tier: number, seed?: number): Promise<void> {
+  async joinRun(tier: number, seed?: number, resume = false): Promise<JoinRunResult> {
     this.snapshot.set(null);
     this.map.set(null);
     await this.connect();
-    await this.connection!.invoke('JoinRun', tier, seed ?? null);
+    return this.connection!.invoke<JoinRunResult>('JoinRun', tier, seed ?? null, resume);
   }
 
-  async leave(): Promise<void> {
+  async leave(abandon = false): Promise<void> {
     if (!this.connection) return;
     try {
+      if (abandon && this.connection.state === signalR.HubConnectionState.Connected)
+        await this.connection.invoke('Abandon');
       await this.connection.stop();
     } finally {
       this.connection = null;
@@ -56,6 +66,10 @@ export class GameClientService {
     void this.connection?.invoke('CastSkill', slot).catch(() => undefined);
   }
 
+  toggleStance(): void {
+    void this.connection?.invoke('ToggleStance').catch(() => undefined);
+  }
+
   interact(x: number, y: number): void {
     void this.connection?.invoke('Interact', x, y).catch(() => undefined);
   }
@@ -64,7 +78,4 @@ export class GameClientService {
     void this.connection?.invoke('ChooseCard', cardId).catch(() => undefined);
   }
 
-  abandon(): void {
-    void this.connection?.invoke('Abandon').catch(() => undefined);
-  }
 }

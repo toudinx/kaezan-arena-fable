@@ -11,10 +11,14 @@ public static class GameConfig
     public const int PlayerBaseSpeed = 250;
     public const int MonsterSpeedMultiplier = 2;
     public const int GroundFriction = 100;
-    public const double DiagonalStepFactor = 1.5;
-    public const int MinStepMs = 180;
+    public const double DiagonalStepFactor = 1.4;
+    public const int MinStepMs = 160;
     public const int MaxStepMs = 1400;
+    public const int StepGraceMs = 80;
     public const int MonsterAggroRange = 8;
+    public const int AggroDropRange = 12;
+    public const int AggroDropOutOfRangeMs = 4000;
+    public const int AggroDropNoLosMs = 6000;
     public const int MonsterWanderIntervalMs = 1600;
     public const int PlayerAutoAttackMs = 1800;
     public const int MeleeRange = 1;
@@ -32,6 +36,7 @@ public static class GameConfig
     public static long XpForRunLevel(int level) => (long)(40 * Math.Pow(level, 1.65));
     public const int CardChoicesPerOffer = 3;
     public const int MaxCardStacks = 3;
+    public const int CardOfferTimeoutMs = 20000;
     public const int UltimateGaugeMax = 100;
     public const int GaugeFillPerKill = 8;
     public const double GaugeFillPerDamageTaken = 0.5;
@@ -53,6 +58,12 @@ public static class GameConfig
     public const double AscensionAtkBonus = 0.08;
     public const double DamageRollMin = 0.85;
     public const double DamageRollMax = 1.15;
+    public const double BloodRageAttackMultiplier = 1.20;
+    public const double SentinelAegisAttackMultiplier = 1.15;
+    public const double SentinelAegisAttackSpeedMultiplier = 1.15;
+    public const double NaturesEmbraceHealFraction = 0.45;
+    public const double ExposedWeaknessDamageMultiplier = 1.15;
+    public const double SappedStrengthDamageMultiplier = 0.90;
 
     // ---- death / rewards ----
     public const double DefeatGoldKeptFraction = 0.5;
@@ -61,6 +72,7 @@ public static class GameConfig
     public const long AccountXpPerVictory = 60;
     public const long AccountXpPerDefeat = 20;
     public const long AccountXpPerRunLevel = 6;
+    public const int RunReconnectGraceMs = 60000;
     public static long XpForAccountLevel(int level) => (long)(80 * Math.Pow(level, 1.7));
     public const int MaxAccountLevel = 100;
 

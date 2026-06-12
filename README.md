@@ -25,8 +25,22 @@ npm install
 npx ng serve
 ```
 
-Abra `http://localhost:4200`. A conta local é criada automaticamente em
-`backend/src/KaezanArenaFable.Api/.data/account.json` com a Mirai (4★) e 4000 Kaeros.
+Abra `http://localhost:4200`. Sem configuração de banco, a conta local é criada automaticamente
+em `backend/src/KaezanArenaFable.Api/.data/account.json` com a Mirai (4★) e 4000 Kaeros.
+
+### Persistência MySQL opcional
+
+Para usar o MySQL/MariaDB do XAMPP, configure a connection string antes de iniciar o backend:
+
+```powershell
+$env:ConnectionStrings__KaezanFable = `
+  "Server=127.0.0.1;Port=3306;Database=kaezan_fable;User=root;Password=;"
+dotnet run --urls http://localhost:5210
+```
+
+O backend cria somente o banco separado `kaezan_fable`, aplica as migrations do EF Core e, se
+ainda não houver conta no banco, importa `.data/account.json` uma única vez. Uma connection string
+apontando para outro database (inclusive `otservbr-global`) é recusada antes da conexão.
 
 ## Controles (em run)
 
@@ -35,7 +49,9 @@ Abra `http://localhost:4200`. A conta local é criada automaticamente em
 | WASD / setas | Movimento (8 direções, deslize em diagonal bloqueada) |
 | Espaço | Mirar no inimigo mais próximo |
 | Clique | Mirar inimigo / interagir (baú, escada) |
-| 1 / 2 / 3 / 4 (alias Q/E/R) | Skills do kit + Ultimate (gauge) |
+| 1 / 2 / 3 / 4 (aliases Q/E) | Slots 1-4 do kit da classe |
+| R | Ultimate da classe (gauge) |
+| Tab | Alterna a postura elemental (quando a classe possui duas) |
 | ESC | Sair da run (abandono = metade do ouro) |
 
 ## Fluidez e segurança da run
@@ -60,6 +76,21 @@ Abra `http://localhost:4200`. A conta local é criada automaticamente em
    Dupes viram Echo Shards → **Ascensão** (+8% stats; A2/A4 desbloqueiam os addons visuais
    do outfit do Tibia, visíveis em jogo).
 5. **Mochila** — inventário com sprites reais + bestiário (ranks por abates = dano permanente).
+
+## Classes e posturas
+
+Cada Kaeli mantém nome, raridade, visual, stats, arma e afinidade, mas usa o kit completo de uma
+das quatro classes canônicas do Kaezan World:
+
+| Classe | Posturas | Kaelis atuais |
+|---|---|---|
+| Warrior | Physical (fixa) | Mira, Tessa, Nyx, Kaela, Mirai |
+| Sentinel | Holy ↔ Physical | Wren, Rosa, Aurora |
+| Shaman | Ice ↔ Earth | Sage, Sylwen |
+| Wizard | Energy ↔ Fire | Lyra, Ember, Velvet |
+
+Os cooldowns pertencem aos slots 1-4 e continuam correndo ao trocar de postura; alternar com
+`Tab` não reseta habilidades. A página Kaelis permite visualizar os dois kits elementais.
 
 ## Estrutura
 

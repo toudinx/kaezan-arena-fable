@@ -21,7 +21,7 @@ internal static class Program
 
     private static int Main(string[] args)
     {
-        string? thingsDir = null, outDir = null, configPath = null, monstersPath = null;
+        string? thingsDir = null, outDir = null, configPath = null, monstersPath = null, staticItemsDir = null;
         var dumpNames = false;
         for (var i = 0; i < args.Length; i++)
         {
@@ -31,13 +31,17 @@ internal static class Program
                 case "--out": outDir = args[++i]; break;
                 case "--config": configPath = args[++i]; break;
                 case "--monsters": monstersPath = args[++i]; break;
+                case "--static-items": staticItemsDir = args[++i]; break;
                 case "--dump-names": dumpNames = true; break;
             }
         }
 
         if (thingsDir is null || outDir is null)
         {
-            Console.Error.WriteLine("usage: AssetExtractor --things <things/1500 dir> --out <output dir> [--config content-config.json] [--monsters monsters.json] [--dump-names]");
+            Console.Error.WriteLine(
+                "usage: AssetExtractor --things <things/1500 dir> --out <output dir> " +
+                "[--config content-config.json] [--monsters monsters.json] " +
+                "[--static-items <legacy assets dir>] [--dump-names]");
             return 1;
         }
 
@@ -61,6 +65,7 @@ internal static class Program
 
         var config = JsonNode.Parse(File.ReadAllText(configPath))!.AsObject();
         var manifest = new JsonObject();
+        var staticItems = staticItemsDir is null ? null : new StaticItemSource(staticItemsDir);
 
         var outfitIds = new SortedSet<uint>(ReadIdList(config, "outfitIds"));
         var objectIds = new SortedSet<uint>(ReadIdList(config, "objectIds"));
@@ -111,7 +116,7 @@ internal static class Program
         }
 
         manifest["outfits"] = ExportCategory(appearances.Outfit, outfitIds, "outfits", outDir, sheets);
-        manifest["objects"] = ExportCategory(appearances.Object, objectIds, "objects", outDir, sheets);
+        manifest["objects"] = ExportCategory(appearances.Object, objectIds, "objects", outDir, sheets, staticItems);
         manifest["effects"] = ExportCategory(appearances.Effect, ReadIdList(config, "effectIds"), "effects", outDir, sheets);
         manifest["missiles"] = ExportCategory(appearances.Missile, ReadIdList(config, "missileIds"), "missiles", outDir, sheets);
         manifest["semantic"] = semantic;
@@ -121,6 +126,8 @@ internal static class Program
 
         File.WriteAllText(Path.Combine(outDir, "manifest.json"), manifest.ToJsonString(new JsonSerializerOptions { WriteIndented = false }));
         Console.WriteLine($"manifest written to {Path.Combine(outDir, "manifest.json")}");
+        if (staticItems is not null)
+            Console.WriteLine($"static item thumbnails imported: {staticItems.Imported}");
         return 0;
     }
 
@@ -245,7 +252,8 @@ internal static class Program
     // ----- atlas export -----
 
     private static JsonObject ExportCategory(
-        IEnumerable<Appearance> pool, IEnumerable<uint> ids, string category, string outDir, SheetCache sheets)
+        IEnumerable<Appearance> pool, IEnumerable<uint> ids, string category, string outDir, SheetCache sheets,
+        StaticItemSource? staticItems = null)
     {
         var byId = pool.ToDictionary(a => a.Id);
         var dir = Path.Combine(outDir, category);
@@ -259,7 +267,8 @@ internal static class Program
                 Console.Error.WriteLine($"WARN: {category} id {id} not found in appearances");
                 continue;
             }
-            node[id.ToString()] = ExportAppearance(app, category, dir, sheets);
+            node[id.ToString()] = staticItems?.TryExport(app, category, dir, sheets)
+                                  ?? ExportAppearance(app, category, dir, sheets);
         }
         Console.WriteLine($"{category}: exported {node.Count}");
         return node;
@@ -330,19 +339,6 @@ internal static class Program
         var fileName = $"{app.Id}.png";
         atlas.SaveAsPng(Path.Combine(dir, fileName));
 
-        var flags = new JsonObject();
-        if (app.Flags is { } f)
-        {
-            if (f.Bank is not null) flags["groundSpeed"] = f.Bank.Waypoints;
-            if (f.Unpass) flags["unpass"] = true;
-            if (f.Unsight) flags["unsight"] = true;
-            if (f.Top) flags["top"] = true;
-            if (f.Bottom) flags["bottom"] = true;
-            if (f.Clip) flags["clip"] = true;
-            if (f.Height is not null) flags["elevation"] = f.Height.Elevation;
-            if (f.Light is not null) { flags["lightBrightness"] = f.Light.Brightness; flags["lightColor"] = f.Light.Color; }
-        }
-
         return new JsonObject
         {
             ["name"] = app.Name?.ToStringUtf8() ?? "",
@@ -351,8 +347,116 @@ internal static class Program
             ["cellH"] = cellH,
             ["cols"] = cols,
             ["groups"] = groups,
-            ["flags"] = flags
+            ["flags"] = BuildFlags(app)
         };
+    }
+
+    private static JsonObject BuildFlags(Appearance app)
+    {
+        var flags = new JsonObject();
+        if (app.Flags is not { } f) return flags;
+
+        if (f.Bank is not null) flags["groundSpeed"] = f.Bank.Waypoints;
+        if (f.Unpass) flags["unpass"] = true;
+        if (f.Unsight) flags["unsight"] = true;
+        if (f.Top) flags["top"] = true;
+        if (f.Bottom) flags["bottom"] = true;
+        if (f.Clip) flags["clip"] = true;
+        if (f.Height is not null) flags["elevation"] = f.Height.Elevation;
+        if (f.Light is not null)
+        {
+            flags["lightBrightness"] = f.Light.Brightness;
+            flags["lightColor"] = f.Light.Color;
+        }
+        return flags;
+    }
+
+    private sealed class StaticItemSource
+    {
+        private readonly string _itemsDir;
+        private readonly string _equipmentDir;
+
+        public int Imported { get; private set; }
+
+        public StaticItemSource(string assetsDir)
+        {
+            _itemsDir = Path.Combine(assetsDir, "thumbnails", "items");
+            _equipmentDir = Path.Combine(assetsDir, "equipment-thumbnails");
+            if (!Directory.Exists(_itemsDir) && !Directory.Exists(_equipmentDir))
+                throw new DirectoryNotFoundException(
+                    $"static item source has neither '{_itemsDir}' nor '{_equipmentDir}'");
+        }
+
+        public JsonObject? TryExport(Appearance app, string category, string dir, SheetCache sheets)
+        {
+            if (category != "objects" || !IsSimpleStatic(app)) return null;
+
+            var sourcePath = Find(app.Id);
+            if (sourcePath is null) return null;
+
+            var spriteId = (int)app.FrameGroup[0].SpriteInfo.SpriteId[0];
+            var (_, spriteW, spriteH, _, _) = sheets.Locate(spriteId);
+            using var source = Image.Load<Rgba32>(sourcePath);
+            var cellW = Math.Max(spriteW, RoundUpToTile(source.Width));
+            var cellH = Math.Max(spriteH, RoundUpToTile(source.Height));
+            using var atlas = new Image<Rgba32>(cellW, cellH);
+
+            var dx = cellW - source.Width;
+            var dy = cellH - source.Height;
+            for (var y = 0; y < source.Height; y++)
+                for (var x = 0; x < source.Width; x++)
+                    atlas[dx + x, dy + y] = source[x, y];
+
+            var fileName = $"{app.Id}.png";
+            atlas.SaveAsPng(Path.Combine(dir, fileName));
+            Imported++;
+
+            return new JsonObject
+            {
+                ["name"] = app.Name?.ToStringUtf8() ?? "",
+                ["file"] = $"{category}/{fileName}",
+                ["cellW"] = cellW,
+                ["cellH"] = cellH,
+                ["cols"] = 1,
+                ["groups"] = new JsonArray(new JsonObject
+                {
+                    ["kind"] = "object",
+                    ["patternX"] = 1,
+                    ["patternY"] = 1,
+                    ["patternZ"] = 1,
+                    ["layers"] = 1,
+                    ["phases"] = new JsonArray(),
+                    ["start"] = 0,
+                    ["count"] = 1
+                }),
+                ["flags"] = BuildFlags(app)
+            };
+        }
+
+        private string? Find(uint id)
+        {
+            var fileName = $"{id}.png";
+            var itemPath = Path.Combine(_itemsDir, fileName);
+            if (File.Exists(itemPath)) return itemPath;
+            var equipmentPath = Path.Combine(_equipmentDir, fileName);
+            return File.Exists(equipmentPath) ? equipmentPath : null;
+        }
+
+        private static bool IsSimpleStatic(Appearance app)
+        {
+            if (app.FrameGroup.Count != 1) return false;
+            var sprite = app.FrameGroup[0].SpriteInfo;
+            var phases = sprite.Animation?.SpritePhase.Count ?? 0;
+            return sprite.PatternWidth == 1
+                   && sprite.PatternHeight == 1
+                   && sprite.PatternDepth == 1
+                   && sprite.Layers == 1
+                   && sprite.SpriteId.Count == 1
+                   && phases <= 1;
+        }
+
+        private static int RoundUpToTile(int value) =>
+            Math.Max(32, (value + 31) / 32 * 32);
     }
 
     private static void DumpNames(Appearances appearances, string outDir)

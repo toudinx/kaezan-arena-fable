@@ -1,7 +1,9 @@
 import { Component, computed, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
 import { OutfitPreview } from '../../core/outfit-preview';
-import { ELEMENT_LABELS, RARITY_COLORS, WEAPON_LABELS, WaifuDef } from '../../core/types';
+import {
+  ClassDef, ClassStanceDef, ELEMENT_LABELS, RARITY_COLORS, SkillDef, WEAPON_LABELS, WaifuDef,
+} from '../../core/types';
 
 @Component({
   selector: 'app-kaelis',
@@ -36,6 +38,7 @@ import { ELEMENT_LABELS, RARITY_COLORS, WEAPON_LABELS, WaifuDef } from '../../co
                 <h2>{{ w.name }} <span class="title">— {{ w.title }}</span></h2>
                 <p class="desc">{{ w.description }}</p>
                 <div class="tags">
+                  <span class="tag class-tag">{{ classFor(w)?.name }}</span>
                   <span class="tag">{{ elementLabel(w.element) }}</span>
                   <span class="tag">{{ weaponLabel(w.weapon) }}</span>
                   <span class="tag">ATK {{ w.baseAtk }}</span>
@@ -68,12 +71,25 @@ import { ELEMENT_LABELS, RARITY_COLORS, WEAPON_LABELS, WaifuDef } from '../../co
               </div>
 
               <div class="kit">
-                <h3>Kit</h3>
+                @if (classFor(w); as cls) {
+                  <h3>{{ cls.name }} <span class="muted">· kit de classe</span></h3>
+                  <p class="class-desc">{{ cls.description }}</p>
+                  <div class="stances">
+                    @for (stance of cls.stances; track stance.id) {
+                      <button class="stance-tab" [class.active]="previewStanceId() === stance.id"
+                              (click)="previewStanceId.set(stance.id)">
+                        {{ elementLabel(stance.element) }}
+                      </button>
+                    }
+                  </div>
+                }
                 @for (s of kit(w); track s.id; let i = $index) {
                   <div class="skill">
-                    <span class="key">{{ ['1','2','3','4'][i] }}</span>
+                    <span class="key">{{ ['1','2','3','4','R'][i] }}</span>
                     <div>
-                      <b>{{ s.name }}</b> <span class="muted">{{ i === 3 ? '(Ultimate — carrega com a gauge)' : s.cooldownMs / 1000 + 's' }}</span>
+                      <b>{{ s.name }}</b>
+                      <span class="element-name">{{ elementLabel(s.element) }}</span>
+                      <span class="muted">{{ i === 4 ? '(Ultimate · gauge)' : s.cooldownMs / 1000 + 's' }}</span>
                       <p>{{ s.description }}</p>
                     </div>
                   </div>
@@ -112,6 +128,7 @@ import { ELEMENT_LABELS, RARITY_COLORS, WEAPON_LABELS, WaifuDef } from '../../co
     .stars { letter-spacing: 2px; }
     .tags { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
     .tag { background: #23232f; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 700; }
+    .class-tag { color: #8bfff1; border: 1px solid #2d6b66; }
     .ascension { margin-top: 18px; padding-top: 14px; border-top: 1px solid #26263a; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
     .ascension h3 { margin: 0; }
     .asc-dots { display: flex; gap: 6px; }
@@ -120,12 +137,20 @@ import { ELEMENT_LABELS, RARITY_COLORS, WEAPON_LABELS, WaifuDef } from '../../co
     .maxed { color: #e8a93c; font-weight: 800; }
     .kit { margin-top: 18px; padding-top: 14px; border-top: 1px solid #26263a; }
     .kit h3 { margin-top: 0; }
+    .class-desc { color: #9c9ab0; font-size: 13px; margin: -6px 0 10px; }
+    .stances { display: flex; gap: 8px; margin-bottom: 14px; }
+    .stance-tab {
+      border: 1px solid #3a3a4c; border-radius: 7px; background: #181822; color: #9c9ab0;
+      padding: 6px 12px; font-size: 12px; font-weight: 800;
+    }
+    .stance-tab.active { border-color: #2dd4bf; color: #8bfff1; background: #102526; }
     .skill { display: flex; gap: 12px; margin-bottom: 10px; align-items: flex-start; }
     .skill .key {
       background: #23232f; border: 1px solid #3a3a4c; border-radius: 6px; width: 30px; height: 30px;
       display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0;
     }
     .skill p { margin: 2px 0 0; color: #9c9ab0; font-size: 13px; }
+    .element-name { margin-left: 8px; color: #2dd4bf; font-size: 10px; font-weight: 800; text-transform: uppercase; }
     .muted { color: #707088; font-size: 13px; font-weight: 400; }
     @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
   `],
@@ -136,6 +161,7 @@ export class KaelisPage {
     return list.sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name));
   });
   readonly selected = signal<WaifuDef | null>(null);
+  readonly previewStanceId = signal('');
   readonly busy = signal(false);
 
   constructor(private readonly api: ApiService) {
@@ -145,7 +171,8 @@ export class KaelisPage {
       const acc = this.api.account();
       const cat = this.api.catalog();
       if (acc && cat) {
-        this.selected.set(cat.waifus.find((w) => w.id === acc.activeWaifuId) ?? cat.waifus[0] ?? null);
+        const waifu = cat.waifus.find((w) => w.id === acc.activeWaifuId) ?? cat.waifus[0] ?? null;
+        if (waifu) this.select(waifu);
         clearInterval(tryInit);
       }
     }, 200);
@@ -155,7 +182,10 @@ export class KaelisPage {
   elementLabel(e: string): string { return ELEMENT_LABELS[e] ?? e; }
   weaponLabel(w: string): string { return WEAPON_LABELS[w] ?? w; }
 
-  select(w: WaifuDef): void { this.selected.set(w); }
+  select(w: WaifuDef): void {
+    this.selected.set(w);
+    this.previewStanceId.set(this.initialStance(w)?.id ?? '');
+  }
   owned(id: string): boolean { return this.api.account()?.ownedWaifus.includes(id) ?? false; }
   isActive(id: string): boolean { return this.api.account()?.activeWaifuId === id; }
   ascension(id: string): number { return this.api.account()?.ascension?.[id] ?? 0; }
@@ -173,11 +203,29 @@ export class KaelisPage {
     return costs[this.ascension(id)] ?? 9999;
   }
 
-  kit(w: WaifuDef) {
+  classFor(w: WaifuDef): ClassDef | undefined {
+    return this.api.catalog()?.classes.find((c) => c.id === w.classId);
+  }
+
+  initialStance(w: WaifuDef): ClassStanceDef | undefined {
+    const cls = this.classFor(w);
+    return cls?.stances.find((s) => s.element === w.element)
+      ?? cls?.stances.find((s) => s.id === cls.defaultStanceId)
+      ?? cls?.stances[0];
+  }
+
+  previewStance(w: WaifuDef): ClassStanceDef | undefined {
+    const cls = this.classFor(w);
+    return cls?.stances.find((s) => s.id === this.previewStanceId()) ?? this.initialStance(w);
+  }
+
+  kit(w: WaifuDef): SkillDef[] {
     const skills = this.api.catalog()?.skills ?? [];
-    return [w.skill1, w.skill2, w.skill3, w.ultimate]
+    const stance = this.previewStance(w);
+    if (!stance) return [];
+    return [...stance.slots, stance.ultimate]
       .map((id) => skills.find((s) => s.id === id))
-      .filter((s): s is NonNullable<typeof s> => !!s);
+      .filter((s): s is SkillDef => !!s);
   }
 
   async ascend(id: string): Promise<void> {

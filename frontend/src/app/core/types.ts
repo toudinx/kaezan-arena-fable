@@ -14,11 +14,24 @@ export interface WaifuDef {
   feet: number;
   baseAtk: number;
   baseHp: number;
-  skill1: string;
-  skill2: string;
-  skill3: string;
-  ultimate: string;
+  classId: string;
   description: string;
+}
+
+export interface ClassStanceDef {
+  id: string;
+  name: string;
+  element: string;
+  slots: string[];
+  ultimate: string;
+}
+
+export interface ClassDef {
+  id: string;
+  name: string;
+  description: string;
+  defaultStanceId: string;
+  stances: ClassStanceDef[];
 }
 
 export interface SkillDef {
@@ -77,6 +90,7 @@ export interface MonsterCatalogEntry {
 
 export interface Catalog {
   waifus: WaifuDef[];
+  classes: ClassDef[];
   skills: SkillDef[];
   cards: CardDef[];
   tiers: DungeonTier[];
@@ -187,6 +201,8 @@ export interface MapDto {
 export interface SkillStateDto {
   id: string;
   name: string;
+  element: string;
+  description: string;
   cooldownRemainingMs: number;
   cooldownTotalMs: number;
   ready: boolean;
@@ -207,6 +223,12 @@ export interface PlayerDto {
   targetId: number;
   gauge: number;
   skills: SkillStateDto[];
+  classId: string;
+  className: string;
+  stanceId: string;
+  stanceName: string;
+  stanceElement: string;
+  canToggleStance: boolean;
   autoAttackReadyInMs: number;
   activeBuffs: string[];
 }
@@ -300,6 +322,7 @@ export interface RunStateDto {
 
 export interface SnapshotDto {
   tick: number;
+  simulationMs: number;
   floor: number;
   player: PlayerDto;
   monsters: MonsterDto[];
@@ -324,6 +347,7 @@ export const ELEMENT_LABELS: Record<string, string> = {
   earth: 'Terra',
   death: 'Morte',
   holy: 'Sagrado',
+  support: 'Suporte',
 };
 
 export const WEAPON_LABELS: Record<string, string> = {

@@ -3,10 +3,12 @@ using KaezanArenaFable.Api.Domain;
 using KaezanArenaFable.Api.Engine;
 using KaezanArenaFable.Api.Hubs;
 using KaezanArenaFable.Api.Meta;
+using KaezanArenaFable.Api.Meta.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<GameData>();
+builder.Services.AddAccountPersistence(builder.Configuration);
 builder.Services.AddSingleton<AccountStore>();
 builder.Services.AddSingleton<GachaService>();
 builder.Services.AddSingleton<DailyService>();

@@ -682,8 +682,10 @@ Kaelis; loot equipável é distinguível do loot de venda; determinismo preserva
 sockets) — isso é o Forge, fora daqui. Manter exatamente 6 slots. Stats entram no início da run
 (nunca recalcular no meio, para não quebrar replay).
 
-### [ ] T-52 — Refundação de classes: 4 Kaelis canônicas + stance (substituir kits rasos)
+### [x] T-52 — Refundação de classes: 4 Kaelis canônicas + stance (substituir kits rasos)
 **Owner: Opus → Fable 5** · **P0 · L · backend + frontend** · **Onda 1 (fundação — fazer cedo)**
+
+**Concluída:** 13 waifus migradas para Warrior/Sentinel/Shaman/Wizard, kits canônicos 1-4+R data-driven e stance autoritativa com cooldown por slot.
 
 **Reasoning do owner.** É um **refactor de combate com design real**: colapsar ~19 kits inventados
 rasos em 4 classes profundas com mecânica de stance, migrar todas as waifus, e manter o combate
@@ -779,8 +781,10 @@ Cura pode tornar salas intransponíveis — capar e testar. Não introduzir não
 risco). Não recriar comportamento "à mão" quando o `.lua` já define — a fonte de verdade é o dado
 convertido.
 
-### [ ] T-54 — Persistência em MySQL: banco `kaezan_fable` separado (sair do JSON)
+### [x] T-54 — Persistência em MySQL: banco `kaezan_fable` separado (sair do JSON)
 **Owner: Opus** · **P0 · L · backend (infra) ·** **Onda 1 (fundação — track paralelo, independe de T-52/T-53)**
+
+**Concluída:** `AccountStore` abstraído com fallback JSON, EF Core/Pomelo + migrations no banco isolado `kaezan_fable` e importação one-shot da conta local.
 
 **Reasoning do owner.** É arquitetura de dados com decisões reais (schema, separação de fronteiras,
 migração do JSON, manter a abstração) e alto raio de explosão (camada de dados de todo o `Meta`).

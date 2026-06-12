@@ -6,6 +6,9 @@ import { GameClientService } from '../../core/game-client.service';
 import { GameRenderer } from '../../core/renderer';
 import { ItemIcon } from '../../core/item-icon';
 
+const MOVE_HEARTBEAT_MS = 250;
+const RESUME_TOAST_MS = 2500;
+
 @Component({
   selector: 'app-game',
   standalone: true,
@@ -13,6 +16,9 @@ import { ItemIcon } from '../../core/item-icon';
   template: `
     <div class="game-root" tabindex="0" #root>
       <canvas #cv class="game-canvas"></canvas>
+      @if (resumeToast()) {
+        <div class="resume-toast">Run retomada</div>
+      }
 
       <!-- top HUD -->
       <div class="hud top">
@@ -32,6 +38,13 @@ import { ItemIcon } from '../../core/item-icon';
           <div class="buffs">
             @for (b of s.player.activeBuffs; track b) { <span class="buff">{{ buffLabel(b) }}</span> }
           </div>
+          <button class="stance" [class.fixed]="!s.player.canToggleStance"
+                  [disabled]="!s.player.canToggleStance" (click)="toggleStance()"
+                  title="Tab alterna a postura">
+            <span>{{ s.player.className }}</span>
+            <b>{{ elementLabel(s.player.stanceElement) }}</b>
+            @if (s.player.canToggleStance) { <small>TAB</small> }
+          </button>
         }
         <button class="btn secondary leave" (click)="leave()">Sair</button>
       </div>
@@ -43,10 +56,12 @@ import { ItemIcon } from '../../core/item-icon';
       @if (snapshot(); as s) {
         <div class="hud skills">
           @for (sk of s.player.skills; track sk.id; let i = $index) {
-            <button class="skill" [class.ready]="sk.ready" [class.ult]="i === 3" (click)="cast(i)">
-              <span class="key">{{ ['1','2','3','4'][i] }}</span>
+            <button class="skill" [class.ready]="sk.ready" [class.ult]="i === 4"
+                    [title]="sk.description" (click)="cast(i)">
+              <span class="key">{{ ['1','2','3','4','R'][i] }}</span>
               <span class="name">{{ sk.name }}</span>
-              @if (i === 3) {
+              <span class="element">{{ elementLabel(sk.element) }}</span>
+              @if (i === 4) {
                 <div class="gaugewrap"><div class="gauge" [style.width.%]="s.player.gauge"></div></div>
               } @else if (!sk.ready) {
                 <div class="cd" [style.height.%]="(100 * sk.cooldownRemainingMs) / sk.cooldownTotalMs"></div>
@@ -111,6 +126,11 @@ import { ItemIcon } from '../../core/item-icon';
   styles: [`
     .game-root { position: fixed; inset: 0; background: #06060a; outline: none; overflow: hidden; }
     .game-canvas { position: absolute; inset: 0; image-rendering: pixelated; }
+    .resume-toast {
+      position: absolute; top: 18px; left: 50%; z-index: 30; transform: translateX(-50%);
+      padding: 9px 16px; border: 1px solid #2dd4bf; border-radius: 8px;
+      background: rgba(10, 30, 32, 0.94); color: #8bfff1; font-size: 13px; font-weight: 800;
+    }
     .hud.top { position: absolute; top: 12px; left: 14px; right: 14px; display: flex; gap: 18px; align-items: flex-start; pointer-events: none; }
     .hud.top .leave { pointer-events: auto; margin-left: auto; }
     .hpbar { width: 280px; background: rgba(10,10,16,0.8); border: 1px solid #2c2c3e; border-radius: 10px; padding: 8px 12px; }
@@ -126,10 +146,17 @@ import { ItemIcon } from '../../core/item-icon';
     .bar.boss { height: 12px; }
     .buffs { display: flex; gap: 6px; }
     .buff { background: rgba(45, 212, 191, 0.18); border: 1px solid #2dd4bf; color: #2dd4bf; font-size: 11px; font-weight: 800; border-radius: 6px; padding: 3px 8px; }
+    .stance {
+      pointer-events: auto; min-width: 116px; border: 1px solid #2dd4bf; border-radius: 9px;
+      background: rgba(10, 30, 32, 0.92); color: #b8fff5; padding: 6px 10px;
+      display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; text-align: left;
+    }
+    .stance span { grid-column: 1 / -1; color: #8bfff1; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+    .stance.fixed { border-color: #3a3a4c; background: rgba(16,16,26,0.9); }
     .minimap { position: absolute; right: 14px; top: 64px; border: 1px solid #2c2c3e; border-radius: 8px; background: #000; opacity: 0.9; }
     .hud.skills { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
     .skill {
-      position: relative; width: 92px; height: 64px; border-radius: 10px; overflow: hidden;
+      position: relative; width: 104px; height: 72px; border-radius: 10px; overflow: hidden;
       background: rgba(16,16,26,0.9); border: 2px solid #2c2c3e; color: #cfcde0;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
     }
@@ -137,6 +164,7 @@ import { ItemIcon } from '../../core/item-icon';
     .skill.ult.ready { border-color: #e8a93c; box-shadow: 0 0 12px rgba(232,169,60,0.5); }
     .skill .key { font-weight: 900; font-size: 15px; color: #fff; }
     .skill .name { font-size: 10px; text-align: center; line-height: 1.1; }
+    .skill .element { color: #707088; font-size: 9px; }
     .skill .cd { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.65); pointer-events: none; }
     .gaugewrap { width: 80%; height: 5px; background: #1c1c28; border-radius: 3px; overflow: hidden; }
     .gauge { height: 100%; background: linear-gradient(90deg, #e8a93c, #fbbf24); }
@@ -174,12 +202,15 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
 
   readonly snapshot = computed(() => this.client.snapshot());
   readonly busyChoosing = signal(false);
+  readonly resumeToast = signal(false);
 
   private renderer: GameRenderer | null = null;
   private raf = 0;
   private tier = 1;
   private keys = new Set<string>();
   private lastDir = { x: 0, y: 0 };
+  private moveHeartbeat = 0;
+  private resumeToastTimer = 0;
 
   constructor(
     private readonly client: GameClientService,
@@ -220,7 +251,11 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     if (map) this.renderer.setMap(map);
 
     try {
-      await this.client.joinRun(this.tier);
+      const joined = await this.client.joinRun(this.tier, undefined, true);
+      if (joined.resumed) {
+        this.resumeToast.set(true);
+        this.resumeToastTimer = window.setTimeout(() => this.resumeToast.set(false), RESUME_TOAST_MS);
+      }
     } catch (err) {
       console.error('joinRun failed', err);
       alert((err as Error).message);
@@ -231,9 +266,11 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
 
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
+    window.addEventListener('blur', this.onBlur);
     canvas.addEventListener('mousedown', this.onClick);
     canvas.addEventListener('mousemove', this.onMove);
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    this.moveHeartbeat = window.setInterval(this.resendMoveDir, MOVE_HEARTBEAT_MS);
 
     const loop = (now: number) => {
       this.renderer?.draw(now);
@@ -255,7 +292,9 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     } else if (k === '1' || k === 'q') this.cast(0);
     else if (k === '2') this.cast(1);
     else if (k === '3' || k === 'e') this.cast(2);
-    else if (k === '4' || k === 'r') this.cast(3);
+    else if (k === '4') this.cast(3);
+    else if (k === 'r') this.cast(4);
+    else if (k === 'tab') { this.toggleStance(); e.preventDefault(); }
     else if (k === ' ') { this.targetNearest(); e.preventDefault(); }
     else if (k === 'escape') this.leave();
   };
@@ -263,6 +302,17 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   private onKeyUp = (e: KeyboardEvent): void => {
     const k = e.key.toLowerCase();
     if (this.keys.delete(k)) this.sendMoveDir();
+  };
+
+  private onBlur = (): void => {
+    if (this.keys.size === 0) return;
+    this.keys.clear();
+    this.sendMoveDir();
+  };
+
+  private resendMoveDir = (): void => {
+    if (this.lastDir.x === 0 && this.lastDir.y === 0) return;
+    this.client.move(this.lastDir.x, this.lastDir.y);
   };
 
   private sendMoveDir(): void {
@@ -311,12 +361,26 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     this.client.castSkill(slot);
   }
 
+  toggleStance(): void {
+    this.client.toggleStance();
+  }
+
   chooseCard(cardId: string): void {
     this.client.chooseCard(cardId);
   }
 
   buffLabel(buff: string): string {
-    return { atk: 'ATK+', haste: 'VEL+', atkspeed: 'AS+', shield: 'ESCUDO', crit: 'CRIT+' }[buff] ?? buff;
+    return {
+      atk: 'ATK+', haste: 'VEL+', atkspeed: 'AS+', shield: 'ESCUDO', crit: 'CRIT+',
+      bloodrage: 'BLOOD RAGE', aegis: 'AEGIS',
+    }[buff] ?? buff;
+  }
+
+  elementLabel(element: string): string {
+    return {
+      physical: 'Fisico', holy: 'Sagrado', ice: 'Gelo',
+      earth: 'Terra', energy: 'Energia', fire: 'Fogo', support: 'Suporte',
+    }[element] ?? element;
   }
 
   formatTime(ms: number): string {
@@ -325,20 +389,23 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async again(): Promise<void> {
-    await this.client.joinRun(this.tier);
+    await this.client.joinRun(this.tier, undefined, false);
     void this.api.refreshAccount();
   }
 
   async leave(): Promise<void> {
-    await this.client.leave();
+    await this.client.leave(true);
     void this.api.refreshAccount();
     void this.router.navigate(['/hunt']);
   }
 
   ngOnDestroy(): void {
     cancelAnimationFrame(this.raf);
+    window.clearInterval(this.moveHeartbeat);
+    window.clearTimeout(this.resumeToastTimer);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
+    window.removeEventListener('blur', this.onBlur);
     void this.client.leave();
   }
 }

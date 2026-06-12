@@ -1,54 +1,20 @@
-using System.Text.Json;
-using KaezanArenaFable.Api.Domain;
-
 namespace KaezanArenaFable.Api.Meta;
 
 /// <summary>
-/// Single local account persisted to a JSON file (kaezan-arena convention).
-/// All mutations go through Mutate() which serializes under a lock.
+/// Synchronous facade for the single local account. Persistence is selected at startup.
+/// All mutations are serialized here and committed as one repository transaction.
 /// </summary>
 public sealed class AccountStore
 {
-    private readonly string _path;
+    private readonly IAccountRepository _repository;
     private readonly object _lock = new();
-    private readonly JsonSerializerOptions _json = new() { WriteIndented = true };
     private AccountState _state;
 
-    public AccountStore(IWebHostEnvironment env)
+    public AccountStore(IAccountRepository repository)
     {
-        var dir = Path.Combine(env.ContentRootPath, ".data");
-        Directory.CreateDirectory(dir);
-        _path = Path.Combine(dir, "account.json");
-        _state = Load();
+        _repository = repository;
+        _state = repository.LoadOrCreate();
     }
-
-    private AccountState Load()
-    {
-        if (File.Exists(_path))
-        {
-            try
-            {
-                var loaded = JsonSerializer.Deserialize<AccountState>(File.ReadAllText(_path));
-                if (loaded is not null) return loaded;
-            }
-            catch (Exception)
-            {
-                // corrupt file: start fresh below
-            }
-        }
-        var fresh = new AccountState
-        {
-            Kaeros = GameConfig.StartingKaeros,
-            Gold = GameConfig.StartingGold,
-            OwnedWaifus = [Waifus.StarterWaifuId],
-            ActiveWaifuId = Waifus.StarterWaifuId
-        };
-        Save(fresh);
-        return fresh;
-    }
-
-    private void Save(AccountState state) =>
-        File.WriteAllText(_path, JsonSerializer.Serialize(state, _json));
 
     public T Read<T>(Func<AccountState, T> reader)
     {
@@ -59,11 +25,58 @@ public sealed class AccountStore
     {
         lock (_lock)
         {
-            var result = mutator(_state);
-            Save(_state);
+            var next = Clone(_state);
+            var result = mutator(next);
+            _repository.Save(next);
+            _state = next;
             return result;
         }
     }
 
     public void Mutate(Action<AccountState> mutator) => Mutate(s => { mutator(s); return true; });
+
+    private static AccountState Clone(AccountState source) => new()
+    {
+        Id = source.Id,
+        AccountLevel = source.AccountLevel,
+        AccountXp = source.AccountXp,
+        Gold = source.Gold,
+        Kaeros = source.Kaeros,
+        OwnedWaifus = [.. source.OwnedWaifus],
+        Shards = source.Shards.ToDictionary(),
+        Ascension = source.Ascension.ToDictionary(),
+        ActiveWaifuId = source.ActiveWaifuId,
+        Pity = source.Pity.ToDictionary(
+            entry => entry.Key,
+            entry => new PityState
+            {
+                PullsSinceFiveStar = entry.Value.PullsSinceFiveStar,
+                PullsSinceFourStar = entry.Value.PullsSinceFourStar,
+                FeaturedGuaranteed = entry.Value.FeaturedGuaranteed,
+                TotalPulls = entry.Value.TotalPulls
+            }),
+        BestiaryKills = source.BestiaryKills.ToDictionary(),
+        Inventory = source.Inventory.ToDictionary(
+            entry => entry.Key,
+            entry => new InventoryStack
+            {
+                ItemId = entry.Value.ItemId,
+                Name = entry.Value.Name,
+                Count = entry.Value.Count
+            }),
+        DailyDate = source.DailyDate,
+        Dailies = source.Dailies.Select(contract => new DailyContract
+        {
+            Id = contract.Id,
+            Kind = contract.Kind,
+            Param = contract.Param,
+            Description = contract.Description,
+            Target = contract.Target,
+            Progress = contract.Progress,
+            Claimed = contract.Claimed
+        }).ToList(),
+        RunsPlayed = source.RunsPlayed,
+        RunsWon = source.RunsWon,
+        TierClears = source.TierClears.ToDictionary()
+    };
 }

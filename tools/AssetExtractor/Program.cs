@@ -26,6 +26,7 @@ internal static class Program
         string? itemsXmlPath = null, mountsXmlPath = null, staticItemsDir = null;
         var dumpNames = false;
         var itemsOnly = false;
+        var equipment = false;
         for (var i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -38,6 +39,7 @@ internal static class Program
                 case "--items-xml": itemsXmlPath = args[++i]; break;
                 case "--mounts-xml": mountsXmlPath = args[++i]; break;
                 case "--items-only": itemsOnly = true; break;
+                case "--equipment": equipment = true; break;
                 case "--static-items": staticItemsDir = args[++i]; break;
                 case "--dump-names": dumpNames = true; break;
             }
@@ -49,7 +51,7 @@ internal static class Program
                 "usage: AssetExtractor --things <things/1500 dir> --out <output dir> " +
                 "[--config content-config.json] [--monsters monsters.json] " +
                 "[--items-out items.json] [--items-xml items.xml] [--mounts-xml mounts.xml] " +
-                "[--items-only] " +
+                "[--items-only] [--equipment] " +
                 "[--static-items <legacy assets dir>] [--dump-names]");
             return 1;
         }
@@ -67,6 +69,13 @@ internal static class Program
         var config = JsonNode.Parse(File.ReadAllText(configPath))!.AsObject();
         var (lootIds, lootNames) = ReadLootItems(monstersPath);
         var mountIds = ReadIdList(config, "mountIds").ToArray();
+        var itemIds = new SortedSet<uint>(lootIds);
+        if (equipment)
+        {
+            foreach (var id in ReadEquipmentItems(appearances.Object))
+                itemIds.Add(id);
+            Console.WriteLine($"equipment: selected {itemIds.Count - lootIds.Count} additional objects by clothes.slot");
+        }
 
         if (itemsOnly)
         {
@@ -77,7 +86,7 @@ internal static class Program
             }
             ExportItems(
                 appearances.Object,
-                lootIds,
+                itemIds,
                 lootNames,
                 mountIds,
                 itemsXmlPath,
@@ -100,7 +109,7 @@ internal static class Program
         var outfitIds = new SortedSet<uint>(ReadIdList(config, "outfitIds"));
         foreach (var mountId in mountIds) outfitIds.Add(mountId);
         var objectIds = new SortedSet<uint>(ReadIdList(config, "objectIds"));
-        foreach (var id in lootIds) objectIds.Add(id);
+        foreach (var id in itemIds) objectIds.Add(id);
         AddMonsterAssets(monstersPath, outfitIds, objectIds);
         var objectsByName = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
         var wantedNames = config["objectsByName"]?.AsArray().Select(n => n!.GetValue<string>()).ToHashSet(StringComparer.OrdinalIgnoreCase)
@@ -162,6 +171,11 @@ internal static class Program
 
     private static IEnumerable<uint> ReadIdList(JsonObject config, string key) =>
         config[key]?.AsArray().Select(v => v!.GetValue<uint>()) ?? Enumerable.Empty<uint>();
+
+    private static IEnumerable<uint> ReadEquipmentItems(IEnumerable<Appearance> objects) =>
+        objects
+            .Where(obj => EquipmentSlot(obj.Flags?.Clothes?.Slot ?? 0) is not null)
+            .Select(obj => obj.Id);
 
     private static (SortedSet<uint> Ids, Dictionary<uint, string> Names) ReadLootItems(string? monstersPath)
     {
@@ -563,6 +577,13 @@ internal static class Program
         {
             flags["lightBrightness"] = f.Light.Brightness;
             flags["lightColor"] = f.Light.Color;
+        }
+        if (f.Clothes is not null)
+        {
+            flags["clothes"] = new JsonObject
+            {
+                ["slot"] = f.Clothes.Slot
+            };
         }
         return flags;
     }

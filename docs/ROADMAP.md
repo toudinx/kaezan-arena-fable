@@ -602,8 +602,10 @@ algumas serem grandes. Ordenadas por complexidade crescente (e por owner crescen
 > primeiro) e **T-51/T-50 são Onda 2** — ver **§0.7 Ordem de execução**. O número da Fase é só
 > agrupamento temático, não ordem de fazer.
 
-### [ ] T-50 — Cobertura de ícones de equipamento via AssetExtractor (auto-curado por slot)
+### [x] T-50 — Cobertura de ícones de equipamento via AssetExtractor (auto-curado por slot)
 **Owner: Sonnet 4.6** (ou Codex) · **P1 · S · tools**
+
+**Concluída (2026-06-12):** `--equipment` auto-seleciona os 5 slots úteis por `clothes.slot`, grava a flag no manifest e exporta os ícones/stats sem incluir legs/feet/backpack.
 
 **Decisão tomada (2026-06-12):** **não** construir um pipeline de importação estática a partir de
 `C:\xampp\htdocs\assets`. Analisado e descartado — ver reasoning abaixo. O escopo desta task

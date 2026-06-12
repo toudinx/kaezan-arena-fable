@@ -149,6 +149,7 @@ cd tools/AssetExtractor
 dotnet run -- --things "C:\Kaezan\kaezan\otclient-4.0\data\things\1500" `
   --out "..\..\frontend\public\assets\tibia" `
   --config content-config.json `
+  --equipment `
   --monsters "..\..\backend\src\KaezanArenaFable.Api\Data\monsters.json" `
   --items-out "..\..\backend\src\KaezanArenaFable.Api\Data\items.json" `
   --items-xml "C:\Kaezan\kaezan\canary-3.4.1\data\items\items.xml" `
@@ -160,7 +161,9 @@ protobuf + sheets BMP comprimidas com LZMA1 raw + header CIP) — mesmo algoritm
 `spriteappearances.cpp` do OTClient. O manifest descreve patterns (direções, addons,
 camada de máscara de cor) e o frontend recoloriza outfits em runtime com a paleta HSI
 de 133 cores do Tibia. O mesmo comando cruza `items.xml` para gerar slots e atributos reais,
-além dos itens sintéticos de montaria usados pelo equipamento.
+além dos itens sintéticos de montaria usados pelo equipamento. O modo `--equipment` inclui
+automaticamente objetos cujo `clothes.slot` corresponde a helmet, armor, weapon, necklace ou
+ring; legs, feet e backpack permanecem fora do pacote.
 
 `--static-items` é uma fonte opcional de importação: para objetos simples de um único frame,
 o extractor normaliza os thumbnails antigos em células transparentes ancoradas no canto

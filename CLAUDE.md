@@ -5,10 +5,14 @@ Instruções para assistentes de IA trabalhando neste repo.
 ## Primeiros passos (toda sessão)
 
 1. Leia `README.md` — é a documentação viva. Confie nele acima de qualquer outro `.md`.
-2. Se a tarefa vier do roadmap, leia `docs/ROADMAP.md` §0 (regras de trabalho) e a task inteira
-   antes de codar. `docs/GDD.md` dá o contexto de design.
+2. Identifique de qual fila a tarefa vem:
+   - **Codex** (task pequena/bem-especificada): leia `docs/ROADMAP.md` §0 + a task inteira.
+   - **Claude Fable 5** (feature grande/cross-cutting): leia `docs/FABLE_TRACK.md` (critérios +
+     a feature inteira) e a seção do `docs/DESIGN_NOTES.md` que ela referencia.
+   `docs/GDD.md` e `docs/DESIGN_NOTES.md` dão o contexto de design (este último é a base de
+   ideias do Tibia/Canary + Kaezan World).
 3. Não leia arquivos especulativamente; só o que a tarefa pede.
-4. Ao concluir uma task do roadmap, marque-a `[x]` no ROADMAP.md com 1 linha de resumo.
+4. Ao concluir uma task/feature, marque-a `[x]` no ROADMAP.md / FABLE_TRACK.md com 1 linha de resumo.
 
 ## Invariantes inegociáveis
 

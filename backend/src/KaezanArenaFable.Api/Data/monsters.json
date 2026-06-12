@@ -1,0 +1,3113 @@
+[
+  {
+    "name": "Rat",
+    "description": "a rat",
+    "experience": 5,
+    "health": 20,
+    "speed": 67,
+    "corpse": 5964,
+    "outfit": {
+      "lookType": 21,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 5,
+    "armor": 1,
+    "defense": 5,
+    "mitigation": 0.07,
+    "isBoss": false,
+    "bestiaryClass": "Mammal",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 8,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "earth": 20,
+      "ice": -10,
+      "holy": 20,
+      "death": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 100000,
+        "maxCount": 4
+      },
+      {
+        "itemId": 3607,
+        "name": "cheese",
+        "chance": 39410,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Meep!"
+    ]
+  },
+  {
+    "name": "Cave Rat",
+    "description": "a cave rat",
+    "experience": 10,
+    "health": 30,
+    "speed": 75,
+    "corpse": 5964,
+    "outfit": {
+      "lookType": 56,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 3,
+    "armor": 1,
+    "defense": 5,
+    "mitigation": 0.1,
+    "isBoss": false,
+    "bestiaryClass": "Mammal",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 10,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "fire": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 85000,
+        "maxCount": 2
+      },
+      {
+        "itemId": 3607,
+        "name": "cheese",
+        "chance": 30000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3492,
+        "name": "worm",
+        "chance": 9700,
+        "maxCount": 2
+      },
+      {
+        "itemId": 3598,
+        "name": "cookie",
+        "chance": 750,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Meep!",
+      "Meeeeep!"
+    ]
+  },
+  {
+    "name": "Rotworm",
+    "description": "a rotworm",
+    "experience": 40,
+    "health": 65,
+    "speed": 58,
+    "corpse": 5967,
+    "outfit": {
+      "lookType": 26,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 70,
+    "runOnHealth": 0,
+    "armor": 8,
+    "defense": 10,
+    "mitigation": 0.28,
+    "isBoss": false,
+    "bestiaryClass": "Vermin",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 40,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {},
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 71760,
+        "maxCount": 17
+      },
+      {
+        "itemId": 3582,
+        "name": "ham",
+        "chance": 20120,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3577,
+        "name": "meat",
+        "chance": 20000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 9692,
+        "name": "lump of dirt",
+        "chance": 10000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3286,
+        "name": "mace",
+        "chance": 4500,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3264,
+        "name": "sword",
+        "chance": 3000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3492,
+        "name": "worm",
+        "chance": 3000,
+        "maxCount": 3
+      },
+      {
+        "itemId": 3374,
+        "name": "legion helmet",
+        "chance": 1890,
+        "maxCount": 1
+      }
+    ],
+    "voices": []
+  },
+  {
+    "name": "Carrion Worm",
+    "description": "a carrion worm",
+    "experience": 70,
+    "health": 145,
+    "speed": 65,
+    "corpse": 6069,
+    "outfit": {
+      "lookType": 192,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 80,
+    "runOnHealth": 0,
+    "armor": 8,
+    "defense": 15,
+    "mitigation": 0.38,
+    "isBoss": false,
+    "bestiaryClass": "Vermin",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 45,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "energy": 10,
+      "earth": 20,
+      "fire": -5,
+      "ice": -5
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 50000,
+        "maxCount": 45
+      },
+      {
+        "itemId": 10275,
+        "name": "carrion worm fang",
+        "chance": 10000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3577,
+        "name": "meat",
+        "chance": 9460,
+        "maxCount": 2
+      },
+      {
+        "itemId": 3492,
+        "name": "worm",
+        "chance": 2100,
+        "maxCount": 2
+      },
+      {
+        "itemId": 12600,
+        "name": "coal",
+        "chance": 210,
+        "maxCount": 1
+      }
+    ],
+    "voices": []
+  },
+  {
+    "name": "Spider",
+    "description": "a spider",
+    "experience": 12,
+    "health": 20,
+    "speed": 76,
+    "corpse": 5961,
+    "outfit": {
+      "lookType": 30,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 6,
+    "armor": 2,
+    "defense": 2,
+    "mitigation": 0.05,
+    "isBoss": false,
+    "bestiaryClass": "Vermin",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 9,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "fire": -20
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 65150,
+        "maxCount": 5
+      },
+      {
+        "itemId": 8031,
+        "name": "spider fangs",
+        "chance": 960,
+        "maxCount": 1
+      }
+    ],
+    "voices": []
+  },
+  {
+    "name": "Poison Spider",
+    "description": "a poison spider",
+    "experience": 22,
+    "health": 26,
+    "speed": 80,
+    "corpse": 5974,
+    "outfit": {
+      "lookType": 36,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 6,
+    "armor": 2,
+    "defense": 5,
+    "mitigation": 0.15,
+    "isBoss": false,
+    "bestiaryClass": "Vermin",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 20,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "earth": 100,
+      "fire": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 75000,
+        "maxCount": 4
+      },
+      {
+        "itemId": 11485,
+        "name": "poison spider shell",
+        "chance": 1140,
+        "maxCount": 1
+      }
+    ],
+    "voices": []
+  },
+  {
+    "name": "Snake",
+    "description": "a snake",
+    "experience": 10,
+    "health": 15,
+    "speed": 60,
+    "corpse": 3998,
+    "outfit": {
+      "lookType": 28,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 0,
+    "defense": 5,
+    "mitigation": 0.03,
+    "isBoss": false,
+    "bestiaryClass": "Reptile",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 8,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "energy": 20,
+      "earth": 40,
+      "fire": -10,
+      "ice": -10
+    },
+    "loot": [],
+    "voices": [
+      "Zzzzzzt"
+    ]
+  },
+  {
+    "name": "Skeleton",
+    "description": "a skeleton",
+    "experience": 35,
+    "health": 50,
+    "speed": 77,
+    "corpse": 5972,
+    "outfit": {
+      "lookType": 33,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 2,
+    "defense": 10,
+    "mitigation": 0.23,
+    "isBoss": false,
+    "bestiaryClass": "Undead",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 20,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 15,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 7,
+        "maxDamage": 13,
+        "damageType": "lifedrain",
+        "shootEffect": 0,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "lifedrain": 100,
+      "drown": 100,
+      "holy": -25,
+      "death": 100
+    },
+    "loot": [
+      {
+        "itemId": 3115,
+        "name": "bone",
+        "chance": 49100,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 43900,
+        "maxCount": 10
+      },
+      {
+        "itemId": 2920,
+        "name": "torch",
+        "chance": 10000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11481,
+        "name": "pelvis bone",
+        "chance": 9940,
+        "maxCount": 1
+      },
+      {
+        "itemId": 2920,
+        "name": "torch",
+        "chance": 9880,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3367,
+        "name": "viking helmet",
+        "chance": 7520,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3276,
+        "name": "hatchet",
+        "chance": 4850,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3286,
+        "name": "mace",
+        "chance": 4850,
+        "maxCount": 1
+      }
+    ],
+    "voices": []
+  },
+  {
+    "name": "Ghoul",
+    "description": "a ghoul",
+    "experience": 85,
+    "health": 100,
+    "speed": 72,
+    "corpse": 5976,
+    "outfit": {
+      "lookType": 18,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 8,
+    "defense": 15,
+    "mitigation": 0.43,
+    "isBoss": false,
+    "bestiaryClass": "Undead",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 70,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 1,
+        "radius": 1,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 15,
+        "maxDamage": 27,
+        "damageType": "lifedrain",
+        "shootEffect": 0,
+        "areaEffect": 39
+      }
+    ],
+    "elements": {
+      "energy": 30,
+      "earth": 20,
+      "lifedrain": 100,
+      "drown": 100,
+      "ice": 10,
+      "holy": -25,
+      "death": 100
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 68000,
+        "maxCount": 30
+      },
+      {
+        "itemId": 10291,
+        "name": "rotten piece of cloth",
+        "chance": 14470,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3492,
+        "name": "worm",
+        "chance": 9600,
+        "maxCount": 2
+      },
+      {
+        "itemId": 11467,
+        "name": "ghoul snack",
+        "chance": 5130,
+        "maxCount": 1
+      },
+      {
+        "itemId": 2920,
+        "name": "torch",
+        "chance": 5000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3377,
+        "name": "scale armor",
+        "chance": 1000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 5913,
+        "name": "brown piece of cloth",
+        "chance": 1000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 23986,
+        "name": "heavy old tome",
+        "chance": 1000,
+        "maxCount": 1
+      }
+    ],
+    "voices": []
+  },
+  {
+    "name": "Demon Skeleton",
+    "description": "a demon skeleton",
+    "experience": 240,
+    "health": 400,
+    "speed": 90,
+    "corpse": 5963,
+    "outfit": {
+      "lookType": 37,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 25,
+    "defense": 30,
+    "mitigation": 0.91,
+    "isBoss": false,
+    "bestiaryClass": "Undead",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 185,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 1,
+        "radius": 1,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 30,
+        "maxDamage": 50,
+        "damageType": "death",
+        "shootEffect": 0,
+        "areaEffect": 39
+      }
+    ],
+    "elements": {
+      "earth": 100,
+      "fire": 100,
+      "lifedrain": 100,
+      "drown": 100,
+      "holy": -25,
+      "death": 100
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 97000,
+        "maxCount": 75
+      },
+      {
+        "itemId": 9647,
+        "name": "demonic skeletal hand",
+        "chance": 12600,
+        "maxCount": 1
+      },
+      {
+        "itemId": 266,
+        "name": "health potion",
+        "chance": 10120,
+        "maxCount": 2
+      },
+      {
+        "itemId": 3287,
+        "name": "throwing star",
+        "chance": 10000,
+        "maxCount": 3
+      },
+      {
+        "itemId": 266,
+        "name": "health potion",
+        "chance": 10000,
+        "maxCount": 2
+      },
+      {
+        "itemId": 268,
+        "name": "mana potion",
+        "chance": 5300,
+        "maxCount": 1
+      },
+      {
+        "itemId": 2920,
+        "name": "torch",
+        "chance": 5270,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3413,
+        "name": "battle shield",
+        "chance": 5000,
+        "maxCount": 1
+      }
+    ],
+    "voices": []
+  },
+  {
+    "name": "Vampire",
+    "description": "a vampire",
+    "experience": 305,
+    "health": 475,
+    "speed": 119,
+    "corpse": 6006,
+    "outfit": {
+      "lookType": 68,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 30,
+    "armor": 28,
+    "defense": 30,
+    "mitigation": 1.04,
+    "isBoss": false,
+    "bestiaryClass": "Undead",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 150,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 20,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 50,
+        "maxDamage": 200,
+        "damageType": "lifedrain",
+        "shootEffect": 0,
+        "areaEffect": 39
+      }
+    ],
+    "elements": {
+      "physical": 25,
+      "earth": 100,
+      "fire": -10,
+      "lifedrain": 100,
+      "drown": 100,
+      "holy": -25,
+      "death": 100
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 90230,
+        "maxCount": 60
+      },
+      {
+        "itemId": 9685,
+        "name": "vampire teeth",
+        "chance": 7600,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11449,
+        "name": "blood preservation",
+        "chance": 5100,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3661,
+        "name": "grave flower",
+        "chance": 1910,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3027,
+        "name": "black pearl",
+        "chance": 1800,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3300,
+        "name": "katana",
+        "chance": 1560,
+        "maxCount": 1
+      },
+      {
+        "itemId": 236,
+        "name": "strong health potion",
+        "chance": 1500,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3114,
+        "name": "skull",
+        "chance": 1000,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "BLOOD!",
+      "Let me kiss your neck",
+      "I smell warm blood!",
+      "I call you, my bats! Come!"
+    ]
+  },
+  {
+    "name": "Orc",
+    "description": "an orc",
+    "experience": 25,
+    "health": 70,
+    "speed": 75,
+    "corpse": 5966,
+    "outfit": {
+      "lookType": 5,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 15,
+    "armor": 4,
+    "defense": 10,
+    "mitigation": 0.2,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 35,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "energy": 20,
+      "earth": -10,
+      "holy": 10,
+      "death": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 84810,
+        "maxCount": 14
+      },
+      {
+        "itemId": 3577,
+        "name": "meat",
+        "chance": 10160,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3378,
+        "name": "studded armor",
+        "chance": 7860,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3426,
+        "name": "studded shield",
+        "chance": 7300,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3273,
+        "name": "sabre",
+        "chance": 5850,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3274,
+        "name": "axe",
+        "chance": 4960,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3376,
+        "name": "studded helmet",
+        "chance": 2950,
+        "maxCount": 1
+      },
+      {
+        "itemId": 23986,
+        "name": "heavy old tome",
+        "chance": 1000,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Grow truk grrrrr.",
+      "Prek tars, dekklep zurk.",
+      "Grak brrretz!"
+    ]
+  },
+  {
+    "name": "Orc Spearman",
+    "description": "an orc spearman",
+    "experience": 38,
+    "health": 105,
+    "speed": 88,
+    "corpse": 5996,
+    "outfit": {
+      "lookType": 50,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 4,
+    "staticAttackChance": 90,
+    "runOnHealth": 10,
+    "armor": 6,
+    "defense": 10,
+    "mitigation": 0.3,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 25,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 20,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 30,
+        "damageType": "physical",
+        "shootEffect": 1,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "energy": 20,
+      "earth": -10,
+      "holy": 20,
+      "death": -10
+    },
+    "loot": [
+      {
+        "itemId": 3577,
+        "name": "meat",
+        "chance": 30200,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 25050,
+        "maxCount": 11
+      },
+      {
+        "itemId": 3277,
+        "name": "spear",
+        "chance": 17440,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3362,
+        "name": "studded legs",
+        "chance": 10000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3376,
+        "name": "studded helmet",
+        "chance": 9000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3308,
+        "name": "machete",
+        "chance": 3000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11479,
+        "name": "orc leather",
+        "chance": 2300,
+        "maxCount": 1
+      },
+      {
+        "itemId": 23986,
+        "name": "heavy old tome",
+        "chance": 1000,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Ugaar!"
+    ]
+  },
+  {
+    "name": "Orc Warrior",
+    "description": "an orc warrior",
+    "experience": 50,
+    "health": 125,
+    "speed": 95,
+    "corpse": 5979,
+    "outfit": {
+      "lookType": 7,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 11,
+    "armor": 8,
+    "defense": 15,
+    "mitigation": 0.36,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 60,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "energy": 30,
+      "earth": -10,
+      "holy": 10,
+      "death": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 65000,
+        "maxCount": 15
+      },
+      {
+        "itemId": 3577,
+        "name": "meat",
+        "chance": 15000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11453,
+        "name": "broken helmet",
+        "chance": 10800,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3358,
+        "name": "chain armor",
+        "chance": 7360,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11479,
+        "name": "orc leather",
+        "chance": 4000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 23986,
+        "name": "heavy old tome",
+        "chance": 1000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11480,
+        "name": "skull belt",
+        "chance": 980,
+        "maxCount": 1
+      },
+      {
+        "itemId": 50194,
+        "name": "light bandana",
+        "chance": 950,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Alk!",
+      "Trak grrrr brik.",
+      "Grow truk grrrr."
+    ]
+  },
+  {
+    "name": "Orc Berserker",
+    "description": "an orc berserker",
+    "experience": 195,
+    "health": 210,
+    "speed": 125,
+    "corpse": 5980,
+    "outfit": {
+      "lookType": 8,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 12,
+    "defense": 15,
+    "mitigation": 0.3,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 200,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "energy": 15,
+      "earth": -10,
+      "holy": 10,
+      "death": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 54000,
+        "maxCount": 12
+      },
+      {
+        "itemId": 3582,
+        "name": "ham",
+        "chance": 10400,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11477,
+        "name": "orcish gear",
+        "chance": 9400,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3269,
+        "name": "halberd",
+        "chance": 7280,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3266,
+        "name": "battle axe",
+        "chance": 6110,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3347,
+        "name": "hunting spear",
+        "chance": 5000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11479,
+        "name": "orc leather",
+        "chance": 4000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 10196,
+        "name": "orc tooth",
+        "chance": 3000,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "KRAK ORRRRRRK!"
+    ]
+  },
+  {
+    "name": "Orc Warlord",
+    "description": "an orc warlord",
+    "experience": 670,
+    "health": 950,
+    "speed": 117,
+    "corpse": 6008,
+    "outfit": {
+      "lookType": 2,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 28,
+    "defense": 35,
+    "mitigation": 1.46,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 250,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 20,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 200,
+        "damageType": "physical",
+        "shootEffect": 8,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "energy": 20,
+      "earth": -10,
+      "fire": 80,
+      "holy": 10,
+      "death": -5
+    },
+    "loot": [
+      {
+        "itemId": 11453,
+        "name": "broken helmet",
+        "chance": 24350,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11479,
+        "name": "orc leather",
+        "chance": 20620,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 18000,
+        "maxCount": 45
+      },
+      {
+        "itemId": 3287,
+        "name": "throwing star",
+        "chance": 13920,
+        "maxCount": 18
+      },
+      {
+        "itemId": 3578,
+        "name": "fish",
+        "chance": 10800,
+        "maxCount": 2
+      },
+      {
+        "itemId": 10196,
+        "name": "orc tooth",
+        "chance": 9640,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3316,
+        "name": "orcish axe",
+        "chance": 5400,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3347,
+        "name": "hunting spear",
+        "chance": 5260,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Ikem rambo zambo!",
+      "Orc buta bana!",
+      "Ranat Ulderek!",
+      "Futchi maruk buta!"
+    ]
+  },
+  {
+    "name": "Minotaur",
+    "description": "a minotaur",
+    "experience": 50,
+    "health": 100,
+    "speed": 84,
+    "corpse": 5969,
+    "outfit": {
+      "lookType": 25,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 11,
+    "defense": 15,
+    "mitigation": 0.28,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 45,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "fire": 20,
+      "ice": -10,
+      "holy": 10,
+      "death": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 67500,
+        "maxCount": 25
+      },
+      {
+        "itemId": 3410,
+        "name": "plate shield",
+        "chance": 20020,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3286,
+        "name": "mace",
+        "chance": 12840,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3358,
+        "name": "chain armor",
+        "chance": 10000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3354,
+        "name": "brass helmet",
+        "chance": 7700,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3264,
+        "name": "sword",
+        "chance": 5000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3577,
+        "name": "meat",
+        "chance": 5000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3274,
+        "name": "axe",
+        "chance": 4000,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Kaplar!",
+      "Hurr"
+    ]
+  },
+  {
+    "name": "Minotaur Archer",
+    "description": "a minotaur archer",
+    "experience": 65,
+    "health": 100,
+    "speed": 80,
+    "corpse": 5982,
+    "outfit": {
+      "lookType": 24,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 4,
+    "staticAttackChance": 90,
+    "runOnHealth": 10,
+    "armor": 6,
+    "defense": 10,
+    "mitigation": 0.2,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 25,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 40,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 80,
+        "damageType": "physical",
+        "shootEffect": 2,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "fire": 20,
+      "ice": -10,
+      "holy": 10,
+      "death": -5
+    },
+    "loot": [
+      {
+        "itemId": 3446,
+        "name": "bolt",
+        "chance": 90450,
+        "maxCount": 20
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 75410,
+        "maxCount": 30
+      },
+      {
+        "itemId": 11451,
+        "name": "broken crossbow",
+        "chance": 15400,
+        "maxCount": 1
+      },
+      {
+        "itemId": 7363,
+        "name": "piercing bolt",
+        "chance": 12340,
+        "maxCount": 4
+      },
+      {
+        "itemId": 11483,
+        "name": "piece of archer armor",
+        "chance": 8260,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3577,
+        "name": "meat",
+        "chance": 5000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11472,
+        "name": "minotaur horn",
+        "chance": 1990,
+        "maxCount": 2
+      },
+      {
+        "itemId": 5878,
+        "name": "minotaur leather",
+        "chance": 1900,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Ruan Wihmpy!",
+      "Kaplar!"
+    ]
+  },
+  {
+    "name": "Minotaur Mage",
+    "description": "a minotaur mage",
+    "experience": 150,
+    "health": 155,
+    "speed": 85,
+    "corpse": 5981,
+    "outfit": {
+      "lookType": 23,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 4,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 18,
+    "defense": 15,
+    "mitigation": 1.04,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 20,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 15,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 20,
+        "maxDamage": 59,
+        "damageType": "energy",
+        "shootEffect": 5,
+        "areaEffect": 12
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 15,
+        "range": 7,
+        "radius": 1,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 50,
+        "maxDamage": 105,
+        "damageType": "fire",
+        "shootEffect": 4,
+        "areaEffect": 7
+      }
+    ],
+    "elements": {
+      "energy": 20,
+      "earth": 20,
+      "ice": -10,
+      "holy": 10,
+      "death": -5
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 85780,
+        "maxCount": 35
+      },
+      {
+        "itemId": 3595,
+        "name": "carrot",
+        "chance": 15003,
+        "maxCount": 8
+      },
+      {
+        "itemId": 11473,
+        "name": "purple robe",
+        "chance": 6430,
+        "maxCount": 2
+      },
+      {
+        "itemId": 3559,
+        "name": "leather legs",
+        "chance": 5190,
+        "maxCount": 1
+      },
+      {
+        "itemId": 2920,
+        "name": "torch",
+        "chance": 4950,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11472,
+        "name": "minotaur horn",
+        "chance": 3020,
+        "maxCount": 2
+      },
+      {
+        "itemId": 3355,
+        "name": "leather helmet",
+        "chance": 3000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 5878,
+        "name": "minotaur leather",
+        "chance": 2290,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Learrn tha secrret uf deathhh!",
+      "Kaplar!"
+    ]
+  },
+  {
+    "name": "Necromancer",
+    "description": "a necromancer",
+    "experience": 580,
+    "health": 580,
+    "speed": 94,
+    "corpse": 18174,
+    "outfit": {
+      "lookType": 9,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 4,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 50,
+    "defense": 25,
+    "mitigation": 1.04,
+    "isBoss": false,
+    "bestiaryClass": "Human",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 80,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 20,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 10,
+        "maxDamage": 120,
+        "damageType": "death",
+        "shootEffect": 11,
+        "areaEffect": 39
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 20,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 35,
+        "maxDamage": 95,
+        "damageType": "earth",
+        "shootEffect": 15,
+        "areaEffect": 21
+      }
+    ],
+    "elements": {
+      "physical": -5,
+      "energy": 20,
+      "earth": 100,
+      "fire": -5,
+      "drown": 100,
+      "ice": 10,
+      "holy": -5,
+      "death": 50
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 30050,
+        "maxCount": 90
+      },
+      {
+        "itemId": 3448,
+        "name": "poison arrow",
+        "chance": 15000,
+        "maxCount": 5
+      },
+      {
+        "itemId": 10320,
+        "name": "book of necromantic rituals",
+        "chance": 10130,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3732,
+        "name": "green mushroom",
+        "chance": 1470,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11475,
+        "name": "necromantic robe",
+        "chance": 1001,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3574,
+        "name": "mystic turban",
+        "chance": 500,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3311,
+        "name": "clerical mace",
+        "chance": 390,
+        "maxCount": 1
+      },
+      {
+        "itemId": 237,
+        "name": "strong mana potion",
+        "chance": 300,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Taste the sweetness of death!",
+      "Your corpse will be mine."
+    ]
+  },
+  {
+    "name": "Cyclops",
+    "description": "a cyclops",
+    "experience": 150,
+    "health": 260,
+    "speed": 95,
+    "corpse": 5962,
+    "outfit": {
+      "lookType": 22,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 17,
+    "defense": 20,
+    "mitigation": 0.62,
+    "isBoss": false,
+    "bestiaryClass": "Giant",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 105,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "energy": 25,
+      "earth": -10,
+      "holy": 20,
+      "death": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 82000,
+        "maxCount": 47
+      },
+      {
+        "itemId": 3577,
+        "name": "meat",
+        "chance": 30070,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3294,
+        "name": "short sword",
+        "chance": 8000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 9657,
+        "name": "cyclops toe",
+        "chance": 4930,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3410,
+        "name": "plate shield",
+        "chance": 2500,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3413,
+        "name": "battle shield",
+        "chance": 1400,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3269,
+        "name": "halberd",
+        "chance": 1003,
+        "maxCount": 1
+      },
+      {
+        "itemId": 23986,
+        "name": "heavy old tome",
+        "chance": 1000,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Human, uh whil dyh!",
+      "Youh ah trak!",
+      "Let da mashing begin!",
+      "Toks utat.",
+      "Il lorstok human!"
+    ]
+  },
+  {
+    "name": "Behemoth",
+    "description": "a behemoth",
+    "experience": 2500,
+    "health": 4000,
+    "speed": 170,
+    "corpse": 5999,
+    "outfit": {
+      "lookType": 55,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 70,
+    "runOnHealth": 0,
+    "armor": 50,
+    "defense": 45,
+    "mitigation": 1.74,
+    "isBoss": false,
+    "bestiaryClass": "Giant",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 450,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 15,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 200,
+        "damageType": "physical",
+        "shootEffect": 12,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "physical": 10,
+      "energy": 10,
+      "earth": 80,
+      "fire": 30,
+      "ice": -10,
+      "holy": 30,
+      "death": -5
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 100000,
+        "maxCount": 200
+      },
+      {
+        "itemId": 3035,
+        "name": "platinum coin",
+        "chance": 59800,
+        "maxCount": 5
+      },
+      {
+        "itemId": 3577,
+        "name": "meat",
+        "chance": 30000,
+        "maxCount": 6
+      },
+      {
+        "itemId": 11447,
+        "name": "battle stone",
+        "chance": 14000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3275,
+        "name": "double axe",
+        "chance": 10510,
+        "maxCount": 1
+      },
+      {
+        "itemId": 7368,
+        "name": "assassin star",
+        "chance": 9750,
+        "maxCount": 5
+      },
+      {
+        "itemId": 3033,
+        "name": "small amethyst",
+        "chance": 6380,
+        "maxCount": 5
+      },
+      {
+        "itemId": 3265,
+        "name": "two handed sword",
+        "chance": 5980,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Crush the intruders!",
+      "You're so little!",
+      "Human flesh -  delicious!"
+    ]
+  },
+  {
+    "name": "Fire Devil",
+    "description": "a fire devil",
+    "experience": 145,
+    "health": 200,
+    "speed": 90,
+    "corpse": 5985,
+    "outfit": {
+      "lookType": 40,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 4,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 13,
+    "defense": 10,
+    "mitigation": 0.38,
+    "isBoss": false,
+    "bestiaryClass": "Demon",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 35,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 20,
+        "range": 7,
+        "radius": 4,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 60,
+        "maxDamage": 90,
+        "damageType": "fire",
+        "shootEffect": 4,
+        "areaEffect": 7
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 15,
+        "range": 7,
+        "radius": 2,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 20,
+        "maxDamage": 50,
+        "damageType": "fire",
+        "shootEffect": 4,
+        "areaEffect": 7
+      }
+    ],
+    "elements": {
+      "physical": 10,
+      "energy": 30,
+      "earth": 20,
+      "fire": 100,
+      "ice": -20,
+      "holy": -10,
+      "death": 20
+    },
+    "loot": [
+      {
+        "itemId": 11513,
+        "name": "small pitchfork",
+        "chance": 19770,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3147,
+        "name": "blank rune",
+        "chance": 10950,
+        "maxCount": 1
+      },
+      {
+        "itemId": 2920,
+        "name": "torch",
+        "chance": 10000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3307,
+        "name": "scimitar",
+        "chance": 3000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3275,
+        "name": "double axe",
+        "chance": 1500,
+        "maxCount": 1
+      },
+      {
+        "itemId": 2920,
+        "name": "torch",
+        "chance": 1420,
+        "maxCount": 2
+      },
+      {
+        "itemId": 3471,
+        "name": "cleaver",
+        "chance": 1100,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3069,
+        "name": "necrotic rod",
+        "chance": 460,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Hot, eh?",
+      "Hell, oh, hell!"
+    ]
+  },
+  {
+    "name": "Demon",
+    "description": "a demon",
+    "experience": 6000,
+    "health": 8200,
+    "speed": 128,
+    "corpse": 5995,
+    "outfit": {
+      "lookType": 35,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 70,
+    "runOnHealth": 0,
+    "armor": 44,
+    "defense": 55,
+    "mitigation": 1.74,
+    "isBoss": false,
+    "bestiaryClass": "Demon",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 500,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 120,
+        "damageType": "manadrain",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 20,
+        "range": 7,
+        "radius": 7,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 150,
+        "maxDamage": 250,
+        "damageType": "fire",
+        "shootEffect": 4,
+        "areaEffect": 7
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 0,
+        "radius": 0,
+        "length": 8,
+        "spread": 0,
+        "target": false,
+        "minDamage": 300,
+        "maxDamage": 480,
+        "damageType": "lifedrain",
+        "shootEffect": 0,
+        "areaEffect": 48
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 210,
+        "maxDamage": 300,
+        "damageType": "energy",
+        "shootEffect": 5,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "physical": 25,
+      "energy": 50,
+      "earth": 40,
+      "fire": 100,
+      "lifedrain": 100,
+      "drown": 100,
+      "ice": -12,
+      "holy": -12,
+      "death": 20
+    },
+    "loot": [
+      {
+        "itemId": 3035,
+        "name": "platinum coin",
+        "chance": 90540,
+        "maxCount": 8
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 60000,
+        "maxCount": 100
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 60000,
+        "maxCount": 100
+      },
+      {
+        "itemId": 238,
+        "name": "great mana potion",
+        "chance": 22220,
+        "maxCount": 3
+      },
+      {
+        "itemId": 3731,
+        "name": "fire mushroom",
+        "chance": 19660,
+        "maxCount": 6
+      },
+      {
+        "itemId": 7643,
+        "name": "ultimate health potion",
+        "chance": 19540,
+        "maxCount": 3
+      },
+      {
+        "itemId": 7642,
+        "name": "great spirit potion",
+        "chance": 18510,
+        "maxCount": 3
+      },
+      {
+        "itemId": 5954,
+        "name": "demon horn",
+        "chance": 14920,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Your soul will be mine!",
+      "CHAMEK ATH UTHUL ARAK!",
+      "I SMELL FEEEEAAAAAR!",
+      "Your resistance is futile!",
+      "MUHAHAHAHA!"
+    ]
+  },
+  {
+    "name": "Dragon",
+    "description": "a dragon",
+    "experience": 700,
+    "health": 1000,
+    "speed": 86,
+    "corpse": 5973,
+    "outfit": {
+      "lookType": 34,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 80,
+    "runOnHealth": 300,
+    "armor": 25,
+    "defense": 30,
+    "mitigation": 0.99,
+    "isBoss": false,
+    "bestiaryClass": "Dragon",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 120,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 15,
+        "range": 7,
+        "radius": 4,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 60,
+        "maxDamage": 140,
+        "damageType": "fire",
+        "shootEffect": 4,
+        "areaEffect": 7
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 0,
+        "radius": 0,
+        "length": 8,
+        "spread": 3,
+        "target": false,
+        "minDamage": 100,
+        "maxDamage": 170,
+        "damageType": "fire",
+        "shootEffect": 0,
+        "areaEffect": 7
+      }
+    ],
+    "elements": {
+      "energy": 20,
+      "earth": 80,
+      "fire": 100,
+      "ice": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 89920,
+        "maxCount": 102
+      },
+      {
+        "itemId": 3583,
+        "name": "dragon ham",
+        "chance": 66270,
+        "maxCount": 2
+      },
+      {
+        "itemId": 3409,
+        "name": "steel shield",
+        "chance": 15650,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11457,
+        "name": "dragon's tail",
+        "chance": 9680,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3349,
+        "name": "crossbow",
+        "chance": 9120,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3449,
+        "name": "burst arrow",
+        "chance": 8060,
+        "maxCount": 10
+      },
+      {
+        "itemId": 3285,
+        "name": "longsword",
+        "chance": 3830,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3351,
+        "name": "steel helmet",
+        "chance": 3490,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "FCHHHHH",
+      "GROOAAARRR"
+    ]
+  },
+  {
+    "name": "Dragon Lord",
+    "description": "a dragon lord",
+    "experience": 2100,
+    "health": 1900,
+    "speed": 100,
+    "corpse": 5984,
+    "outfit": {
+      "lookType": 39,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 80,
+    "runOnHealth": 300,
+    "armor": 34,
+    "defense": 34,
+    "mitigation": 1.29,
+    "isBoss": false,
+    "bestiaryClass": "Dragon",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 230,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 30,
+        "range": 7,
+        "radius": 4,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 100,
+        "maxDamage": 220,
+        "damageType": "fire",
+        "shootEffect": 4,
+        "areaEffect": 7
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 22,
+        "range": 0,
+        "radius": 0,
+        "length": 8,
+        "spread": 3,
+        "target": false,
+        "minDamage": 150,
+        "maxDamage": 270,
+        "damageType": "fire",
+        "shootEffect": 0,
+        "areaEffect": 7
+      }
+    ],
+    "elements": {
+      "energy": 20,
+      "earth": 80,
+      "fire": 100,
+      "ice": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 95300,
+        "maxCount": 237
+      },
+      {
+        "itemId": 3583,
+        "name": "dragon ham",
+        "chance": 79790,
+        "maxCount": 2
+      },
+      {
+        "itemId": 3732,
+        "name": "green mushroom",
+        "chance": 12030,
+        "maxCount": 1
+      },
+      {
+        "itemId": 2842,
+        "name": "book",
+        "chance": 9590,
+        "maxCount": 1
+      },
+      {
+        "itemId": 7378,
+        "name": "royal spear",
+        "chance": 9380,
+        "maxCount": 3
+      },
+      {
+        "itemId": 3450,
+        "name": "power bolt",
+        "chance": 5920,
+        "maxCount": 7
+      },
+      {
+        "itemId": 3029,
+        "name": "small sapphire",
+        "chance": 5590,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3051,
+        "name": "energy ring",
+        "chance": 4550,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "YOU WILL BURN!",
+      "ZCHHHHHHH"
+    ]
+  },
+  {
+    "name": "Giant Spider",
+    "description": "a giant spider",
+    "experience": 900,
+    "health": 1300,
+    "speed": 120,
+    "corpse": 5977,
+    "outfit": {
+      "lookType": 38,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 70,
+    "runOnHealth": 0,
+    "armor": 30,
+    "defense": 0,
+    "mitigation": 1.04,
+    "isBoss": false,
+    "bestiaryClass": "Vermin",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 300,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 7,
+        "radius": 1,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 40,
+        "maxDamage": 70,
+        "damageType": "earth",
+        "shootEffect": 15,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "energy": 20,
+      "earth": 100,
+      "fire": -10,
+      "ice": 20
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 99990,
+        "maxCount": 195
+      },
+      {
+        "itemId": 3448,
+        "name": "poison arrow",
+        "chance": 11950,
+        "maxCount": 12
+      },
+      {
+        "itemId": 3357,
+        "name": "plate armor",
+        "chance": 9980,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3557,
+        "name": "plate legs",
+        "chance": 8333,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3265,
+        "name": "two handed sword",
+        "chance": 5100,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3351,
+        "name": "steel helmet",
+        "chance": 4980,
+        "maxCount": 1
+      },
+      {
+        "itemId": 236,
+        "name": "strong health potion",
+        "chance": 3550,
+        "maxCount": 1
+      },
+      {
+        "itemId": 5879,
+        "name": "spider silk",
+        "chance": 1990,
+        "maxCount": 1
+      }
+    ],
+    "voices": []
+  },
+  {
+    "name": "Rotworm Queen",
+    "description": "rotworm queen",
+    "experience": 75,
+    "health": 105,
+    "speed": 63,
+    "corpse": 8119,
+    "outfit": {
+      "lookType": 295,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 50,
+    "runOnHealth": 0,
+    "armor": 10,
+    "defense": 15,
+    "mitigation": 0.58,
+    "isBoss": true,
+    "bestiaryClass": "",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 5,
+        "maxDamage": 80,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "earth": 40,
+      "fire": -20
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 100000,
+        "maxCount": 47
+      },
+      {
+        "itemId": 3492,
+        "name": "worm",
+        "chance": 20000,
+        "maxCount": 45
+      },
+      {
+        "itemId": 8143,
+        "name": "gland",
+        "chance": 3333,
+        "maxCount": 1
+      }
+    ],
+    "voices": []
+  },
+  {
+    "name": "Black Knight",
+    "description": "Black Knight",
+    "experience": 1600,
+    "health": 1800,
+    "speed": 125,
+    "corpse": 18074,
+    "outfit": {
+      "lookType": 131,
+      "head": 95,
+      "body": 95,
+      "legs": 95,
+      "feet": 95,
+      "addons": 3
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 42,
+    "defense": 40,
+    "mitigation": 0,
+    "isBoss": true,
+    "bestiaryClass": "",
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 300,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 20,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 200,
+        "damageType": "physical",
+        "shootEffect": 1,
+        "areaEffect": 0
+      }
+    ],
+    "elements": {
+      "physical": 10,
+      "energy": 80,
+      "earth": 100,
+      "fire": 95,
+      "ice": 100,
+      "holy": -8,
+      "death": 20
+    },
+    "loot": [
+      {
+        "itemId": 3277,
+        "name": "spear",
+        "chance": 30800,
+        "maxCount": 3
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 23000,
+        "maxCount": 80
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 23000,
+        "maxCount": 56
+      },
+      {
+        "itemId": 3602,
+        "name": "brown bread",
+        "chance": 21600,
+        "maxCount": 2
+      },
+      {
+        "itemId": 3003,
+        "name": "rope",
+        "chance": 16020,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3372,
+        "name": "brass legs",
+        "chance": 12200,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3269,
+        "name": "halberd",
+        "chance": 11850,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3351,
+        "name": "steel helmet",
+        "chance": 11220,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "NO PRISONERS!",
+      "By Bolg's blood!",
+      "You're no match for me!",
+      "NO MERCY!",
+      "MINE!"
+    ]
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "name": "convert-monsters",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Converts Canary monster .lua definitions into the JSON consumed by the KaezanArenaFable backend.",
+  "dependencies": {
+    "wasmoon": "^1.16.0"
+  }
+}

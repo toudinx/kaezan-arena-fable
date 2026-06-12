@@ -1,0 +1,19 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+
+# Node
+node_modules/
+dist/
+.angular/
+
+# Data / runtime
+backend/src/KaezanArenaFable.Api/.data/
+*.log
+
+# OS
+Thumbs.db
+.DS_Store
+.tmp-dump/

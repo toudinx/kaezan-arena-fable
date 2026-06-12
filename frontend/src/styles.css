@@ -1,0 +1,44 @@
+/* Kaezan Arena Fable — global dark gacha theme */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  background: #0b0b12;
+  color: #e8e6f0;
+  font-family: 'Segoe UI', Verdana, sans-serif;
+  overflow-x: hidden;
+}
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+.btn {
+  background: linear-gradient(180deg, #2dd4bf, #0d9488);
+  color: #04211d;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 22px;
+  font-size: 14px;
+  letter-spacing: 0.4px;
+  transition: filter 0.15s, transform 0.05s;
+}
+.btn:hover { filter: brightness(1.15); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; }
+.btn.secondary {
+  background: #23232f;
+  color: #cfcde0;
+  border: 1px solid #3a3a4c;
+}
+.btn.gold { background: linear-gradient(180deg, #fbbf24, #d97706); color: #2a1700; }
+.panel {
+  background: rgba(20, 20, 30, 0.92);
+  border: 1px solid #2c2c3e;
+  border-radius: 12px;
+  padding: 16px;
+}
+.pixel { image-rendering: pixelated; }
+h1, h2, h3 { font-weight: 600; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #33334a; border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }

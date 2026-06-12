@@ -221,8 +221,11 @@ em até 60s; após 60s, abandono normal com metade do ouro.
 O pipeline existe; estas tasks são principalmente **curadoria + re-rodar tools**, com pouco
 código. São as de melhor custo-benefício do roadmap.
 
-### [ ] T-10 — +30 monstros do Tibia (preencher os 5 tiers)
+### [x] T-10 — +30 monstros do Tibia (preencher os 5 tiers)
 **P1 · M · tools + backend (dados) · Owner: Codex**
+
+**Concluída (2026-06-12):** catálogo ampliado de 32 para 62 espécies, tiers rebalanceados com
+≥5 commons/≥3 elites e assets/loot regenerados com cobertura completa de outfits e objetos.
 
 > **Refatorada (2026-06-12) — depende de T-53.** Faça **depois** de T-53 (fidelidade de kit/IA).
 > Antes, adicionar 30 monstros só dava 30 sacos de HP na IA genérica. Com T-53 no lugar, cada

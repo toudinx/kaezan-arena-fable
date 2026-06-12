@@ -48,6 +48,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 239,
+    "name": "great health potion",
+    "salePrice": 225,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 266,
     "name": "health potion",
     "salePrice": 50,
@@ -63,6 +75,30 @@
     "itemId": 268,
     "name": "mana potion",
     "salePrice": 56,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 269,
+    "name": "dead dragon hatchling",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 270,
+    "name": "dead dragon hatchling",
+    "salePrice": 0,
     "slot": null,
     "weaponType": null,
     "attack": 0,
@@ -804,6 +840,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 774,
+    "name": "earth arrow",
+    "salePrice": 5,
+    "slot": null,
+    "weaponType": "ammunition",
+    "attack": 14,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 779,
     "name": "earth spike sword",
     "salePrice": 0,
@@ -1080,6 +1128,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 818,
+    "name": "magma boots",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 2,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 824,
     "name": "glacier robe",
     "salePrice": 0,
@@ -1176,6 +1236,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 861,
+    "name": "dead troll",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 875,
     "name": "mining helmet",
     "salePrice": 0,
@@ -1228,6 +1300,18 @@
     "name": "shapeshifter ring",
     "salePrice": 0,
     "slot": "ring",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 909,
+    "name": "dead dragon hatchling",
+    "salePrice": 0,
+    "slot": null,
     "weaponType": null,
     "attack": 0,
     "armor": 0,
@@ -1464,6 +1548,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 2127,
+    "name": "poison gas",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 2472,
     "name": "chest",
     "salePrice": 10,
@@ -1503,6 +1599,30 @@
     "itemId": 2842,
     "name": "book",
     "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 2903,
+    "name": "golden mug",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 2917,
+    "name": "candlestick",
+    "salePrice": 2,
     "slot": null,
     "weaponType": null,
     "attack": 0,
@@ -2364,6 +2484,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 3112,
+    "name": "rotten meat",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 3114,
     "name": "skull",
     "salePrice": 0,
@@ -2378,6 +2510,18 @@
   {
     "itemId": 3115,
     "name": "bone",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 3124,
+    "name": "burnt scroll",
     "salePrice": 0,
     "slot": null,
     "weaponType": null,
@@ -4332,6 +4476,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 3447,
+    "name": "arrow",
+    "salePrice": 3,
+    "slot": null,
+    "weaponType": "ammunition",
+    "attack": 25,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 3448,
     "name": "poison arrow",
     "salePrice": 0,
@@ -4368,9 +4524,57 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 3456,
+    "name": "pick",
+    "salePrice": 100,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 3457,
+    "name": "shovel",
+    "salePrice": 100,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 3462,
+    "name": "small axe",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 3471,
     "name": "cleaver",
     "salePrice": 15,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 3483,
+    "name": "fishing rod",
+    "salePrice": 300,
     "slot": null,
     "weaponType": null,
     "attack": 0,
@@ -4387,6 +4591,18 @@
     "weaponType": null,
     "attack": 0,
     "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 3552,
+    "name": "leather boots",
+    "salePrice": 10,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 1,
     "defense": 0,
     "mountLookType": 0,
     "mountSpeed": 0
@@ -4656,9 +4872,33 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 3590,
+    "name": "cherry",
+    "salePrice": 1,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 3595,
     "name": "carrot",
     "salePrice": 8,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 3597,
+    "name": "corncob",
+    "salePrice": 3,
     "slot": null,
     "weaponType": null,
     "attack": 0,
@@ -4716,6 +4956,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 3723,
+    "name": "white mushroom",
+    "salePrice": 10,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 3731,
     "name": "fire mushroom",
     "salePrice": 0,
@@ -4731,6 +4983,18 @@
     "itemId": 3732,
     "name": "green mushroom",
     "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 3736,
+    "name": "star herb",
+    "salePrice": 21,
     "slot": null,
     "weaponType": null,
     "attack": 0,
@@ -4824,6 +5088,30 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 5897,
+    "name": "wolf paw",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 5898,
+    "name": "bonelord eye",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 5903,
     "name": "Ferumbras\u0027 hat",
     "salePrice": 0,
@@ -4884,8 +5172,32 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 5944,
+    "name": "soul orb",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 5954,
     "name": "demon horn",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 5960,
+    "name": "dead troll",
     "salePrice": 0,
     "slot": null,
     "weaponType": null,
@@ -4968,6 +5280,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 5968,
+    "name": "dead wolf",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 5969,
     "name": "dead minotaur",
     "salePrice": 0,
@@ -5040,6 +5364,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 5978,
+    "name": "dead orc",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 5979,
     "name": "dead orc",
     "salePrice": 0,
@@ -5088,6 +5424,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 5983,
+    "name": "dead minotaur",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 5984,
     "name": "dead dragon",
     "salePrice": 0,
@@ -5102,6 +5450,42 @@
   {
     "itemId": 5985,
     "name": "dead fire devil",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 5988,
+    "name": "dead scorpion",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 5990,
+    "name": "dead bug",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 5992,
+    "name": "dead bonelord",
     "salePrice": 0,
     "slot": null,
     "weaponType": null,
@@ -5148,8 +5532,32 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 5997,
+    "name": "dead wolf",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 5999,
     "name": "dead behemoth",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 6002,
+    "name": "dead goblin",
     "salePrice": 0,
     "slot": null,
     "weaponType": null,
@@ -5184,8 +5592,104 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 6007,
+    "name": "dead dwarf",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 6008,
     "name": "dead orc",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 6009,
+    "name": "dead war wolf",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 6010,
+    "name": "dead orc",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 6014,
+    "name": "dead dwarf",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 6019,
+    "name": "slain banshee",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 6029,
+    "name": "slain crypt shambler",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 6048,
+    "name": "dead hydra",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 6050,
+    "name": "dead centipede",
     "salePrice": 0,
     "slot": null,
     "weaponType": null,
@@ -5280,6 +5784,54 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 6323,
+    "name": "elemental ashes",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 6327,
+    "name": "dead torturer",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 6331,
+    "name": "dead hellhound",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 6335,
+    "name": "dead juggernaut",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 6390,
     "name": "nightmare shield",
     "salePrice": 0,
@@ -5304,6 +5856,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 6499,
+    "name": "demonic essence",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 6531,
     "name": "santa hat",
     "salePrice": 50,
@@ -5316,6 +5880,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 6558,
+    "name": "flask of demonic blood",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 6578,
     "name": "party hat",
     "salePrice": 800,
@@ -5323,6 +5899,18 @@
     "weaponType": null,
     "attack": 0,
     "armor": 1,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 7091,
+    "name": "dead frost dragon",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
     "defense": 0,
     "mountLookType": 0,
     "mountSpeed": 0
@@ -5748,6 +6336,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 7441,
+    "name": "ice cube",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 7451,
     "name": "shadow sceptre",
     "salePrice": 0,
@@ -5959,6 +6559,18 @@
     "weaponType": null,
     "attack": 0,
     "armor": 11,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 8014,
+    "name": "cucumber",
+    "salePrice": 5,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
     "defense": 0,
     "mountLookType": 0,
     "mountSpeed": 0
@@ -6588,6 +7200,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 8105,
+    "name": "remains of an earth elemental",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 8119,
     "name": "dead rotworm queen",
     "salePrice": 0,
@@ -6664,6 +7288,18 @@
     "name": "flower dress",
     "salePrice": 0,
     "slot": "armor",
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 9057,
+    "name": "small topaz",
+    "salePrice": 0,
+    "slot": null,
     "weaponType": null,
     "attack": 0,
     "armor": 0,
@@ -7092,6 +7728,30 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 9636,
+    "name": "fiery heart",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 9637,
+    "name": "hellhound slobber",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 9647,
     "name": "demonic skeletal hand",
     "salePrice": 0,
@@ -7106,6 +7766,30 @@
   {
     "itemId": 9649,
     "name": "gauze bandage",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 9651,
+    "name": "scorpion tail",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 9652,
+    "name": "witch broom",
     "salePrice": 0,
     "slot": null,
     "weaponType": null,
@@ -7140,8 +7824,32 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 9661,
+    "name": "frosty heart",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 9685,
     "name": "vampire teeth",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 9689,
+    "name": "bunch of troll hair",
     "salePrice": 0,
     "slot": null,
     "weaponType": null,
@@ -7224,8 +7932,80 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 10282,
+    "name": "hydra head",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 10283,
+    "name": "half-digested piece of meat",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 10291,
     "name": "rotten piece of cloth",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 10295,
+    "name": "winter wolf fur",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 10301,
+    "name": "centipede leg",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 10305,
+    "name": "lump of earth",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 10318,
+    "name": "warwolf fur",
     "salePrice": 0,
     "slot": null,
     "weaponType": null,
@@ -7296,6 +8076,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 10420,
+    "name": "petrified scream",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 10438,
     "name": "spellweaver\u0027s robe",
     "salePrice": 0,
@@ -7356,6 +8148,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 11446,
+    "name": "hair of a banshee",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 11447,
     "name": "battle stone",
     "salePrice": 0,
@@ -7382,6 +8186,18 @@
   {
     "itemId": 11451,
     "name": "broken crossbow",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 11452,
+    "name": "broken shamanic staff",
     "salePrice": 0,
     "slot": null,
     "weaponType": null,
@@ -7500,6 +8316,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 11478,
+    "name": "shamanic hood",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 11479,
     "name": "orc leather",
     "salePrice": 0,
@@ -7536,6 +8364,18 @@
     "mountSpeed": 0
   },
   {
+    "itemId": 11482,
+    "name": "piece of warrior armor",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
     "itemId": 11483,
     "name": "piece of archer armor",
     "salePrice": 0,
@@ -7550,6 +8390,18 @@
   {
     "itemId": 11485,
     "name": "poison spider shell",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 11512,
+    "name": "small flask of eyedrops",
     "salePrice": 0,
     "slot": null,
     "weaponType": null,
@@ -8462,6 +9314,18 @@
   {
     "itemId": 18174,
     "name": "dead necromancer",
+    "salePrice": 0,
+    "slot": null,
+    "weaponType": null,
+    "attack": 0,
+    "armor": 0,
+    "defense": 0,
+    "mountLookType": 0,
+    "mountSpeed": 0
+  },
+  {
+    "itemId": 18254,
+    "name": "dead witch",
     "salePrice": 0,
     "slot": null,
     "weaponType": null,

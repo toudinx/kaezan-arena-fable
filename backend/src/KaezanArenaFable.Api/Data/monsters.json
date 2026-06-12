@@ -154,6 +154,230 @@
     ]
   },
   {
+    "name": "Wolf",
+    "description": "a wolf",
+    "experience": 18,
+    "health": 25,
+    "speed": 82,
+    "corpse": 5968,
+    "outfit": {
+      "lookType": 27,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 8,
+    "armor": 1,
+    "defense": 5,
+    "mitigation": 0.1,
+    "isBoss": false,
+    "bestiaryClass": "Mammal",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 20,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "ice": -10,
+      "holy": 30,
+      "death": -5
+    },
+    "loot": [
+      {
+        "itemId": 3577,
+        "name": "meat",
+        "chance": 55000,
+        "maxCount": 2
+      },
+      {
+        "itemId": 5897,
+        "name": "wolf paw",
+        "chance": 980,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Yoooohhuuuu!",
+      "Grrrrrrr"
+    ]
+  },
+  {
+    "name": "Winter Wolf",
+    "description": "a winter wolf",
+    "experience": 20,
+    "health": 30,
+    "speed": 85,
+    "corpse": 5997,
+    "outfit": {
+      "lookType": 52,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 2,
+    "defense": 5,
+    "mitigation": 0.15,
+    "isBoss": false,
+    "bestiaryClass": "Mammal",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 20,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "energy": -5,
+      "fire": 10,
+      "ice": 20,
+      "holy": 10,
+      "death": -10
+    },
+    "loot": [
+      {
+        "itemId": 3577,
+        "name": "meat",
+        "chance": 30000,
+        "maxCount": 2
+      },
+      {
+        "itemId": 10295,
+        "name": "winter wolf fur",
+        "chance": 10000,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Yoooohhuuuu!"
+    ]
+  },
+  {
+    "name": "War Wolf",
+    "description": "a war wolf",
+    "experience": 55,
+    "health": 140,
+    "speed": 132,
+    "corpse": 6009,
+    "outfit": {
+      "lookType": 3,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 80,
+    "runOnHealth": 0,
+    "armor": 8,
+    "defense": 15,
+    "mitigation": 0.41,
+    "isBoss": false,
+    "bestiaryClass": "Mammal",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 50,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "earth": 20,
+      "ice": -10,
+      "holy": 10,
+      "death": -10
+    },
+    "loot": [
+      {
+        "itemId": 3582,
+        "name": "ham",
+        "chance": 35000,
+        "maxCount": 2
+      },
+      {
+        "itemId": 10318,
+        "name": "warwolf fur",
+        "chance": 5230,
+        "maxCount": 1
+      },
+      {
+        "itemId": 5897,
+        "name": "wolf paw",
+        "chance": 710,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Yoooohhuuuu!",
+      "Grrrrrrr"
+    ]
+  },
+  {
     "name": "Rotworm",
     "description": "a rotworm",
     "experience": 40,
@@ -481,6 +705,283 @@
       }
     ],
     "voices": []
+  },
+  {
+    "name": "Bug",
+    "description": "a bug",
+    "experience": 18,
+    "health": 29,
+    "speed": 80,
+    "corpse": 5990,
+    "outfit": {
+      "lookType": 45,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 2,
+    "defense": 5,
+    "mitigation": 0.07,
+    "isBoss": false,
+    "bestiaryClass": "Vermin",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 23,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "fire": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 51170,
+        "maxCount": 6
+      },
+      {
+        "itemId": 3590,
+        "name": "cherry",
+        "chance": 2590,
+        "maxCount": 3
+      }
+    ],
+    "voices": []
+  },
+  {
+    "name": "Scorpion",
+    "description": "a scorpion",
+    "experience": 45,
+    "health": 45,
+    "speed": 75,
+    "corpse": 5988,
+    "outfit": {
+      "lookType": 43,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 5,
+    "armor": 14,
+    "defense": 5,
+    "mitigation": 0.13,
+    "isBoss": false,
+    "bestiaryClass": "Vermin",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 50,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": {
+          "type": "poison",
+          "totalDamage": 340,
+          "tickMs": 4000,
+          "durationMs": 0
+        },
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "energy": 20,
+      "earth": 100,
+      "fire": -10,
+      "ice": -10
+    },
+    "loot": [
+      {
+        "itemId": 9651,
+        "name": "scorpion tail",
+        "chance": 4930,
+        "maxCount": 1
+      }
+    ],
+    "voices": []
+  },
+  {
+    "name": "Centipede",
+    "description": "a centipede",
+    "experience": 34,
+    "health": 70,
+    "speed": 83,
+    "corpse": 6050,
+    "outfit": {
+      "lookType": 124,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 8,
+    "defense": 10,
+    "mitigation": 0.23,
+    "isBoss": false,
+    "bestiaryClass": "Vermin",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 45,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": {
+          "type": "poison",
+          "totalDamage": 20,
+          "tickMs": 4000,
+          "durationMs": 0
+        },
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "energy": 10,
+      "earth": 100,
+      "fire": -15,
+      "ice": 20
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 80000,
+        "maxCount": 15
+      },
+      {
+        "itemId": 10301,
+        "name": "centipede leg",
+        "chance": 10300,
+        "maxCount": 1
+      }
+    ],
+    "voices": []
+  },
+  {
+    "name": "Slime",
+    "description": "a slime",
+    "experience": 160,
+    "health": 150,
+    "speed": 60,
+    "corpse": 2127,
+    "outfit": {
+      "lookType": 19,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 3,
+    "defense": 15,
+    "mitigation": 0.25,
+    "isBoss": false,
+    "bestiaryClass": "Slime",
+    "maxSummons": 3,
+    "summons": [
+      {
+        "name": "Slime",
+        "chance": 10,
+        "intervalMs": 2000,
+        "count": 3
+      }
+    ],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 110,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "energy": -10,
+      "earth": 100,
+      "fire": -10,
+      "ice": 20
+    },
+    "loot": [],
+    "voices": [
+      "Blubb"
+    ]
   },
   {
     "name": "Snake",
@@ -1116,6 +1617,330 @@
     ]
   },
   {
+    "name": "Crypt Shambler",
+    "description": "a crypt shambler",
+    "experience": 195,
+    "health": 330,
+    "speed": 70,
+    "corpse": 6029,
+    "outfit": {
+      "lookType": 100,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 30,
+    "defense": 25,
+    "mitigation": 0.64,
+    "isBoss": false,
+    "bestiaryClass": "Undead",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 140,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 15,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 28,
+        "maxDamage": 55,
+        "damageType": "lifedrain",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "earth": 100,
+      "lifedrain": 100,
+      "drown": 100,
+      "holy": -25,
+      "death": 100
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 57000,
+        "maxCount": 55
+      },
+      {
+        "itemId": 3492,
+        "name": "worm",
+        "chance": 9000,
+        "maxCount": 10
+      },
+      {
+        "itemId": 3115,
+        "name": "bone",
+        "chance": 5000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 10283,
+        "name": "half-digested piece of meat",
+        "chance": 5000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3353,
+        "name": "iron helmet",
+        "chance": 2130,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3353,
+        "name": "iron helmet",
+        "chance": 2000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3112,
+        "name": "rotten meat",
+        "chance": 1850,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3338,
+        "name": "bone sword",
+        "chance": 1000,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Aaaaahhhh!",
+      "Hoooohhh!",
+      "Uhhhhhhh!",
+      "Chhhhhhh!"
+    ]
+  },
+  {
+    "name": "Banshee",
+    "description": "a banshee",
+    "experience": 900,
+    "health": 1000,
+    "speed": 110,
+    "corpse": 6019,
+    "outfit": {
+      "lookType": 78,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 500,
+    "armor": 25,
+    "defense": 25,
+    "mitigation": 1.74,
+    "isBoss": false,
+    "bestiaryClass": "Undead",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 100,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": {
+          "type": "poison",
+          "totalDamage": 3,
+          "tickMs": 4000,
+          "durationMs": 0
+        },
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 15,
+        "range": 0,
+        "radius": 4,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 100,
+        "maxDamage": 200,
+        "damageType": "lifedrain",
+        "shootEffect": 0,
+        "areaEffect": 20,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 5,
+        "range": 1,
+        "radius": 1,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 55,
+        "maxDamage": 350,
+        "damageType": "death",
+        "shootEffect": 0,
+        "areaEffect": 39,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "speed",
+        "interval": 2000,
+        "chance": 10,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 0,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 14,
+        "condition": null,
+        "speedChange": -300,
+        "durationMs": 15000,
+        "isHealing": false
+      }
+    ],
+    "defenses": [
+      {
+        "kind": "healing",
+        "intervalMs": 2000,
+        "chance": 15,
+        "minValue": 120,
+        "maxValue": 190,
+        "speedChange": 0,
+        "durationMs": 0,
+        "areaEffect": 13
+      }
+    ],
+    "elements": {
+      "earth": 100,
+      "fire": 100,
+      "lifedrain": 100,
+      "drown": 100,
+      "holy": -25,
+      "death": 100
+    },
+    "loot": [
+      {
+        "itemId": 2917,
+        "name": "candlestick",
+        "chance": 70000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 30000,
+        "maxCount": 80
+      },
+      {
+        "itemId": 3054,
+        "name": "silver amulet",
+        "chance": 8700,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3568,
+        "name": "simple dress",
+        "chance": 6050,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11446,
+        "name": "hair of a banshee",
+        "chance": 4810,
+        "maxCount": 1
+      },
+      {
+        "itemId": 10420,
+        "name": "petrified scream",
+        "chance": 4150,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3027,
+        "name": "black pearl",
+        "chance": 2030,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3299,
+        "name": "poison dagger",
+        "chance": 1350,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Dance for me your dance of death!",
+      "Let the music play!",
+      "I will mourn your death!",
+      "Are you ready to rock?",
+      "Feel my gentle kiss of death.",
+      "That's what I call easy listening!",
+      "IIIIEEEeeeeeehhhHHHH!"
+    ]
+  },
+  {
     "name": "Orc",
     "description": "an orc",
     "experience": 25,
@@ -1715,6 +2540,1066 @@
     ]
   },
   {
+    "name": "Orc Shaman",
+    "description": "an orc shaman",
+    "experience": 110,
+    "health": 115,
+    "speed": 70,
+    "corpse": 5978,
+    "outfit": {
+      "lookType": 6,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 4,
+    "staticAttackChance": 90,
+    "runOnHealth": 15,
+    "armor": 8,
+    "defense": 10,
+    "mitigation": 0.25,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "maxSummons": 4,
+    "summons": [
+      {
+        "name": "Snake",
+        "chance": 20,
+        "intervalMs": 2000,
+        "count": 3
+      }
+    ],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 15,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 15,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 20,
+        "maxDamage": 31,
+        "damageType": "energy",
+        "shootEffect": 36,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 5,
+        "range": 7,
+        "radius": 1,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 5,
+        "maxDamage": 43,
+        "damageType": "fire",
+        "shootEffect": 4,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [
+      {
+        "kind": "healing",
+        "intervalMs": 2000,
+        "chance": 60,
+        "minValue": 27,
+        "maxValue": 43,
+        "speedChange": 0,
+        "durationMs": 0,
+        "areaEffect": 13
+      }
+    ],
+    "elements": {
+      "energy": 50,
+      "earth": -10,
+      "holy": 10,
+      "death": -5
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 90000,
+        "maxCount": 5
+      },
+      {
+        "itemId": 3597,
+        "name": "corncob",
+        "chance": 10600,
+        "maxCount": 2
+      },
+      {
+        "itemId": 11452,
+        "name": "broken shamanic staff",
+        "chance": 10300,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3358,
+        "name": "chain armor",
+        "chance": 8750,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11478,
+        "name": "shamanic hood",
+        "chance": 6860,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3277,
+        "name": "spear",
+        "chance": 4850,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11479,
+        "name": "orc leather",
+        "chance": 4300,
+        "maxCount": 1
+      },
+      {
+        "itemId": 10196,
+        "name": "orc tooth",
+        "chance": 2100,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Huumans stinkk!",
+      "Grak brrretz gulu."
+    ]
+  },
+  {
+    "name": "Orc Rider",
+    "description": "an orc rider",
+    "experience": 110,
+    "health": 180,
+    "speed": 130,
+    "corpse": 6010,
+    "outfit": {
+      "lookType": 4,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 9,
+    "defense": 15,
+    "mitigation": 0.51,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 130,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [
+      {
+        "kind": "speed",
+        "intervalMs": 2000,
+        "chance": 15,
+        "minValue": 0,
+        "maxValue": 0,
+        "speedChange": 200,
+        "durationMs": 5000,
+        "areaEffect": 14
+      }
+    ],
+    "elements": {
+      "energy": 20,
+      "earth": -10,
+      "holy": 10,
+      "death": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 46000,
+        "maxCount": 81
+      },
+      {
+        "itemId": 3577,
+        "name": "meat",
+        "chance": 24000,
+        "maxCount": 3
+      },
+      {
+        "itemId": 3012,
+        "name": "wolf tooth chain",
+        "chance": 10210,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3413,
+        "name": "battle shield",
+        "chance": 9900,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11479,
+        "name": "orc leather",
+        "chance": 9760,
+        "maxCount": 1
+      },
+      {
+        "itemId": 10318,
+        "name": "warwolf fur",
+        "chance": 9410,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3316,
+        "name": "orcish axe",
+        "chance": 6880,
+        "maxCount": 1
+      },
+      {
+        "itemId": 10196,
+        "name": "orc tooth",
+        "chance": 2000,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Orc arga Huummmak!",
+      "Grrrrrrr"
+    ]
+  },
+  {
+    "name": "Goblin",
+    "description": "a goblin",
+    "experience": 25,
+    "health": 50,
+    "speed": 60,
+    "corpse": 6002,
+    "outfit": {
+      "lookType": 61,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 15,
+    "armor": 6,
+    "defense": 10,
+    "mitigation": 0.2,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 10,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 25,
+        "damageType": "physical",
+        "shootEffect": 10,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "energy": 20,
+      "earth": -10,
+      "holy": 20,
+      "death": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 50320,
+        "maxCount": 9
+      },
+      {
+        "itemId": 1781,
+        "name": "small stone",
+        "chance": 15290,
+        "maxCount": 3
+      },
+      {
+        "itemId": 3578,
+        "name": "fish",
+        "chance": 12750,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3462,
+        "name": "small axe",
+        "chance": 9700,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3294,
+        "name": "short sword",
+        "chance": 8870,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3337,
+        "name": "bone club",
+        "chance": 4900,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3361,
+        "name": "leather armor",
+        "chance": 2510,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3355,
+        "name": "leather helmet",
+        "chance": 1940,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Zig Zag! Gobo attack!",
+      "Me green, me mean!",
+      "Bugga! Bugga!",
+      "Help! Goblinkiller!",
+      "Me have him!"
+    ]
+  },
+  {
+    "name": "Goblin Scavenger",
+    "description": "a goblin scavenger",
+    "experience": 37,
+    "health": 60,
+    "speed": 66,
+    "corpse": 6002,
+    "outfit": {
+      "lookType": 297,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 10,
+    "armor": 7,
+    "defense": 15,
+    "mitigation": 0.23,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 15,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 30,
+        "damageType": "physical",
+        "shootEffect": 1,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 5,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 22,
+        "maxDamage": 30,
+        "damageType": "lifedrain",
+        "shootEffect": 0,
+        "areaEffect": 14,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 5,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 1,
+        "maxDamage": 30,
+        "damageType": "death",
+        "shootEffect": 32,
+        "areaEffect": 39,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [
+      {
+        "kind": "healing",
+        "intervalMs": 2000,
+        "chance": 15,
+        "minValue": 10,
+        "maxValue": 16,
+        "speedChange": 0,
+        "durationMs": 0,
+        "areaEffect": 12
+      }
+    ],
+    "elements": {
+      "energy": 20,
+      "earth": -10,
+      "holy": 20,
+      "death": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 50810,
+        "maxCount": 9
+      },
+      {
+        "itemId": 1781,
+        "name": "small stone",
+        "chance": 25560,
+        "maxCount": 2
+      },
+      {
+        "itemId": 3267,
+        "name": "dagger",
+        "chance": 18280,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3578,
+        "name": "fish",
+        "chance": 13640,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3115,
+        "name": "bone",
+        "chance": 12450,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3355,
+        "name": "leather helmet",
+        "chance": 10180,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3462,
+        "name": "small axe",
+        "chance": 9790,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3294,
+        "name": "short sword",
+        "chance": 8900,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Shiny, shiny!",
+      "You mean!",
+      "All mine!",
+      "Uhh!",
+      "Gimme gimme!"
+    ]
+  },
+  {
+    "name": "Troll",
+    "description": "a troll",
+    "experience": 20,
+    "health": 50,
+    "speed": 63,
+    "corpse": 5960,
+    "outfit": {
+      "lookType": 15,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 15,
+    "armor": 6,
+    "defense": 10,
+    "mitigation": 0.2,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 15,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "energy": 20,
+      "earth": -10,
+      "holy": 10,
+      "death": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 65300,
+        "maxCount": 12
+      },
+      {
+        "itemId": 3268,
+        "name": "hand axe",
+        "chance": 18000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3577,
+        "name": "meat",
+        "chance": 15000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3277,
+        "name": "spear",
+        "chance": 13000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3355,
+        "name": "leather helmet",
+        "chance": 12000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3552,
+        "name": "leather boots",
+        "chance": 10000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3003,
+        "name": "rope",
+        "chance": 7950,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3336,
+        "name": "studded club",
+        "chance": 5000,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Hmmm, bugs",
+      "Hmmm, dogs",
+      "Grrr",
+      "Groar",
+      "Gruntz!"
+    ]
+  },
+  {
+    "name": "Troll Champion",
+    "description": "a troll champion",
+    "experience": 40,
+    "health": 75,
+    "speed": 69,
+    "corpse": 861,
+    "outfit": {
+      "lookType": 281,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 95,
+    "runOnHealth": 15,
+    "armor": 10,
+    "defense": 20,
+    "mitigation": 0.28,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 35,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "energy": 20,
+      "earth": -10,
+      "holy": 10,
+      "death": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 64000,
+        "maxCount": 12
+      },
+      {
+        "itemId": 3277,
+        "name": "spear",
+        "chance": 25000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3577,
+        "name": "meat",
+        "chance": 9650,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3552,
+        "name": "leather boots",
+        "chance": 9000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3412,
+        "name": "wooden shield",
+        "chance": 6000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3336,
+        "name": "studded club",
+        "chance": 5450,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3447,
+        "name": "arrow",
+        "chance": 5450,
+        "maxCount": 5
+      },
+      {
+        "itemId": 9689,
+        "name": "bunch of troll hair",
+        "chance": 3000,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Meee maity!",
+      "Grrrr",
+      "Whaaaz up!?",
+      "Gruntz!",
+      "Groar"
+    ]
+  },
+  {
+    "name": "Dwarf",
+    "description": "a dwarf",
+    "experience": 45,
+    "health": 90,
+    "speed": 85,
+    "corpse": 6007,
+    "outfit": {
+      "lookType": 69,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 8,
+    "defense": 10,
+    "mitigation": 0.36,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 30,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "earth": 10,
+      "fire": -5,
+      "death": -5
+    },
+    "loot": [
+      {
+        "itemId": 3723,
+        "name": "white mushroom",
+        "chance": 50000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 35000,
+        "maxCount": 8
+      },
+      {
+        "itemId": 3276,
+        "name": "hatchet",
+        "chance": 25000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3274,
+        "name": "axe",
+        "chance": 15000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3430,
+        "name": "copper shield",
+        "chance": 10000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3456,
+        "name": "pick",
+        "chance": 10000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3559,
+        "name": "leather legs",
+        "chance": 10000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3378,
+        "name": "studded armor",
+        "chance": 8000,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Hail Durin!"
+    ]
+  },
+  {
+    "name": "Dwarf Soldier",
+    "description": "a dwarf soldier",
+    "experience": 70,
+    "health": 135,
+    "speed": 88,
+    "corpse": 6014,
+    "outfit": {
+      "lookType": 71,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 9,
+    "defense": 15,
+    "mitigation": 0.51,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 70,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 60,
+        "damageType": "physical",
+        "shootEffect": 2,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "earth": 10,
+      "fire": -5,
+      "death": -5
+    },
+    "loot": [
+      {
+        "itemId": 3446,
+        "name": "bolt",
+        "chance": 40000,
+        "maxCount": 7
+      },
+      {
+        "itemId": 3723,
+        "name": "white mushroom",
+        "chance": 40000,
+        "maxCount": 3
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 28000,
+        "maxCount": 12
+      },
+      {
+        "itemId": 3375,
+        "name": "soldier helmet",
+        "chance": 12000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3457,
+        "name": "shovel",
+        "chance": 10000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3358,
+        "name": "chain armor",
+        "chance": 8000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 7363,
+        "name": "piercing bolt",
+        "chance": 4000,
+        "maxCount": 3
+      },
+      {
+        "itemId": 3349,
+        "name": "crossbow",
+        "chance": 3000,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Hail Durin!"
+    ]
+  },
+  {
     "name": "Minotaur",
     "description": "a minotaur",
     "experience": 50,
@@ -2103,6 +3988,115 @@
     ]
   },
   {
+    "name": "Minotaur Guard",
+    "description": "a minotaur guard",
+    "experience": 160,
+    "health": 185,
+    "speed": 95,
+    "corpse": 5983,
+    "outfit": {
+      "lookType": 29,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 15,
+    "defense": 20,
+    "mitigation": 0.83,
+    "isBoss": false,
+    "bestiaryClass": "Humanoid",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 100,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "fire": 20,
+      "ice": -10,
+      "holy": 10,
+      "death": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 59640,
+        "maxCount": 20
+      },
+      {
+        "itemId": 11472,
+        "name": "minotaur horn",
+        "chance": 8330,
+        "maxCount": 2
+      },
+      {
+        "itemId": 11482,
+        "name": "piece of warrior armor",
+        "chance": 5040,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3359,
+        "name": "brass armor",
+        "chance": 4390,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3358,
+        "name": "chain armor",
+        "chance": 2980,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3413,
+        "name": "battle shield",
+        "chance": 2150,
+        "maxCount": 1
+      },
+      {
+        "itemId": 5878,
+        "name": "minotaur leather",
+        "chance": 1000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3483,
+        "name": "fishing rod",
+        "chance": 480,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Kirrl Karrrl!",
+      "Kaplar"
+    ]
+  },
+  {
     "name": "Necromancer",
     "description": "a necromancer",
     "experience": 580,
@@ -2288,6 +4282,136 @@
     "voices": [
       "Taste the sweetness of death!",
       "Your corpse will be mine."
+    ]
+  },
+  {
+    "name": "Witch",
+    "description": "a witch",
+    "experience": 120,
+    "health": 300,
+    "speed": 102,
+    "corpse": 18254,
+    "outfit": {
+      "lookType": 54,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 4,
+    "staticAttackChance": 90,
+    "runOnHealth": 30,
+    "armor": 8,
+    "defense": 15,
+    "mitigation": 0.3,
+    "isBoss": false,
+    "bestiaryClass": "Human",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 20,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 20,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 30,
+        "maxDamage": 75,
+        "damageType": "fire",
+        "shootEffect": 4,
+        "areaEffect": 16,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "physical": -5,
+      "energy": 100,
+      "earth": 20,
+      "death": -5
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 64000,
+        "maxCount": 40
+      },
+      {
+        "itemId": 3598,
+        "name": "cookie",
+        "chance": 29750,
+        "maxCount": 8
+      },
+      {
+        "itemId": 3012,
+        "name": "wolf tooth chain",
+        "chance": 10120,
+        "maxCount": 1
+      },
+      {
+        "itemId": 9652,
+        "name": "witch broom",
+        "chance": 10000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3736,
+        "name": "star herb",
+        "chance": 8950,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3552,
+        "name": "leather boots",
+        "chance": 4950,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3565,
+        "name": "cape",
+        "chance": 4870,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3293,
+        "name": "sickle",
+        "chance": 3910,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Herba budinia ex!",
+      "Horax Pokti!",
+      "Hihihihi!"
     ]
   },
   {
@@ -2924,6 +5048,706 @@
     ]
   },
   {
+    "name": "Hellhound",
+    "description": "a hellhound",
+    "experience": 5440,
+    "health": 7500,
+    "speed": 180,
+    "corpse": 6331,
+    "outfit": {
+      "lookType": 240,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 70,
+    "runOnHealth": 0,
+    "armor": 60,
+    "defense": 40,
+    "mitigation": 2.75,
+    "isBoss": false,
+    "bestiaryClass": "Demon",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 520,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": {
+          "type": "poison",
+          "totalDamage": 800,
+          "tickMs": 4000,
+          "durationMs": 0
+        },
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 5,
+        "range": 0,
+        "radius": 0,
+        "length": 8,
+        "spread": 3,
+        "target": false,
+        "minDamage": 300,
+        "maxDamage": 700,
+        "damageType": "earth",
+        "shootEffect": 0,
+        "areaEffect": 47,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 395,
+        "maxDamage": 498,
+        "damageType": "death",
+        "shootEffect": 32,
+        "areaEffect": 39,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 0,
+        "radius": 0,
+        "length": 8,
+        "spread": 3,
+        "target": false,
+        "minDamage": 350,
+        "maxDamage": 660,
+        "damageType": "fire",
+        "shootEffect": 0,
+        "areaEffect": 7,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 0,
+        "radius": 0,
+        "length": 8,
+        "spread": 3,
+        "target": false,
+        "minDamage": 350,
+        "maxDamage": 976,
+        "damageType": "lifedrain",
+        "shootEffect": 0,
+        "areaEffect": 14,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 0,
+        "radius": 1,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 200,
+        "maxDamage": 403,
+        "damageType": "fire",
+        "shootEffect": 0,
+        "areaEffect": 16,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 5,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 300,
+        "maxDamage": 549,
+        "damageType": "earth",
+        "shootEffect": 15,
+        "areaEffect": 21,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [
+      {
+        "kind": "speed",
+        "intervalMs": 2000,
+        "chance": 15,
+        "minValue": 0,
+        "maxValue": 0,
+        "speedChange": 320,
+        "durationMs": 5000,
+        "areaEffect": 14
+      },
+      {
+        "kind": "healing",
+        "intervalMs": 2000,
+        "chance": 20,
+        "minValue": 220,
+        "maxValue": 425,
+        "speedChange": 0,
+        "durationMs": 0,
+        "areaEffect": 13
+      }
+    ],
+    "elements": {
+      "energy": 10,
+      "earth": 20,
+      "fire": 100,
+      "ice": -5,
+      "holy": -5
+    },
+    "loot": [
+      {
+        "itemId": 3035,
+        "name": "platinum coin",
+        "chance": 100000,
+        "maxCount": 7
+      },
+      {
+        "itemId": 238,
+        "name": "great mana potion",
+        "chance": 30000,
+        "maxCount": 3
+      },
+      {
+        "itemId": 3582,
+        "name": "ham",
+        "chance": 30000,
+        "maxCount": 14
+      },
+      {
+        "itemId": 7368,
+        "name": "assassin star",
+        "chance": 25000,
+        "maxCount": 10
+      },
+      {
+        "itemId": 6558,
+        "name": "flask of demonic blood",
+        "chance": 20000,
+        "maxCount": 2
+      },
+      {
+        "itemId": 6499,
+        "name": "demonic essence",
+        "chance": 20000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 7642,
+        "name": "great spirit potion",
+        "chance": 20000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 9637,
+        "name": "hellhound slobber",
+        "chance": 20000,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "GROOOOWL!"
+    ]
+  },
+  {
+    "name": "Hellfire Fighter",
+    "description": "a hellfire fighter",
+    "experience": 3800,
+    "health": 3800,
+    "speed": 165,
+    "corpse": 6323,
+    "outfit": {
+      "lookType": 243,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 62,
+    "defense": 35,
+    "mitigation": 1.6,
+    "isBoss": false,
+    "bestiaryClass": "Demon",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 520,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 0,
+        "radius": 0,
+        "length": 8,
+        "spread": 0,
+        "target": false,
+        "minDamage": 392,
+        "maxDamage": 1500,
+        "damageType": "fire",
+        "shootEffect": 0,
+        "areaEffect": 37,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 15,
+        "range": 7,
+        "radius": 3,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 60,
+        "maxDamage": 330,
+        "damageType": "fire",
+        "shootEffect": 0,
+        "areaEffect": 16,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "physical": 50,
+      "energy": 20,
+      "fire": 100,
+      "ice": -25,
+      "death": 20
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 50000,
+        "maxCount": 100
+      },
+      {
+        "itemId": 3124,
+        "name": "burnt scroll",
+        "chance": 50000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 40000,
+        "maxCount": 100
+      },
+      {
+        "itemId": 3147,
+        "name": "blank rune",
+        "chance": 30000,
+        "maxCount": 2
+      },
+      {
+        "itemId": 6499,
+        "name": "demonic essence",
+        "chance": 14500,
+        "maxCount": 1
+      },
+      {
+        "itemId": 5944,
+        "name": "soul orb",
+        "chance": 12150,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 10000,
+        "maxCount": 46
+      },
+      {
+        "itemId": 9636,
+        "name": "fiery heart",
+        "chance": 9570,
+        "maxCount": 1
+      }
+    ],
+    "voices": []
+  },
+  {
+    "name": "Dark Torturer",
+    "description": "a dark torturer",
+    "experience": 4650,
+    "health": 7350,
+    "speed": 185,
+    "corpse": 6327,
+    "outfit": {
+      "lookType": 234,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 80,
+    "runOnHealth": 0,
+    "armor": 45,
+    "defense": 40,
+    "mitigation": 1.74,
+    "isBoss": false,
+    "bestiaryClass": "Demon",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 500,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 781,
+        "damageType": "physical",
+        "shootEffect": 9,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [
+      {
+        "kind": "healing",
+        "intervalMs": 2000,
+        "chance": 10,
+        "minValue": 200,
+        "maxValue": 250,
+        "speedChange": 0,
+        "durationMs": 0,
+        "areaEffect": 13
+      }
+    ],
+    "elements": {
+      "energy": 30,
+      "earth": 90,
+      "fire": 100,
+      "ice": -10,
+      "holy": -10,
+      "death": 10
+    },
+    "loot": [
+      {
+        "itemId": 3582,
+        "name": "ham",
+        "chance": 60000,
+        "maxCount": 2
+      },
+      {
+        "itemId": 3035,
+        "name": "platinum coin",
+        "chance": 55000,
+        "maxCount": 8
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 50000,
+        "maxCount": 100
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 40000,
+        "maxCount": 99
+      },
+      {
+        "itemId": 6558,
+        "name": "flask of demonic blood",
+        "chance": 33333,
+        "maxCount": 3
+      },
+      {
+        "itemId": 5944,
+        "name": "soul orb",
+        "chance": 23000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 238,
+        "name": "great mana potion",
+        "chance": 14830,
+        "maxCount": 2
+      },
+      {
+        "itemId": 239,
+        "name": "great health potion",
+        "chance": 10000,
+        "maxCount": 2
+      }
+    ],
+    "voices": [
+      "You like it, don't you?",
+      "IahaEhheAie!",
+      "It's party time!",
+      "Harrr, Harrr!",
+      "The torturer is in!"
+    ]
+  },
+  {
+    "name": "Juggernaut",
+    "description": "a juggernaut",
+    "experience": 11200,
+    "health": 18000,
+    "speed": 170,
+    "corpse": 6335,
+    "outfit": {
+      "lookType": 244,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 60,
+    "runOnHealth": 0,
+    "armor": 70,
+    "defense": 60,
+    "mitigation": 1.74,
+    "isBoss": false,
+    "bestiaryClass": "Demon",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 1470,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 15,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 780,
+        "damageType": "physical",
+        "shootEffect": 12,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [
+      {
+        "kind": "speed",
+        "intervalMs": 2000,
+        "chance": 15,
+        "minValue": 0,
+        "maxValue": 0,
+        "speedChange": 520,
+        "durationMs": 5000,
+        "areaEffect": 14
+      },
+      {
+        "kind": "healing",
+        "intervalMs": 2000,
+        "chance": 15,
+        "minValue": 400,
+        "maxValue": 900,
+        "speedChange": 0,
+        "durationMs": 0,
+        "areaEffect": 13
+      }
+    ],
+    "elements": {
+      "physical": 30,
+      "energy": -10,
+      "earth": 20,
+      "fire": 30,
+      "ice": 10,
+      "holy": -5
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 100000,
+        "maxCount": 100
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 100000,
+        "maxCount": 100
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 100000,
+        "maxCount": 100
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 100000,
+        "maxCount": 100
+      },
+      {
+        "itemId": 3035,
+        "name": "platinum coin",
+        "chance": 100000,
+        "maxCount": 15
+      },
+      {
+        "itemId": 3582,
+        "name": "ham",
+        "chance": 60000,
+        "maxCount": 8
+      },
+      {
+        "itemId": 6499,
+        "name": "demonic essence",
+        "chance": 45333,
+        "maxCount": 1
+      },
+      {
+        "itemId": 238,
+        "name": "great mana potion",
+        "chance": 35000,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "RAAARRR!",
+      "GRRRRRR!",
+      "WAHHHH!"
+    ]
+  },
+  {
     "name": "Dragon",
     "description": "a dragon",
     "experience": 700,
@@ -3241,6 +6065,923 @@
     "voices": [
       "YOU WILL BURN!",
       "ZCHHHHHHH"
+    ]
+  },
+  {
+    "name": "Dragon Hatchling",
+    "description": "a dragon hatchling",
+    "experience": 185,
+    "health": 380,
+    "speed": 73,
+    "corpse": 269,
+    "outfit": {
+      "lookType": 271,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 20,
+    "armor": 15,
+    "defense": 10,
+    "mitigation": 0.78,
+    "isBoss": false,
+    "bestiaryClass": "Dragon",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 55,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 0,
+        "radius": 0,
+        "length": 5,
+        "spread": 2,
+        "target": false,
+        "minDamage": 60,
+        "maxDamage": 90,
+        "damageType": "fire",
+        "shootEffect": 0,
+        "areaEffect": 7,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 15,
+        "range": 7,
+        "radius": 4,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 30,
+        "maxDamage": 55,
+        "damageType": "fire",
+        "shootEffect": 4,
+        "areaEffect": 7,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [
+      {
+        "kind": "healing",
+        "intervalMs": 2000,
+        "chance": 15,
+        "minValue": 8,
+        "maxValue": 33,
+        "speedChange": 0,
+        "durationMs": 0,
+        "areaEffect": 13
+      }
+    ],
+    "elements": {
+      "energy": -5,
+      "earth": 75,
+      "fire": 100,
+      "ice": -10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 95540,
+        "maxCount": 50
+      },
+      {
+        "itemId": 3583,
+        "name": "dragon ham",
+        "chance": 83040,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11457,
+        "name": "dragon's tail",
+        "chance": 3570,
+        "maxCount": 1
+      },
+      {
+        "itemId": 266,
+        "name": "health potion",
+        "chance": 470,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Fchu?",
+      "Rooawwrr"
+    ]
+  },
+  {
+    "name": "Dragon Lord Hatchling",
+    "description": "a dragon lord hatchling",
+    "experience": 645,
+    "health": 750,
+    "speed": 84,
+    "corpse": 270,
+    "outfit": {
+      "lookType": 272,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 30,
+    "armor": 20,
+    "defense": 20,
+    "mitigation": 0,
+    "isBoss": false,
+    "bestiaryClass": "Dragon",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 90,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 0,
+        "radius": 0,
+        "length": 5,
+        "spread": 2,
+        "target": false,
+        "minDamage": 90,
+        "maxDamage": 125,
+        "damageType": "fire",
+        "shootEffect": 0,
+        "areaEffect": 7,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 15,
+        "range": 7,
+        "radius": 4,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 55,
+        "maxDamage": 105,
+        "damageType": "fire",
+        "shootEffect": 4,
+        "areaEffect": 7,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [
+      {
+        "kind": "healing",
+        "intervalMs": 2000,
+        "chance": 15,
+        "minValue": 26,
+        "maxValue": 48,
+        "speedChange": 0,
+        "durationMs": 0,
+        "areaEffect": 13
+      }
+    ],
+    "elements": {
+      "energy": -5,
+      "earth": 75,
+      "fire": 100,
+      "ice": -10
+    },
+    "loot": [
+      {
+        "itemId": 3583,
+        "name": "dragon ham",
+        "chance": 77910,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 72690,
+        "maxCount": 121
+      },
+      {
+        "itemId": 268,
+        "name": "mana potion",
+        "chance": 1200,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3732,
+        "name": "green mushroom",
+        "chance": 490,
+        "maxCount": 1
+      },
+      {
+        "itemId": 818,
+        "name": "magma boots",
+        "chance": 100,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Fchu?",
+      "Rooawwrr"
+    ]
+  },
+  {
+    "name": "Frost Dragon Hatchling",
+    "description": "a frost dragon hatchling",
+    "experience": 745,
+    "health": 800,
+    "speed": 86,
+    "corpse": 909,
+    "outfit": {
+      "lookType": 283,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 80,
+    "armor": 32,
+    "defense": 15,
+    "mitigation": 1.04,
+    "isBoss": false,
+    "bestiaryClass": "Dragon",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 160,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 0,
+        "radius": 0,
+        "length": 5,
+        "spread": 2,
+        "target": false,
+        "minDamage": 60,
+        "maxDamage": 110,
+        "damageType": "ice",
+        "shootEffect": 0,
+        "areaEffect": 44,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 15,
+        "range": 0,
+        "radius": 4,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 60,
+        "maxDamage": 110,
+        "damageType": "ice",
+        "shootEffect": 0,
+        "areaEffect": 42,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "speed",
+        "interval": 2000,
+        "chance": 15,
+        "range": 0,
+        "radius": 4,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 0,
+        "maxDamage": 0,
+        "damageType": "physical",
+        "shootEffect": 29,
+        "areaEffect": 42,
+        "condition": null,
+        "speedChange": -600,
+        "durationMs": 12000,
+        "isHealing": false
+      }
+    ],
+    "defenses": [
+      {
+        "kind": "healing",
+        "intervalMs": 2000,
+        "chance": 15,
+        "minValue": 45,
+        "maxValue": 50,
+        "speedChange": 0,
+        "durationMs": 0,
+        "areaEffect": 13
+      }
+    ],
+    "elements": {
+      "energy": -5,
+      "earth": 100,
+      "fire": 100,
+      "lifedrain": 100,
+      "ice": 100
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 91430,
+        "maxCount": 47
+      },
+      {
+        "itemId": 3583,
+        "name": "dragon ham",
+        "chance": 82860,
+        "maxCount": 1
+      },
+      {
+        "itemId": 9661,
+        "name": "frosty heart",
+        "chance": 8570,
+        "maxCount": 1
+      },
+      {
+        "itemId": 266,
+        "name": "health potion",
+        "chance": 510,
+        "maxCount": 1
+      },
+      {
+        "itemId": 8072,
+        "name": "spellbook of enlightenment",
+        "chance": 430,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Rooawwrr",
+      "Fchu?"
+    ]
+  },
+  {
+    "name": "Frost Dragon",
+    "description": "a frost dragon",
+    "experience": 2100,
+    "health": 1800,
+    "speed": 106,
+    "corpse": 7091,
+    "outfit": {
+      "lookType": 248,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 70,
+    "runOnHealth": 250,
+    "armor": 38,
+    "defense": 45,
+    "mitigation": 1.07,
+    "isBoss": false,
+    "bestiaryClass": "Dragon",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 225,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 0,
+        "radius": 0,
+        "length": 8,
+        "spread": 3,
+        "target": false,
+        "minDamage": 175,
+        "maxDamage": 380,
+        "damageType": "lifedrain",
+        "shootEffect": 0,
+        "areaEffect": 3,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "speed",
+        "interval": 2000,
+        "chance": 5,
+        "range": 0,
+        "radius": 3,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 0,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 3,
+        "condition": null,
+        "speedChange": -700,
+        "durationMs": 12000,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "speed",
+        "interval": 2000,
+        "chance": 15,
+        "range": 0,
+        "radius": 0,
+        "length": 7,
+        "spread": 3,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 0,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 44,
+        "condition": null,
+        "speedChange": -850,
+        "durationMs": 18000,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 5,
+        "range": 0,
+        "radius": 3,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 60,
+        "maxDamage": 120,
+        "damageType": "ice",
+        "shootEffect": 0,
+        "areaEffect": 43,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 0,
+        "radius": 4,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 100,
+        "maxDamage": 240,
+        "damageType": "ice",
+        "shootEffect": 0,
+        "areaEffect": 42,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 5,
+        "range": 0,
+        "radius": 0,
+        "length": 1,
+        "spread": 3,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 220,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 3,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "speed",
+        "interval": 2000,
+        "chance": 20,
+        "range": 0,
+        "radius": 4,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 0,
+        "maxDamage": 0,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 42,
+        "condition": null,
+        "speedChange": -600,
+        "durationMs": 12000,
+        "isHealing": false
+      }
+    ],
+    "defenses": [
+      {
+        "kind": "healing",
+        "intervalMs": 2000,
+        "chance": 10,
+        "minValue": 150,
+        "maxValue": 200,
+        "speedChange": 0,
+        "durationMs": 0,
+        "areaEffect": 13
+      },
+      {
+        "kind": "speed",
+        "intervalMs": 2000,
+        "chance": 15,
+        "minValue": 0,
+        "maxValue": 0,
+        "speedChange": 290,
+        "durationMs": 5000,
+        "areaEffect": 14
+      }
+    ],
+    "elements": {
+      "physical": 5,
+      "earth": 100,
+      "fire": 100,
+      "lifedrain": 100,
+      "ice": 100,
+      "death": 10
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 99110,
+        "maxCount": 207
+      },
+      {
+        "itemId": 3583,
+        "name": "dragon ham",
+        "chance": 83040,
+        "maxCount": 2
+      },
+      {
+        "itemId": 3732,
+        "name": "green mushroom",
+        "chance": 10710,
+        "maxCount": 1
+      },
+      {
+        "itemId": 2842,
+        "name": "book",
+        "chance": 8500,
+        "maxCount": 1
+      },
+      {
+        "itemId": 7441,
+        "name": "ice cube",
+        "chance": 6250,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3450,
+        "name": "power bolt",
+        "chance": 5360,
+        "maxCount": 6
+      },
+      {
+        "itemId": 2903,
+        "name": "golden mug",
+        "chance": 5360,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3051,
+        "name": "energy ring",
+        "chance": 2680,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "YOU WILL FREEZE!",
+      "ZCHHHHH!",
+      "I am so cool.",
+      "Chill out!"
+    ]
+  },
+  {
+    "name": "Hydra",
+    "description": "a hydra",
+    "experience": 2100,
+    "health": 2350,
+    "speed": 180,
+    "corpse": 6048,
+    "outfit": {
+      "lookType": 121,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 90,
+    "runOnHealth": 300,
+    "armor": 27,
+    "defense": 35,
+    "mitigation": 1.18,
+    "isBoss": false,
+    "bestiaryClass": "Dragon",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 270,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "speed",
+        "interval": 2000,
+        "chance": 25,
+        "range": 7,
+        "radius": 4,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 0,
+        "maxDamage": 0,
+        "damageType": "physical",
+        "shootEffect": 15,
+        "areaEffect": 9,
+        "condition": null,
+        "speedChange": -700,
+        "durationMs": 15000,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 0,
+        "radius": 0,
+        "length": 8,
+        "spread": 3,
+        "target": false,
+        "minDamage": 100,
+        "maxDamage": 250,
+        "damageType": "ice",
+        "shootEffect": 0,
+        "areaEffect": 2,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 0,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 80,
+        "maxDamage": 155,
+        "damageType": "ice",
+        "shootEffect": 37,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 0,
+        "radius": 0,
+        "length": 8,
+        "spread": 3,
+        "target": false,
+        "minDamage": 66,
+        "maxDamage": 320,
+        "damageType": "earth",
+        "shootEffect": 0,
+        "areaEffect": 47,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [
+      {
+        "kind": "healing",
+        "intervalMs": 2000,
+        "chance": 25,
+        "minValue": 260,
+        "maxValue": 407,
+        "speedChange": 0,
+        "durationMs": 0,
+        "areaEffect": 13
+      }
+    ],
+    "elements": {
+      "physical": -5,
+      "energy": -10,
+      "earth": 100,
+      "lifedrain": 100,
+      "ice": 50,
+      "holy": 30
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 87970,
+        "maxCount": 212
+      },
+      {
+        "itemId": 3582,
+        "name": "ham",
+        "chance": 59510,
+        "maxCount": 3
+      },
+      {
+        "itemId": 3035,
+        "name": "platinum coin",
+        "chance": 49910,
+        "maxCount": 3
+      },
+      {
+        "itemId": 10282,
+        "name": "hydra head",
+        "chance": 10820,
+        "maxCount": 1
+      },
+      {
+        "itemId": 8014,
+        "name": "cucumber",
+        "chance": 6900,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3029,
+        "name": "small sapphire",
+        "chance": 3920,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3369,
+        "name": "warrior helmet",
+        "chance": 1310,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3370,
+        "name": "knight armor",
+        "chance": 1120,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "FCHHHHH",
+      "HISSSS"
     ]
   },
   {
@@ -3677,6 +7418,467 @@
     },
     "loot": [],
     "voices": []
+  },
+  {
+    "name": "Earth Elemental",
+    "description": "an earth elemental",
+    "experience": 550,
+    "health": 650,
+    "speed": 115,
+    "corpse": 8105,
+    "outfit": {
+      "lookType": 301,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 1,
+    "staticAttackChance": 80,
+    "runOnHealth": 80,
+    "armor": 45,
+    "defense": 25,
+    "mitigation": 0.78,
+    "isBoss": false,
+    "bestiaryClass": "Elemental",
+    "maxSummons": 0,
+    "summons": [],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 110,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 72,
+        "maxDamage": 105,
+        "damageType": "earth",
+        "shootEffect": 39,
+        "areaEffect": 9,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 10,
+        "range": 7,
+        "radius": 2,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 0,
+        "maxDamage": 100,
+        "damageType": "physical",
+        "shootEffect": 12,
+        "areaEffect": 3,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "condition",
+        "interval": 2000,
+        "chance": 20,
+        "range": 0,
+        "radius": 0,
+        "length": 6,
+        "spread": 0,
+        "target": false,
+        "minDamage": 200,
+        "maxDamage": 260,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 51,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "condition",
+        "interval": 2000,
+        "chance": 10,
+        "range": 0,
+        "radius": 5,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 100,
+        "maxDamage": 140,
+        "damageType": "physical",
+        "shootEffect": 15,
+        "areaEffect": 21,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "speed",
+        "interval": 2000,
+        "chance": 10,
+        "range": 5,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": true,
+        "minDamage": 0,
+        "maxDamage": 0,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 46,
+        "condition": null,
+        "speedChange": -330,
+        "durationMs": 5000,
+        "isHealing": false
+      }
+    ],
+    "defenses": [
+      {
+        "kind": "healing",
+        "intervalMs": 2000,
+        "chance": 5,
+        "minValue": 60,
+        "maxValue": 80,
+        "speedChange": 0,
+        "durationMs": 0,
+        "areaEffect": 13
+      }
+    ],
+    "elements": {
+      "physical": 35,
+      "energy": 100,
+      "earth": 100,
+      "fire": -25,
+      "ice": 5,
+      "holy": 50,
+      "death": 40
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 50000,
+        "maxCount": 30
+      },
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 43000,
+        "maxCount": 100
+      },
+      {
+        "itemId": 10305,
+        "name": "lump of earth",
+        "chance": 20460,
+        "maxCount": 1
+      },
+      {
+        "itemId": 774,
+        "name": "earth arrow",
+        "chance": 20160,
+        "maxCount": 30
+      },
+      {
+        "itemId": 1781,
+        "name": "small stone",
+        "chance": 10000,
+        "maxCount": 10
+      },
+      {
+        "itemId": 3147,
+        "name": "blank rune",
+        "chance": 10000,
+        "maxCount": 1
+      },
+      {
+        "itemId": 237,
+        "name": "strong mana potion",
+        "chance": 1910,
+        "maxCount": 1
+      },
+      {
+        "itemId": 9057,
+        "name": "small topaz",
+        "chance": 620,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "Stomp."
+    ]
+  },
+  {
+    "name": "Bonelord",
+    "description": "a bonelord",
+    "experience": 170,
+    "health": 260,
+    "speed": 75,
+    "corpse": 5992,
+    "outfit": {
+      "lookType": 17,
+      "head": 0,
+      "body": 0,
+      "legs": 0,
+      "feet": 0,
+      "addons": 0
+    },
+    "targetDistance": 4,
+    "staticAttackChance": 90,
+    "runOnHealth": 0,
+    "armor": 5,
+    "defense": 5,
+    "mitigation": 0.51,
+    "isBoss": false,
+    "bestiaryClass": "Magical",
+    "maxSummons": 6,
+    "summons": [
+      {
+        "name": "Skeleton",
+        "chance": 20,
+        "intervalMs": 2000,
+        "count": 6
+      }
+    ],
+    "attacks": [
+      {
+        "kind": "melee",
+        "label": "melee",
+        "interval": 2000,
+        "chance": 100,
+        "range": 1,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 5,
+        "damageType": "physical",
+        "shootEffect": 0,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 5,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 15,
+        "maxDamage": 45,
+        "damageType": "energy",
+        "shootEffect": 5,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 5,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 25,
+        "maxDamage": 45,
+        "damageType": "fire",
+        "shootEffect": 4,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 5,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 30,
+        "maxDamage": 50,
+        "damageType": "death",
+        "shootEffect": 32,
+        "areaEffect": 39,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 5,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 5,
+        "maxDamage": 45,
+        "damageType": "earth",
+        "shootEffect": 15,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 5,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 5,
+        "maxDamage": 50,
+        "damageType": "death",
+        "shootEffect": 11,
+        "areaEffect": 0,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      },
+      {
+        "kind": "spell",
+        "label": "combat",
+        "interval": 2000,
+        "chance": 5,
+        "range": 7,
+        "radius": 0,
+        "length": 0,
+        "spread": 0,
+        "target": false,
+        "minDamage": 0,
+        "maxDamage": 45,
+        "damageType": "lifedrain",
+        "shootEffect": 0,
+        "areaEffect": 14,
+        "condition": null,
+        "speedChange": 0,
+        "durationMs": 0,
+        "isHealing": false
+      }
+    ],
+    "defenses": [],
+    "elements": {
+      "earth": 100,
+      "fire": -10,
+      "lifedrain": 100,
+      "ice": 20
+    },
+    "loot": [
+      {
+        "itemId": 3031,
+        "name": "gold coin",
+        "chance": 99400,
+        "maxCount": 48
+      },
+      {
+        "itemId": 3285,
+        "name": "longsword",
+        "chance": 9060,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3282,
+        "name": "morning star",
+        "chance": 7020,
+        "maxCount": 1
+      },
+      {
+        "itemId": 11512,
+        "name": "small flask of eyedrops",
+        "chance": 5060,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3059,
+        "name": "spellbook",
+        "chance": 4990,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3409,
+        "name": "steel shield",
+        "chance": 3980,
+        "maxCount": 1
+      },
+      {
+        "itemId": 3265,
+        "name": "two handed sword",
+        "chance": 3950,
+        "maxCount": 1
+      },
+      {
+        "itemId": 5898,
+        "name": "bonelord eye",
+        "chance": 1000,
+        "maxCount": 1
+      }
+    ],
+    "voices": [
+      "You've got the look!",
+      "Let me take a look at you.",
+      "Eye for eye!",
+      "I've got to look!",
+      "Here's looking at you!"
+    ]
   },
   {
     "name": "Ghost",

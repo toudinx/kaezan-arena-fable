@@ -132,15 +132,25 @@ public static class GameConfig
     public static readonly DungeonTier[] Tiers =
     [
         new(1, "Toca Ecoante", "Cavernas infestadas de vermes sob o Monte Sternum.",
-            ["Rat", "Cave Rat", "Rotworm", "Spider", "Snake"], ["Carrion Worm", "Poison Spider"], "Rotworm Queen", 1, 1.0),
+            ["Rat", "Cave Rat", "Wolf", "Winter Wolf", "Bug", "Spider", "Snake", "Troll"],
+            ["Rotworm", "Scorpion", "Centipede", "Troll Champion", "Carrion Worm", "Poison Spider", "Slime"],
+            "Rotworm Queen", 1, 1.0),
         new(2, "Forte Uruk", "Um bastião orc tomado pela ganância.",
-            ["Orc", "Orc Spearman", "Rotworm", "Spider"], ["Orc Warrior", "Orc Berserker"], "Orc Warlord", 4, 1.35),
+            ["Orc", "Orc Spearman", "Goblin", "Goblin Scavenger", "Dwarf", "War Wolf"],
+            ["Orc Warrior", "Orc Shaman", "Dwarf Soldier", "Orc Rider", "Orc Berserker"],
+            "Orc Warlord", 4, 1.35),
         new(3, "Cripta Sombria", "Catacumbas onde os mortos não descansam.",
-            ["Skeleton", "Ghoul", "Poison Spider"], ["Demon Skeleton", "Vampire", "Necromancer"], "Black Knight", 8, 1.8),
+            ["Skeleton", "Ghoul", "Ghost", "Mummy", "Bonelord"],
+            ["Crypt Shambler", "Demon Skeleton", "Witch", "Vampire", "Necromancer", "Banshee"],
+            "Black Knight", 8, 1.8),
         new(4, "Covil Escamado", "Ninhos de dragões nas profundezas vulcânicas.",
-            ["Minotaur", "Minotaur Archer", "Demon Skeleton"], ["Minotaur Mage", "Cyclops", "Dragon"], "Dragon Lord", 14, 2.4),
+            ["Minotaur", "Minotaur Archer", "Minotaur Mage", "Minotaur Guard", "Fire Elemental", "Dragon Hatchling"],
+            ["Cyclops", "Earth Elemental", "Dragon", "Dragon Lord Hatchling", "Frost Dragon Hatchling"],
+            "Dragon Lord", 14, 2.4),
         new(5, "Abismo Ecoante", "Onde os ecos do abismo ganham forma.",
-            ["Cyclops", "Fire Devil", "Dragon"], ["Giant Spider", "Behemoth", "Dragon Lord"], "Demon", 22, 3.2),
+            ["Cyclops", "Fire Devil", "Dragon", "Dragon Lord Hatchling", "Frost Dragon Hatchling"],
+            ["Giant Spider", "Dragon Lord", "Frost Dragon", "Hydra", "Hellfire Fighter", "Behemoth", "Hellhound", "Dark Torturer", "Juggernaut"],
+            "Demon", 22, 3.2),
     ];
 
     public static readonly int[] BossHpMultiplier = [1, 8, 10, 4, 5, 2];

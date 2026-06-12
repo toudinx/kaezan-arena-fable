@@ -66,6 +66,8 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
   Fire Elemental, respeitando `maxSummons` + orçamento global; summons dão XP mas não loot),
   curandeiros se curam (capado a 10% do HP máx por proc), `defenses` de haste aceleram o monstro
   e espécies com `runHealth` fogem com vida baixa. O card `Antídoto` reduz dano de condições.
+- O catálogo tem 62 espécies do Tibia distribuídas pelos cinco tiers, com pelo menos 5 comuns e
+  3 elites por dungeon; os sprites, corpses, loot e kits vêm do pipeline Canary.
 - Ofertas de card pausam o relógio da simulação; após 20s sem escolha, a primeira opção é aplicada.
 - Atualizar a página preserva a run por até 60s e retoma o mesmo mapa, HP e estado do mundo.
 

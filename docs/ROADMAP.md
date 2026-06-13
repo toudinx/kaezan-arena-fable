@@ -89,8 +89,8 @@ A tabela-mestra de atribuição (todas as tasks `T-*` + features `F-*`) está no
    feature de maior valor do projeto. Depende de T-52 + T-53.
 
 **Onda 4 — Profundidade de combate e recompensa (P1):**
-10. **F-E** — postura completa + reações elementais. _Opus._ **Inclui o que era T-31** (faça a
-   postura completa de uma vez, não o MVP em separado). Idealmente junto/depois de T-52.
+10. ✅ **F-E** — postura completa + reações elementais. _Opus._ **Inclui o que era T-31.**
+   _Entregue 2026-06-12 (Echo Break por ciclo + matriz de reações data-driven)._
 11. **T-30** — Sealed Reward + reroll (gacha-dentro-da-run). _Codex→Opus._ _(Após T-54.)_
 12. **F-B** — árvore de Maestria por waifu. _Opus._ _(Após T-54.)_
 
@@ -467,13 +467,13 @@ N slots revelados um a um; 1 reroll grátis em um slot.
 **Aceite.** Vitória mostra o ritual de revelação; reroll funciona 1x e persiste o resultado
 final na conta; derrota não gera sealed reward.
 
-### [~] T-31 — Boss Posture (Echo Break) — **SUBSTITUÍDA POR F-E**
+### [x] T-31 — Boss Posture (Echo Break) — **ENTREGUE DENTRO DE F-E (2026-06-12)**
 **Owner: Opus (como F-E)**
 
-> **Não fazer o MVP isolado (2026-06-12).** Faça direto a **F-E** ([FABLE_TRACK.md](FABLE_TRACK.md)),
-> que entrega a postura **completa** (ciclos com multiplicador, fraqueza elemental, decaimento) +
-> reações elementais. Não há ganho em construir o MVP de postura para depois reescrevê-lo — a F-E
-> referencia este contexto como ponto de partida.
+> **Concluída via F-E (2026-06-12).** A postura completa (ciclos com multiplicador `2.5/3.5/5/6.5×`,
+> fraqueza elemental que quebra mais rápido, bônus de %HP máx, decaimento) + a camada de reações
+> elementais foram entregues na **F-E** ([FABLE_TRACK.md](FABLE_TRACK.md)). DTOs `bossPosture/Max/
+> Staggered/Cycle` + barra de postura no HUD. Não há MVP isolado — a F-E entregou o sistema inteiro.
 
 **Contexto (referência para a F-E).** Inspiração: `kaezan/mapping/changes/features/boss_posture/`.
 Barra secundária do boss que enche com hits; cheia = boss quebrado (stun longo + dano amplificado).

@@ -69,7 +69,9 @@
     ],
     "voices": [
       "Meep!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Cave Rat",
@@ -151,7 +153,9 @@
     "voices": [
       "Meep!",
       "Meeeeep!"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Wolf",
@@ -223,7 +227,9 @@
     "voices": [
       "Yoooohhuuuu!",
       "Grrrrrrr"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Winter Wolf",
@@ -296,7 +302,9 @@
     ],
     "voices": [
       "Yoooohhuuuu!"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "War Wolf",
@@ -375,7 +383,9 @@
     "voices": [
       "Yoooohhuuuu!",
       "Grrrrrrr"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Rotworm",
@@ -476,7 +486,9 @@
         "maxCount": 1
       }
     ],
-    "voices": []
+    "voices": [],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Carrion Worm",
@@ -564,7 +576,9 @@
         "maxCount": 1
       }
     ],
-    "voices": []
+    "voices": [],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Spider",
@@ -631,7 +645,9 @@
         "maxCount": 1
       }
     ],
-    "voices": []
+    "voices": [],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Poison Spider",
@@ -704,7 +720,9 @@
         "maxCount": 1
       }
     ],
-    "voices": []
+    "voices": [],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Bug",
@@ -771,7 +789,9 @@
         "maxCount": 3
       }
     ],
-    "voices": []
+    "voices": [],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Scorpion",
@@ -840,7 +860,9 @@
         "maxCount": 1
       }
     ],
-    "voices": []
+    "voices": [],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Centipede",
@@ -915,7 +937,9 @@
         "maxCount": 1
       }
     ],
-    "voices": []
+    "voices": [],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Slime",
@@ -981,7 +1005,9 @@
     "loot": [],
     "voices": [
       "Blubb"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Snake",
@@ -1045,7 +1071,9 @@
     "loot": [],
     "voices": [
       "Zzzzzzt"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Skeleton",
@@ -1171,7 +1199,9 @@
         "maxCount": 1
       }
     ],
-    "voices": []
+    "voices": [],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Ghoul",
@@ -1311,7 +1341,9 @@
         "maxCount": 1
       }
     ],
-    "voices": []
+    "voices": [],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Demon Skeleton",
@@ -1439,7 +1471,9 @@
         "maxCount": 1
       }
     ],
-    "voices": []
+    "voices": [],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Vampire",
@@ -1614,7 +1648,9 @@
       "Let me kiss your neck",
       "I smell warm blood!",
       "I call you, my bats! Come!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Crypt Shambler",
@@ -1746,7 +1782,9 @@
       "Hoooohhh!",
       "Uhhhhhhh!",
       "Chhhhhhh!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Banshee",
@@ -1938,7 +1976,9 @@
       "Feel my gentle kiss of death.",
       "That's what I call easy listening!",
       "IIIIEEEeeeeeehhhHHHH!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Orc",
@@ -2048,7 +2088,9 @@
       "Grow truk grrrrr.",
       "Prek tars, dekklep zurk.",
       "Grak brrretz!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Orc Spearman",
@@ -2176,7 +2218,9 @@
     ],
     "voices": [
       "Ugaar!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Orc Warrior",
@@ -2286,7 +2330,9 @@
       "Alk!",
       "Trak grrrr brik.",
       "Grow truk grrrr."
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Orc Berserker",
@@ -2405,7 +2451,9 @@
     ],
     "voices": [
       "KRAK ORRRRRRK!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Orc Warlord",
@@ -2537,7 +2585,9 @@
       "Orc buta bana!",
       "Ranat Ulderek!",
       "Futchi maruk buta!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Orc Shaman",
@@ -2704,7 +2754,9 @@
     "voices": [
       "Huumans stinkk!",
       "Grak brrretz gulu."
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Orc Rider",
@@ -2824,7 +2876,9 @@
     "voices": [
       "Orc arga Huummmak!",
       "Grrrrrrr"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Goblin",
@@ -2956,7 +3010,9 @@
       "Bugga! Bugga!",
       "Help! Goblinkiller!",
       "Me have him!"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Goblin Scavenger",
@@ -3139,7 +3195,9 @@
       "All mine!",
       "Uhh!",
       "Gimme gimme!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Troll",
@@ -3251,7 +3309,9 @@
       "Grrr",
       "Groar",
       "Gruntz!"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Troll Champion",
@@ -3363,7 +3423,9 @@
       "Whaaaz up!?",
       "Gruntz!",
       "Groar"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Dwarf",
@@ -3470,7 +3532,9 @@
     ],
     "voices": [
       "Hail Durin!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Dwarf Soldier",
@@ -3597,7 +3661,9 @@
     ],
     "voices": [
       "Hail Durin!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Minotaur",
@@ -3706,7 +3772,9 @@
     "voices": [
       "Kaplar!",
       "Hurr"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Minotaur Archer",
@@ -3835,7 +3903,9 @@
     "voices": [
       "Ruan Wihmpy!",
       "Kaplar!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Minotaur Mage",
@@ -3985,7 +4055,9 @@
     "voices": [
       "Learrn tha secrret uf deathhh!",
       "Kaplar!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Minotaur Guard",
@@ -4094,7 +4166,9 @@
     "voices": [
       "Kirrl Karrrl!",
       "Kaplar"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Necromancer",
@@ -4282,7 +4356,9 @@
     "voices": [
       "Taste the sweetness of death!",
       "Your corpse will be mine."
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Witch",
@@ -4412,7 +4488,9 @@
       "Herba budinia ex!",
       "Horax Pokti!",
       "Hihihihi!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Cyclops",
@@ -4524,7 +4602,9 @@
       "Let da mashing begin!",
       "Toks utat.",
       "Il lorstok human!"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Behemoth",
@@ -4668,7 +4748,9 @@
       "Crush the intruders!",
       "You're so little!",
       "Human flesh -  delicious!"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Fire Devil",
@@ -4820,7 +4902,9 @@
     "voices": [
       "Hot, eh?",
       "Hell, oh, hell!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Demon",
@@ -5045,7 +5129,9 @@
       "I SMELL FEEEEAAAAAR!",
       "Your resistance is futile!",
       "MUHAHAHAHA!"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Hellhound",
@@ -5300,7 +5386,9 @@
     ],
     "voices": [
       "GROOOOWL!"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Hellfire Fighter",
@@ -5447,7 +5535,9 @@
         "maxCount": 1
       }
     ],
-    "voices": []
+    "voices": [],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Dark Torturer",
@@ -5592,7 +5682,9 @@
       "It's party time!",
       "Harrr, Harrr!",
       "The torturer is in!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Juggernaut",
@@ -5745,7 +5837,9 @@
       "RAAARRR!",
       "GRRRRRR!",
       "WAHHHH!"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Dragon",
@@ -5905,7 +5999,9 @@
     "voices": [
       "FCHHHHH",
       "GROOAAARRR"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Dragon Lord",
@@ -6065,7 +6161,9 @@
     "voices": [
       "YOU WILL BURN!",
       "ZCHHHHHHH"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Dragon Hatchling",
@@ -6201,7 +6299,9 @@
     "voices": [
       "Fchu?",
       "Rooawwrr"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Dragon Lord Hatchling",
@@ -6343,7 +6443,9 @@
     "voices": [
       "Fchu?",
       "Rooawwrr"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Frost Dragon Hatchling",
@@ -6506,7 +6608,9 @@
     "voices": [
       "Rooawwrr",
       "Fchu?"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Frost Dragon",
@@ -6780,7 +6884,9 @@
       "ZCHHHHH!",
       "I am so cool.",
       "Chill out!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Hydra",
@@ -6982,7 +7088,9 @@
     "voices": [
       "FCHHHHH",
       "HISSSS"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": null
   },
   {
     "name": "Giant Spider",
@@ -7131,7 +7239,9 @@
         "maxCount": 1
       }
     ],
-    "voices": []
+    "voices": [],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Rotworm Queen",
@@ -7155,7 +7265,7 @@
     "defense": 15,
     "mitigation": 0.58,
     "isBoss": true,
-    "bestiaryClass": "",
+    "bestiaryClass": "Nemesis",
     "maxSummons": 0,
     "summons": [],
     "attacks": [
@@ -7205,7 +7315,9 @@
         "maxCount": 1
       }
     ],
-    "voices": []
+    "voices": [],
+    "origin": "otservbr",
+    "bossRace": "Nemesis"
   },
   {
     "name": "Black Knight",
@@ -7229,7 +7341,7 @@
     "defense": 40,
     "mitigation": 0,
     "isBoss": true,
-    "bestiaryClass": "",
+    "bestiaryClass": "Bane",
     "maxSummons": 0,
     "summons": [],
     "attacks": [
@@ -7340,7 +7452,9 @@
       "You're no match for me!",
       "NO MERCY!",
       "MINE!"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": "Bane"
   },
   {
     "name": "Fire Elemental",
@@ -7417,7 +7531,9 @@
       "death": 100
     },
     "loot": [],
-    "voices": []
+    "voices": [],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Earth Elemental",
@@ -7639,7 +7755,9 @@
     ],
     "voices": [
       "Stomp."
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Bonelord",
@@ -7878,7 +7996,9 @@
       "Eye for eye!",
       "I've got to look!",
       "Here's looking at you!"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Ghost",
@@ -8009,7 +8129,9 @@
       "Huh!",
       "Shhhhhh",
       "Buuuuuh"
-    ]
+    ],
+    "origin": "otservbr",
+    "bossRace": null
   },
   {
     "name": "Mummy",
@@ -8169,6 +8291,8 @@
       "I will tassste life again!",
       "Ahkahra exura belil mort!",
       "Yohag Sssetham!"
-    ]
+    ],
+    "origin": "canary",
+    "bossRace": null
   }
 ]

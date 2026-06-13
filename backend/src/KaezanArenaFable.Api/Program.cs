@@ -1,4 +1,5 @@
 using KaezanArenaFable.Api.Api;
+using KaezanArenaFable.Api.Content;
 using KaezanArenaFable.Api.Domain;
 using KaezanArenaFable.Api.Engine;
 using KaezanArenaFable.Api.Hubs;
@@ -8,6 +9,8 @@ using KaezanArenaFable.Api.Meta.Persistence;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<GameData>();
+builder.Services.AddSingleton<ContentStore>();
+builder.Services.AddSingleton<MonsterRegistry>();
 builder.Services.AddAccountPersistence(builder.Configuration);
 builder.Services.AddSingleton<AccountStore>();
 builder.Services.AddSingleton<GachaService>();

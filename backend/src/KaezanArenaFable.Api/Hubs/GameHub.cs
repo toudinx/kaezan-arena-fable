@@ -1,3 +1,4 @@
+using KaezanArenaFable.Api.Content;
 using KaezanArenaFable.Api.Domain;
 using KaezanArenaFable.Api.Engine;
 using KaezanArenaFable.Api.Meta;
@@ -6,11 +7,16 @@ using Microsoft.AspNetCore.SignalR;
 namespace KaezanArenaFable.Api.Hubs;
 
 /// <summary>Realtime game channel: one active run per connection.</summary>
-public sealed class GameHub(RunManager runs, GameData data, AccountStore store) : Hub
+public sealed class GameHub(
+    RunManager runs,
+    GameData data,
+    MonsterRegistry monsters,
+    AccountStore store,
+    ContentStore content) : Hub
 {
     public object JoinRun(int tier, long? seed = null, bool resume = false)
     {
-        var tierDef = GameConfig.Tiers.FirstOrDefault(t => t.Tier == tier)
+        var tierDef = content.Tier(tier)
                       ?? throw new HubException("tier desconhecido");
 
         if (resume && runs.TryResumeRun(Context.ConnectionId, out var resumedWorld) && resumedWorld is not null)
@@ -55,7 +61,8 @@ public sealed class GameHub(RunManager runs, GameData data, AccountStore store) 
             skin);
 
         var equipmentStats = EquipmentStatAggregator.Aggregate(equipment, data.Items);
-        var world = new GameWorld(runSeed, tierDef, waifu, ascension, data, bestiary, equipmentStats, kaeliLoadout);
+        var world = new GameWorld(
+            runSeed, tierDef, waifu, ascension, data, monsters, bestiary, equipmentStats, kaeliLoadout);
         runs.StartRun(Context.ConnectionId, world);
         return new { seed = runSeed, tier = tierDef.Tier, tierName = tierDef.Name, waifuId = waifu.Id, resumed = false };
     }

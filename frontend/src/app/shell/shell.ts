@@ -16,6 +16,7 @@ import { AssetsService } from '../core/assets.service';
         <a routerLink="/kaelis" routerLinkActive="active">Kaelis</a>
         <a routerLink="/recruit" routerLinkActive="active">Recrutar</a>
         <a routerLink="/backpack" routerLinkActive="active">Mochila</a>
+        <a routerLink="/admin" routerLinkActive="active" class="admin-link">⚙ Admin</a>
       </nav>
       <div class="currencies">
         @if (account(); as acc) {
@@ -44,6 +45,8 @@ import { AssetsService } from '../core/assets.service';
     }
     nav a:hover { color: #fff; background: #1d1d2c; }
     nav a.active { color: #2dd4bf; background: #16242a; }
+    nav a.admin-link { margin-left: auto; color: #e8a93c; }
+    nav a.admin-link.active { color: #e8a93c; background: #2a2113; }
     .currencies { display: flex; gap: 12px; }
     .cur { font-weight: 700; font-size: 14px; padding: 6px 12px; border-radius: 8px; background: #16161f; }
     .cur.gold { color: #fbbf24; }

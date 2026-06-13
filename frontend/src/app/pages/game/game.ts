@@ -36,6 +36,18 @@ const RESUME_TOAST_MS = 2500;
             <div class="bossbar">
               <div class="bname">👑 {{ s.run.bossName }}</div>
               <div class="bar boss"><div class="fill" [style.width.%]="(100 * s.run.bossHp!) / s.run.bossMaxHp!"></div></div>
+              @if (s.run.bossPostureMax) {
+                <div class="bar posture" [class.high]="posturePct(s.run) >= 80" [class.staggered]="s.run.bossStaggered">
+                  <div class="fill" [style.width.%]="posturePct(s.run)"></div>
+                </div>
+                <div class="posture-label">
+                  @if (s.run.bossStaggered) {
+                    <span class="broken">⚡ ECHO BREAK · dano ×{{ activeMult(s.run.bossPostureCycle) }}</span>
+                  } @else {
+                    <span>Postura → quebra ×{{ nextMult(s.run.bossPostureCycle) }}</span>
+                  }
+                </div>
+              }
             </div>
           }
           <div class="buffs">
@@ -151,6 +163,14 @@ const RESUME_TOAST_MS = 2500;
     .bossbar { flex: 1; max-width: 420px; background: rgba(10,10,16,0.8); border: 1px solid #432; border-radius: 10px; padding: 8px 12px; }
     .bname { font-size: 13px; font-weight: 800; color: #ff8c4d; }
     .bar.boss { height: 12px; }
+    .bar.posture { height: 5px; margin-top: 3px; background: #2a2118; }
+    .bar.posture .fill { background: linear-gradient(90deg, #fbbf24, #f59e0b); transition: width 0.12s linear; }
+    .bar.posture.high .fill { animation: posturePulse 0.5s infinite alternate; }
+    .bar.posture.staggered { box-shadow: 0 0 10px #fbbf24; }
+    .bar.posture.staggered .fill { background: linear-gradient(90deg, #fff, #fbbf24); }
+    .posture-label { font-size: 10px; color: #e8a93c; margin-top: 2px; font-weight: 800; }
+    .posture-label .broken { color: #fff; animation: posturePulse 0.4s infinite alternate; }
+    @keyframes posturePulse { from { opacity: 0.45; } to { opacity: 1; } }
     .buffs { display: flex; gap: 6px; }
     .buff { background: rgba(45, 212, 191, 0.18); border: 1px solid #2dd4bf; color: #2dd4bf; font-size: 11px; font-weight: 800; border-radius: 6px; padding: 3px 8px; }
     .buff.cond { background: rgba(255, 93, 93, 0.18); border-color: #ff5d5d; color: #ff5d5d; }
@@ -405,6 +425,24 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   formatTime(ms: number): string {
     const s = Math.floor(ms / 1000);
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  // ---- F-E: boss posture (echo break) ----
+  private readonly staggerMults = [2.5, 3.5, 5.0, 6.5];
+
+  posturePct(run: { bossPosture: number | null; bossPostureMax: number | null }): number {
+    if (!run.bossPostureMax) return 0;
+    return Math.min(100, (100 * (run.bossPosture ?? 0)) / run.bossPostureMax);
+  }
+
+  /** Multiplier the next break will grant (cycle = breaks already taken). */
+  nextMult(cycle: number): string {
+    return this.staggerMults[Math.min(cycle, this.staggerMults.length - 1)].toFixed(1);
+  }
+
+  /** Multiplier active during the current stagger (cycle already incremented at break). */
+  activeMult(cycle: number): string {
+    return this.staggerMults[Math.min(Math.max(cycle - 1, 0), this.staggerMults.length - 1)].toFixed(1);
   }
 
   hasEquipmentStats(stats: { attackBonus: number; maxHpBonus: number; damageReduction: number; moveSpeedPercent: number }): boolean {

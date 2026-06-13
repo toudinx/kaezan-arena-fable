@@ -40,7 +40,7 @@ public sealed record SkillStateDto(
 public sealed record MonsterDto(
     int Id, string Species, int X, int Y, int Dir, int Hp, int MaxHp,
     int FromX, int FromY, int StepDurMs, long StepStartTick,
-    OutfitDto Outfit, bool IsBoss, bool Stunned);
+    OutfitDto Outfit, bool IsBoss, bool Stunned, string ElementMark);
 
 public sealed record GroundItemDto(int Id, int X, int Y, int ItemId, int Count);
 
@@ -57,6 +57,7 @@ public sealed record RunStateDto(
     List<CardStackDto> Cards,
     List<CardOfferDto>? Offer,
     int? BossHp, int? BossMaxHp, string? BossName,
+    double? BossPosture, double? BossPostureMax, bool BossStaggered, int BossPostureCycle,
     long ElapsedMs,
     RunEndDto? Ended);
 

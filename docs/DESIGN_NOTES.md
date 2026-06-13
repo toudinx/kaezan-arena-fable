@@ -377,6 +377,69 @@ catálogo raso. Cada Kaeli agora tem **cinco eixos de identidade**:
 
 ---
 
+## 13. Economia de combate, loot, poder e autoria (decisões 2026-06-13)
+
+> Origem: sessão de feedback do dono jogando o MVP (morria muito no tier 2; loot lixo; magia
+> bugada; queria autorar conteúdo). Estado: parte ✅ implementada, parte 📋 roadmap travado.
+
+### a) Loot e drops com função — ✅ implementado
+As tabelas cruas do Tibia entopem a mochila de lixo e dropam itens de slot removido (legs/feet).
+Novo modelo no `DropLoot`/`TickPickup`:
+- **Comida** (`GameData.IsFood`, resolve `GameConfig.FoodNameWords` → ids) cura `FoodHealPct` (5%)
+  da vida máx **ao pegar** (heal-on-pickup; não há mecânica de usar item mid-run).
+- **Poção de vida** (`GameData.PotionHealFraction`, por nome) cura 15/25/40% (basic/strong/
+  great) — poções mais fortes caem em tiers mais altos, então a cura escala com o tier.
+- **Equip** (slot válido) cai no chão pra equipar/vender.
+- **Lixo** (ossos, peles, mats) é **auto-vendido virando ouro** no kill — sem clutter, e mantém
+  o ouro fluindo (pedido do dono).
+
+### b) Sustain baseline + dificuldade — ✅ implementado (tunável)
+Player morria porque sustain/dano só vinham de card sorteado. Baseline garantido (sem card):
+`BaselineRegenPctPerSec` 0.6%/s (+0.06%/s por run-level), `BaselineLifesteal` 2%. Dano
+recalibrado por knobs globais: `PlayerDamageMult` 1.4 (damos +40% dano), `MonsterDamageTuning`
+0.35→0.26 (recebemos ~26% menos). **Não nerfar mobs** (mantém fidelidade Tibia da IA) — a
+dificuldade cai pelo lado do player. Tudo em GameConfig, marcado MVP/dificuldade.
+
+### c) Bugs de magia — ✅ corrigidos
+- **Parede**: player agora checa LOS no auto-attack ranged e skills `single`/`area` (mobs já
+  checavam). `beam` anda tile a tile.
+- **Geometria por direção**: `ConeTiles` reescrito por projeção forward/perp (meia-abertura 45°)
+  — MESMA abertura angular nas 8 direções.
+- **Mira "na reta"**: skill com alvo fora de alcance não fizzla mais; dispara na direção do alvo
+  até o alcance máx ou antes da parede (`AimAlongLine`). RELACIONADO pendente: `beam` pode errar
+  alvo fora de eixo (snap pra diagonal) — follow-up.
+
+### d) Modelo de poder — 📋 travado, não implementado
+**Princípio:** o personagem é o produto do gacha; o gear é farmável (o drop é peça central do
+jogo — NÃO há gacha de arma). Mitiga pay-to-win.
+- **Gear (stats)**: dropado nas dungeons (sets curados por tier), **sobe de nível** com materiais.
+  Fonte de poder bruto, F2P.
+- **Cores (sublimações estilo Wakfu)**: encaixam **só nas armas** (arma tem slots de core, +1 ao
+  melhorar). Dão **passivas + efeitos únicos**, casados com o kit da Kaeli (ex.: core da Velvet
+  amplia execução <30% HP; da Sylwen estende slow).
+- **Duas gachas**: (1) personagem (Kaelis); (2) **cores**, banner separado. Cada Kaeli tem um
+  **core de assinatura** em destaque no gacha de cores.
+- **Contrapeso F2P**: existe pool de **cores craftáveis** com materiais de drop — quem não paga
+  constrói build à altura.
+- **Progressão "morrer ≠ zero progresso"**: gear-leveling + cores craftáveis. Árvore permanente
+  estilo Hades **em espera** (evitar bloat de uma 3ª camada agora).
+
+### e) Sets curados por tier — 📋 travado
+5 sets temáticos (1 por tier dos `GameConfig.Tiers`), 6 slots cada (helmet/armor/weapon/necklace/
+ring/mount). Set do tier dá o pico de poder pra encarar o próximo. Drop de elite/baú/boss.
+
+### f) Autoria de conteúdo — 📋 painel admin in-game completo
+O dono quer autorar, por conta própria:
+- **Arenas (tiers 1-5)**: quais mobs (comuns/elites), tema/descrição, qual boss.
+- **Kaelis**: nome, classe, skin principal, skins extras.
+- **Itens/sets**: definir os itens, montar os sets, e **quem dropa o quê** (tabelas de drop).
+Decisão: **painel admin in-game completo**. Implica primeiro tornar esse conteúdo **data-driven**
+(hoje em `GameConfig.Tiers`/`Waifus.cs` C# + monsters.json/items.json) com persistência e API; o
+painel é a UI que lê/escreve esse dado. Construir como **fatias verticais** (arena → kaeli →
+sets/drops) pra provar a arquitetura cedo.
+
+---
+
 > **Lembrete final.** Tudo aqui é _design_. Ao implementar, não copie código Lua/C++ — releia a
 > seção relevante, entenda a **intenção** e a **decisão de balanceamento**, e reescreva no
 > idioma do Fable (engine determinística em C#, snapshot por SignalR, renderer Canvas). O valor

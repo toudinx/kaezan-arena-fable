@@ -303,6 +303,17 @@ set-pieces nem ritmo. Falta o que torna roguelikes rejogáveis: **layouts com pr
 
 ## F-E — Postura completa + sistema de reações elementais
 
+> ✅ **ENTREGUE 2026-06-12 (Opus 4.8).** Postura de boss (Echo Break) completa: pool por boss que
+> escala com tier, enche por hit (skills > auto, ×1.7 no elemento fraco), quebra em stagger com
+> multiplicador por ciclo (`2.5/3.5/5/6.5×`) + bônus de %HP máx com CD interno, regrowth do pool e
+> decaimento sem pressão — tudo no `Actor` do boss, determinístico (`TickPostureDecay` no tick).
+> Reações elementais data-driven em `Domain/ElementReactions.cs` (Estilhaço/Permafrost/Sobrecarga/
+> Supercondução/Detonação/Aniquilação): marca elemental por ator + lookup `(marca, gatilho)` no
+> caminho de `DealDamageToMonster`, dano fracionário (sem recursão), compõe com a troca de postura.
+> DTOs novos: `bossPosture/Max/Staggered/Cycle` no `RunStateDto`, `elementMark` no `MonsterDto`;
+> HUD com barra de postura (pisca >80%, "ECHO BREAK ×N" no stagger) e ícone de marca sobre o mob.
+> Absorve o MVP do ROADMAP T-31.
+
 **Owner: Opus 4.8** (Fable 5 se feita junto com T-52). Composicional e ancorada pelo MVP do
 ROADMAP T-31; Opus dá conta. Se for implementada na mesma leva que a refundação de classes
 (T-52), o acoplamento elemento×stance×postura justifica subir para Fable 5.

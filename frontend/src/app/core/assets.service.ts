@@ -72,6 +72,10 @@ export class AssetsService {
     return this.manifest?.[category]?.[String(id)] ?? null;
   }
 
+  ids(category: ThingCategory): number[] {
+    return Object.keys(this.manifest?.[category] ?? {}).map(Number);
+  }
+
   semantic(key: string): number[] {
     return this.manifest?.semantic[key] ?? [];
   }

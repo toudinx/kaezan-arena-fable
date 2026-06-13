@@ -1,5 +1,12 @@
 import { Injectable, signal } from '@angular/core';
-import { Account, Catalog, PullResponse } from './types';
+import {
+  Account,
+  Catalog,
+  DungeonTier,
+  MonsterAuthoringMetadata,
+  MonsterDefinition,
+  PullResponse,
+} from './types';
 
 /** REST client for meta systems (account, gacha, dailies, inventory). */
 @Injectable({ providedIn: 'root' })
@@ -20,9 +27,54 @@ export class ApiService {
 
   async loadCatalog(): Promise<Catalog> {
     if (this.catalog()) return this.catalog()!;
+    return this.reloadCatalog();
+  }
+
+  /** Re-busca o catálogo ignorando o cache (ex.: depois de editar conteúdo no painel admin). */
+  async reloadCatalog(): Promise<Catalog> {
     const cat = await this.request<Catalog>('GET', '/catalog');
     this.catalog.set(cat);
     return cat;
+  }
+
+  // ---- admin: autoria de conteúdo ----
+  async getAdminTiers(): Promise<DungeonTier[]> {
+    return this.request<DungeonTier[]>('GET', '/admin/content/tiers');
+  }
+
+  async saveAdminTiers(tiers: DungeonTier[]): Promise<DungeonTier[]> {
+    const saved = await this.request<DungeonTier[]>('PUT', '/admin/content/tiers', tiers);
+    await this.reloadCatalog(); // /hunt e dailies passam a refletir a edição
+    return saved;
+  }
+
+  async getMonsterAuthoringMetadata(): Promise<MonsterAuthoringMetadata> {
+    return this.request<MonsterAuthoringMetadata>('GET', '/admin/monster-authoring');
+  }
+
+  async getAuthoredMonsters(): Promise<MonsterDefinition[]> {
+    return this.request<MonsterDefinition[]>('GET', '/admin/content/monsters');
+  }
+
+  async createAuthoredMonster(monster: MonsterDefinition): Promise<MonsterDefinition> {
+    const saved = await this.request<MonsterDefinition>('POST', '/admin/content/monsters', monster);
+    await this.reloadCatalog();
+    return saved;
+  }
+
+  async updateAuthoredMonster(monster: MonsterDefinition): Promise<MonsterDefinition> {
+    const saved = await this.request<MonsterDefinition>(
+      'PUT',
+      `/admin/content/monsters/${encodeURIComponent(monster.id)}`,
+      monster,
+    );
+    await this.reloadCatalog();
+    return saved;
+  }
+
+  async deleteAuthoredMonster(id: string): Promise<void> {
+    await this.request('DELETE', `/admin/content/monsters/${encodeURIComponent(id)}`);
+    await this.reloadCatalog();
   }
 
   async refreshAccount(): Promise<Account> {

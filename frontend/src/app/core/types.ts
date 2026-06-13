@@ -149,14 +149,109 @@ export interface BannerDef {
 }
 
 export interface MonsterCatalogEntry {
+  id: string;
   name: string;
   description: string;
   health: number;
   experience: number;
   isBoss: boolean;
   bestiaryClass: string;
+  origin: string | null;
+  bossRace: string | null;
+  corpse: number;
   outfit: { lookType: number; head: number; body: number; legs: number; feet: number; addons: number };
   loot: { itemId: number; name: string; chance: number }[];
+  source: 'legacy' | 'authored';
+  rank: 'legacy' | 'common' | 'elite' | 'boss';
+  element: string;
+  behaviorId: string;
+  statPresetId: string;
+  hpMultiplier: number;
+  damageMultiplier: number;
+  speedMultiplier: number;
+  cadenceMultiplier: number;
+  powerTier: number;
+  resistances: Record<string, number>;
+}
+
+export interface MonsterDefinition {
+  id: string;
+  name: string;
+  description: string;
+  outfit: MonsterCatalogEntry['outfit'];
+  corpse: number;
+  powerTier: number;
+  rank: 'common' | 'elite' | 'boss';
+  behaviorId: string;
+  elementId: string;
+  statPresetId: string;
+  hpMultiplier: number;
+  damageMultiplier: number;
+  speedMultiplier: number;
+  cadenceMultiplier: number;
+  bestiaryClass: string;
+  resistances: Record<string, number>;
+  appearanceId: string;
+  enabled: boolean;
+}
+
+export interface MonsterAppearance {
+  id: string;
+  name: string;
+  source: string;
+  outfit: MonsterCatalogEntry['outfit'];
+  corpse: number;
+  bestiaryClass: string;
+  classificationSource: 'bestiary-class' | 'bestiary-race' | 'folder' | 'shared-outfit' | 'override' | 'unclassified' | 'legacy';
+  kind: 'normal' | 'boss';
+  kindSource: 'bosstiary' | 'rewardBoss' | 'path' | 'default' | 'override' | 'legacy';
+  legacyImported: boolean;
+}
+
+export interface MonsterStatPreset {
+  id: string;
+  name: string;
+  description: string;
+  hpMultiplier: number;
+  damageMultiplier: number;
+  speedMultiplier: number;
+  cadenceMultiplier: number;
+}
+
+export interface MonsterBehaviorProfile {
+  id: string;
+  name: string;
+  description: string;
+  targetDistance: number;
+  staticAttackChance: number;
+}
+
+export interface MonsterElementProfile {
+  id: string;
+  name: string;
+  areaEffect: number;
+  shootEffect: number;
+  conditionType: string | null;
+}
+
+export interface MonsterStatLine {
+  health: number;
+  damage: number;
+  armor: number;
+  speed: number;
+  experience: number;
+}
+
+export interface MonsterAuthoringMetadata {
+  behaviors: MonsterBehaviorProfile[];
+  elements: MonsterElementProfile[];
+  presets: MonsterStatPreset[];
+  statLines: Record<string, MonsterStatLine>;
+  modifierMin: number;
+  modifierMax: number;
+  resistanceMin: number;
+  resistanceMax: number;
+  appearances: MonsterAppearance[];
 }
 
 export interface ItemCatalogEntry {
@@ -357,6 +452,7 @@ export interface MonsterDto {
   outfit: OutfitDto;
   isBoss: boolean;
   stunned: boolean;
+  elementMark: string;
 }
 
 export interface GroundItemDto {
@@ -425,6 +521,10 @@ export interface RunStateDto {
   bossHp: number | null;
   bossMaxHp: number | null;
   bossName: string | null;
+  bossPosture: number | null;
+  bossPostureMax: number | null;
+  bossStaggered: boolean;
+  bossPostureCycle: number;
   elapsedMs: number;
   ended: RunEndDto | null;
 }

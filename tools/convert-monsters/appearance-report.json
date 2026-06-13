@@ -1,0 +1,1617 @@
+{
+  "generatedAt": "2026-06-13T19:43:52.900Z",
+  "records": 1542,
+  "uniqueLookTypes": 758,
+  "uniqueCorpses": 810,
+  "legacyImported": 62,
+  "normal": 1180,
+  "bosses": 362,
+  "unclassified": [
+    {
+      "id": "canary:quests/soul_war/normal_monsters/furious_crater/a_greedy_eye",
+      "name": "A Greedy Eye",
+      "source": "quests/soul_war/normal_monsters/furious_crater/a_greedy_eye.lua"
+    },
+    {
+      "id": "canary:quests/bigfoots_burden/bosses/abyssador",
+      "name": "Abyssador",
+      "source": "quests/bigfoots_burden/bosses/abyssador.lua"
+    },
+    {
+      "id": "canary:quests/heart_of_destruction/aftershock",
+      "name": "Aftershock",
+      "source": "quests/heart_of_destruction/aftershock.lua"
+    },
+    {
+      "id": "canary:quests/the_dream_courts/bosses/alptramun",
+      "name": "Alptramun",
+      "source": "quests/the_dream_courts/bosses/alptramun.lua"
+    },
+    {
+      "id": "canary:quests/mysterious_ornate_chest/an_observer_eye",
+      "name": "An Observer Eye",
+      "source": "quests/mysterious_ornate_chest/an_observer_eye.lua"
+    },
+    {
+      "id": "canary:quests/mysterious_ornate_chest/an_observer_eye_(imune)",
+      "name": "An Observer Eye (imune)",
+      "source": "quests/mysterious_ornate_chest/an_observer_eye_(imune).lua"
+    },
+    {
+      "id": "canary:quests/dangerous_depth/bosses/ancient_spawn_of_morgathla",
+      "name": "Ancient Spawn of Morgathla",
+      "source": "quests/dangerous_depth/bosses/ancient_spawn_of_morgathla.lua"
+    },
+    {
+      "id": "canary:quests/the_inquisition/annihilon",
+      "name": "Annihilon",
+      "source": "quests/the_inquisition/annihilon.lua"
+    },
+    {
+      "id": "canary:quests/heart_of_destruction/anomaly",
+      "name": "Anomaly",
+      "source": "quests/heart_of_destruction/anomaly.lua"
+    },
+    {
+      "id": "canary:bosses/apocalypse",
+      "name": "Apocalypse",
+      "source": "bosses/apocalypse.lua"
+    },
+    {
+      "id": "canary:raids/arachir_the_ancient_one",
+      "name": "Arachir the Ancient One",
+      "source": "raids/arachir_the_ancient_one.lua"
+    },
+    {
+      "id": "canary:quests/no_rest_for_the_wicked/bosses/arbaziloth",
+      "name": "Arbaziloth",
+      "source": "quests/no_rest_for_the_wicked/bosses/arbaziloth.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/ascending_ferumbras",
+      "name": "Ascending Ferumbras",
+      "source": "quests/ferumbras_ascension/bosses/ascending_ferumbras.lua"
+    },
+    {
+      "id": "canary:quests/ancient_tombs/ashmunrah",
+      "name": "Ashmunrah",
+      "source": "quests/ancient_tombs/ashmunrah.lua"
+    },
+    {
+      "id": "canary:quests/soul_war/aspect_of_power",
+      "name": "Aspect of Power",
+      "source": "quests/soul_war/aspect_of_power.lua"
+    },
+    {
+      "id": "canary:quests/in_service_of_yalahar/azerus",
+      "name": "Azerus",
+      "source": "quests/in_service_of_yalahar/azerus.lua"
+    },
+    {
+      "id": "canary:quests/in_service_of_yalahar/azerus2",
+      "name": "Azerus2",
+      "source": "quests/in_service_of_yalahar/azerus2.lua"
+    },
+    {
+      "id": "canary:bosses/bakragore",
+      "name": "Bakragore",
+      "source": "bosses/bakragore.lua"
+    },
+    {
+      "id": "canary:quests/the_curse_spreads/black_vixen",
+      "name": "Black Vixen",
+      "source": "quests/the_curse_spreads/black_vixen.lua"
+    },
+    {
+      "id": "canary:quests/the_curse_spreads/bloodback",
+      "name": "Bloodback",
+      "source": "quests/the_curse_spreads/bloodback.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/traps/bone_capsule",
+      "name": "Bone Capsule",
+      "source": "quests/ferumbras_ascension/traps/bone_capsule.lua"
+    },
+    {
+      "id": "canary:event_creatures/bones",
+      "name": "Bones",
+      "source": "event_creatures/bones.lua"
+    },
+    {
+      "id": "canary:quests/the_percht_queens_island/bonny_bunny",
+      "name": "Bonny Bunny",
+      "source": "quests/the_percht_queens_island/bonny_bunny.lua"
+    },
+    {
+      "id": "canary:quests/isle_of_evil/boogey",
+      "name": "Boogey",
+      "source": "quests/isle_of_evil/boogey.lua"
+    },
+    {
+      "id": "canary:quests/the_percht_queens_island/bright_percht_sleigh",
+      "name": "Bright Percht Sleigh",
+      "source": "quests/the_percht_queens_island/bright_percht_sleigh.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/bosses/brokul",
+      "name": "Brokul",
+      "source": "quests/the_secret_library/bosses/brokul.lua"
+    },
+    {
+      "id": "canary:quests/feaster_of_souls/brother_worm",
+      "name": "Brother Worm",
+      "source": "quests/feaster_of_souls/brother_worm.lua"
+    },
+    {
+      "id": "canary:quests/dark_trails/canopic_jar",
+      "name": "Canopic Jar",
+      "source": "quests/dark_trails/canopic_jar.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/cart_packed_with_gold",
+      "name": "Cart Packed with Gold",
+      "source": "quests/grave_danger/cart_packed_with_gold.lua"
+    },
+    {
+      "id": "canary:bosses/chagorz",
+      "name": "Chagorz",
+      "source": "bosses/chagorz.lua"
+    },
+    {
+      "id": "canary:quests/heart_of_destruction/charged_anomaly",
+      "name": "Charged Anomaly",
+      "source": "quests/heart_of_destruction/charged_anomaly.lua"
+    },
+    {
+      "id": "canary:quests/heart_of_destruction/charging_outburst",
+      "name": "Charging Outburst",
+      "source": "quests/heart_of_destruction/charging_outburst.lua"
+    },
+    {
+      "id": "canary:raids/chayenne",
+      "name": "Chayenne",
+      "source": "raids/chayenne.lua"
+    },
+    {
+      "id": "canary:bosses/chikhaton",
+      "name": "Chikhaton",
+      "source": "bosses/chikhaton.lua"
+    },
+    {
+      "id": "canary:quests/the_percht_queens_island/cold_percht_sleigh",
+      "name": "Cold Percht Sleigh",
+      "source": "quests/the_percht_queens_island/cold_percht_sleigh.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/bosses/count_vlarkorth",
+      "name": "Count Vlarkorth",
+      "source": "quests/grave_danger/bosses/count_vlarkorth.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/dark_druid",
+      "name": "Dark Druid",
+      "source": "quests/grave_danger/dark_druid.lua"
+    },
+    {
+      "id": "canary:quests/the_percht_queens_island/dark_percht_sleigh",
+      "name": "Dark Percht Sleigh",
+      "source": "quests/the_percht_queens_island/dark_percht_sleigh.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/death_dragon",
+      "name": "Death Dragon",
+      "source": "quests/ferumbras_ascension/bosses/death_dragon.lua"
+    },
+    {
+      "id": "canary:quests/dark_trails/death_priest_shargon",
+      "name": "Death Priest Shargon",
+      "source": "quests/dark_trails/death_priest_shargon.lua"
+    },
+    {
+      "id": "canary:quests/svargrond_arena/warlord/deathbringer",
+      "name": "Deathbringer",
+      "source": "quests/svargrond_arena/warlord/deathbringer.lua"
+    },
+    {
+      "id": "canary:traps/deathslicer",
+      "name": "Deathslicer",
+      "source": "traps/deathslicer.lua"
+    },
+    {
+      "id": "canary:quests/bigfoots_burden/bosses/deathstrike",
+      "name": "Deathstrike",
+      "source": "quests/bigfoots_burden/bosses/deathstrike.lua"
+    },
+    {
+      "id": "canary:quests/hero_of_rathleton/deep_terror",
+      "name": "Deep Terror",
+      "source": "quests/hero_of_rathleton/deep_terror.lua"
+    },
+    {
+      "id": "canary:quests/killing_in_the_name_of/demodras",
+      "name": "Demodras",
+      "source": "quests/killing_in_the_name_of/demodras.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/destabilized_ferumbras",
+      "name": "Destabilized Ferumbras",
+      "source": "quests/ferumbras_ascension/bosses/destabilized_ferumbras.lua"
+    },
+    {
+      "id": "canary:bosses/dharalion",
+      "name": "Dharalion",
+      "source": "bosses/dharalion.lua"
+    },
+    {
+      "id": "canary:bosses/diblis_the_fair",
+      "name": "Diblis the Fair",
+      "source": "bosses/diblis_the_fair.lua"
+    },
+    {
+      "id": "canary:quests/ancient_tombs/dipthrah",
+      "name": "Dipthrah",
+      "source": "quests/ancient_tombs/dipthrah.lua"
+    },
+    {
+      "id": "canary:bosses/doctor_marrow",
+      "name": "Doctor Marrow",
+      "source": "bosses/doctor_marrow.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/dorokoll_the_mystic",
+      "name": "Dorokoll the Mystic",
+      "source": "quests/cults_of_tibia/bosses/dorokoll_the_mystic.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/dorokoll_the_mystic_stop",
+      "name": "Dorokoll The Mystic Stop",
+      "source": "quests/cults_of_tibia/bosses/dorokoll_the_mystic_stop.lua"
+    },
+    {
+      "id": "canary:quests/pits_of_inferno/dracola",
+      "name": "Dracola",
+      "source": "quests/pits_of_inferno/dracola.lua"
+    },
+    {
+      "id": "canary:quests/forgotten_knowledge/bosses/dragonking_zyrtarch",
+      "name": "Dragonking Zyrtarch",
+      "source": "quests/forgotten_knowledge/bosses/dragonking_zyrtarch.lua"
+    },
+    {
+      "id": "canary:quests/soul_war/dreadful_harvester",
+      "name": "Dreadful Harvester",
+      "source": "quests/soul_war/dreadful_harvester.lua"
+    },
+    {
+      "id": "canary:familiars/druid_familiar",
+      "name": "Druid familiar",
+      "source": "familiars/druid_familiar.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/bosses/duke_krule",
+      "name": "Duke Krule",
+      "source": "quests/grave_danger/bosses/duke_krule.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/bosses/earl_osam",
+      "name": "Earl Osam",
+      "source": "quests/grave_danger/bosses/earl_osam.lua"
+    },
+    {
+      "id": "canary:quests/rotten_blood/echo_of_chagorz",
+      "name": "Echo Of Chagorz",
+      "source": "quests/rotten_blood/echo_of_chagorz.lua"
+    },
+    {
+      "id": "canary:quests/rotten_blood/echo_of_ichgahal",
+      "name": "Echo Of Ichgahal",
+      "source": "quests/rotten_blood/echo_of_ichgahal.lua"
+    },
+    {
+      "id": "canary:quests/rotten_blood/echo_of_murcion",
+      "name": "Echo Of Murcion",
+      "source": "quests/rotten_blood/echo_of_murcion.lua"
+    },
+    {
+      "id": "canary:quests/rotten_blood/echo_of_vemiath",
+      "name": "Echo Of Vemiath",
+      "source": "quests/rotten_blood/echo_of_vemiath.lua"
+    },
+    {
+      "id": "canary:event_creatures/eclipse_knight",
+      "name": "Eclipse Knight",
+      "source": "event_creatures/eclipse_knight.lua"
+    },
+    {
+      "id": "canary:quests/rotten_blood/elder_bloodjaw",
+      "name": "Elder Bloodjaw",
+      "source": "quests/rotten_blood/elder_bloodjaw.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/eliz_the_unyielding",
+      "name": "Eliz the Unyielding",
+      "source": "quests/cults_of_tibia/bosses/eliz_the_unyielding.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/eliz_the_unyielding_stop",
+      "name": "Eliz The Unyielding Stop",
+      "source": "quests/cults_of_tibia/bosses/eliz_the_unyielding_stop.lua"
+    },
+    {
+      "id": "canary:quests/hero_of_rathleton/empowered_glooth_horror",
+      "name": "Empowered Glooth Horror",
+      "source": "quests/hero_of_rathleton/empowered_glooth_horror.lua"
+    },
+    {
+      "id": "canary:bosses/energized_raging_mage",
+      "name": "Energized Raging Mage",
+      "source": "bosses/energized_raging_mage.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/enraged_soul",
+      "name": "Enraged Soul",
+      "source": "quests/ferumbras_ascension/bosses/enraged_soul.lua"
+    },
+    {
+      "id": "canary:quests/heart_of_destruction/eradicator",
+      "name": "Eradicator",
+      "source": "quests/heart_of_destruction/eradicator.lua"
+    },
+    {
+      "id": "canary:quests/heart_of_destruction/eradicator2",
+      "name": "Eradicator2",
+      "source": "quests/heart_of_destruction/eradicator2.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/eshtaba_the_conjurer",
+      "name": "Eshtaba the Conjurer",
+      "source": "quests/cults_of_tibia/bosses/eshtaba_the_conjurer.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/eshtaba_the_conjurer_stop",
+      "name": "Eshtaba The Conjurer Stop",
+      "source": "quests/cults_of_tibia/bosses/eshtaba_the_conjurer_stop.lua"
+    },
+    {
+      "id": "canary:quests/the_dream_courts/bosses/faceless_bane",
+      "name": "Faceless Bane",
+      "source": "quests/the_dream_courts/bosses/faceless_bane.lua"
+    },
+    {
+      "id": "canary:quests/the_first_dragon/bosses/fallen_challenger",
+      "name": "Fallen Challenger",
+      "source": "quests/the_first_dragon/bosses/fallen_challenger.lua"
+    },
+    {
+      "id": "canary:quests/hero_of_rathleton/feeble_glooth_horror",
+      "name": "Feeble Glooth Horror",
+      "source": "quests/hero_of_rathleton/feeble_glooth_horror.lua"
+    },
+    {
+      "id": "canary:raids/fernfang",
+      "name": "Fernfang",
+      "source": "raids/fernfang.lua"
+    },
+    {
+      "id": "canary:quests/the_curse_spreads/feroxa",
+      "name": "Feroxa",
+      "source": "quests/the_curse_spreads/feroxa.lua"
+    },
+    {
+      "id": "canary:quests/the_curse_spreads/feroxa2",
+      "name": "Feroxa2",
+      "source": "quests/the_curse_spreads/feroxa2.lua"
+    },
+    {
+      "id": "canary:quests/the_curse_spreads/feroxa3",
+      "name": "Feroxa3",
+      "source": "quests/the_curse_spreads/feroxa3.lua"
+    },
+    {
+      "id": "canary:quests/the_curse_spreads/feroxa5",
+      "name": "Feroxa5",
+      "source": "quests/the_curse_spreads/feroxa5.lua"
+    },
+    {
+      "id": "canary:raids/ferumbras",
+      "name": "Ferumbras",
+      "source": "raids/ferumbras.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/ferumbras_mortal_shell",
+      "name": "Ferumbras Mortal Shell",
+      "source": "quests/ferumbras_ascension/bosses/ferumbras_mortal_shell.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/ferumbras_soul_splinter",
+      "name": "Ferumbras Soul Splinter",
+      "source": "quests/ferumbras_ascension/bosses/ferumbras_soul_splinter.lua"
+    },
+    {
+      "id": "canary:quests/the_elemental_spheres/flickering_spirit_elemental",
+      "name": "Flickering Spirit Elemental",
+      "source": "quests/the_elemental_spheres/flickering_spirit_elemental.lua"
+    },
+    {
+      "id": "canary:traps/floor_blob",
+      "name": "Floor Blob",
+      "source": "traps/floor_blob.lua"
+    },
+    {
+      "id": "canary:quests/heart_of_destruction/foreshock",
+      "name": "Foreshock",
+      "source": "quests/heart_of_destruction/foreshock.lua"
+    },
+    {
+      "id": "canary:bosses/freegoiz",
+      "name": "Freegoiz",
+      "source": "bosses/freegoiz.lua"
+    },
+    {
+      "id": "canary:raids/furyosa",
+      "name": "Furyosa",
+      "source": "raids/furyosa.lua"
+    },
+    {
+      "id": "canary:bosses/general_murius",
+      "name": "General Murius",
+      "source": "bosses/general_murius.lua"
+    },
+    {
+      "id": "canary:raids/ghazbaran",
+      "name": "Ghazbaran",
+      "source": "raids/ghazbaran.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/bosses/ghulosh",
+      "name": "Ghulosh",
+      "source": "quests/the_secret_library/bosses/ghulosh.lua"
+    },
+    {
+      "id": "canary:raids/glooth_bomb",
+      "name": "Glooth Bomb",
+      "source": "raids/glooth_bomb.lua"
+    },
+    {
+      "id": "canary:quests/hero_of_rathleton/glooth_horror",
+      "name": "Glooth Horror",
+      "source": "quests/hero_of_rathleton/glooth_horror.lua"
+    },
+    {
+      "id": "canary:quests/bigfoots_burden/bosses/gnomevil",
+      "name": "Gnomevil",
+      "source": "quests/bigfoots_burden/bosses/gnomevil.lua"
+    },
+    {
+      "id": "canary:quests/svargrond_arena/warlord/gnorre_chyllson",
+      "name": "Gnorre Chyllson",
+      "source": "quests/svargrond_arena/warlord/gnorre_chyllson.lua"
+    },
+    {
+      "id": "canary:quests/the_inquisition/golgordan",
+      "name": "Golgordan",
+      "source": "quests/the_inquisition/golgordan.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/bosses/gorzindel",
+      "name": "Gorzindel",
+      "source": "quests/the_secret_library/bosses/gorzindel.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/bosses/grand_master_oberon",
+      "name": "Grand Master Oberon",
+      "source": "quests/the_secret_library/bosses/grand_master_oberon.lua"
+    },
+    {
+      "id": "canary:quests/dark_trails/greater_canopic_jar",
+      "name": "Greater Canopic Jar",
+      "source": "quests/dark_trails/greater_canopic_jar.lua"
+    },
+    {
+      "id": "canary:raids/grorlam",
+      "name": "Grorlam",
+      "source": "raids/grorlam.lua"
+    },
+    {
+      "id": "canary:quests/the_new_frontier/haunter",
+      "name": "Haunter",
+      "source": "quests/the_new_frontier/haunter.lua"
+    },
+    {
+      "id": "canary:quests/the_inquisition/hellgorak",
+      "name": "Hellgorak",
+      "source": "quests/the_inquisition/hellgorak.lua"
+    },
+    {
+      "id": "canary:quests/roshamuul/horadron",
+      "name": "Horadron",
+      "source": "quests/roshamuul/horadron.lua"
+    },
+    {
+      "id": "canary:quests/ancient_tombs/horestis",
+      "name": "Horestis",
+      "source": "quests/ancient_tombs/horestis.lua"
+    },
+    {
+      "id": "canary:quests/bigfoots_burden/humorless_fungus",
+      "name": "Humorless Fungus",
+      "source": "quests/bigfoots_burden/humorless_fungus.lua"
+    },
+    {
+      "id": "canary:bosses/ichgahal",
+      "name": "Ichgahal",
+      "source": "bosses/ichgahal.lua"
+    },
+    {
+      "id": "canary:quests/forgotten_knowledge/icicle",
+      "name": "Icicle",
+      "source": "quests/forgotten_knowledge/icicle.lua"
+    },
+    {
+      "id": "canary:quests/liquid_black/jaul",
+      "name": "Jaul",
+      "source": "quests/liquid_black/jaul.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/bosses/king_zelos",
+      "name": "King Zelos",
+      "source": "quests/grave_danger/bosses/king_zelos.lua"
+    },
+    {
+      "id": "canary:familiars/knight_familiar",
+      "name": "Knight familiar",
+      "source": "familiars/knight_familiar.lua"
+    },
+    {
+      "id": "canary:bosses/kroazur",
+      "name": "Kroazur",
+      "source": "bosses/kroazur.lua"
+    },
+    {
+      "id": "canary:quests/forgotten_knowledge/bosses/lady_tenebris",
+      "name": "Lady Tenebris",
+      "source": "quests/forgotten_knowledge/bosses/lady_tenebris.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/last_planegazer",
+      "name": "Last Planegazer",
+      "source": "quests/cults_of_tibia/bosses/last_planegazer.lua"
+    },
+    {
+      "id": "canary:quests/the_inquisition/latrivan",
+      "name": "Latrivan",
+      "source": "quests/the_inquisition/latrivan.lua"
+    },
+    {
+      "id": "canary:quests/primal_ordeal_quest/lava_creature",
+      "name": "Lava Creature",
+      "source": "quests/primal_ordeal_quest/lava_creature.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/leiden",
+      "name": "Leiden",
+      "source": "quests/cults_of_tibia/bosses/leiden.lua"
+    },
+    {
+      "id": "canary:raids/lethal_lissy",
+      "name": "Lethal Lissy",
+      "source": "raids/lethal_lissy.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/librarian",
+      "name": "Librarian",
+      "source": "quests/the_secret_library/librarian.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/summons/liquor_spirit",
+      "name": "Liquor Spirit",
+      "source": "quests/cults_of_tibia/bosses/summons/liquor_spirit.lua"
+    },
+    {
+      "id": "canary:quests/wrath_of_the_emperor/lizard_abomination",
+      "name": "Lizard Abomination",
+      "source": "quests/wrath_of_the_emperor/lizard_abomination.lua"
+    },
+    {
+      "id": "canary:quests/forgotten_knowledge/bosses/lloyd",
+      "name": "Lloyd",
+      "source": "quests/forgotten_knowledge/bosses/lloyd.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/bosses/lokathmor",
+      "name": "Lokathmor",
+      "source": "quests/the_secret_library/bosses/lokathmor.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/lokathmor_stuck",
+      "name": "Lokathmor Stuck",
+      "source": "quests/the_secret_library/lokathmor_stuck.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/bosses/lord_azaram",
+      "name": "Lord Azaram",
+      "source": "quests/grave_danger/bosses/lord_azaram.lua"
+    },
+    {
+      "id": "canary:quests/dangerous_depth/lost_gnome",
+      "name": "Lost Gnome",
+      "source": "quests/dangerous_depth/lost_gnome.lua"
+    },
+    {
+      "id": "canary:bosses/mad_mage",
+      "name": "Mad Mage",
+      "source": "bosses/mad_mage.lua"
+    },
+    {
+      "id": "canary:quests/the_inquisition/madareth",
+      "name": "Madareth",
+      "source": "quests/the_inquisition/madareth.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/magical_sphere",
+      "name": "Magical Sphere",
+      "source": "quests/grave_danger/magical_sphere.lua"
+    },
+    {
+      "id": "canary:quests/primal_ordeal_quest/magma_bubble",
+      "name": "Magma Bubble",
+      "source": "quests/primal_ordeal_quest/magma_bubble.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/magnor_mournbringer",
+      "name": "Magnor Mournbringer",
+      "source": "quests/grave_danger/magnor_mournbringer.lua"
+    },
+    {
+      "id": "canary:quests/ancient_tombs/mahrdis",
+      "name": "Mahrdis",
+      "source": "quests/ancient_tombs/mahrdis.lua"
+    },
+    {
+      "id": "canary:quests/the_dream_courts/bosses/malofur_mangrinder",
+      "name": "Malofur Mangrinder",
+      "source": "quests/the_dream_courts/bosses/malofur_mangrinder.lua"
+    },
+    {
+      "id": "canary:raids/mawhawk",
+      "name": "Mawhawk",
+      "source": "raids/mawhawk.lua"
+    },
+    {
+      "id": "canary:quests/the_dream_courts/bosses/maxxenius",
+      "name": "Maxxenius",
+      "source": "quests/the_dream_courts/bosses/maxxenius.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/mazoran",
+      "name": "Mazoran",
+      "source": "quests/ferumbras_ascension/bosses/mazoran.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/bosses/mazzinor",
+      "name": "Mazzinor",
+      "source": "quests/the_secret_library/bosses/mazzinor.lua"
+    },
+    {
+      "id": "canary:traps/mechanical_fighter",
+      "name": "Mechanical Fighter",
+      "source": "traps/mechanical_fighter.lua"
+    },
+    {
+      "id": "canary:event_creatures/memory_creatures/memory_of_a_wolf",
+      "name": "Memory of a Wolf",
+      "source": "event_creatures/memory_creatures/memory_of_a_wolf.lua"
+    },
+    {
+      "id": "canary:event_creatures/memory_creatures/memory_of_a_yalahari",
+      "name": "Memory of a Yalahari",
+      "source": "event_creatures/memory_creatures/memory_of_a_yalahari.lua"
+    },
+    {
+      "id": "canary:event_creatures/memory_creatures/memory_of_an_amazon",
+      "name": "Memory of an Amazon",
+      "source": "event_creatures/memory_creatures/memory_of_an_amazon.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/mezlon_the_defiler",
+      "name": "Mezlon the Defiler",
+      "source": "quests/cults_of_tibia/bosses/mezlon_the_defiler.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/mezlon_the_defiler_stop",
+      "name": "Mezlon The Defiler Stop",
+      "source": "quests/cults_of_tibia/bosses/mezlon_the_defiler_stop.lua"
+    },
+    {
+      "id": "canary:traps/mimic",
+      "name": "Mimic",
+      "source": "traps/mimic.lua"
+    },
+    {
+      "id": "canary:quests/the_dream_courts/mind-wrecking_dream",
+      "name": "Mind-Wrecking Dream",
+      "source": "quests/the_dream_courts/mind-wrecking_dream.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/minotaur_idol",
+      "name": "Minotaur Idol",
+      "source": "quests/cults_of_tibia/minotaur_idol.lua"
+    },
+    {
+      "id": "canary:quests/soul_war/mirror_image",
+      "name": "Mirror Image",
+      "source": "quests/soul_war/mirror_image.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/misguided_shadow",
+      "name": "Misguided Shadow",
+      "source": "quests/cults_of_tibia/misguided_shadow.lua"
+    },
+    {
+      "id": "canary:bosses/mitmah_vanguard",
+      "name": "Mitmah Vanguard",
+      "source": "bosses/mitmah_vanguard.lua"
+    },
+    {
+      "id": "canary:familiars/monk_familiar",
+      "name": "Monk familiar",
+      "source": "familiars/monk_familiar.lua"
+    },
+    {
+      "id": "canary:raids/morgaroth",
+      "name": "Morgaroth",
+      "source": "raids/morgaroth.lua"
+    },
+    {
+      "id": "canary:quests/ancient_tombs/morguthis",
+      "name": "Morguthis",
+      "source": "quests/ancient_tombs/morguthis.lua"
+    },
+    {
+      "id": "canary:bosses/morshabaal",
+      "name": "Morshabaal",
+      "source": "bosses/morshabaal.lua"
+    },
+    {
+      "id": "canary:quests/forgotten_knowledge/bosses/mounted_thorn_knight",
+      "name": "Mounted Thorn Knight",
+      "source": "quests/forgotten_knowledge/bosses/mounted_thorn_knight.lua"
+    },
+    {
+      "id": "canary:quests/pits_of_inferno/mr._punish",
+      "name": "Mr. Punish",
+      "source": "quests/pits_of_inferno/mr._punish.lua"
+    },
+    {
+      "id": "canary:bosses/murcion",
+      "name": "Murcion",
+      "source": "bosses/murcion.lua"
+    },
+    {
+      "id": "canary:quests/rotten_blood/mushroom",
+      "name": "Mushroom",
+      "source": "quests/rotten_blood/mushroom.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/nargol_the_impaler",
+      "name": "Nargol The Impaler",
+      "source": "quests/grave_danger/nargol_the_impaler.lua"
+    },
+    {
+      "id": "canary:raids/necropharus",
+      "name": "Necropharus",
+      "source": "raids/necropharus.lua"
+    },
+    {
+      "id": "canary:quests/kilmaresh/neferi_the_spy",
+      "name": "Neferi the Spy",
+      "source": "quests/kilmaresh/neferi_the_spy.lua"
+    },
+    {
+      "id": "canary:quests/the_dream_courts/nightmare_tendril",
+      "name": "Nightmare Tendril",
+      "source": "quests/the_dream_courts/nightmare_tendril.lua"
+    },
+    {
+      "id": "canary:quests/liquid_black/obujos",
+      "name": "Obujos",
+      "source": "quests/liquid_black/obujos.lua"
+    },
+    {
+      "id": "canary:nostalgia/old_bear",
+      "name": "Old Bear",
+      "source": "nostalgia/old_bear.lua"
+    },
+    {
+      "id": "canary:nostalgia/old_bonelord",
+      "name": "Old Beholder",
+      "source": "nostalgia/old_bonelord.lua"
+    },
+    {
+      "id": "canary:nostalgia/old_bug",
+      "name": "Old Bug",
+      "source": "nostalgia/old_bug.lua"
+    },
+    {
+      "id": "canary:nostalgia/old_giant_spider",
+      "name": "Old Giant Spider",
+      "source": "nostalgia/old_giant_spider.lua"
+    },
+    {
+      "id": "canary:nostalgia/old_pig",
+      "name": "Old Pig",
+      "source": "nostalgia/old_pig.lua"
+    },
+    {
+      "id": "canary:nostalgia/old_spider",
+      "name": "Old Spider",
+      "source": "nostalgia/old_spider.lua"
+    },
+    {
+      "id": "canary:nostalgia/old_wasp",
+      "name": "Old Wasp",
+      "source": "nostalgia/old_wasp.lua"
+    },
+    {
+      "id": "canary:nostalgia/old_wolf",
+      "name": "Old Wolf",
+      "source": "nostalgia/old_wolf.lua"
+    },
+    {
+      "id": "canary:quests/roshamuul/omrafir",
+      "name": "Omrafir",
+      "source": "quests/roshamuul/omrafir.lua"
+    },
+    {
+      "id": "canary:quests/ancient_tombs/omruc",
+      "name": "Omruc",
+      "source": "quests/ancient_tombs/omruc.lua"
+    },
+    {
+      "id": "canary:raids/orshabaal",
+      "name": "Orshabaal",
+      "source": "raids/orshabaal.lua"
+    },
+    {
+      "id": "canary:quests/heart_of_destruction/outburst",
+      "name": "Outburst",
+      "source": "quests/heart_of_destruction/outburst.lua"
+    },
+    {
+      "id": "canary:familiars/paladin_familiar",
+      "name": "Paladin familiar",
+      "source": "familiars/paladin_familiar.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/plagirath",
+      "name": "Plagirath",
+      "source": "quests/ferumbras_ascension/bosses/plagirath.lua"
+    },
+    {
+      "id": "canary:quests/the_dream_courts/bosses/plagueroot",
+      "name": "Plagueroot",
+      "source": "quests/the_dream_courts/bosses/plagueroot.lua"
+    },
+    {
+      "id": "canary:quests/primal_ordeal_quest/plunder_patriarch",
+      "name": "Plunder Patriarch",
+      "source": "quests/primal_ordeal_quest/plunder_patriarch.lua"
+    },
+    {
+      "id": "canary:quests/soul_war/powerful_soul",
+      "name": "Powerful Soul",
+      "source": "quests/soul_war/powerful_soul.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/bosses/preceptor_lazare",
+      "name": "Preceptor Lazare",
+      "source": "quests/the_secret_library/bosses/preceptor_lazare.lua"
+    },
+    {
+      "id": "canary:event_creatures/primitive",
+      "name": "Primitive",
+      "source": "event_creatures/primitive.lua"
+    },
+    {
+      "id": "canary:quests/roshamuul/prince_drazzak",
+      "name": "Prince Drazzak",
+      "source": "quests/roshamuul/prince_drazzak.lua"
+    },
+    {
+      "id": "canary:quests/hero_of_rathleton/professor_maxxen",
+      "name": "Professor Maxxen",
+      "source": "quests/hero_of_rathleton/professor_maxxen.lua"
+    },
+    {
+      "id": "canary:quests/the_elemental_spheres/psychic_spirit_elemental",
+      "name": "Psychic Spirit Elemental",
+      "source": "quests/the_elemental_spheres/psychic_spirit_elemental.lua"
+    },
+    {
+      "id": "canary:bosses/pythius_the_rotten",
+      "name": "Pythius The Rotten",
+      "source": "bosses/pythius_the_rotten.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/ragiaz",
+      "name": "Ragiaz",
+      "source": "quests/ferumbras_ascension/bosses/ragiaz.lua"
+    },
+    {
+      "id": "canary:bosses/raging_mage",
+      "name": "Raging mage",
+      "source": "bosses/raging_mage.lua"
+    },
+    {
+      "id": "canary:quests/ancient_tombs/rahemos",
+      "name": "Rahemos",
+      "source": "quests/ancient_tombs/rahemos.lua"
+    },
+    {
+      "id": "canary:quests/a_pirates_tail_quest/ratmiral_blackwhiskers",
+      "name": "Ratmiral Blackwhiskers",
+      "source": "quests/a_pirates_tail_quest/ratmiral_blackwhiskers.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/ravenous_beyondling",
+      "name": "Ravenous Beyondling",
+      "source": "quests/the_secret_library/ravenous_beyondling.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/razzagorn",
+      "name": "Razzagorn",
+      "source": "quests/ferumbras_ascension/bosses/razzagorn.lua"
+    },
+    {
+      "id": "canary:quests/mysterious_ornate_chest/reflection_of_mawhawk",
+      "name": "Reflection of Mawhawk",
+      "source": "quests/mysterious_ornate_chest/reflection_of_mawhawk.lua"
+    },
+    {
+      "id": "canary:quests/mysterious_ornate_chest/reflection_of_obujos",
+      "name": "Reflection of Obujos",
+      "source": "quests/mysterious_ornate_chest/reflection_of_obujos.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/rewar_the_bloody",
+      "name": "Rewar The Bloody",
+      "source": "quests/grave_danger/rewar_the_bloody.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/rewar_the_bloody_inv",
+      "name": "Rewar The Bloody Inv",
+      "source": "quests/grave_danger/rewar_the_bloody_inv.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/rift_breacher",
+      "name": "Rift Breacher",
+      "source": "quests/the_secret_library/rift_breacher.lua"
+    },
+    {
+      "id": "canary:quests/in_service_of_yalahar/rift_lord",
+      "name": "Rift Lord",
+      "source": "quests/in_service_of_yalahar/rift_lord.lua"
+    },
+    {
+      "id": "canary:quests/in_service_of_yalahar/rift_scythe",
+      "name": "Rift Scythe",
+      "source": "quests/in_service_of_yalahar/rift_scythe.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/rift_spawn",
+      "name": "Rift Spawn",
+      "source": "quests/the_secret_library/rift_spawn.lua"
+    },
+    {
+      "id": "canary:quests/in_service_of_yalahar/rift_worm",
+      "name": "Rift Worm",
+      "source": "quests/in_service_of_yalahar/rift_worm.lua"
+    },
+    {
+      "id": "canary:raids/rotworm_queen",
+      "name": "Rotworm Queen",
+      "source": "raids/rotworm_queen.lua"
+    },
+    {
+      "id": "canary:quests/heart_of_destruction/rupture",
+      "name": "Rupture",
+      "source": "quests/heart_of_destruction/rupture.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/bosses/scarlett_etzel",
+      "name": "Scarlett Etzel",
+      "source": "quests/grave_danger/bosses/scarlett_etzel.lua"
+    },
+    {
+      "id": "canary:quests/forgotten_knowledge/shadow_fiend",
+      "name": "Shadow Fiend",
+      "source": "quests/forgotten_knowledge/shadow_fiend.lua"
+    },
+    {
+      "id": "canary:quests/forgotten_knowledge/shadow_tentacle",
+      "name": "Shadow Tentacle",
+      "source": "quests/forgotten_knowledge/shadow_tentacle.lua"
+    },
+    {
+      "id": "canary:quests/the_curse_spreads/shadowpelt",
+      "name": "Shadowpelt",
+      "source": "quests/the_curse_spreads/shadowpelt.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/shard_of_magnor",
+      "name": "Shard of Magnor",
+      "source": "quests/grave_danger/shard_of_magnor.lua"
+    },
+    {
+      "id": "canary:quests/the_curse_spreads/sharpclaw",
+      "name": "Sharpclaw",
+      "source": "quests/the_curse_spreads/sharpclaw.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/shulgrax",
+      "name": "Shulgrax",
+      "source": "quests/ferumbras_ascension/bosses/shulgrax.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/sin_devourer",
+      "name": "Sin Devourer",
+      "source": "quests/ferumbras_ascension/bosses/sin_devourer.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/bosses/sir_baeloc",
+      "name": "Sir Baeloc",
+      "source": "quests/grave_danger/bosses/sir_baeloc.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/bosses/sir_nictros",
+      "name": "Sir Nictros",
+      "source": "quests/grave_danger/bosses/sir_nictros.lua"
+    },
+    {
+      "id": "canary:raids/sir_valorcrest",
+      "name": "Sir Valorcrest",
+      "source": "raids/sir_valorcrest.lua"
+    },
+    {
+      "id": "canary:quests/wrath_of_the_emperor/snake_god_essence",
+      "name": "Snake God Essence",
+      "source": "quests/wrath_of_the_emperor/snake_god_essence.lua"
+    },
+    {
+      "id": "canary:familiars/sorcerer_familiar",
+      "name": "Sorcerer familiar",
+      "source": "familiars/sorcerer_familiar.lua"
+    },
+    {
+      "id": "canary:quests/soul_war/soul_cage",
+      "name": "Soul Cage",
+      "source": "quests/soul_war/soul_cage.lua"
+    },
+    {
+      "id": "canary:quests/forgotten_knowledge/bosses/soul_of_dragonking_zyrtarch",
+      "name": "Soul of Dragonking Zyrtarch",
+      "source": "quests/forgotten_knowledge/bosses/soul_of_dragonking_zyrtarch.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/soul_scourge",
+      "name": "Soul Scourge",
+      "source": "quests/grave_danger/soul_scourge.lua"
+    },
+    {
+      "id": "canary:quests/soul_war/soul_sphere",
+      "name": "Soul Sphere",
+      "source": "quests/soul_war/soul_sphere.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/summons/sphere_of_wrath",
+      "name": "Sphere of Wrath",
+      "source": "quests/cults_of_tibia/bosses/summons/sphere_of_wrath.lua"
+    },
+    {
+      "id": "canary:quests/the_elemental_spheres/spirit_overlord",
+      "name": "Spirit Overlord",
+      "source": "quests/the_elemental_spheres/spirit_overlord.lua"
+    },
+    {
+      "id": "canary:quests/hero_of_rathleton/strong_glooth_horror",
+      "name": "Strong Glooth Horror",
+      "source": "quests/hero_of_rathleton/strong_glooth_horror.lua"
+    },
+    {
+      "id": "canary:bosses/sugar_daddy",
+      "name": "Sugar Daddy",
+      "source": "bosses/sugar_daddy.lua"
+    },
+    {
+      "id": "canary:bosses/sugar_mommy",
+      "name": "Sugar Mommy",
+      "source": "bosses/sugar_mommy.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/supercharged_mazzinor",
+      "name": "Supercharged Mazzinor",
+      "source": "quests/the_secret_library/supercharged_mazzinor.lua"
+    },
+    {
+      "id": "canary:quests/dark_trails/superior_death_minion",
+      "name": "Superior Death Minion",
+      "source": "quests/dark_trails/superior_death_minion.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/tainted_soul_splinter",
+      "name": "Tainted Soul Splinter",
+      "source": "quests/grave_danger/tainted_soul_splinter.lua"
+    },
+    {
+      "id": "canary:quests/liquid_black/tanjis",
+      "name": "Tanjis",
+      "source": "quests/liquid_black/tanjis.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/tarbaz",
+      "name": "Tarbaz",
+      "source": "quests/ferumbras_ascension/bosses/tarbaz.lua"
+    },
+    {
+      "id": "canary:quests/hero_of_rathleton/tentacle_of_the_deep_terror",
+      "name": "Tentacle of the Deep Terror",
+      "source": "quests/hero_of_rathleton/tentacle_of_the_deep_terror.lua"
+    },
+    {
+      "id": "canary:quests/roshamuul/terofar",
+      "name": "Terofar",
+      "source": "quests/roshamuul/terofar.lua"
+    },
+    {
+      "id": "canary:quests/ancient_tombs/thalas",
+      "name": "Thalas",
+      "source": "quests/ancient_tombs/thalas.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/bosses/thawing_dragon_lord",
+      "name": "Thawing Dragon Lord",
+      "source": "quests/the_secret_library/bosses/thawing_dragon_lord.lua"
+    },
+    {
+      "id": "canary:bosses/the_abomination",
+      "name": "The Abomination",
+      "source": "bosses/the_abomination.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/the_armored_voidborn",
+      "name": "The Armored Voidborn",
+      "source": "quests/cults_of_tibia/bosses/the_armored_voidborn.lua"
+    },
+    {
+      "id": "canary:quests/dangerous_depth/bosses/the_baron_from_below",
+      "name": "The Baron from Below",
+      "source": "quests/dangerous_depth/bosses/the_baron_from_below.lua"
+    },
+    {
+      "id": "canary:quests/forgotten_knowledge/bosses/the_blazing_time_guardian",
+      "name": "The Blazing Time Guardian",
+      "source": "quests/forgotten_knowledge/bosses/the_blazing_time_guardian.lua"
+    },
+    {
+      "id": "canary:bosses/the_brainstealer",
+      "name": "The Brainstealer",
+      "source": "bosses/the_brainstealer.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/the_corruptor_of_souls",
+      "name": "The Corruptor of Souls",
+      "source": "quests/cults_of_tibia/bosses/the_corruptor_of_souls.lua"
+    },
+    {
+      "id": "canary:quests/the_inquisition/the_count",
+      "name": "The Count",
+      "source": "quests/the_inquisition/the_count.lua"
+    },
+    {
+      "id": "canary:quests/dangerous_depth/bosses/the_count_of_the_core",
+      "name": "The Count of the Core",
+      "source": "quests/dangerous_depth/bosses/the_count_of_the_core.lua"
+    },
+    {
+      "id": "canary:quests/heart_of_destruction/the_destruction",
+      "name": "The Destruction",
+      "source": "quests/heart_of_destruction/the_destruction.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/the_devourer_of_secrets",
+      "name": "The Devourer of Secrets",
+      "source": "quests/the_secret_library/the_devourer_of_secrets.lua"
+    },
+    {
+      "id": "canary:quests/feaster_of_souls/the_dread_maiden",
+      "name": "The Dread Maiden",
+      "source": "quests/feaster_of_souls/the_dread_maiden.lua"
+    },
+    {
+      "id": "canary:quests/the_new_frontier/the_dreadorian",
+      "name": "The Dreadorian",
+      "source": "quests/the_new_frontier/the_dreadorian.lua"
+    },
+    {
+      "id": "canary:quests/dangerous_depth/bosses/the_duke_of_the_depths",
+      "name": "The Duke of the Depths",
+      "source": "quests/dangerous_depth/bosses/the_duke_of_the_depths.lua"
+    },
+    {
+      "id": "canary:quests/primal_ordeal_quest/the_end_of_days",
+      "name": "The End of Days",
+      "source": "quests/primal_ordeal_quest/the_end_of_days.lua"
+    },
+    {
+      "id": "canary:quests/forgotten_knowledge/bosses/the_enraged_thorn_knight",
+      "name": "The Enraged Thorn Knight",
+      "source": "quests/forgotten_knowledge/bosses/the_enraged_thorn_knight.lua"
+    },
+    {
+      "id": "canary:bosses/the_evil_eye",
+      "name": "The Evil Eye",
+      "source": "bosses/the_evil_eye.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/the_false_god",
+      "name": "The False God",
+      "source": "quests/cults_of_tibia/bosses/the_false_god.lua"
+    },
+    {
+      "id": "canary:quests/feaster_of_souls/the_fear_feaster",
+      "name": "The Fear Feaster",
+      "source": "quests/feaster_of_souls/the_fear_feaster.lua"
+    },
+    {
+      "id": "canary:quests/dangerous_depth/bosses/the_duke_of_the_depths_immortal",
+      "name": "The Fire Empowered Duke",
+      "source": "quests/dangerous_depth/bosses/the_duke_of_the_depths_immortal.lua"
+    },
+    {
+      "id": "canary:bosses/the_flaming_orchid",
+      "name": "The Flaming Orchid",
+      "source": "bosses/the_flaming_orchid.lua"
+    },
+    {
+      "id": "canary:quests/forgotten_knowledge/bosses/the_freezing_time_guardian",
+      "name": "The Freezing Time Guardian",
+      "source": "quests/forgotten_knowledge/bosses/the_freezing_time_guardian.lua"
+    },
+    {
+      "id": "canary:raids/the_horned_fox",
+      "name": "The Horned Fox",
+      "source": "raids/the_horned_fox.lua"
+    },
+    {
+      "id": "canary:quests/heart_of_destruction/the_hunger",
+      "name": "The Hunger",
+      "source": "quests/heart_of_destruction/the_hunger.lua"
+    },
+    {
+      "id": "canary:quests/dangerous_depth/bosses/the_hungry_baron_from_below",
+      "name": "The Hungry Baron from Below",
+      "source": "quests/dangerous_depth/bosses/the_hungry_baron_from_below.lua"
+    },
+    {
+      "id": "canary:quests/forgotten_knowledge/bosses/the_last_lore_keeper",
+      "name": "The Last Lore Keeper",
+      "source": "quests/forgotten_knowledge/bosses/the_last_lore_keeper.lua"
+    },
+    {
+      "id": "canary:quests/svargrond_arena/warlord/the_masked_marauder",
+      "name": "The Masked Marauder",
+      "source": "quests/svargrond_arena/warlord/the_masked_marauder.lua"
+    },
+    {
+      "id": "canary:bosses/the_monster",
+      "name": "The Monster",
+      "source": "bosses/the_monster.lua"
+    },
+    {
+      "id": "canary:event_creatures/the_mutated_pumpkin",
+      "name": "The Mutated Pumpkin",
+      "source": "event_creatures/the_mutated_pumpkin.lua"
+    },
+    {
+      "id": "canary:quests/the_dream_courts/bosses/the_nightmare_beast",
+      "name": "The Nightmare Beast",
+      "source": "quests/the_dream_courts/bosses/the_nightmare_beast.lua"
+    },
+    {
+      "id": "canary:quests/killing_in_the_name_of/the_old_widow",
+      "name": "The Old Widow",
+      "source": "quests/killing_in_the_name_of/the_old_widow.lua"
+    },
+    {
+      "id": "canary:raids/the_pale_count",
+      "name": "The Pale Count",
+      "source": "raids/the_pale_count.lua"
+    },
+    {
+      "id": "canary:quests/feaster_of_souls/the_pale_worm",
+      "name": "The Pale Worm",
+      "source": "quests/feaster_of_souls/the_pale_worm.lua"
+    },
+    {
+      "id": "canary:quests/primal_ordeal_quest/the_primal_menace",
+      "name": "The Primal Menace",
+      "source": "quests/primal_ordeal_quest/the_primal_menace.lua"
+    },
+    {
+      "id": "canary:quests/heart_of_destruction/the_rage",
+      "name": "The Rage",
+      "source": "quests/heart_of_destruction/the_rage.lua"
+    },
+    {
+      "id": "canary:quests/dark_trails/the_ravager",
+      "name": "The Ravager",
+      "source": "quests/dark_trails/the_ravager.lua"
+    },
+    {
+      "id": "canary:quests/grave_danger/the_red_knight",
+      "name": "The Red Knight",
+      "source": "quests/grave_danger/the_red_knight.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/the_remorseless_corruptor",
+      "name": "The Remorseless Corruptor",
+      "source": "quests/cults_of_tibia/bosses/the_remorseless_corruptor.lua"
+    },
+    {
+      "id": "canary:bosses/the_rootkraken",
+      "name": "The Rootkraken",
+      "source": "bosses/the_rootkraken.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/the_sandking",
+      "name": "The Sandking",
+      "source": "quests/cults_of_tibia/bosses/the_sandking.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/the_sandking_fake",
+      "name": "The Sandking Fake",
+      "source": "quests/cults_of_tibia/bosses/the_sandking_fake.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/the_scion_of_havoc",
+      "name": "The Scion of Havoc",
+      "source": "quests/the_secret_library/the_scion_of_havoc.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/bosses/the_scourge_of_oblivion",
+      "name": "The Scourge of Oblivion",
+      "source": "quests/the_secret_library/bosses/the_scourge_of_oblivion.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/the_shatterer",
+      "name": "The Shatterer",
+      "source": "quests/ferumbras_ascension/bosses/the_shatterer.lua"
+    },
+    {
+      "id": "canary:quests/forgotten_knowledge/bosses/the_shielded_thorn_knight",
+      "name": "The Shielded Thorn Knight",
+      "source": "quests/forgotten_knowledge/bosses/the_shielded_thorn_knight.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/the_souldespoiler",
+      "name": "The Souldespoiler",
+      "source": "quests/cults_of_tibia/bosses/the_souldespoiler.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/the_source_of_corruption",
+      "name": "The Source of Corruption",
+      "source": "quests/cults_of_tibia/bosses/the_source_of_corruption.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/the_spellstealer",
+      "name": "The Spellstealer",
+      "source": "quests/the_secret_library/the_spellstealer.lua"
+    },
+    {
+      "id": "canary:quests/forgotten_knowledge/bosses/the_time_guardian",
+      "name": "The Time Guardian",
+      "source": "quests/forgotten_knowledge/bosses/the_time_guardian.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/the_unarmored_voidborn",
+      "name": "The Unarmored Voidborn",
+      "source": "quests/cults_of_tibia/bosses/the_unarmored_voidborn.lua"
+    },
+    {
+      "id": "canary:quests/feaster_of_souls/the_unwelcome",
+      "name": "The Unwelcome",
+      "source": "quests/feaster_of_souls/the_unwelcome.lua"
+    },
+    {
+      "id": "canary:raids/the_welter",
+      "name": "The Welter",
+      "source": "raids/the_welter.lua"
+    },
+    {
+      "id": "canary:quests/forgotten_knowledge/bosses/thorn_steed",
+      "name": "Thorn Steed",
+      "source": "quests/forgotten_knowledge/bosses/thorn_steed.lua"
+    },
+    {
+      "id": "canary:quests/marapur/timira_the_many-headed",
+      "name": "Timira the Many-Headed",
+      "source": "quests/marapur/timira_the_many-headed.lua"
+    },
+    {
+      "id": "canary:trainers/training_machine",
+      "name": "Training Machine",
+      "source": "trainers/training_machine.lua"
+    },
+    {
+      "id": "canary:quests/dark_trails/tremor_worm",
+      "name": "Tremor Worm",
+      "source": "quests/dark_trails/tremor_worm.lua"
+    },
+    {
+      "id": "canary:raids/tyrn",
+      "name": "Tyrn",
+      "source": "raids/tyrn.lua"
+    },
+    {
+      "id": "canary:quests/mysterious_ornate_chest/ugly_monster",
+      "name": "Ugly Monster",
+      "source": "quests/mysterious_ornate_chest/ugly_monster.lua"
+    },
+    {
+      "id": "canary:quests/kilmaresh/urmahlullu_the_immaculate",
+      "name": "Urmahlullu the Immaculate",
+      "source": "quests/kilmaresh/urmahlullu_the_immaculate.lua"
+    },
+    {
+      "id": "canary:quests/kilmaresh/urmahlullu_the_tamed",
+      "name": "Urmahlullu the Tamed",
+      "source": "quests/kilmaresh/urmahlullu_the_tamed.lua"
+    },
+    {
+      "id": "canary:quests/kilmaresh/urmahlullu_the_weakened",
+      "name": "Urmahlullu the Weakened",
+      "source": "quests/kilmaresh/urmahlullu_the_weakened.lua"
+    },
+    {
+      "id": "canary:quests/the_inquisition/ushuriel",
+      "name": "Ushuriel",
+      "source": "quests/the_inquisition/ushuriel.lua"
+    },
+    {
+      "id": "canary:quests/ancient_tombs/vashresamun",
+      "name": "Vashresamun",
+      "source": "quests/ancient_tombs/vashresamun.lua"
+    },
+    {
+      "id": "canary:bosses/vemiath",
+      "name": "Vemiath",
+      "source": "bosses/vemiath.lua"
+    },
+    {
+      "id": "canary:bosses/verminor",
+      "name": "Verminor",
+      "source": "bosses/verminor.lua"
+    },
+    {
+      "id": "canary:quests/bigfoots_burden/versperoth",
+      "name": "Versperoth",
+      "source": "quests/bigfoots_burden/versperoth.lua"
+    },
+    {
+      "id": "canary:bosses/weakened_demon",
+      "name": "Weakened Demon",
+      "source": "bosses/weakened_demon.lua"
+    },
+    {
+      "id": "canary:quests/hero_of_rathleton/weakened_glooth_horror",
+      "name": "Weakened Glooth Horror",
+      "source": "quests/hero_of_rathleton/weakened_glooth_horror.lua"
+    },
+    {
+      "id": "canary:bosses/weakened_shlorg",
+      "name": "Weakened Shlorg",
+      "source": "bosses/weakened_shlorg.lua"
+    },
+    {
+      "id": "canary:quests/the_dream_courts/whirling_blades",
+      "name": "Whirling Blades",
+      "source": "quests/the_dream_courts/whirling_blades.lua"
+    },
+    {
+      "id": "canary:raids/white_pale",
+      "name": "White Pale",
+      "source": "raids/white_pale.lua"
+    },
+    {
+      "id": "canary:quests/heart_of_destruction/world_devourer",
+      "name": "World Devourer",
+      "source": "quests/heart_of_destruction/world_devourer.lua"
+    },
+    {
+      "id": "canary:quests/feaster_of_souls/wormling",
+      "name": "Wormling",
+      "source": "quests/feaster_of_souls/wormling.lua"
+    },
+    {
+      "id": "canary:raids/xenia",
+      "name": "Xenia",
+      "source": "raids/xenia.lua"
+    },
+    {
+      "id": "canary:quests/kilmaresh/xogixath",
+      "name": "Xogixath",
+      "source": "quests/kilmaresh/xogixath.lua"
+    },
+    {
+      "id": "canary:raids/yakchal",
+      "name": "Yakchal",
+      "source": "raids/yakchal.lua"
+    },
+    {
+      "id": "canary:quests/in_service_of_yalahar/yalahari",
+      "name": "Yalahari",
+      "source": "quests/in_service_of_yalahar/yalahari.lua"
+    },
+    {
+      "id": "canary:quests/the_secret_library/yalahari_despoiler",
+      "name": "Yalahari Despoiler",
+      "source": "quests/the_secret_library/yalahari_despoiler.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/zamulosh",
+      "name": "Zamulosh",
+      "source": "quests/ferumbras_ascension/bosses/zamulosh.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/zamulosh2",
+      "name": "Zamulosh2",
+      "source": "quests/ferumbras_ascension/bosses/zamulosh2.lua"
+    },
+    {
+      "id": "canary:quests/ferumbras_ascension/bosses/zamulosh3",
+      "name": "Zamulosh3",
+      "source": "quests/ferumbras_ascension/bosses/zamulosh3.lua"
+    },
+    {
+      "id": "canary:quests/killing_in_the_name_of/zanakeph",
+      "name": "Zanakeph",
+      "source": "quests/killing_in_the_name_of/zanakeph.lua"
+    },
+    {
+      "id": "canary:quests/cults_of_tibia/bosses/zarcorix_of_yalahar",
+      "name": "Zarcorix Of Yalahar",
+      "source": "quests/cults_of_tibia/bosses/zarcorix_of_yalahar.lua"
+    },
+    {
+      "id": "canary:bosses/zavarash",
+      "name": "Zavarash",
+      "source": "bosses/zavarash.lua"
+    },
+    {
+      "id": "canary:bosses/zevelon_duskbringer",
+      "name": "Zevelon Duskbringer",
+      "source": "bosses/zevelon_duskbringer.lua"
+    },
+    {
+      "id": "canary:bosses/zoralurk",
+      "name": "Zoralurk",
+      "source": "bosses/zoralurk.lua"
+    },
+    {
+      "id": "canary:quests/the_first_dragon/bosses/zorvorax",
+      "name": "Zorvorax",
+      "source": "quests/the_first_dragon/bosses/zorvorax.lua"
+    },
+    {
+      "id": "canary:quests/the_inquisition/zugurosh",
+      "name": "Zugurosh",
+      "source": "quests/the_inquisition/zugurosh.lua"
+    },
+    {
+      "id": "canary:bosses/zushuka",
+      "name": "Zushuka",
+      "source": "bosses/zushuka.lua"
+    }
+  ],
+  "inferredBosses": []
+}

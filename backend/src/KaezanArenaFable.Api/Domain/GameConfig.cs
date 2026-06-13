@@ -33,7 +33,8 @@ public static class GameConfig
 
     // ---- monster kit fidelity (T-53: conditions/summons/healing/speed from canary data) ----
     /// <summary>Tames raw tibia damage numbers into arena pacing (applies to hits and DoTs).</summary>
-    public const double MonsterDamageTuning = 0.35;
+    // MVP/dificuldade: baixado de 0.35 — recebíamos dano demais. Sobe pra punir mais.
+    public const double MonsterDamageTuning = 0.26;
     public const int ConditionMaxTicks = 10;
     public const int ConditionDefaultTickMs = 2000;
     public const double ConditionResistCap = 0.85;
@@ -47,6 +48,99 @@ public static class GameConfig
     public const int SummonMinIntervalMs = 1000;
     /// <summary>Single heal proc never restores more than this fraction of the monster's max HP.</summary>
     public const double MonsterHealCapFraction = 0.10;
+
+    // ---- authored monsters (admin content) ----
+    public const double AuthoredModifierMin = 0.65;
+    public const double AuthoredModifierMax = 1.50;
+    public const int AuthoredResistanceMin = -100;
+    public const int AuthoredResistanceMax = 100;
+
+    /// <summary>
+    /// Direct arena-scale baselines. Authored bosses use these values and never receive the
+    /// legacy BossHpScale multiplier.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, MonsterStatLine> MonsterStatLines =
+        new Dictionary<string, MonsterStatLine>
+        {
+            ["1:common"] = new(30, 8, 2, 80, 15),
+            ["1:elite"] = new(75, 13, 4, 84, 38),
+            ["1:boss"] = new(260, 18, 6, 82, 120),
+            ["2:common"] = new(85, 18, 6, 85, 45),
+            ["2:elite"] = new(210, 29, 9, 90, 110),
+            ["2:boss"] = new(650, 42, 13, 88, 350),
+            ["3:common"] = new(220, 40, 12, 90, 120),
+            ["3:elite"] = new(520, 64, 18, 95, 300),
+            ["3:boss"] = new(1450, 90, 24, 94, 850),
+            ["4:common"] = new(550, 85, 22, 100, 320),
+            ["4:elite"] = new(1250, 132, 32, 105, 800),
+            ["4:boss"] = new(3100, 185, 42, 102, 1900),
+            ["5:common"] = new(1400, 175, 36, 110, 850),
+            ["5:elite"] = new(3100, 270, 52, 116, 2100),
+            ["5:boss"] = new(6200, 360, 66, 112, 4800),
+        };
+
+    public static readonly MonsterStatPreset[] MonsterStatPresets =
+    [
+        new("balanced", "Equilibrado", "Sem desvio do baseline.", 1, 1, 1, 1),
+        new("tank", "Resistente", "Mais vida, menos dano e mobilidade.", 1.25, 0.85, 0.90, 0.90),
+        new("glass", "Canhao de vidro", "Mais dano, menos vida.", 0.80, 1.20, 1, 1.05),
+        new("swift", "Veloz", "Move e ataca mais rapido, com menos impacto.", 0.90, 0.90, 1.20, 1.15),
+        new("caster", "Conjurador", "Ataques fortes e ritmo deliberado.", 0.90, 1.10, 0.95, 0.95),
+    ];
+
+    public static readonly MonsterElementProfile[] MonsterElementProfiles =
+    [
+        new("physical", "Fisico", 1, 0, null),
+        new("fire", "Fogo", 16, 4, "fire"),
+        new("ice", "Gelo", 44, 29, "freeze"),
+        new("energy", "Energia", 12, 5, "energy"),
+        new("earth", "Terra", 17, 30, "poison"),
+        new("holy", "Sagrado", 40, 31, "dazzle"),
+        new("death", "Morte", 18, 11, "curse"),
+    ];
+
+    public static readonly MonsterBehaviorProfile[] MonsterBehaviorProfiles =
+    [
+        new("bruiser", "Brutamontes", "Pressao corpo a corpo com golpes de pesos diferentes.", 1, 85,
+        [
+            new("melee", 1, 0, 0, 0, false, 1700, 100, 0.72, 1.08, false, 0),
+            new("spell", 1, 1, 0, 0, false, 3200, 28, 0.48, 0.78, true, 0),
+        ]),
+        new("skirmisher", "Escaramucador", "Ataques curtos, rapidos e menos previsiveis.", 1, 65,
+        [
+            new("melee", 1, 0, 0, 0, false, 1150, 82, 0.52, 0.88, false, 0),
+            new("melee", 1, 0, 0, 0, false, 2300, 45, 0.75, 1.12, true, 0),
+        ]),
+        new("ranger", "Atirador", "Mantem distancia e alterna disparos fisicos e elementais.", 5, 90,
+        [
+            new("spell", 5, 0, 0, 0, true, 1750, 88, 0.62, 1.02, false, 0),
+            new("spell", 5, 0, 0, 0, true, 2850, 52, 0.78, 1.18, true, 0),
+        ]),
+        new("artillery", "Artilharia", "Ataques lentos em area com alto impacto.", 6, 95,
+        [
+            new("spell", 6, 2, 0, 0, true, 2700, 78, 0.78, 1.22, true, 0),
+            new("spell", 6, 3, 0, 0, true, 4400, 35, 0.95, 1.38, true, 0),
+        ]),
+        new("breather", "Soprador", "Combina mordida e cone elemental.", 2, 85,
+        [
+            new("melee", 1, 0, 0, 0, false, 1750, 92, 0.60, 0.96, false, 0),
+            new("spell", 0, 0, 4, 2, false, 3100, 62, 0.72, 1.18, true, 0),
+        ]),
+        new("controller", "Controlador", "Dano moderado com condicao elemental ocasional.", 4, 88,
+        [
+            new("spell", 4, 0, 0, 0, true, 1850, 86, 0.52, 0.86, true, 0),
+            new("spell", 4, 1, 0, 0, true, 3600, 42, 0.40, 0.72, true, 0.75),
+        ]),
+        new("support", "Sustentacao", "Pressao leve com cura propria intermitente.", 4, 90,
+        [
+            new("spell", 4, 0, 0, 0, true, 2050, 88, 0.55, 0.90, true, 0),
+        ], 0.07, 4200),
+        new("juggernaut", "Juggernaut", "Lento, resistente e perigoso quando conecta.", 1, 95,
+        [
+            new("melee", 1, 0, 0, 0, false, 2300, 100, 0.82, 1.28, false, 0),
+            new("spell", 1, 2, 0, 0, false, 4200, 32, 0.60, 1.02, true, 0),
+        ]),
+    ];
 
     /// <summary>Per-tick FX by condition type (tibia CONST_ME ids).</summary>
     public static readonly IReadOnlyDictionary<string, int> ConditionTickFx = new Dictionary<string, int>
@@ -85,6 +179,8 @@ public static class GameConfig
     public const double SpawnBudgetTierGrowth = 0.55;
 
     // ---- player damage ----
+    /// <summary>Multiplicador global do dano do player (autos + skills). MVP/dificuldade: dávamos pouco dano.</summary>
+    public const double PlayerDamageMult = 1.4;
     public const double AtkPerRunLevel = 0.06;
     public const double AscensionAtkBonus = 0.08;
     public const double DamageRollMin = 0.85;
@@ -117,10 +213,34 @@ public static class GameConfig
         [5] = 626, // Flamesteed
     };
 
+    // ---- sustain baseline (ponte até os sets: todo Kaeli tem um mínimo, sem depender de card) ----
+    /// <summary>Regen passivo por segundo como fração da vida máxima, mesmo sem o card de regen.</summary>
+    public const double BaselineRegenPctPerSec = 0.006;
+    /// <summary>+regen por run-level (recompensa quem sobe de nível dentro da run).</summary>
+    public const double BaselineRegenPctPerRunLevel = 0.0006;
+    /// <summary>Life leech mínimo: fração do dano causado que volta como vida, mesmo sem card.</summary>
+    public const double BaselineLifesteal = 0.02;
+
+    // ---- drops com função (consumíveis curam ao pegar; lixo vira ouro) ----
+    /// <summary>Comida cura esta fração da vida máxima ao ser pega.</summary>
+    public const double FoodHealPct = 0.05;
+    /// <summary>Poções de vida curam por fração da vida máxima — mais forte a poção, mais cura.</summary>
+    public const double PotionHealBasic = 0.15;
+    public const double PotionHealStrong = 0.25;
+    public const double PotionHealGreat = 0.40;
+    /// <summary>Palavras que marcam um item como comida (resolvidas para ids em GameData).</summary>
+    public static readonly string[] FoodNameWords =
+    [
+        "meat", "ham", "cheese", "fish", "cookie", "cherry", "corncob", "mushroom", "worm",
+        "egg", "bread", "carrot", "apple", "banana", "grape", "melon", "salmon", "mango",
+        "pear", "tomato", "strawberry", "blueberry", "bun", "candy", "roll", "rye"
+    ];
+
     // ---- death / rewards ----
     public const double DefeatGoldKeptFraction = 0.5;
-    public const int VictoryKaerosBase = 120;
-    public const int VictoryKaerosPerTier = 40;
+    // MVP/teste: recompensa por run inflada. Produção: Base 120, PerTier 40.
+    public const int VictoryKaerosBase = 400;
+    public const int VictoryKaerosPerTier = 120;
     public const long AccountXpPerVictory = 60;
     public const long AccountXpPerDefeat = 20;
     public const long AccountXpPerRunLevel = 6;
@@ -173,8 +293,9 @@ public static class GameConfig
     public const double FiveStarSoftPityRamp = 0.06;
     public const int FourStarPity = 10;
     public const double FourStarBaseRate = 0.06;
-    public const int StartingKaeros = 4000;
-    public const int StartingGold = 500;
+    // MVP/teste: economia generosa pra testar conteúdo. Produção: StartingKaeros 4000, Gold 500.
+    public const int StartingKaeros = 20000;
+    public const int StartingGold = 3000;
     public const int ItemFallbackSalePrice = 5;
     public static readonly Dictionary<int, int> DupeShards = new() { [3] = 5, [4] = 20, [5] = 50 };
     public static readonly int[] AscensionShardCost = [10, 15, 25, 40, 60, 80]; // A1..A6
@@ -211,16 +332,60 @@ public static class GameConfig
 
     // ---- dailies ----
     public const int DailyContractCount = 3;
-    public const int DailyKaerosReward = 100;
-    public const int DailyGoldReward = 150;
+    // MVP/teste: dailies generosas. Produção: Kaeros 100, Gold 150.
+    public const int DailyKaerosReward = 500;
+    public const int DailyGoldReward = 600;
     public const long DailyAccountXpReward = 25;
 
     // ---- bestiary ----
     public static readonly long[] BestiaryRankKills = [10, 50, 100, 250];
     public const double BestiaryDamageBonusPerRank = 0.01;
+
+    // ---- F-E: boss posture / echo break ----
+    /// <summary>Base posture pool of a tier-1 boss; scales up per tier and per broken cycle.</summary>
+    public const double PostureBaseMax = 120.0;
+    /// <summary>+35% posture pool per tier above 1 (tougher bosses take more pressure to break).</summary>
+    public const double PostureTierGrowth = 0.35;
+    /// <summary>Posture pool regrows after each break: max = base * (1 + cycle * this).</summary>
+    public const double PostureMaxGrowthPerCycle = 0.5;
+    /// <summary>Posture built by a connecting auto-attack vs. a skill hit (skills pressure harder).</summary>
+    public const double PostureGainPerAuto = 7.0;
+    public const double PostureGainPerSkill = 16.0;
+    /// <summary>Hitting an element the boss is weak to (resist &lt; 0) builds posture faster.</summary>
+    public const double PostureWeaknessMult = 1.7;
+    /// <summary>Posture only decays after this idle window without a hit.</summary>
+    public const int PostureDecayDelayMs = 3000;
+    /// <summary>Once idle, posture bleeds this fraction of its max pool per second.</summary>
+    public const double PostureDecayFractionPerSec = 0.12;
+    /// <summary>Stagger (Echo Break) window where the boss is stunned and amplified.</summary>
+    public const int PostureStaggerMs = 4000;
+    /// <summary>Raw-damage multiplier during stagger, one entry per cycle (caps at the last).</summary>
+    public static readonly double[] PostureDamageMultipliers = [2.5, 3.5, 5.0, 6.5];
+    /// <summary>Each valid hit during stagger also adds this fraction of the boss max HP...</summary>
+    public const double PostureMaxHpBonusPct = 0.015;
+    /// <summary>...but no more than once per this internal cooldown (anti multi-hit exploit).</summary>
+    public const int PostureMaxHpBonusCooldownMs = 600;
+
+    // ---- F-E: elemental reactions ----
+    /// <summary>How long an element "mark" lingers on a target waiting for a second element.</summary>
+    public const int ElementMarkDurationMs = 4000;
 }
 
 public sealed record DungeonTier(
     int Tier, string Name, string Description,
     string[] CommonMobs, string[] EliteMobs, string Boss,
     int RequiredAccountLevel, double StatMultiplier);
+
+public sealed record MonsterStatLine(int Health, int Damage, int Armor, int Speed, int Experience);
+public sealed record MonsterStatPreset(
+    string Id, string Name, string Description,
+    double HpMultiplier, double DamageMultiplier, double SpeedMultiplier, double CadenceMultiplier);
+public sealed record MonsterElementProfile(
+    string Id, string Name, int AreaEffect, int ShootEffect, string? ConditionType);
+public sealed record MonsterAttackPattern(
+    string Kind, int Range, int Radius, int Length, int Spread, bool Target,
+    int IntervalMs, int Chance, double MinDamageScale, double MaxDamageScale,
+    bool UsesElement, double ConditionDamageScale);
+public sealed record MonsterBehaviorProfile(
+    string Id, string Name, string Description, int TargetDistance, int StaticAttackChance,
+    MonsterAttackPattern[] Attacks, double HealFraction = 0, int HealIntervalMs = 0);

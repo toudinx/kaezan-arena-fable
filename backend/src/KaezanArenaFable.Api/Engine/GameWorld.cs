@@ -39,7 +39,23 @@ public sealed class Actor
     public long SlowUntilMs;
     public double SlowFactor = 1.0;
 
+    // F-E: boss posture (echo break). Only populated on boss actors (PostureMax > 0).
+    public double PostureBaseMax;
+    public double PostureMax;
+    public double Posture;
+    public int PostureCycle;
+    public long StaggerUntilMs;
+    public double StaggerMultiplier = 1.0;
+    public long PostureLastHitMs;
+    public long PostureBonusReadyAtMs;
+
+    // F-E: elemental reaction mark (any actor).
+    public string ElementMark = "";
+    public long ElementMarkUntilMs;
+
     public bool IsSummon => OwnerId != 0;
+    public bool IsStaggered(long nowMs) => nowMs < StaggerUntilMs;
+    public string ActiveMark(long nowMs) => nowMs < ElementMarkUntilMs ? ElementMark : "";
     public bool IsMoving(long nowMs) => nowMs < StepStartMs + StepDurMs;
     public bool IsStunned(long nowMs) => nowMs < StunUntilMs;
 }
@@ -95,6 +111,7 @@ public sealed class GameWorld
     private readonly double _affinityStatBonus; // +1% ATK/HP por nível de afinidade acima de 1
     private readonly double _gaugeRate;        // maestria × trait overcharge
     private readonly GameData _data;
+    private readonly MonsterRegistry _monsterRegistry;
     private readonly Rng _rng;
     private readonly IReadOnlyDictionary<string, long> _bestiaryKills;
 
@@ -147,7 +164,7 @@ public sealed class GameWorld
     public bool MapDirty { get; private set; } = true;
 
     public GameWorld(long seed, DungeonTier tier, WaifuDef waifu, int ascension,
-        GameData data, IReadOnlyDictionary<string, long> bestiaryKills,
+        GameData data, MonsterRegistry monsterRegistry, IReadOnlyDictionary<string, long> bestiaryKills,
         EquipmentStats? equipmentStats = null, KaeliLoadout? loadout = null)
     {
         Seed = seed;
@@ -165,6 +182,7 @@ public sealed class GameWorld
         _gaugeRate = Loadout.Mastery.GaugeMult
                      * (_trait.Kind == "overcharge" ? 1 + _trait.Value * _traitMult : 1);
         _data = data;
+        _monsterRegistry = monsterRegistry;
         _bestiaryKills = bestiaryKills;
         _rng = new Rng((ulong)seed);
 
@@ -227,7 +245,10 @@ public sealed class GameWorld
         var boss = SpawnMonster(floorIndex, Tier.Boss, room, isBoss: true);
         if (boss is not null)
         {
-            boss.MaxHp = boss.Hp = (int)(boss.Hp * GameConfig.BossHpScale(Tier.Boss));
+            if (!boss.Species!.IsAuthored)
+                boss.MaxHp = boss.Hp = (int)(boss.Hp * GameConfig.BossHpScale(Tier.Boss));
+            boss.PostureBaseMax = GameConfig.PostureBaseMax * (1 + (Tier.Tier - 1) * GameConfig.PostureTierGrowth);
+            boss.PostureMax = boss.PostureBaseMax;
         }
         for (var i = 0; i < 2 + Tier.Tier / 2; i++)
             SpawnMonster(floorIndex, _rng.Pick(Tier.EliteMobs), room);
@@ -235,7 +256,7 @@ public sealed class GameWorld
 
     private Actor? SpawnMonster(int floorIndex, string speciesName, Room room, bool isBoss = false)
     {
-        var species = _data.Get(speciesName);
+        var species = _monsterRegistry.Get(speciesName);
         var floor = _floors[floorIndex];
         for (var attempt = 0; attempt < 20; attempt++)
         {
@@ -243,7 +264,7 @@ public sealed class GameWorld
             var y = _rng.Range(room.Y, room.Y + room.H - 1);
             if (floor.IsBlocked(x, y) || OccupiedBy(floorIndex, x, y) is not null) continue;
 
-            var mult = Tier.StatMultiplier;
+            var mult = species.IsAuthored ? 1 : Tier.StatMultiplier;
             var actor = new Actor
             {
                 Id = _nextActorId++,
@@ -366,6 +387,7 @@ public sealed class GameWorld
                     TickPlayerRegen();
                     TickPlayerConditions();
                     TickMonsters();
+                    TickPostureDecay();
                     TickPickup();
                 }
             }
@@ -550,7 +572,7 @@ public sealed class GameWorld
         if (IsBuffActive("atk")) atk *= 1.35;
         if (IsBuffActive("bloodrage")) atk *= GameConfig.BloodRageAttackMultiplier;
         if (IsBuffActive("aegis")) atk *= GameConfig.SentinelAegisAttackMultiplier;
-        return atk;
+        return atk * GameConfig.PlayerDamageMult;
     }
 
     private double CritChance()
@@ -583,6 +605,8 @@ public sealed class GameWorld
 
         var range = Waifus.WeaponRange(Waifu.Weapon);
         if (Chebyshev(Player, target) > range) return;
+        // ranged auto-attacks respect walls, same as monsters (GameWorld:1293)
+        if (range > GameConfig.MeleeRange && !HasLineOfSight(Player.X, Player.Y, target.X, target.Y)) return;
 
         _autoAttackReadyAtMs = NowMs + AutoAttackInterval();
         Player.Facing = FacingFrom(target.X - Player.X, target.Y - Player.Y);
@@ -609,10 +633,18 @@ public sealed class GameWorld
         var target = _monsters.FirstOrDefault(m => m.Id == Player.TargetId && m.Hp > 0 && m.Floor == Player.Floor)
                      ?? NearestMonster(skill.Range > 0 ? skill.Range : 7);
 
-        // skills that need a target
+        // skills que precisam de alvo só exigem QUE EXISTA um alvo travado/próximo — não que ele
+        // esteja em alcance. Se estiver longe, a magia dispara na reta da Kaeli até o limite/parede.
         if (skill.Shape is "single" or "area" && target is null) return;
-        if (skill.Shape is "single" && Chebyshev(Player, target!) > skill.Range) return;
-        if (skill.Shape is "area" && Chebyshev(Player, target!) > skill.Range) return;
+
+        // ponto de mira: o alvo travado, mas limitado ao alcance da skill e parando antes da parede
+        var aimX = target?.X ?? Player.X;
+        var aimY = target?.Y ?? Player.Y;
+        if (skill.Shape is "single" or "area" && target is not null)
+        {
+            (aimX, aimY) = AimAlongLine(target.X, target.Y, skill.Range);
+            if (aimX == Player.X && aimY == Player.Y) return; // parede colada: nem sai (não gasta CD)
+        }
 
         if (isUlt) _gauge = 0;
         else _skillReadyAtMs[slot] = NowMs + (long)(skill.CooldownMs * Loadout.Mastery.CooldownMult);
@@ -639,15 +671,19 @@ public sealed class GameWorld
                 break;
 
             case "single":
-                if (skill.MissileId > 0) Emit("projectile", Player.X, Player.Y, target!.X, target.Y, skill.MissileId);
-                Emit("effect", target!.X, target.Y, 0, 0, skill.EffectId);
-                HitMonster(target, damage, skill, ultScale);
+            {
+                if (skill.MissileId > 0) Emit("projectile", Player.X, Player.Y, aimX, aimY, skill.MissileId);
+                Emit("effect", aimX, aimY, 0, 0, skill.EffectId);
+                // acerta o alvo travado se a reta chegou nele; senão o que estiver onde a magia parou
+                var victim = aimX == target!.X && aimY == target.Y ? target : MonsterAt(aimX, aimY);
+                if (victim is not null) HitMonster(victim, damage, skill, ultScale);
                 break;
+            }
 
             case "area":
             {
-                if (skill.MissileId > 0) Emit("projectile", Player.X, Player.Y, target!.X, target.Y, skill.MissileId);
-                foreach (var (tx, ty) in CircleTiles(target!.X, target.Y, skill.Radius))
+                if (skill.MissileId > 0) Emit("projectile", Player.X, Player.Y, aimX, aimY, skill.MissileId);
+                foreach (var (tx, ty) in CircleTiles(aimX, aimY, skill.Radius))
                 {
                     Emit("effect", tx, ty, 0, 0, skill.EffectId);
                     var victim = MonsterAt(tx, ty);
@@ -747,13 +783,25 @@ public sealed class GameWorld
         if (element == Waifu.Element) roll *= 1 + CardValue("elementPercent");
 
         // bestiary mastery bonus
-        var rank = BestiaryRank(monster.Species!.Name);
+        var rank = BestiaryRank(monster.Species!.StableId);
         roll *= 1 + rank * GameConfig.BestiaryDamageBonusPerRank;
 
         // tibia armor + elemental resistance
         var afterArmor = roll - _rng.Range(0, Math.Max(monster.Species.Armor / 2, 0)) / Math.Max(monster.StatMult, 1);
         var resist = monster.Species.Elements.GetValueOrDefault(element, 0);
         afterArmor *= (100 - resist) / 100.0;
+
+        // F-E: echo break amplifies every hit landed during the stagger window
+        var staggered = monster.IsStaggered(NowMs);
+        if (staggered)
+        {
+            afterArmor *= monster.StaggerMultiplier;
+            if (NowMs >= monster.PostureBonusReadyAtMs)
+            {
+                afterArmor += monster.MaxHp * GameConfig.PostureMaxHpBonusPct;
+                monster.PostureBonusReadyAtMs = NowMs + GameConfig.PostureMaxHpBonusCooldownMs;
+            }
+        }
 
         var final = Math.Max((int)afterArmor, resist >= 100 ? 0 : 1);
         if (final <= 0)
@@ -767,7 +815,7 @@ public sealed class GameWorld
         if (hitEffect > 0) Emit("effect", monster.X, monster.Y, 0, 0, hitEffect);
         if (crit) Emit("effect", monster.X, monster.Y, 0, 0, 173);
 
-        var lifesteal = CardValue("lifesteal");
+        var lifesteal = CardValue("lifesteal") + GameConfig.BaselineLifesteal;
         if (lifesteal > 0) HealPlayer((int)Math.Max(final * lifesteal, 0));
 
         // traits pós-dano: seiva vital (lifesteal de skill) e mordida do norte (slow de gelo)
@@ -779,10 +827,121 @@ public sealed class GameWorld
             monster.SlowFactor = Math.Max(1 - _trait.Value * _traitMult, GameConfig.SlowFactorFloor);
         }
 
+        // F-E: posture build (boss only) and elemental reactions (any target)
+        if (monster.Hp > 0 && monster.PostureMax > 0 && !staggered)
+            AddPosture(monster, element, fromSkill);
+        if (monster.Hp > 0)
+            ApplyElementMarkAndReactions(monster, element, final);
+
         // aggro: damaged monsters retaliate
         if (monster.TargetId == 0) AcquirePlayer(monster);
 
         if (monster.Hp <= 0) KillMonster(monster);
+    }
+
+    // ---- F-E: boss posture (echo break) ----
+
+    private void AddPosture(Actor boss, string element, bool fromSkill)
+    {
+        var gain = fromSkill ? GameConfig.PostureGainPerSkill : GameConfig.PostureGainPerAuto;
+        if (boss.Species!.Elements.GetValueOrDefault(element, 0) < 0)
+            gain *= GameConfig.PostureWeaknessMult; // hitting a weakness breaks faster
+        boss.Posture += gain;
+        boss.PostureLastHitMs = NowMs;
+        if (boss.Posture >= boss.PostureMax) TriggerEchoBreak(boss);
+    }
+
+    private void TriggerEchoBreak(Actor boss)
+    {
+        var idx = Math.Min(boss.PostureCycle, GameConfig.PostureDamageMultipliers.Length - 1);
+        boss.StaggerMultiplier = GameConfig.PostureDamageMultipliers[idx];
+        boss.StaggerUntilMs = NowMs + GameConfig.PostureStaggerMs;
+        boss.StunUntilMs = Math.Max(boss.StunUntilMs, boss.StaggerUntilMs);
+        boss.PostureBonusReadyAtMs = 0; // first stagger hit may grant the maxHP bonus immediately
+        boss.PostureCycle++;
+        boss.PostureMax = boss.PostureBaseMax * (1 + boss.PostureCycle * GameConfig.PostureMaxGrowthPerCycle);
+        boss.Posture = 0;
+        Emit("effect", boss.X, boss.Y, 0, 0, 35); // big explosion
+        Emit("text", boss.X, boss.Y, 0, 0, 0, "QUEBRADO!");
+    }
+
+    /// <summary>Posture bleeds back down once the boss stops taking pressure (no free fill).</summary>
+    private void TickPostureDecay()
+    {
+        foreach (var m in _monsters)
+        {
+            if (m.PostureMax <= 0 || m.Hp <= 0 || m.Posture <= 0) continue;
+            if (m.IsStaggered(NowMs) || NowMs - m.PostureLastHitMs < GameConfig.PostureDecayDelayMs) continue;
+            var decay = m.PostureMax * GameConfig.PostureDecayFractionPerSec * GameConfig.TickMs / 1000.0;
+            m.Posture = Math.Max(0, m.Posture - decay);
+        }
+    }
+
+    // ---- F-E: elemental reactions ----
+
+    private void ApplyElementMarkAndReactions(Actor monster, string element, int hitDamage)
+    {
+        if (!ElementReactions.IsReactive(element)) return;
+
+        var mark = monster.ActiveMark(NowMs);
+        if (mark.Length > 0 && mark != element
+            && ElementReactions.Lookup(mark, element) is { } reaction)
+        {
+            monster.ElementMark = "";
+            monster.ElementMarkUntilMs = 0;
+            TriggerReaction(monster, reaction, hitDamage);
+            return;
+        }
+
+        monster.ElementMark = element;
+        monster.ElementMarkUntilMs = NowMs + GameConfig.ElementMarkDurationMs;
+    }
+
+    private void TriggerReaction(Actor monster, ReactionDef reaction, int hitDamage)
+    {
+        var damage = Math.Max((int)(hitDamage * reaction.DamageFraction), 1);
+        Emit("effect", monster.X, monster.Y, 0, 0, reaction.Fx);
+        Emit("text", monster.X, monster.Y, 0, 0, 0, reaction.Name);
+
+        if (reaction.Radius > 0)
+        {
+            foreach (var (tx, ty) in CircleTiles(monster.X, monster.Y, reaction.Radius))
+            {
+                var victim = MonsterAt(tx, ty);
+                if (victim is null) continue;
+                if (tx != monster.X || ty != monster.Y) Emit("effect", tx, ty, 0, 0, reaction.Fx);
+                DealReactionDamage(victim, damage, killIfDead: victim.Id != monster.Id);
+            }
+        }
+        else
+        {
+            DealReactionDamage(monster, damage, killIfDead: false);
+        }
+
+        if (monster.Hp <= 0) return;
+        if (reaction.StunMs > 0)
+        {
+            monster.StunUntilMs = Math.Max(monster.StunUntilMs, NowMs + reaction.StunMs);
+            Emit("effect", monster.X, monster.Y, 0, 0, 32); // stun stars
+        }
+        if (reaction.SlowMs > 0)
+        {
+            monster.SlowUntilMs = NowMs + reaction.SlowMs;
+            monster.SlowFactor = reaction.SlowFactor;
+        }
+    }
+
+    /// <summary>
+    /// Flat reaction damage: never re-marks or re-triggers (no recursion). The primary target
+    /// is left to <see cref="DealDamageToMonster"/>'s trailing kill check; splash victims kill here.
+    /// </summary>
+    private void DealReactionDamage(Actor victim, int amount, bool killIfDead)
+    {
+        if (victim.Hp <= 0) return;
+        victim.Hp -= amount;
+        Emit("damage", victim.X, victim.Y, 0, 0, amount, "", victim.Id, true);
+        if (victim.TargetId == 0) AcquirePlayer(victim);
+        if (killIfDead && victim.Hp <= 0) KillMonster(victim);
     }
 
     private int BestiaryRank(string species)
@@ -802,12 +961,14 @@ public sealed class GameWorld
         }
         monster.Hp = 0;
         _kills++;
-        KillsBySpecies[monster.Species!.Name] = KillsBySpecies.GetValueOrDefault(monster.Species.Name) + 1;
+        var speciesId = monster.Species!.StableId;
+        KillsBySpecies[speciesId] = KillsBySpecies.GetValueOrDefault(speciesId) + 1;
 
         Emit("death", monster.X, monster.Y, 0, 0, monster.Species.Corpse, monster.Species.Name, monster.Id);
 
         // xp + gauge
-        var xp = (long)(monster.Species.Experience * Tier.StatMultiplier * (1 + CardValue("xpPercent")));
+        var xpScale = monster.Species.IsAuthored ? 1 : Tier.StatMultiplier;
+        var xp = (long)(monster.Species.Experience * xpScale * (1 + CardValue("xpPercent")));
         GainXp(Math.Max(xp, 1));
         _gauge = Math.Min(_gauge + GameConfig.GaugeFillPerKill * (1 + CardValue("gaugePercent")) * _gaugeRate, GameConfig.UltimateGaugeMax);
 
@@ -819,6 +980,7 @@ public sealed class GameWorld
 
     private void DropLoot(Actor monster)
     {
+        var junkGold = 0L;
         foreach (var entry in monster.Species!.Loot)
         {
             if (!_rng.Chance(entry.Chance / 100000.0)) continue;
@@ -830,15 +992,29 @@ public sealed class GameWorld
                 Emit("gold", monster.X, monster.Y, 0, 0, (int)gold);
                 continue;
             }
-            _groundItems.Add(new GroundItem
+            // comida, poção de vida e equip caem como item no chão; o resto (lixo) é auto-vendido em ouro
+            if (_data.IsFood(entry.ItemId) || _data.PotionHealFraction(entry.ItemId) > 0
+                || _data.IsEquippableLoot(entry.ItemId))
             {
-                Id = _nextActorId++,
-                Floor = monster.Floor,
-                X = monster.X, Y = monster.Y,
-                ItemId = entry.ItemId,
-                Count = count,
-                Name = entry.Name
-            });
+                _groundItems.Add(new GroundItem
+                {
+                    Id = _nextActorId++,
+                    Floor = monster.Floor,
+                    X = monster.X, Y = monster.Y,
+                    ItemId = entry.ItemId,
+                    Count = count,
+                    Name = entry.Name
+                });
+                continue;
+            }
+            junkGold += (long)_data.ItemValue(entry.ItemId) * count;
+        }
+
+        if (junkGold > 0)
+        {
+            var gold = (long)(junkGold * (1 + CardValue("goldPercent")));
+            _gold += gold;
+            Emit("gold", monster.X, monster.Y, 0, 0, (int)gold);
         }
 
         if (monster.IsBossActor
@@ -911,8 +1087,12 @@ public sealed class GameWorld
 
     private void TickPlayerRegen()
     {
-        var regen = CardValue("regenPerSec");
-        if (regen <= 0 || Player.Hp <= 0) return;
+        if (Player.Hp <= 0) return;
+        // regen baseline (sem depender de card) + bônus do card de regen
+        var baselinePct = GameConfig.BaselineRegenPctPerSec
+                          + GameConfig.BaselineRegenPctPerRunLevel * (_runLevel - 1);
+        var regen = CardValue("regenPerSec") + Player.MaxHp * baselinePct;
+        if (regen <= 0) return;
         _regenCarry += regen * GameConfig.TickMs / 1000.0;
         if (_regenCarry >= 1)
         {
@@ -930,7 +1110,8 @@ public sealed class GameWorld
         var ticks = cond.DurationMs > 0 ? Math.Max(cond.DurationMs / tickMs, 1) : GameConfig.ConditionMaxTicks;
         ticks = Math.Min(ticks, GameConfig.ConditionMaxTicks);
         var perTick = Math.Max(
-            (int)(cond.TotalDamage / (double)ticks * source.StatMult * GameConfig.MonsterDamageTuning), 1);
+            (int)(cond.TotalDamage / (double)ticks * source.StatMult
+                  * (source.Species?.IsAuthored == true ? 1 : GameConfig.MonsterDamageTuning)), 1);
 
         // reapplying never stacks: it replaces only if the new condition is at least as strong
         var existing = _playerConditions.FirstOrDefault(c => c.Type == cond.Type);
@@ -1257,7 +1438,7 @@ public sealed class GameWorld
             var summon = species.Summons[i];
             if (NowMs < monster.SummonReadyAtMs[i]) continue;
             monster.SummonReadyAtMs[i] = NowMs + Math.Max(summon.IntervalMs, GameConfig.SummonMinIntervalMs);
-            if (!_data.Monsters.ContainsKey(summon.Name)) continue; // species not converted yet
+            if (!_monsterRegistry.Contains(summon.Name)) continue;
             if (CountOwnedSummons(monster.Id) >= Math.Max(species.MaxSummons, 1)) continue;
             if (CountAliveSummons() >= GameConfig.MaxAliveSummons) continue;
             if (!_rng.Chance(Math.Min(summon.Chance, 100) / 100.0)) continue;
@@ -1279,7 +1460,7 @@ public sealed class GameWorld
 
     private Actor? SpawnSummon(Actor owner, string speciesName)
     {
-        var species = _data.Get(speciesName);
+        var species = _monsterRegistry.Get(speciesName);
         var floor = _floors[owner.Floor];
         // deterministic ring scan around the summoner (radius 1 then 2, fixed order)
         for (var radius = 1; radius <= 2; radius++)
@@ -1320,7 +1501,8 @@ public sealed class GameWorld
         var min = Math.Min(attack.MinDamage, attack.MaxDamage);
         var max = Math.Max(attack.MinDamage, attack.MaxDamage);
         var roll = _rng.Range(min, max) * monster.StatMult;
-        return Math.Max((int)(roll * GameConfig.MonsterDamageTuning), 1);
+        var tuning = monster.Species?.IsAuthored == true ? 1 : GameConfig.MonsterDamageTuning;
+        return Math.Max((int)(roll * tuning), 1);
     }
 
     private void DamagePlayer(int damage, string damageType, Actor source)
@@ -1437,6 +1619,26 @@ public sealed class GameWorld
             var item = _groundItems[i];
             if (item.Floor != Player.Floor || item.X != Player.X || item.Y != Player.Y) continue;
             _groundItems.RemoveAt(i);
+
+            // consumíveis curam na hora; o resto vai pra mochila
+            var potionFraction = _data.PotionHealFraction(item.ItemId);
+            if (potionFraction > 0)
+            {
+                var heal = (int)Math.Ceiling(Player.MaxHp * potionFraction) * item.Count;
+                HealPlayer(heal);
+                Emit("effect", Player.X, Player.Y, 0, 0, 12); // sparkles
+                Emit("pickup", Player.X, Player.Y, 0, 0, item.ItemId, item.Name);
+                continue;
+            }
+            if (_data.IsFood(item.ItemId))
+            {
+                var heal = (int)Math.Ceiling(Player.MaxHp * GameConfig.FoodHealPct) * item.Count;
+                HealPlayer(heal);
+                Emit("effect", Player.X, Player.Y, 0, 0, 12); // sparkles
+                Emit("pickup", Player.X, Player.Y, 0, 0, item.ItemId, item.Name);
+                continue;
+            }
+
             AddLootedItem(item.ItemId, item.Name, item.Count);
             Emit("pickup", Player.X, Player.Y, 0, 0, item.ItemId, item.Name);
         }
@@ -1495,8 +1697,8 @@ public sealed class GameWorld
         Emit("effect", x, y, 0, 0, 29); // fireworks
 
         var lootPool = Tier.CommonMobs.Concat(Tier.EliteMobs)
-            .SelectMany(name => _data.Get(name).Loot)
-            .Where(l => !l.Name.Contains("gold coin", StringComparison.OrdinalIgnoreCase))
+            .SelectMany(name => _monsterRegistry.Get(name).Loot)
+            .Where(l => _data.IsEquippableLoot(l.ItemId))
             .ToList();
         for (var i = 0; i < 2 && lootPool.Count > 0; i++)
         {
@@ -1558,6 +1760,31 @@ public sealed class GameWorld
         return true;
     }
 
+    /// <summary>
+    /// Anda a reta player→(tx,ty) e devolve o tile mais distante alcançável: limitado a
+    /// <paramref name="maxRange"/> (Chebyshev) e parando antes de qualquer parede. Devolve o tile
+    /// do alvo se ele estiver no alcance e visível. Usado para a magia "disparar na reta da Kaeli".
+    /// </summary>
+    private (int x, int y) AimAlongLine(int tx, int ty, int maxRange)
+    {
+        var floor = Floor;
+        int x0 = Player.X, y0 = Player.Y;
+        int dx = Math.Abs(tx - x0), dy = Math.Abs(ty - y0);
+        int sx = x0 < tx ? 1 : -1, sy = y0 < ty ? 1 : -1;
+        var err = dx - dy;
+        int x = x0, y = y0, lastX = x0, lastY = y0;
+        while (x != tx || y != ty)
+        {
+            var e2 = 2 * err;
+            if (e2 > -dy) { err -= dy; x += sx; }
+            if (e2 < dx) { err += dx; y += sy; }
+            if (floor.IsBlocked(x, y)) break;
+            if (Chebyshev(x0, y0, x, y) > maxRange) break;
+            lastX = x; lastY = y;
+        }
+        return (lastX, lastY);
+    }
+
     private static int Chebyshev(Actor a, Actor b) => Math.Max(Math.Abs(a.X - b.X), Math.Abs(a.Y - b.Y));
     private static int Chebyshev(int x1, int y1, int x2, int y2) => Math.Max(Math.Abs(x1 - x2), Math.Abs(y1 - y2));
 
@@ -1608,20 +1835,22 @@ public sealed class GameWorld
 
     private IEnumerable<(int X, int Y)> ConeTiles(int ox, int oy, int dx, int dy, int reach)
     {
-        // frontal fan widening by distance
-        for (var i = 1; i <= reach; i++)
-        {
-            var cx = ox + dx * i;
-            var cy = oy + dy * i;
-            var spread = i / 2;
-            for (var s = -spread; s <= spread; s++)
+        // leque frontal simétrico com a MESMA abertura angular em qualquer das 8 direções.
+        // forward = projeção na direção do alvo; perp = componente perpendicular ao eixo.
+        // O cone independe de o alvo estar em diagonal ou em linha reta.
+        for (var ry = -reach; ry <= reach; ry++)
+            for (var rx = -reach; rx <= reach; rx++)
             {
-                var x = dx == 0 ? cx + s : cx;
-                var y = dy == 0 ? cy + s : cy;
-                if (dx != 0 && dy != 0) { x = cx + (s != 0 ? s : 0); y = cy - (s != 0 ? s : 0); }
+                if (rx == 0 && ry == 0) continue;
+                if (Math.Max(Math.Abs(rx), Math.Abs(ry)) > reach) continue;
+                var forward = rx * dx + ry * dy;
+                if (forward <= 0) continue;                 // só tiles à frente
+                var perp = Math.Abs(rx * dy - ry * dx);
+                if (perp > forward) continue;               // meia-abertura de 45° (cone de 90°)
+                var x = ox + rx;
+                var y = oy + ry;
                 if (!Floor.IsBlocked(x, y)) yield return (x, y);
             }
-        }
     }
 
     private void Emit(string kind, int x, int y, int toX = 0, int toY = 0, int value = 0,
@@ -1695,7 +1924,7 @@ public sealed class GameWorld
                 m.FromX, m.FromY, m.StepDurMs, m.StepStartMs,
                 new OutfitDto(m.Species.Outfit.LookType, m.Species.Outfit.Head, m.Species.Outfit.Body,
                     m.Species.Outfit.Legs, m.Species.Outfit.Feet, m.Species.Outfit.Addons),
-                m.IsBossActor, m.IsStunned(NowMs)))
+                m.IsBossActor, m.IsStunned(NowMs), m.ActiveMark(NowMs)))
             .ToList();
 
         var items = _groundItems
@@ -1710,6 +1939,10 @@ public sealed class GameWorld
             _cards.Select(c => new CardStackDto(c.Key, Cards.ById[c.Key].Name, c.Value)).ToList(),
             _pendingOffer,
             boss?.Hp, boss?.MaxHp, boss?.Species!.Name,
+            boss is { PostureMax: > 0 } ? boss.Posture : null,
+            boss is { PostureMax: > 0 } ? boss.PostureMax : null,
+            boss is not null && boss.IsStaggered(NowMs),
+            boss?.PostureCycle ?? 0,
             NowMs, Ended);
 
         return new SnapshotDto(TickCount, NowMs, _currentFloor, player, monsters, items, _events.ToList(), run);

@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using KaezanArenaFable.Api.Content;
 using KaezanArenaFable.Api.Domain;
 using KaezanArenaFable.Api.Engine;
 
@@ -9,7 +10,7 @@ namespace KaezanArenaFable.Api.Meta;
 /// 3 deterministic contracts per UTC day (kaezan-arena Daily Contracts idea,
 /// com progressão alimentada pelos eventos de run estilo Daily Hub do Kaezan).
 /// </summary>
-public sealed class DailyService(AccountStore store, GameData data)
+public sealed class DailyService(AccountStore store, MonsterRegistry monsters, ContentStore content)
 {
     public List<DailyContract> GetToday()
     {
@@ -39,7 +40,8 @@ public sealed class DailyService(AccountStore store, GameData data)
         var contracts = new List<DailyContract>();
 
         // 1) kill contract: species from a random tier the player could plausibly reach
-        var tier = GameConfig.Tiers[rng.Next(Math.Min(3, GameConfig.Tiers.Length))];
+        var tiers = content.Tiers;
+        var tier = tiers[rng.Next(Math.Min(3, tiers.Count))];
         var species = rng.Pick(tier.CommonMobs.Concat(tier.EliteMobs).ToList());
         var killTarget = rng.Range(15, 30);
         contracts.Add(new DailyContract
@@ -48,11 +50,11 @@ public sealed class DailyService(AccountStore store, GameData data)
             Kind = "kill_species",
             Param = species,
             Target = killTarget,
-            Description = $"Derrote {killTarget}x {species} ({data.Get(species).BestiaryClass})"
+            Description = $"Derrote {killTarget}x {monsters.Get(species).Name} ({monsters.Get(species).BestiaryClass})"
         });
 
         // 2) clear contract
-        var clearTier = GameConfig.Tiers[rng.Next(Math.Min(3, GameConfig.Tiers.Length))];
+        var clearTier = tiers[rng.Next(Math.Min(3, tiers.Count))];
         contracts.Add(new DailyContract
         {
             Id = $"daily:{date}:clear",

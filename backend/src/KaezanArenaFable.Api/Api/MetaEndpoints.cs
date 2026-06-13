@@ -1,3 +1,4 @@
+using KaezanArenaFable.Api.Content;
 using KaezanArenaFable.Api.Domain;
 using KaezanArenaFable.Api.Meta;
 
@@ -12,13 +13,13 @@ public static class MetaEndpoints
         api.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
         // ---- catalog (static game data for the client) ----
-        api.MapGet("/catalog", (GameData data) => Results.Ok(new
+        api.MapGet("/catalog", (GameData data, ContentStore content, MonsterRegistry registry) => Results.Ok(new
         {
             waifus = Waifus.All,
             classes = Classes.All,
             skills = Classes.Skills.Values,
             cards = Cards.All,
-            tiers = GameConfig.Tiers,
+            tiers = content.Tiers,
             banners = GachaService.Banners,
             pullCost = GameConfig.PullCostKaeros,
             ascensionShardCost = GameConfig.AscensionShardCost,
@@ -59,15 +60,30 @@ public static class MetaEndpoints
                 i.MountLookType,
                 i.MountSpeed
             }),
-            monsters = data.Monsters.Values.Select(m => new
+            monsters = registry.All.Select(m => new
             {
+                id = m.StableId,
                 m.Name,
                 m.Description,
                 m.Health,
                 m.Experience,
                 m.IsBoss,
                 m.BestiaryClass,
+                m.Origin,
+                m.BossRace,
+                m.Corpse,
                 m.Outfit,
+                source = m.IsAuthored ? "authored" : "legacy",
+                m.Rank,
+                m.Element,
+                m.BehaviorId,
+                m.StatPresetId,
+                m.HpMultiplier,
+                m.DamageMultiplier,
+                m.SpeedMultiplier,
+                m.CadenceMultiplier,
+                m.PowerTier,
+                resistances = m.Elements,
                 loot = m.Loot.Select(l => new { l.ItemId, l.Name, l.Chance })
             })
         }));
@@ -246,6 +262,131 @@ public static class MetaEndpoints
                 if (loadout.Count == 0) s.Equipment.Remove(req.WaifuId);
                 return Results.Ok(new { req.WaifuId, req.Slot, itemId });
             }));
+
+        // ---- admin: autoria de conteúdo (editor in-game) ----
+        var admin = api.MapGroup("/admin");
+
+        // dados de apoio pro editor: lista de mobs e bosses disponíveis (de monsters.json)
+        admin.MapGet("/monsters", (MonsterRegistry registry) => Results.Ok(
+            registry.All
+                .OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(m => new
+                {
+                    id = m.StableId,
+                    m.Name,
+                    m.IsBoss,
+                    m.BestiaryClass,
+                    m.Origin,
+                    m.BossRace,
+                    m.Health,
+                    m.Experience,
+                    source = m.IsAuthored ? "authored" : "legacy"
+                })));
+
+        admin.MapGet("/monster-authoring", (GameData data) => Results.Ok(new
+        {
+            behaviors = GameConfig.MonsterBehaviorProfiles,
+            elements = GameConfig.MonsterElementProfiles,
+            presets = GameConfig.MonsterStatPresets,
+            statLines = GameConfig.MonsterStatLines,
+            modifierMin = GameConfig.AuthoredModifierMin,
+            modifierMax = GameConfig.AuthoredModifierMax,
+            resistanceMin = GameConfig.AuthoredResistanceMin,
+            resistanceMax = GameConfig.AuthoredResistanceMax,
+            appearances = data.MonsterAppearances
+        }));
+
+        admin.MapGet("/content/monsters", (ContentStore content) => Results.Ok(content.Monsters));
+
+        admin.MapPost("/content/monsters", (MonsterDefinition request, ContentStore content, GameData data) =>
+        {
+            var definition = MonsterAuthoring.Normalize(request);
+            var error = ValidateMonsterDefinition(definition, content, data);
+            if (error is not null) return Results.BadRequest(new { error });
+            try { return Results.Ok(content.CreateMonster(definition)); }
+            catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+        });
+
+        admin.MapPut("/content/monsters/{id}", (
+            string id, MonsterDefinition request, ContentStore content, GameData data) =>
+        {
+            var definition = MonsterAuthoring.Normalize(request, id);
+            var error = ValidateMonsterDefinition(definition, content, data, id);
+            if (error is not null) return Results.BadRequest(new { error });
+            try { return Results.Ok(content.UpdateMonster(id, definition)); }
+            catch (KeyNotFoundException ex) { return Results.NotFound(new { error = ex.Message }); }
+        });
+
+        admin.MapDelete("/content/monsters/{id}", (string id, ContentStore content) =>
+        {
+            try
+            {
+                var removed = content.DeleteMonster(id);
+                return Results.Ok(new { removed.Id, removed.Name });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Conflict(new { error = ex.Message });
+            }
+        });
+
+        admin.MapGet("/content/tiers", (ContentStore content) => Results.Ok(content.Tiers));
+
+        admin.MapPut("/content/tiers", (List<DungeonTier> tiers, ContentStore content, MonsterRegistry registry) =>
+        {
+            // validação de conteúdo (mobs/boss existem) antes de persistir
+            if (tiers is null || tiers.Count == 0)
+                return Results.BadRequest(new { error = "envie ao menos um tier" });
+            if (tiers.Select(t => t.Tier).Distinct().Count() != tiers.Count)
+                return Results.BadRequest(new { error = "números de tier duplicados" });
+
+            foreach (var t in tiers)
+            {
+                if (string.IsNullOrWhiteSpace(t.Name))
+                    return Results.BadRequest(new { error = $"tier {t.Tier}: nome vazio" });
+                if (t.CommonMobs.Length == 0)
+                    return Results.BadRequest(new { error = $"tier {t.Tier}: precisa de ao menos 1 mob comum" });
+
+                foreach (var mob in t.CommonMobs.Concat(t.EliteMobs))
+                    if (!registry.Contains(mob))
+                        return Results.BadRequest(new { error = $"tier {t.Tier}: mob desconhecido '{mob}'" });
+
+                // boss pode ser qualquer monstro — o engine escala o HP de quem for escolhido
+                if (!registry.Contains(t.Boss))
+                    return Results.BadRequest(new { error = $"tier {t.Tier}: boss desconhecido '{t.Boss}'" });
+            }
+
+            return Results.Ok(content.ReplaceTiers(tiers));
+        });
+    }
+
+    private static string? ValidateMonsterDefinition(
+        MonsterDefinition definition,
+        ContentStore content,
+        GameData data,
+        string? currentId = null)
+    {
+        var error = MonsterAuthoring.Validate(definition);
+        if (error is not null) return error;
+        if (data.Monsters.ContainsKey(definition.Name))
+            return $"o nome '{definition.Name}' pertence a um placeholder legado; escolha um nome novo";
+        if (content.Monsters.Any(m =>
+                !m.Id.Equals(currentId, StringComparison.OrdinalIgnoreCase)
+                && m.Name.Equals(definition.Name, StringComparison.OrdinalIgnoreCase)))
+            return $"nome ja existe: {definition.Name}";
+        if (content.Monsters.Any(m =>
+                !m.Id.Equals(currentId, StringComparison.OrdinalIgnoreCase)
+                && m.Id.Equals(definition.Id, StringComparison.OrdinalIgnoreCase)))
+            return $"id ja existe: {definition.Id}";
+        if (!string.IsNullOrWhiteSpace(definition.AppearanceId)
+            && !data.MonsterAppearances.Any(appearance =>
+                appearance.Id.Equals(definition.AppearanceId, StringComparison.OrdinalIgnoreCase)))
+            return $"aparencia Canary desconhecida: {definition.AppearanceId}";
+        return null;
     }
 
     public sealed record ActiveWaifuRequest(string WaifuId);

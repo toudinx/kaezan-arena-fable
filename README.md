@@ -28,6 +28,24 @@ npx ng serve
 Abra `http://localhost:4200`. Sem configuração de banco, a conta local é criada automaticamente
 em `backend/src/KaezanArenaFable.Api/.data/account.json` com a Mirai (4★) e 4000 Kaeros.
 
+O painel `http://localhost:4200/admin` traz um bestiário visual com abas de monstros e bosses.
+Cada tier pode receber muitos mobs comuns, um grupo menor de elites e um boss; salvar persiste a
+composição em `.data/content/tiers.json` e afeta somente as próximas runs.
+
+A aba **Monstros** cria conteúdo autoral sem copiar os stats do Canary. Cada criatura escolhe
+uma aparência, power tier, função (`common|elite|boss`), comportamento curado e elemento ofensivo.
+Os presets de HP/dano/velocidade/cadência são pontos de partida e continuam editáveis; fraquezas
+e resistências são independentes por elemento, sem relação automática de pedra-papel-tesoura.
+Monstros novos usam IDs imutáveis `monster:*` e são persistidos em
+`.data/content/monsters.json`. As espécies de `monsters.json` permanecem somente como placeholders
+legados durante a substituição gradual.
+
+O editor separa as três responsabilidades em colunas: a biblioteca visual Canary (somente leitura),
+a configuração Kaezan e os monstros autorais salvos. O catálogo visual contém 1.542 definições Lua
+deduplicadas em 758 outfits, com filtros de monstro/boss, classe e placeholder legado. Monstros
+Kaezan podem ser reabertos, duplicados e excluídos; a exclusão é recusada enquanto a criatura ainda
+estiver referenciada por alguma dungeon.
+
 ### Persistência MySQL opcional
 
 Para usar o MySQL/MariaDB do XAMPP, configure a connection string antes de iniciar o backend:
@@ -70,6 +88,23 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
   3 elites por dungeon; os sprites, corpses, loot e kits vêm do pipeline Canary.
 - Ofertas de card pausam o relógio da simulação; após 20s sem escolha, a primeira opção é aplicada.
 - Atualizar a página preserva a run por até 60s e retoma o mesmo mapa, HP e estado do mundo.
+
+## Postura de boss e reações elementais (F-E)
+
+- **Postura (Echo Break).** Todo boss tem uma segunda barra (dourada, sob o HP). Acertá-lo enche
+  a postura — *skills* pressionam mais que auto-attack, e bater no **elemento fraco** (resist < 0)
+  quebra mais rápido. Cheia → **Echo Break**: o boss fica atordoado e o dano recebido é
+  multiplicado por ciclo (`2.5× → 3.5× → 5× → 6.5×`), com um bônus por hit de % do HP máx do boss
+  (com cooldown interno anti multi-hit). Ao fim do stagger o ciclo sobe e a postura volta maior;
+  parar de bater faz a postura **decair**, então é preciso pressão sustentada. A janela de break é
+  o momento de despejar o burst (guardar a ultimate vale a pena).
+- **Reações elementais.** Aplicar um elemento **marca** o alvo (ícone colorido sobre o mob); um
+  segundo elemento diferente dispara uma **reação** com FX e dano (uma fração do hit, nunca um
+  multiplicador explosivo). A matriz é data-driven em `Domain/ElementReactions.cs`: Gelo+Fogo =
+  **Estilhaço** (dano em área), Gelo+Terra = **Permafrost** (lentidão), Energia+Fogo =
+  **Sobrecarga** (área), Energia+Gelo = **Supercondução** (atordoa), Fogo+Terra = **Detonação**,
+  Sagrado+Morte = **Aniquilação**. As reações premiam alternar a postura (`Tab`) e, no futuro,
+  times de elementos complementares (Echo Team).
 
 ## Loop de jogo
 
@@ -156,8 +191,11 @@ docs/FABLE_TRACK.md   fila de features complexas/cross-cutting (track Claude Fab
 ## Pipeline de assets (re-rodar quando quiser mais conteúdo)
 
 ```powershell
-# monstros (lua → json)
-cd tools/convert-monsters && npm install && node convert.mjs
+# placeholders legados (lua → json) + catálogo amplo de aparências para o admin
+cd tools/convert-monsters
+npm install
+node convert.mjs
+npm run scan:appearances
 
 # sprites (requer o repo kaezan em C:\Kaezan\kaezan)
 cd tools/AssetExtractor
@@ -166,6 +204,7 @@ dotnet run -- --things "C:\Kaezan\kaezan\otclient-4.0\data\things\1500" `
   --config content-config.json `
   --equipment `
   --monsters "..\..\backend\src\KaezanArenaFable.Api\Data\monsters.json" `
+  --monster-appearances "..\..\backend\src\KaezanArenaFable.Api\Data\monster-appearances.json" `
   --items-out "..\..\backend\src\KaezanArenaFable.Api\Data\items.json" `
   --items-xml "C:\Kaezan\kaezan\canary-3.4.1\data\items\items.xml" `
   --mounts-xml "C:\Kaezan\kaezan\canary-3.4.1\data\XML\mounts.xml"
@@ -185,6 +224,10 @@ o extractor normaliza os thumbnails antigos em células transparentes ancoradas 
 inferior direito. Objetos animados, pilhas, terrenos e itens com patterns continuam vindo das
 sheets completas. A saída é sempre copiada para `frontend/public/assets/tibia`; o jogo não
 referencia caminhos externos ao repo. Omita o argumento quando essa extração local não existir.
+
+Use `--dry-run` para auditar quantos IDs serão processados sem escrever arquivos. Use
+`--sprites-only` para atualizar outfits, corpses e o manifest sem regenerar `items.json`; esse é o
+modo recomendado ao atualizar apenas a biblioteca visual do editor de monstros.
 
 ## Invariantes (não quebre)
 

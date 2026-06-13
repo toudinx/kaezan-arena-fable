@@ -298,6 +298,18 @@ export class GameRenderer {
           ctx.fillStyle = '#ffd35d';
           ctx.fillText('✶', px + TS / 2, py - 24);
         }
+        if (m.elementMark) {
+          // small pulsing elemental "mark" dot waiting for a reaction
+          const mc = DAMAGE_TYPE_COLORS[m.elementMark] ?? '#ffffff';
+          const r = 4 + Math.sin(nowPerf / 200) * 0.6;
+          ctx.beginPath();
+          ctx.arc(px + TS / 2 + 16, py - 6, r, 0, Math.PI * 2);
+          ctx.fillStyle = mc;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
       }
     }
 

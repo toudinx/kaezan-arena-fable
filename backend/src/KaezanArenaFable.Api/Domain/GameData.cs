@@ -43,16 +43,26 @@ public sealed record MonsterType(
     int Armor, int Defense, double Mitigation, bool IsBoss, string BestiaryClass,
     List<MonsterAttack> Attacks, Dictionary<string, double> Elements,
     List<MonsterLoot> Loot, List<string> Voices,
-    int MaxSummons = 0, List<MonsterSummon>? Summons = null, List<MonsterDefense>? Defenses = null)
+    int MaxSummons = 0, List<MonsterSummon>? Summons = null, List<MonsterDefense>? Defenses = null,
+    string? Origin = null, string? BossRace = null,
+    string? Id = null, string Rank = "legacy", string Element = "physical",
+    string BehaviorId = "legacy", string StatPresetId = "legacy",
+    double HpMultiplier = 1, double DamageMultiplier = 1,
+    double SpeedMultiplier = 1, double CadenceMultiplier = 1,
+    int PowerTier = 0, bool IsAuthored = false)
 {
     public List<MonsterSummon> Summons { get; init; } = Summons ?? [];
     public List<MonsterDefense> Defenses { get; init; } = Defenses ?? [];
+    public string StableId => string.IsNullOrWhiteSpace(Id) ? Name : Id;
 }
 
 public sealed class GameData
 {
     public IReadOnlyDictionary<string, MonsterType> Monsters { get; }
     public IReadOnlyDictionary<int, ItemType> Items { get; }
+    public IReadOnlyList<MonsterAppearance> MonsterAppearances { get; }
+
+    private readonly HashSet<int> _foodIds;
 
     public GameData(IWebHostEnvironment env)
     {
@@ -66,10 +76,59 @@ public sealed class GameData
                     ?? throw new InvalidOperationException("items.json missing or invalid");
         Monsters = monsters.ToDictionary(m => m.Name, StringComparer.OrdinalIgnoreCase);
         Items = items.ToDictionary(i => i.ItemId);
+        var appearancesPath = Path.Combine(dataPath, "monster-appearances.json");
+        MonsterAppearances = File.Exists(appearancesPath)
+            ? JsonSerializer.Deserialize<List<MonsterAppearance>>(File.ReadAllText(appearancesPath), options) ?? []
+            : monsters.Select(m => new MonsterAppearance(
+                $"legacy:{m.StableId}",
+                m.Name,
+                "monsters.json",
+                m.Outfit,
+                m.Corpse,
+                m.BestiaryClass,
+                "legacy",
+                m.IsBoss ? "boss" : "normal",
+                "legacy",
+                true)).ToList();
+
+        // resolve "comida" a partir das palavras-chave (match por palavra evita "legs" virar comida)
+        var foodWords = GameConfig.FoodNameWords.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _foodIds = Items.Values
+            .Where(i => i.Name.Split(' ').Any(foodWords.Contains))
+            .Select(i => i.ItemId)
+            .ToHashSet();
     }
 
     public MonsterType Get(string name) => Monsters[name];
     public ItemType GetItem(int itemId) => Items[itemId];
+
+    /// <summary>
+    /// True only for items that fit a slot the game still uses. Raw tibia loot tables are full
+    /// of food/junk and gear for slots we removed (legs/feet) — those must never hit the bag.
+    /// Curated per-tier set drops will replace this source entirely (sets phase).
+    /// </summary>
+    public bool IsEquippableLoot(int itemId) =>
+        Items.TryGetValue(itemId, out var item)
+        && item.Slot is not null
+        && EquipmentSlots.IsValid(item.Slot);
+
+    /// <summary>Comida: cura pouca vida ao ser pega (heal-on-pickup).</summary>
+    public bool IsFood(int itemId) => _foodIds.Contains(itemId);
+
+    /// <summary>
+    /// Fração da vida máx que uma poção de vida cura ao ser pega, 0 se não for poção de vida.
+    /// Poções mais fortes (que caem em tiers mais altos) curam mais.
+    /// </summary>
+    public double PotionHealFraction(int itemId)
+    {
+        if (!Items.TryGetValue(itemId, out var item)) return 0;
+        var name = item.Name.ToLowerInvariant();
+        if (!name.Contains("health potion")) return 0;
+        if (name.Contains("ultimate") || name.Contains("supreme") || name.Contains("great"))
+            return GameConfig.PotionHealGreat;
+        if (name.Contains("strong")) return GameConfig.PotionHealStrong;
+        return GameConfig.PotionHealBasic;
+    }
     public int ItemValue(int itemId) =>
         Items.TryGetValue(itemId, out var item) && item.SalePrice > 0
             ? item.SalePrice

@@ -22,11 +22,13 @@ internal static class Program
 
     private static int Main(string[] args)
     {
-        string? thingsDir = null, outDir = null, configPath = null, monstersPath = null, itemsOutPath = null;
+        string? thingsDir = null, outDir = null, configPath = null, monstersPath = null, appearancesPath = null, itemsOutPath = null;
         string? itemsXmlPath = null, mountsXmlPath = null, staticItemsDir = null;
         var dumpNames = false;
         var itemsOnly = false;
         var equipment = false;
+        var dryRun = false;
+        var spritesOnly = false;
         for (var i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -35,11 +37,14 @@ internal static class Program
                 case "--out": outDir = args[++i]; break;
                 case "--config": configPath = args[++i]; break;
                 case "--monsters": monstersPath = args[++i]; break;
+                case "--monster-appearances": appearancesPath = args[++i]; break;
                 case "--items-out": itemsOutPath = args[++i]; break;
                 case "--items-xml": itemsXmlPath = args[++i]; break;
                 case "--mounts-xml": mountsXmlPath = args[++i]; break;
                 case "--items-only": itemsOnly = true; break;
                 case "--equipment": equipment = true; break;
+                case "--dry-run": dryRun = true; break;
+                case "--sprites-only": spritesOnly = true; break;
                 case "--static-items": staticItemsDir = args[++i]; break;
                 case "--dump-names": dumpNames = true; break;
             }
@@ -49,9 +54,9 @@ internal static class Program
         {
             Console.Error.WriteLine(
                 "usage: AssetExtractor --things <things/1500 dir> --out <output dir> " +
-                "[--config content-config.json] [--monsters monsters.json] " +
+                "[--config content-config.json] [--monsters monsters.json] [--monster-appearances monster-appearances.json] " +
                 "[--items-out items.json] [--items-xml items.xml] [--mounts-xml mounts.xml] " +
-                "[--items-only] [--equipment] " +
+                "[--items-only] [--equipment] [--dry-run] [--sprites-only] " +
                 "[--static-items <legacy assets dir>] [--dump-names]");
             return 1;
         }
@@ -111,6 +116,7 @@ internal static class Program
         var objectIds = new SortedSet<uint>(ReadIdList(config, "objectIds"));
         foreach (var id in itemIds) objectIds.Add(id);
         AddMonsterAssets(monstersPath, outfitIds, objectIds);
+        AddMonsterAssets(appearancesPath, outfitIds, objectIds);
         var objectsByName = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
         var wantedNames = config["objectsByName"]?.AsArray().Select(n => n!.GetValue<string>()).ToHashSet(StringComparer.OrdinalIgnoreCase)
                           ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -141,6 +147,19 @@ internal static class Program
             }
         }
 
+        if (dryRun)
+        {
+            var availableOutfits = appearances.Outfit.Select(entry => entry.Id).ToHashSet();
+            var availableObjects = appearances.Object.Select(entry => entry.Id).ToHashSet();
+            Console.WriteLine(
+                $"dry run: {outfitIds.Count} outfits selected, "
+                + $"{outfitIds.Count(id => !availableOutfits.Contains(id))} missing");
+            Console.WriteLine(
+                $"dry run: {objectIds.Count} objects selected, "
+                + $"{objectIds.Count(id => !availableObjects.Contains(id))} missing");
+            return 0;
+        }
+
         manifest["outfits"] = ExportCategory(appearances.Outfit, outfitIds, "outfits", outDir, sheets);
         manifest["objects"] = ExportCategory(appearances.Object, objectIds, "objects", outDir, sheets, staticItems);
         manifest["effects"] = ExportCategory(appearances.Effect, ReadIdList(config, "effectIds"), "effects", outDir, sheets);
@@ -152,7 +171,7 @@ internal static class Program
 
         File.WriteAllText(Path.Combine(outDir, "manifest.json"), manifest.ToJsonString(new JsonSerializerOptions { WriteIndented = false }));
         Console.WriteLine($"manifest written to {Path.Combine(outDir, "manifest.json")}");
-        if (monstersPath is not null)
+        if (monstersPath is not null && !spritesOnly)
         {
             itemsOutPath ??= Path.Combine(Path.GetDirectoryName(Path.GetFullPath(monstersPath))!, "items.json");
             ExportItems(

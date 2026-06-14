@@ -314,6 +314,11 @@ As paredes usam só 3 variantes (pole/horizontal/vertical) — sem cantos, o con
 > 4 classes). Com isso, "nova waifu" deixa de exigir um kit inventado — vira **declarativa**:
 > escolher classe + outfit + raridade + stats-base + paleta. Por isso o esforço caiu de **M para
 > S**. **Não** crie kits novos por waifu (isso violaria T-52).
+>
+> **Tooling pronto (2026-06-13):** o **Outfit Studio** (aba Kaelis no admin) já oferece o seletor
+> de outfit/montaria + a paleta de recolor head/body/legs/feet + addons com preview animado —
+> hoje usado para *skins* autorais (`KaeliRegistry`/`kaeli-skins.json`); o mesmo painel é a base
+> visual natural para o passo "escolher outfit + paleta" desta task.
 
 **Contexto.** Outfits femininos já extraídos e ainda não usados: 140 (noblewoman), 150 (oriental),
 157 (beggar), 158 (shaman), 270 (jester), 279 (brotherhood), 288 (demonhunter).

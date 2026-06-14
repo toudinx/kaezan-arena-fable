@@ -6,7 +6,7 @@ namespace KaezanArenaFable.Api.Meta;
 /// Profundidade de Kaeli: presentes (afinidade), skins e maestria.
 /// Tudo meta — nunca roda dentro do tick.
 /// </summary>
-public sealed class KaeliService(AccountStore store, GameData data)
+public sealed class KaeliService(AccountStore store, GameData data, KaeliRegistry kaelis)
 {
     // ---- afinidade ----
 
@@ -71,7 +71,7 @@ public sealed class KaeliService(AccountStore store, GameData data)
 
     public object Gift(string waifuId, int itemId)
     {
-        var waifu = Waifus.ById.GetValueOrDefault(waifuId)
+        var waifu = kaelis.Find(waifuId)
                     ?? throw new ArgumentException("Kaeli desconhecida");
         if (!data.Items.TryGetValue(itemId, out var item))
             throw new ArgumentException("item desconhecido");
@@ -135,7 +135,7 @@ public sealed class KaeliService(AccountStore store, GameData data)
 
     public object SelectSkin(string waifuId, string skinId)
     {
-        var waifu = Waifus.ById.GetValueOrDefault(waifuId)
+        var waifu = kaelis.Find(waifuId)
                     ?? throw new ArgumentException("Kaeli desconhecida");
         var skin = waifu.Skins.FirstOrDefault(s => s.Id == skinId)
                    ?? throw new ArgumentException("skin não pertence a esta Kaeli");
@@ -155,7 +155,7 @@ public sealed class KaeliService(AccountStore store, GameData data)
 
     public object BuySkin(string waifuId, string skinId)
     {
-        var waifu = Waifus.ById.GetValueOrDefault(waifuId)
+        var waifu = kaelis.Find(waifuId)
                     ?? throw new ArgumentException("Kaeli desconhecida");
         var skin = waifu.Skins.FirstOrDefault(s => s.Id == skinId)
                    ?? throw new ArgumentException("skin não pertence a esta Kaeli");

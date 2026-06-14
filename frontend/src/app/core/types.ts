@@ -21,6 +21,42 @@ export interface SkinDef {
   feet: number;
   unlock: 'default' | 'affinity' | 'gold' | 'kaeros';
   unlockValue: number;
+  addons?: number;
+  mountLookType?: number;
+}
+
+/** Skin autoral criada no Outfit Studio do painel admin. */
+export interface KaeliSkinDefinition {
+  waifuId: string;
+  id: string;
+  name: string;
+  description: string;
+  lookType: number;
+  head: number;
+  body: number;
+  legs: number;
+  feet: number;
+  addons: number;
+  mountLookType: number;
+  unlock: 'default' | 'affinity' | 'gold' | 'kaeros';
+  unlockValue: number;
+}
+
+export interface KaeliAuthoringKaeli {
+  id: string;
+  name: string;
+  title: string;
+  rarity: number;
+  element: string;
+  classId: string;
+  defaultSkin: { lookType: number; head: number; body: number; legs: number; feet: number };
+}
+
+export interface KaeliAuthoringMetadata {
+  kaelis: KaeliAuthoringKaeli[];
+  unlockKinds: string[];
+  outfitColorCount: number;
+  affinityMaxLevel: number;
 }
 
 export interface WaifuDef {

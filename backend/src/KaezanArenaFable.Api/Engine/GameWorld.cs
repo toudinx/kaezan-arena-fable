@@ -1903,8 +1903,10 @@ public sealed class GameWorld
             Player.FromX, Player.FromY, Player.StepDurMs, Player.StepStartMs,
             new OutfitDto(Loadout.Skin.LookType, Loadout.Skin.Head, Loadout.Skin.Body,
                 Loadout.Skin.Legs, Loadout.Skin.Feet,
-                Ascension >= GameConfig.AddonTwoAscension ? 3 : Ascension >= GameConfig.AddonOneAscension ? 1 : 0,
-                EquipmentStats.MountLookType),
+                Loadout.Skin.Addons > 0
+                    ? Loadout.Skin.Addons
+                    : Ascension >= GameConfig.AddonTwoAscension ? 3 : Ascension >= GameConfig.AddonOneAscension ? 1 : 0,
+                Loadout.Skin.MountLookType > 0 ? Loadout.Skin.MountLookType : EquipmentStats.MountLookType),
             Player.TargetId, _gauge, skills,
             PlayerClass.Id, PlayerClass.Name,
             CurrentStance.Id, CurrentStance.Name, CurrentStance.Element, PlayerClass.CanToggleStance,

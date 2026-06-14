@@ -23,7 +23,7 @@ internal static class Program
     private static int Main(string[] args)
     {
         string? thingsDir = null, outDir = null, configPath = null, monstersPath = null, appearancesPath = null, itemsOutPath = null;
-        string? itemsXmlPath = null, mountsXmlPath = null, staticItemsDir = null;
+        string? itemsXmlPath = null, mountsXmlPath = null, outfitsXmlPath = null, staticItemsDir = null;
         var dumpNames = false;
         var itemsOnly = false;
         var equipment = false;
@@ -41,6 +41,7 @@ internal static class Program
                 case "--items-out": itemsOutPath = args[++i]; break;
                 case "--items-xml": itemsXmlPath = args[++i]; break;
                 case "--mounts-xml": mountsXmlPath = args[++i]; break;
+                case "--outfits-xml": outfitsXmlPath = args[++i]; break;
                 case "--items-only": itemsOnly = true; break;
                 case "--equipment": equipment = true; break;
                 case "--dry-run": dryRun = true; break;
@@ -55,7 +56,7 @@ internal static class Program
             Console.Error.WriteLine(
                 "usage: AssetExtractor --things <things/1500 dir> --out <output dir> " +
                 "[--config content-config.json] [--monsters monsters.json] [--monster-appearances monster-appearances.json] " +
-                "[--items-out items.json] [--items-xml items.xml] [--mounts-xml mounts.xml] " +
+                "[--items-out items.json] [--items-xml items.xml] [--mounts-xml mounts.xml] [--outfits-xml outfits.xml] " +
                 "[--items-only] [--equipment] [--dry-run] [--sprites-only] " +
                 "[--static-items <legacy assets dir>] [--dump-names]");
             return 1;
@@ -113,6 +114,10 @@ internal static class Program
 
         var outfitIds = new SortedSet<uint>(ReadIdList(config, "outfitIds"));
         foreach (var mountId in mountIds) outfitIds.Add(mountId);
+        var outfitCatalog = LoadOutfitCatalog(outfitsXmlPath);
+        foreach (var outfit in outfitCatalog) outfitIds.Add(outfit.LookType);
+        if (outfitCatalog.Count > 0)
+            Console.WriteLine($"outfits.xml: {outfitCatalog.Count} player outfits added to selection");
         var objectIds = new SortedSet<uint>(ReadIdList(config, "objectIds"));
         foreach (var id in itemIds) objectIds.Add(id);
         AddMonsterAssets(monstersPath, outfitIds, objectIds);
@@ -171,6 +176,26 @@ internal static class Program
 
         File.WriteAllText(Path.Combine(outDir, "manifest.json"), manifest.ToJsonString(new JsonSerializerOptions { WriteIndented = false }));
         Console.WriteLine($"manifest written to {Path.Combine(outDir, "manifest.json")}");
+        if (outfitCatalog.Count > 0)
+        {
+            // authoritative player-outfit catalog (lookType -> name + gender) for the Outfit Studio;
+            // only entries that actually exist in this asset version are emitted
+            var availableOutfits = appearances.Outfit.Select(o => o.Id).ToHashSet();
+            var catalogNode = new JsonArray();
+            foreach (var outfit in outfitCatalog
+                         .Where(o => availableOutfits.Contains(o.LookType))
+                         .OrderBy(o => o.LookType))
+                catalogNode.Add(new JsonObject
+                {
+                    ["lookType"] = outfit.LookType,
+                    ["name"] = outfit.Name,
+                    ["gender"] = outfit.Gender
+                });
+            File.WriteAllText(
+                Path.Combine(outDir, "outfit-catalog.json"),
+                catalogNode.ToJsonString(new JsonSerializerOptions { WriteIndented = false }));
+            Console.WriteLine($"outfit-catalog.json written: {catalogNode.Count} entries");
+        }
         if (monstersPath is not null && !spritesOnly)
         {
             itemsOutPath ??= Path.Combine(Path.GetDirectoryName(Path.GetFullPath(monstersPath))!, "items.json");
@@ -294,6 +319,24 @@ internal static class Program
     private sealed record XmlItem(
         string Name, string? Slot, string? WeaponType, int Attack, int Armor, int Defense);
     private sealed record MountItem(uint LookType, string Name, int Speed);
+    private sealed record OutfitCatalogItem(uint LookType, string Name, string Gender);
+
+    /// <summary>Reads Canary outfits.xml (type 0 = female, type 1 = male) into a deduped catalog.</summary>
+    private static List<OutfitCatalogItem> LoadOutfitCatalog(string? path)
+    {
+        if (path is null || !File.Exists(path)) return [];
+        var items = new List<OutfitCatalogItem>();
+        var seen = new HashSet<uint>();
+        foreach (var outfit in XDocument.Load(path).Root!.Elements("outfit"))
+        {
+            if (!uint.TryParse(outfit.Attribute("looktype")?.Value, out var lookType)) continue;
+            if (!seen.Add(lookType)) continue;
+            var name = outfit.Attribute("name")?.Value ?? $"LookType {lookType}";
+            var gender = outfit.Attribute("type")?.Value == "1" ? "male" : "female";
+            items.Add(new OutfitCatalogItem(lookType, name, gender));
+        }
+        return items;
+    }
 
     private static Dictionary<uint, XmlItem> LoadXmlItems(string? path)
     {

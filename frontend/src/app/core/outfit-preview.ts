@@ -40,17 +40,12 @@ export class OutfitPreview implements AfterViewInit, OnDestroy {
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const scale = this.size() / 48;
     const dir = this.animate() ? [2, 1, 0, 3][Math.floor(now / 1400) % 4] : 2;
-    const offset = (this.size() - 32 * scale) / 2;
-    ctx.save();
-    ctx.translate(offset, offset);
-    this.assets.drawOutfit(
-      ctx, this.lookType(), 0, 0, scale, dir, this.animate(), now,
+    this.assets.drawOutfitFitted(
+      ctx, this.lookType(), this.size(), dir, this.animate(), now,
       this.head(), this.body(), this.legs(), this.feet(), this.addons(),
       this.mountLookType(),
     );
-    ctx.restore();
 
     this.raf = requestAnimationFrame(this.loop);
   };

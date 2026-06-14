@@ -52,6 +52,7 @@ export class AssetsService {
   private manifest: TibiaManifest | null = null;
   private images = new Map<string, HTMLImageElement>();
   private coloredOutfits = new Map<string, HTMLCanvasElement>();
+  private outfitBBoxes = new Map<number, { minX: number; minY: number; bw: number; bh: number } | null>();
   private loading: Promise<void> | null = null;
 
   async load(): Promise<void> {
@@ -323,6 +324,78 @@ export class AssetsService {
       if (index >= group.start + group.count) continue;
       this.drawCell(ctx, source, entry, index, dx, dy, scale);
     }
+  }
+
+  /**
+   * Measures the opaque bounding box of an outfit's south idle frame (cached per lookType).
+   * Sprites are stored in 32px or 64px cells anchored bottom-right of a 32px tile, so the actual
+   * creature can sit anywhere in the cell; the bbox lets previews scale/center on real pixels.
+   * Returns null until the atlas image is loaded (caller should retry / fall back).
+   */
+  private measureOutfitBBox(lookType: number): { minX: number; minY: number; bw: number; bh: number } | null {
+    const cached = this.outfitBBoxes.get(lookType);
+    if (cached !== undefined) return cached;
+    const entry = this.entry('outfits', lookType);
+    if (!entry) { this.outfitBBoxes.set(lookType, null); return null; }
+    if (!this.imageSync(entry.file)) return null; // atlas not loaded yet — retry next frame
+
+    const { cellW, cellH } = entry;
+    const canvas = document.createElement('canvas');
+    canvas.width = cellW;
+    canvas.height = cellH;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.imageSmoothingEnabled = false;
+    // south idle frame, no mount/recolor (alpha is colour-independent), cell anchored at (0,0)
+    this.drawOutfit(ctx, lookType, cellW - 32, cellH - 32, 1, 2, false, 0);
+    const data = ctx.getImageData(0, 0, cellW, cellH).data;
+    let minX = cellW, minY = cellH, maxX = -1, maxY = -1;
+    for (let y = 0; y < cellH; y++) {
+      for (let x = 0; x < cellW; x++) {
+        if (data[(y * cellW + x) * 4 + 3] > 8) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < 0) return null; // nothing drawn yet (image still decoding) — retry, do not cache
+    const bbox = { minX, minY, bw: maxX - minX + 1, bh: maxY - minY + 1 };
+    this.outfitBBoxes.set(lookType, bbox);
+    return bbox;
+  }
+
+  /**
+   * Draws an outfit scaled and centered to fit a square box of `boxSize` px — for static previews
+   * and thumbnails. Unlike {@link drawOutfit} (which anchors to a 32px game tile and lets larger
+   * 2×2 creatures like Cyclops or A Greedy Eye spill upward), this centres on the sprite's real
+   * pixels and shrinks oversized creatures so they stay inside the box. 1-tile creatures keep their
+   * legacy size (box/48); only content larger than a tile is scaled down.
+   */
+  drawOutfitFitted(
+    ctx: CanvasRenderingContext2D, lookType: number, boxSize: number,
+    dir: number, moving: boolean, phaseTimeMs: number,
+    head = 0, body = 0, legs = 0, feet = 0, addons = 0, mountLookType = 0,
+  ): void {
+    const entry = this.entry('outfits', lookType);
+    if (!entry) return;
+    const { cellW, cellH } = entry;
+    const bbox = this.measureOutfitBBox(lookType);
+    let scale: number;
+    let dx: number;
+    let dy: number;
+    if (bbox) {
+      scale = Math.min(boxSize / 48, (boxSize / Math.max(bbox.bw, bbox.bh)) * 0.92);
+      dx = (boxSize - bbox.bw * scale) / 2 - bbox.minX * scale + (cellW - 32) * scale;
+      dy = (boxSize - bbox.bh * scale) / 2 - bbox.minY * scale + (cellH - 32) * scale;
+    } else {
+      // legacy fallback until the bbox can be measured (atlas still decoding)
+      scale = boxSize / 48;
+      dx = (boxSize - 32 * scale) / 2;
+      dy = (boxSize - 32 * scale) / 2;
+    }
+    this.drawOutfit(ctx, lookType, dx, dy, scale, dir, moving, phaseTimeMs, head, body, legs, feet, addons, mountLookType);
   }
 
   /** Draws an object (item/tile). For grounds, pass tileX/tileY for pattern variation. */

@@ -3,8 +3,9 @@ import { ApiService } from '../../core/api.service';
 import { DungeonTier, MonsterCatalogEntry } from '../../core/types';
 import { CreaturePreview } from './creature-preview';
 import { MonsterEditor } from './monster-editor';
+import { KaeliStudio } from './kaeli-studio';
 
-type AdminMode = 'dungeons' | 'monsters';
+type AdminMode = 'dungeons' | 'monsters' | 'kaelis';
 type CatalogMode = 'monsters' | 'bosses';
 type MobKind = 'commonMobs' | 'eliteMobs';
 type DropZone = MobKind | 'boss';
@@ -12,7 +13,7 @@ type DropZone = MobKind | 'boss';
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CreaturePreview, MonsterEditor],
+  imports: [CreaturePreview, MonsterEditor, KaeliStudio],
   template: `
     <div class="page">
       <header class="titlebar">
@@ -25,6 +26,7 @@ type DropZone = MobKind | 'boss';
           <div class="tabs page-tabs">
             <button type="button" [class.active]="pageMode() === 'dungeons'" (click)="pageMode.set('dungeons')">Dungeons</button>
             <button type="button" [class.active]="pageMode() === 'monsters'" (click)="pageMode.set('monsters')">Monstros</button>
+            <button type="button" [class.active]="pageMode() === 'kaelis'" (click)="pageMode.set('kaelis')">Kaelis</button>
           </div>
           @if (pageMode() === 'dungeons') {
             <button class="secondary" type="button" [disabled]="busy()" (click)="reset()">Recarregar</button>
@@ -37,6 +39,8 @@ type DropZone = MobKind | 'boss';
 
       @if (pageMode() === 'monsters') {
         <app-monster-editor />
+      } @else if (pageMode() === 'kaelis') {
+        <app-kaeli-studio />
       } @else {
         @if (status(); as state) {
           <div class="status" [class.ok]="state.kind === 'ok'" [class.err]="state.kind === 'err'">{{ state.msg }}</div>

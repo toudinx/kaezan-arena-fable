@@ -3,6 +3,8 @@ import {
   Account,
   Catalog,
   DungeonTier,
+  KaeliAuthoringMetadata,
+  KaeliSkinDefinition,
   MonsterAuthoringMetadata,
   MonsterDefinition,
   PullResponse,
@@ -74,6 +76,36 @@ export class ApiService {
 
   async deleteAuthoredMonster(id: string): Promise<void> {
     await this.request('DELETE', `/admin/content/monsters/${encodeURIComponent(id)}`);
+    await this.reloadCatalog();
+  }
+
+  // ---- admin: Outfit Studio (skins de Kaeli) ----
+  async getKaeliAuthoringMetadata(): Promise<KaeliAuthoringMetadata> {
+    return this.request<KaeliAuthoringMetadata>('GET', '/admin/kaeli-authoring');
+  }
+
+  async getAuthoredKaeliSkins(): Promise<KaeliSkinDefinition[]> {
+    return this.request<KaeliSkinDefinition[]>('GET', '/admin/content/kaeli-skins');
+  }
+
+  async createKaeliSkin(skin: KaeliSkinDefinition): Promise<KaeliSkinDefinition> {
+    const saved = await this.request<KaeliSkinDefinition>('POST', '/admin/content/kaeli-skins', skin);
+    await this.reloadCatalog();
+    return saved;
+  }
+
+  async updateKaeliSkin(skin: KaeliSkinDefinition): Promise<KaeliSkinDefinition> {
+    const saved = await this.request<KaeliSkinDefinition>(
+      'PUT',
+      `/admin/content/kaeli-skins/${encodeURIComponent(skin.id)}`,
+      skin,
+    );
+    await this.reloadCatalog();
+    return saved;
+  }
+
+  async deleteKaeliSkin(id: string): Promise<void> {
+    await this.request('DELETE', `/admin/content/kaeli-skins/${encodeURIComponent(id)}`);
     await this.reloadCatalog();
   }
 

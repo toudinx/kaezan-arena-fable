@@ -11,6 +11,7 @@ public sealed class GameHub(
     RunManager runs,
     GameData data,
     MonsterRegistry monsters,
+    KaeliRegistry kaelis,
     AccountStore store,
     ContentStore content) : Hub
 {
@@ -49,7 +50,7 @@ public sealed class GameHub(
         if (accountLevel < tierDef.RequiredAccountLevel)
             throw new HubException($"requer conta nível {tierDef.RequiredAccountLevel}");
 
-        var waifu = Waifus.ById.GetValueOrDefault(waifuId) ?? Waifus.ById[Waifus.StarterWaifuId];
+        var waifu = kaelis.Find(waifuId) ?? kaelis.ById[Waifus.StarterWaifuId];
         var runSeed = seed ?? Random.Shared.NextInt64(1, long.MaxValue);
 
         var skin = skinId is not null

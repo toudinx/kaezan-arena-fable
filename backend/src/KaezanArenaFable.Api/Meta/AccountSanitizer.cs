@@ -10,7 +10,7 @@ namespace KaezanArenaFable.Api.Meta;
 /// </summary>
 public static class AccountSanitizer
 {
-    public static bool Sanitize(AccountState state, GameData data)
+    public static bool Sanitize(AccountState state, GameData data, KaeliRegistry kaelis)
     {
         var changed = false;
 
@@ -56,16 +56,18 @@ public static class AccountSanitizer
             changed = true;
         }
 
-        // skins órfãs ou que não pertencem mais à Kaeli selecionada
-        var badSkins = state.OwnedSkins.Where(id => !Waifus.SkinById.ContainsKey(id)).ToList();
+        // skins órfãs ou que não pertencem mais à Kaeli selecionada (inclui skins autorais)
+        var skinById = kaelis.SkinById;
+        var skinOwner = kaelis.SkinOwner;
+        var badSkins = state.OwnedSkins.Where(id => !skinById.ContainsKey(id)).ToList();
         foreach (var skinId in badSkins)
         {
             state.OwnedSkins.Remove(skinId);
             changed = true;
         }
         var badSelections = state.SelectedSkins
-            .Where(kv => !Waifus.SkinById.ContainsKey(kv.Value)
-                         || Waifus.SkinOwner.GetValueOrDefault(kv.Value) != kv.Key)
+            .Where(kv => !skinById.ContainsKey(kv.Value)
+                         || skinOwner.GetValueOrDefault(kv.Value) != kv.Key)
             .Select(kv => kv.Key)
             .ToList();
         foreach (var waifuId in badSelections)

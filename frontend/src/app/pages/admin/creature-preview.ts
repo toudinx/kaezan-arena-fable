@@ -43,16 +43,10 @@ export class CreaturePreview implements AfterViewInit {
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const scale = this.size() / 48;
-    const offset = (this.size() - 32 * scale) / 2;
-    ctx.save();
-    ctx.translate(offset, offset);
-    this.assets.drawOutfit(
+    this.assets.drawOutfitFitted(
       ctx,
       creature.outfit.lookType,
-      0,
-      0,
-      scale,
+      this.size(),
       2,
       false,
       0,
@@ -62,6 +56,5 @@ export class CreaturePreview implements AfterViewInit {
       creature.outfit.feet,
       creature.outfit.addons,
     );
-    ctx.restore();
   }
 }

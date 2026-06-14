@@ -4,7 +4,7 @@ using KaezanArenaFable.Api.Domain;
 namespace KaezanArenaFable.Api.Content;
 
 /// <summary>
-/// Conteúdo de jogo EDITÁVEL pelo painel admin (arenas/tiers por enquanto; Kaelis e sets virão).
+/// Conteúdo de jogo EDITÁVEL pelo painel admin (tiers, monstros autorais e skins de Kaeli).
 /// Mora em JSON gravável (`.data/content/`), seedado a partir dos defaults em código
 /// (<see cref="GameConfig.Tiers"/>) na primeira execução. Diferente de <see cref="GameData"/>,
 /// que é conteúdo somente-leitura (monsters.json/items.json), e de AccountStore, que é estado de
@@ -20,9 +20,11 @@ public sealed class ContentStore
 
     private readonly string _tiersPath;
     private readonly string _monstersPath;
+    private readonly string _kaeliSkinsPath;
     private readonly object _lock = new();
     private List<DungeonTier> _tiers;
     private List<MonsterDefinition> _monsters;
+    private List<KaeliSkinDefinition> _kaeliSkins;
 
     public ContentStore(IWebHostEnvironment env)
     {
@@ -30,8 +32,10 @@ public sealed class ContentStore
         Directory.CreateDirectory(dir);
         _tiersPath = Path.Combine(dir, "tiers.json");
         _monstersPath = Path.Combine(dir, "monsters.json");
+        _kaeliSkinsPath = Path.Combine(dir, "kaeli-skins.json");
         _tiers = LoadTiers();
         _monsters = LoadMonsters();
+        _kaeliSkins = LoadKaeliSkins();
     }
 
     private List<DungeonTier> LoadTiers()
@@ -80,6 +84,29 @@ public sealed class ContentStore
 
     private void WriteMonsters(List<MonsterDefinition> monsters) =>
         File.WriteAllText(_monstersPath, JsonSerializer.Serialize(monsters, JsonOpts));
+
+    private List<KaeliSkinDefinition> LoadKaeliSkins()
+    {
+        if (!File.Exists(_kaeliSkinsPath))
+        {
+            WriteKaeliSkins([]);
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<KaeliSkinDefinition>>(
+                       File.ReadAllText(_kaeliSkinsPath), JsonOpts)
+                   ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private void WriteKaeliSkins(List<KaeliSkinDefinition> skins) =>
+        File.WriteAllText(_kaeliSkinsPath, JsonSerializer.Serialize(skins, JsonOpts));
 
     public IReadOnlyList<DungeonTier> Tiers
     {
@@ -148,6 +175,50 @@ public sealed class ContentStore
     private static bool Matches(string reference, MonsterDefinition monster) =>
         reference.Equals(monster.Id, StringComparison.OrdinalIgnoreCase)
         || reference.Equals(monster.Name, StringComparison.OrdinalIgnoreCase);
+
+    // ---- Kaeli skins (Outfit Studio) ----
+
+    public IReadOnlyList<KaeliSkinDefinition> AuthoredKaeliSkins
+    {
+        get { lock (_lock) return _kaeliSkins.ToList(); }
+    }
+
+    public KaeliSkinDefinition CreateKaeliSkin(KaeliSkinDefinition definition)
+    {
+        lock (_lock)
+        {
+            if (_kaeliSkins.Any(s => s.Id.Equals(definition.Id, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException($"id ja existe: {definition.Id}");
+            _kaeliSkins.Add(definition);
+            WriteKaeliSkins(_kaeliSkins);
+            return definition;
+        }
+    }
+
+    public KaeliSkinDefinition UpdateKaeliSkin(string id, KaeliSkinDefinition definition)
+    {
+        lock (_lock)
+        {
+            var index = _kaeliSkins.FindIndex(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+            if (index < 0) throw new KeyNotFoundException($"skin autoral desconhecida: {id}");
+            _kaeliSkins[index] = definition;
+            WriteKaeliSkins(_kaeliSkins);
+            return definition;
+        }
+    }
+
+    public KaeliSkinDefinition DeleteKaeliSkin(string id)
+    {
+        lock (_lock)
+        {
+            var index = _kaeliSkins.FindIndex(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+            if (index < 0) throw new KeyNotFoundException($"skin autoral desconhecida: {id}");
+            var skin = _kaeliSkins[index];
+            _kaeliSkins.RemoveAt(index);
+            WriteKaeliSkins(_kaeliSkins);
+            return skin;
+        }
+    }
 
     /// <summary>
     /// Substitui o conjunto inteiro de tiers (o editor envia os 5 de uma vez) e persiste.

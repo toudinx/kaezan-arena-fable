@@ -46,6 +46,22 @@ deduplicadas em 758 outfits, com filtros de monstro/boss, classe e placeholder l
 Kaezan podem ser reabertos, duplicados e excluídos; a exclusão é recusada enquanto a criatura ainda
 estiver referenciada por alguma dungeon.
 
+A aba **Kaelis** é o **Outfit Studio**: cria *skins* autorais para as Kaelis do roster, no espírito
+da janela de outfit do Tibia. A biblioteca classifica os lookTypes em **Feminino / Masculino /
+Monstros / Bosses / Todos** (com nome real e contadores por categoria): os outfits de jogador vêm de
+`assets/tibia/outfit-catalog.json` (gerado de `outfits.xml` do Canary — nome + gênero por lookType,
+248 entradas; a biblioteca mostra os que estão extraídos no manifesto), e monstros/bosses das
+aparências nomeadas do Canary. Assim uma Kaeli pode vestir tanto um outfit de jogador (masculino ou
+feminino) quanto o visual de um monstro ou boss. A montaria fica num seletor à parte no estúdio
+(montarias não entram na lista de outfits). Recolorizam-se as quatro regiões (cabeça/corpo/pernas/
+pés) com a paleta HSI de
+133 cores, ativam-se os addons 1/2 e o preview anima/gira a Kaeli em tempo real. Cada skin é
+atribuída a uma Kaeli e a uma regra de desbloqueio (padrão/afinidade/ouro/Kaeros). As skins são
+persistidas em `.data/content/kaeli-skins.json` e mescladas ao roster estático pelo `KaeliRegistry`
+(catálogo, seleção/compra de skin e sanitização passam a enxergá-las), ficando imediatamente
+equipáveis no Hub e dentro das runs. Addons e montaria fixados na skin sobrescrevem o padrão
+(addons por ascensão, montaria por equipamento).
+
 ### Persistência MySQL opcional
 
 Para usar o MySQL/MariaDB do XAMPP, configure a connection string antes de iniciar o backend:
@@ -207,7 +223,8 @@ dotnet run -- --things "C:\Kaezan\kaezan\otclient-4.0\data\things\1500" `
   --monster-appearances "..\..\backend\src\KaezanArenaFable.Api\Data\monster-appearances.json" `
   --items-out "..\..\backend\src\KaezanArenaFable.Api\Data\items.json" `
   --items-xml "C:\Kaezan\kaezan\canary-3.4.1\data\items\items.xml" `
-  --mounts-xml "C:\Kaezan\kaezan\canary-3.4.1\data\XML\mounts.xml"
+  --mounts-xml "C:\Kaezan\kaezan\canary-3.4.1\data\XML\mounts.xml" `
+  --outfits-xml "C:\Kaezan\kaezan\canary-3.4.1\data\XML\outfits.xml"
 ```
 
 O extractor decodifica o formato moderno do Tibia (catalog-content.json + appearances.dat
@@ -218,6 +235,11 @@ de 133 cores do Tibia. O mesmo comando cruza `items.xml` para gerar slots e atri
 além dos itens sintéticos de montaria usados pelo equipamento. O modo `--equipment` inclui
 automaticamente objetos cujo `clothes.slot` corresponde a helmet, armor, weapon, necklace ou
 ring; legs, feet e backpack permanecem fora do pacote.
+
+`--outfits-xml` extrai todos os outfits de jogador listados em `outfits.xml` do Canary (ambos os
+gêneros) e gera `outfit-catalog.json` (lookType → nome + gênero) ao lado do manifest — é a fonte
+que o Outfit Studio usa para as categorias Feminino/Masculino com nomes reais. Sem esse argumento,
+só os `outfitIds` curados em `content-config.json` são extraídos.
 
 `--static-items` é uma fonte opcional de importação: para objetos simples de um único frame,
 o extractor normaliza os thumbnails antigos em células transparentes ancoradas no canto

@@ -17,11 +17,15 @@ public sealed record TraitDef(
 /// <summary>
 /// One outfit a Kaeli can wear (the in-game "skin"). Unlock: "default" (sempre),
 /// "affinity" (UnlockValue = nível), "gold" / "kaeros" (UnlockValue = preço).
+/// Addons (bitmask 0..3) e MountLookType são opcionais: skins autorais (Outfit Studio) podem
+/// fixar addons/montaria; quando 0 o jogo cai no comportamento padrão (addons por ascensão,
+/// montaria por equipamento). Defaults mantêm os construtores posicionais do roster estático.
 /// </summary>
 public sealed record SkinDef(
     string Id, string Name, string Description,
     int LookType, int Head, int Body, int Legs, int Feet,
-    string Unlock, int UnlockValue);
+    string Unlock, int UnlockValue,
+    int Addons = 0, int MountLookType = 0);
 
 /// <summary>
 /// A Kaeli: identidade (lore/personalidade), trait de assinatura, skins e gostos de presente.

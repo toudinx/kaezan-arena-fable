@@ -13,9 +13,10 @@ public static class MetaEndpoints
         api.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
         // ---- catalog (static game data for the client) ----
-        api.MapGet("/catalog", (GameData data, ContentStore content, MonsterRegistry registry) => Results.Ok(new
+        api.MapGet("/catalog", (
+            GameData data, ContentStore content, MonsterRegistry registry, KaeliRegistry kaelis) => Results.Ok(new
         {
-            waifus = Waifus.All,
+            waifus = kaelis.All,
             classes = Classes.All,
             skills = Classes.Skills.Values,
             cards = Cards.All,
@@ -362,6 +363,72 @@ public static class MetaEndpoints
 
             return Results.Ok(content.ReplaceTiers(tiers));
         });
+
+        // ---- admin: Outfit Studio (skins autorais de Kaeli) ----
+
+        // metadados de apoio: roster (pra atribuir a skin), regras de desbloqueio e tamanho da paleta
+        admin.MapGet("/kaeli-authoring", () => Results.Ok(new
+        {
+            kaelis = Waifus.All.Select(w => new
+            {
+                w.Id,
+                w.Name,
+                w.Title,
+                w.Rarity,
+                w.Element,
+                w.ClassId,
+                defaultSkin = new { w.DefaultSkin.LookType, w.DefaultSkin.Head, w.DefaultSkin.Body, w.DefaultSkin.Legs, w.DefaultSkin.Feet }
+            }),
+            unlockKinds = KaeliAuthoring.UnlockKinds,
+            outfitColorCount = KaeliAuthoring.OutfitColorCount,
+            affinityMaxLevel = GameConfig.AffinityMaxLevel
+        }));
+
+        admin.MapGet("/content/kaeli-skins", (ContentStore content) => Results.Ok(content.AuthoredKaeliSkins));
+
+        admin.MapPost("/content/kaeli-skins", (KaeliSkinDefinition request, ContentStore content, KaeliRegistry kaelis) =>
+        {
+            var definition = KaeliAuthoring.Normalize(request);
+            var error = ValidateKaeliSkin(definition, kaelis);
+            if (error is not null) return Results.BadRequest(new { error });
+            try { return Results.Ok(content.CreateKaeliSkin(definition)); }
+            catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+        });
+
+        admin.MapPut("/content/kaeli-skins/{id}", (
+            string id, KaeliSkinDefinition request, ContentStore content, KaeliRegistry kaelis) =>
+        {
+            var definition = KaeliAuthoring.Normalize(request, id);
+            var error = ValidateKaeliSkin(definition, kaelis, id);
+            if (error is not null) return Results.BadRequest(new { error });
+            try { return Results.Ok(content.UpdateKaeliSkin(id, definition)); }
+            catch (KeyNotFoundException ex) { return Results.NotFound(new { error = ex.Message }); }
+        });
+
+        admin.MapDelete("/content/kaeli-skins/{id}", (string id, ContentStore content) =>
+        {
+            try
+            {
+                var removed = content.DeleteKaeliSkin(id);
+                return Results.Ok(new { removed.Id, removed.Name });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        });
+    }
+
+    private static string? ValidateKaeliSkin(
+        KaeliSkinDefinition definition, KaeliRegistry kaelis, string? currentId = null)
+    {
+        var error = KaeliAuthoring.Validate(definition);
+        if (error is not null) return error;
+        // a skin não pode colidir com nenhuma skin estática ou autoral existente (exceto ela mesma)
+        if (kaelis.SkinById.TryGetValue(definition.Id, out _)
+            && !definition.Id.Equals(currentId, StringComparison.OrdinalIgnoreCase))
+            return $"id de skin ja existe: {definition.Id}";
+        return null;
     }
 
     private static string? ValidateMonsterDefinition(

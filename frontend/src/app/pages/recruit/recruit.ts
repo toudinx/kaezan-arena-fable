@@ -16,7 +16,8 @@ import { PullResult, RARITY_COLORS } from '../../core/types';
             <div class="art">
               @if (featuredWaifu(b.featuredWaifuId); as fw) {
                 <app-outfit-preview [lookType]="fw.lookType" [head]="fw.head" [body]="fw.body"
-                  [legs]="fw.legs" [feet]="fw.feet" [addons]="3" [size]="140" />
+                  [legs]="fw.legs" [feet]="fw.feet" [addons]="fw.skins[0].addons ?? 0"
+                  [mountLookType]="fw.skins[0].mountLookType ?? 0" [size]="140" />
                 <div class="feat-name" [style.color]="rarityColor(5)">{{ fw.name }} ★★★★★</div>
               } @else {
                 <div class="standard-art">✦</div>
@@ -58,7 +59,8 @@ import { PullResult, RARITY_COLORS } from '../../core/types';
               <div class="inner">
                 @if (waifu(r.waifuId); as w) {
                   <app-outfit-preview [lookType]="w.lookType" [head]="w.head" [body]="w.body"
-                    [legs]="w.legs" [feet]="w.feet" [size]="80" [animate]="false" />
+                    [legs]="w.legs" [feet]="w.feet" [addons]="w.skins[0].addons ?? 0"
+                    [mountLookType]="w.skins[0].mountLookType ?? 0" [size]="80" [animate]="false" />
                 }
                 <div class="stars" [style.color]="rarityColor(r.rarity)">{{ '★'.repeat(r.rarity) }}</div>
                 <div class="name">{{ r.name }}</div>

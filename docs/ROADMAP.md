@@ -411,6 +411,9 @@ mobs na tela (medir com `performance.now()` no loop e logar média no console em
 ### [ ] T-22 — Minimapa com fog of war
 **P2 · S · frontend**
 
+> **Absorvida por G-04** (`docs/GAMEPLAY_ROADMAP.md`): o fog of war ali cobre mapa principal
+> + minimapa com tracking de exploração no backend. Faça G-04 em vez desta; não fazer as duas.
+
 **Instruções.** `drawMinimap` hoje revela o mapa inteiro. Mantenha um `Set` de tiles vistos
 (raio 9 do player, atualizado por snapshot); desenhe não-visitados em preto, visitados em
 marrom, e POIs só depois de vistos. Reset por andar.

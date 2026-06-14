@@ -21,10 +21,12 @@ public sealed class ContentStore
     private readonly string _tiersPath;
     private readonly string _monstersPath;
     private readonly string _kaeliSkinsPath;
+    private readonly string _authoredItemsPath;
     private readonly object _lock = new();
     private List<DungeonTier> _tiers;
     private List<MonsterDefinition> _monsters;
     private List<KaeliSkinDefinition> _kaeliSkins;
+    private List<AuthoredItemDefinition> _authoredItems;
 
     public ContentStore(IWebHostEnvironment env)
     {
@@ -33,9 +35,11 @@ public sealed class ContentStore
         _tiersPath = Path.Combine(dir, "tiers.json");
         _monstersPath = Path.Combine(dir, "monsters.json");
         _kaeliSkinsPath = Path.Combine(dir, "kaeli-skins.json");
+        _authoredItemsPath = Path.Combine(dir, "authored-items.json");
         _tiers = LoadTiers();
         _monsters = LoadMonsters();
         _kaeliSkins = LoadKaeliSkins();
+        _authoredItems = LoadAuthoredItems();
     }
 
     private List<DungeonTier> LoadTiers()
@@ -107,6 +111,30 @@ public sealed class ContentStore
 
     private void WriteKaeliSkins(List<KaeliSkinDefinition> skins) =>
         File.WriteAllText(_kaeliSkinsPath, JsonSerializer.Serialize(skins, JsonOpts));
+
+    private List<AuthoredItemDefinition> LoadAuthoredItems()
+    {
+        if (!File.Exists(_authoredItemsPath))
+        {
+            WriteAuthoredItems([]);
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<AuthoredItemDefinition>>(
+                       File.ReadAllText(_authoredItemsPath), JsonOpts)
+                   ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private void WriteAuthoredItems(IEnumerable<AuthoredItemDefinition> items) =>
+        File.WriteAllText(_authoredItemsPath,
+            JsonSerializer.Serialize(items.OrderBy(item => item.ItemId).ToList(), JsonOpts));
 
     public IReadOnlyList<DungeonTier> Tiers
     {
@@ -217,6 +245,54 @@ public sealed class ContentStore
             _kaeliSkins.RemoveAt(index);
             WriteKaeliSkins(_kaeliSkins);
             return skin;
+        }
+    }
+
+    // ---- itens autorais (Item Studio) ----
+
+    public IReadOnlyList<AuthoredItemDefinition> AuthoredItems
+    {
+        get { lock (_lock) return _authoredItems.ToList(); }
+    }
+
+    /// <summary>Cria um item Kaezan com ID reservado, mantendo a fonte Canary imutavel.</summary>
+    public AuthoredItemDefinition CreateAuthoredItem(AuthoredItemDefinition definition)
+    {
+        lock (_lock)
+        {
+            var nextId = _authoredItems.Count == 0
+                ? GameConfig.AuthoredItemIdBase
+                : Math.Max(GameConfig.AuthoredItemIdBase, _authoredItems.Max(item => item.ItemId) + 1);
+            var created = definition with { ItemId = nextId };
+            _authoredItems.Add(created);
+            WriteAuthoredItems(_authoredItems);
+            return created;
+        }
+    }
+
+    public AuthoredItemDefinition UpdateAuthoredItem(int itemId, AuthoredItemDefinition definition)
+    {
+        lock (_lock)
+        {
+            var index = _authoredItems.FindIndex(item => item.ItemId == itemId);
+            if (index < 0) throw new KeyNotFoundException($"item autoral desconhecido: {itemId}");
+            var updated = definition with { ItemId = itemId };
+            _authoredItems[index] = updated;
+            WriteAuthoredItems(_authoredItems);
+            return updated;
+        }
+    }
+
+    public AuthoredItemDefinition DeleteAuthoredItem(int itemId)
+    {
+        lock (_lock)
+        {
+            var index = _authoredItems.FindIndex(item => item.ItemId == itemId);
+            if (index < 0) throw new KeyNotFoundException($"item autoral desconhecido: {itemId}");
+            var removed = _authoredItems[index];
+            _authoredItems.RemoveAt(index);
+            WriteAuthoredItems(_authoredItems);
+            return removed;
         }
     }
 

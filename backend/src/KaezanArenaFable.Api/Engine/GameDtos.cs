@@ -21,7 +21,8 @@ public sealed record OutfitDto(
     int MountLookType = 0);
 
 public sealed record EquipmentStatsDto(
-    double AttackBonus, int MaxHpBonus, double DamageReduction, double MoveSpeedPercent);
+    double AttackBonus, int MaxHpBonus, double DamageReduction, double MoveSpeedPercent,
+    double SkillPowerMultiplier, double CritChance, double CritDamage, double CooldownReduction);
 
 public sealed record PlayerDto(
     int Id, int X, int Y, int Dir, int Hp, int MaxHp,

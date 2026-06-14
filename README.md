@@ -62,6 +62,16 @@ persistidas em `.data/content/kaeli-skins.json` e mescladas ao roster estático 
 equipáveis no Hub e dentro das runs. Addons e montaria fixados na skin sobrescrevem o padrão
 (addons por ascensão, montaria por equipamento).
 
+A aba **Itens** segue o mesmo fluxo do Outfit Studio: biblioteca Canary à esquerda, Item Studio no
+centro e itens Kaezan à direita. O catálogo base tem 2.488 objetos, incluindo armas/equipamentos
+descobertos por `clothes.slot` **ou** pelos metadados do `items.xml`; o admin cria uma cópia autoral
+com ID estável próprio, reutilizando o sprite, slot e tipo de arma da fonte. Itens criados ficam em
+`.data/content/authored-items.json` e podem definir ataque/armadura/defesa conforme o tipo, preço,
+dano elemental, poder de skill, crítico, roubo de vida, redução de recarga, movimento e resistências.
+Armas e equipamentos também aceitam restrição por classe e por pontos totais de maestria, validadas
+pelo backend ao equipar. Depois de salvar, **Adicionar 1 à Mochila** concede uma cópia para testes
+sem depender de drop; os bônus são congelados no início da run pelo `EquipmentStatAggregator`.
+
 ### Persistência MySQL opcional
 
 Para usar o MySQL/MariaDB do XAMPP, configure a connection string antes de iniciar o backend:
@@ -232,9 +242,10 @@ protobuf + sheets BMP comprimidas com LZMA1 raw + header CIP) — mesmo algoritm
 `spriteappearances.cpp` do OTClient. O manifest descreve patterns (direções, addons,
 camada de máscara de cor) e o frontend recoloriza outfits em runtime com a paleta HSI
 de 133 cores do Tibia. O mesmo comando cruza `items.xml` para gerar slots e atributos reais,
-além dos itens sintéticos de montaria usados pelo equipamento. O modo `--equipment` inclui
-automaticamente objetos cujo `clothes.slot` corresponde a helmet, armor, weapon, necklace ou
-ring; legs, feet e backpack permanecem fora do pacote.
+incluindo dano elemental, crítico, roubo de vida, poder mágico, velocidade e resistências, além dos
+itens sintéticos de montaria usados pelo equipamento. O modo `--equipment` inclui automaticamente
+objetos cujo `clothes.slot` corresponde a helmet, armor, weapon, necklace ou ring **e** itens que
+possuem slot/`weaponType` no XML; legs, feet e backpack permanecem fora do pacote.
 
 `--outfits-xml` extrai todos os outfits de jogador listados em `outfits.xml` do Canary (ambos os
 gêneros) e gera `outfit-catalog.json` (lookType → nome + gênero) ao lado do manifest — é a fonte

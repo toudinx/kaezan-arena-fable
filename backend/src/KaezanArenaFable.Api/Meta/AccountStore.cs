@@ -10,11 +10,12 @@ public sealed class AccountStore
     private readonly object _lock = new();
     private AccountState _state;
 
-    public AccountStore(IAccountRepository repository, Domain.GameData data, Domain.KaeliRegistry kaelis)
+    public AccountStore(
+        IAccountRepository repository, Domain.ItemRegistry items, Domain.KaeliRegistry kaelis)
     {
         _repository = repository;
         _state = repository.LoadOrCreate();
-        if (AccountSanitizer.Sanitize(_state, data, kaelis))
+        if (AccountSanitizer.Sanitize(_state, items, kaelis))
             _repository.Save(_state);
     }
 

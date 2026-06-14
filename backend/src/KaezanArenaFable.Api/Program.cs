@@ -12,6 +12,7 @@ builder.Services.AddSingleton<GameData>();
 builder.Services.AddSingleton<ContentStore>();
 builder.Services.AddSingleton<MonsterRegistry>();
 builder.Services.AddSingleton<KaeliRegistry>();
+builder.Services.AddSingleton<ItemRegistry>();
 builder.Services.AddAccountPersistence(builder.Configuration);
 builder.Services.AddSingleton<AccountStore>();
 builder.Services.AddSingleton<GachaService>();

@@ -10,7 +10,7 @@ namespace KaezanArenaFable.Api.Meta;
 /// </summary>
 public static class AccountSanitizer
 {
-    public static bool Sanitize(AccountState state, GameData data, KaeliRegistry kaelis)
+    public static bool Sanitize(AccountState state, ItemRegistry items, KaeliRegistry kaelis)
     {
         var changed = false;
 
@@ -31,7 +31,7 @@ public static class AccountSanitizer
             {
                 foreach (var itemId in loadout.Values)
                 {
-                    if (!data.Items.TryGetValue(itemId, out var item)) continue;
+                    if (items.Get(itemId) is not { } item) continue;
                     if (state.Inventory.TryGetValue(itemId, out var stack)) stack.Count++;
                     else state.Inventory[itemId] = new InventoryStack
                     {

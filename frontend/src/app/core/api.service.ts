@@ -1,6 +1,8 @@
 import { Injectable, signal } from '@angular/core';
 import {
   Account,
+  AdminItem,
+  AdminItemsPayload,
   Catalog,
   DungeonTier,
   KaeliAuthoringMetadata,
@@ -107,6 +109,33 @@ export class ApiService {
   async deleteKaeliSkin(id: string): Promise<void> {
     await this.request('DELETE', `/admin/content/kaeli-skins/${encodeURIComponent(id)}`);
     await this.reloadCatalog();
+  }
+
+  // ---- admin: editor de itens ----
+  async getAdminItems(): Promise<AdminItemsPayload> {
+    return this.request<AdminItemsPayload>('GET', '/admin/items');
+  }
+
+  async createAdminItem(item: AdminItem): Promise<AdminItem> {
+    const saved = await this.request<AdminItem>('POST', '/admin/items', item);
+    await this.reloadCatalog();
+    return saved;
+  }
+
+  async updateAdminItem(item: AdminItem): Promise<AdminItem> {
+    const saved = await this.request<AdminItem>('PUT', `/admin/items/${item.itemId}`, item);
+    await this.reloadCatalog();
+    return saved;
+  }
+
+  async deleteAdminItem(itemId: number): Promise<void> {
+    await this.request('DELETE', `/admin/items/${itemId}`);
+    await this.reloadCatalog();
+  }
+
+  async grantAdminItem(itemId: number, count = 1): Promise<void> {
+    await this.request('POST', `/admin/items/${itemId}/grant`, { count });
+    await this.refreshAccount();
   }
 
   async refreshAccount(): Promise<Account> {

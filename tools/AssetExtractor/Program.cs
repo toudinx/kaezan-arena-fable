@@ -64,6 +64,7 @@ internal static class Program
 
         var catalog = LoadCatalog(thingsDir);
         var appearances = LoadAppearances(thingsDir, catalog);
+        var xmlItems = LoadXmlItems(itemsXmlPath);
         Console.WriteLine($"appearances: {appearances.Object.Count} objects, {appearances.Outfit.Count} outfits, {appearances.Effect.Count} effects, {appearances.Missile.Count} missiles");
 
         if (configPath is null)
@@ -78,9 +79,9 @@ internal static class Program
         var itemIds = new SortedSet<uint>(lootIds);
         if (equipment)
         {
-            foreach (var id in ReadEquipmentItems(appearances.Object))
+            foreach (var id in ReadEquipmentItems(appearances.Object, xmlItems))
                 itemIds.Add(id);
-            Console.WriteLine($"equipment: selected {itemIds.Count - lootIds.Count} additional objects by clothes.slot");
+            Console.WriteLine($"equipment: selected {itemIds.Count - lootIds.Count} additional objects by appearance/XML metadata");
         }
 
         if (itemsOnly)
@@ -95,7 +96,7 @@ internal static class Program
                 itemIds,
                 lootNames,
                 mountIds,
-                itemsXmlPath,
+                xmlItems,
                 mountsXmlPath,
                 itemsOutPath);
             return 0;
@@ -204,7 +205,7 @@ internal static class Program
                 objectIds,
                 lootNames,
                 mountIds,
-                itemsXmlPath,
+                xmlItems,
                 mountsXmlPath,
                 itemsOutPath);
         }
@@ -216,9 +217,14 @@ internal static class Program
     private static IEnumerable<uint> ReadIdList(JsonObject config, string key) =>
         config[key]?.AsArray().Select(v => v!.GetValue<uint>()) ?? Enumerable.Empty<uint>();
 
-    private static IEnumerable<uint> ReadEquipmentItems(IEnumerable<Appearance> objects) =>
+    private static IEnumerable<uint> ReadEquipmentItems(
+        IEnumerable<Appearance> objects,
+        IReadOnlyDictionary<uint, XmlItem> xmlItems) =>
         objects
-            .Where(obj => EquipmentSlot(obj.Flags?.Clothes?.Slot ?? 0) is not null)
+            .Where(obj =>
+                EquipmentSlot(obj.Flags?.Clothes?.Slot ?? 0) is not null
+                || xmlItems.TryGetValue(obj.Id, out var xml)
+                && (xml.Slot is not null || !string.IsNullOrWhiteSpace(xml.WeaponType)))
             .Select(obj => obj.Id);
 
     private static (SortedSet<uint> Ids, Dictionary<uint, string> Names) ReadLootItems(string? monstersPath)
@@ -257,10 +263,9 @@ internal static class Program
     private static void ExportItems(
         IEnumerable<Appearance> objects, IEnumerable<uint> ids,
         IReadOnlyDictionary<uint, string> lootNames, IEnumerable<uint> mountIds,
-        string? itemsXmlPath, string? mountsXmlPath, string outputPath)
+        IReadOnlyDictionary<uint, XmlItem> xmlItems, string? mountsXmlPath, string outputPath)
     {
         var byId = objects.ToDictionary(a => a.Id);
-        var xmlItems = LoadXmlItems(itemsXmlPath);
         var items = new JsonArray();
         foreach (var id in ids.Distinct().OrderBy(i => i))
         {
@@ -274,9 +279,6 @@ internal static class Program
                 ? app.Flags.Npcsaledata.Max(npc => npc.SalePrice)
                 : 0;
             var slot = EquipmentSlot(app.Flags?.Clothes?.Slot ?? 0) ?? xml?.Slot;
-            if (slot == "weapon"
-                && string.Equals(xml?.WeaponType, "shield", StringComparison.OrdinalIgnoreCase))
-                slot = null;
             items.Add(new JsonObject
             {
                 ["itemId"] = id,
@@ -288,7 +290,22 @@ internal static class Program
                 ["armor"] = xml?.Armor ?? 0,
                 ["defense"] = xml?.Defense ?? 0,
                 ["mountLookType"] = 0,
-                ["mountSpeed"] = 0
+                ["mountSpeed"] = 0,
+                ["element"] = xml?.Element ?? "physical",
+                ["elementDamage"] = xml?.ElementDamage ?? 0,
+                ["skillPower"] = xml?.SkillPower ?? 0,
+                ["critChance"] = xml?.CritChance ?? 0,
+                ["critDamage"] = xml?.CritDamage ?? 0,
+                ["lifeStealChance"] = xml?.LifeStealChance ?? 0,
+                ["lifeStealAmount"] = xml?.LifeStealAmount ?? 0,
+                ["moveSpeedPercent"] = xml?.MoveSpeedPercent ?? 0,
+                ["physicalResistance"] = xml?.PhysicalResistance ?? 0,
+                ["fireResistance"] = xml?.FireResistance ?? 0,
+                ["iceResistance"] = xml?.IceResistance ?? 0,
+                ["earthResistance"] = xml?.EarthResistance ?? 0,
+                ["energyResistance"] = xml?.EnergyResistance ?? 0,
+                ["deathResistance"] = xml?.DeathResistance ?? 0,
+                ["holyResistance"] = xml?.HolyResistance ?? 0
             });
         }
 
@@ -317,7 +334,12 @@ internal static class Program
     }
 
     private sealed record XmlItem(
-        string Name, string? Slot, string? WeaponType, int Attack, int Armor, int Defense);
+        string Name, string? Slot, string? WeaponType, int Attack, int Armor, int Defense,
+        string Element, int ElementDamage, int SkillPower,
+        double CritChance, double CritDamage, double LifeStealChance, double LifeStealAmount,
+        double MoveSpeedPercent, double PhysicalResistance, double FireResistance,
+        double IceResistance, double EarthResistance, double EnergyResistance,
+        double DeathResistance, double HolyResistance);
     private sealed record MountItem(uint LookType, string Name, int Speed);
     private sealed record OutfitCatalogItem(uint LookType, string Name, string Gender);
 
@@ -347,7 +369,7 @@ internal static class Program
                 item => uint.Parse(item.Attribute("id")!.Value),
                 item =>
                 {
-                    var attributes = item.Elements("attribute")
+                    var attributes = item.Descendants("attribute")
                         .Where(attribute => attribute.Attribute("key") is not null)
                         .GroupBy(
                             attribute => attribute.Attribute("key")!.Value,
@@ -356,6 +378,7 @@ internal static class Program
                         group => group.Key,
                         group => group.Last().Attribute("value")?.Value ?? "",
                         StringComparer.OrdinalIgnoreCase);
+                    var element = ElementDamage(values);
                     return new XmlItem(
                         item.Attribute("name")?.Value ?? "",
                         NormalizeXmlSlot(item.Descendants("attribute")
@@ -365,7 +388,23 @@ internal static class Program
                         values.GetValueOrDefault("weaponType"),
                         ParseInt(values.GetValueOrDefault("attack")),
                         ParseInt(values.GetValueOrDefault("armor")),
-                        ParseInt(values.GetValueOrDefault("defense")));
+                        ParseInt(values.GetValueOrDefault("defense")),
+                        element.Element,
+                        element.Damage,
+                        ParseInt(values.GetValueOrDefault("magiclevelpoints")),
+                        BasisPoints(values.GetValueOrDefault("criticalhitchance")),
+                        BasisPoints(values.GetValueOrDefault("criticalhitdamage")),
+                        BasisPoints(values.GetValueOrDefault("lifeleechchance")),
+                        BasisPoints(values.GetValueOrDefault("lifeleechamount")),
+                        ParseInt(values.GetValueOrDefault("speed")) / 100.0,
+                        Percent(values.GetValueOrDefault("absorbpercentphysical")),
+                        Percent(values.GetValueOrDefault("absorbpercentfire")),
+                        Percent(values.GetValueOrDefault("absorbpercentice")),
+                        Percent(values.GetValueOrDefault("absorbpercentearth"),
+                            values.GetValueOrDefault("absorbpercentpoison")),
+                        Percent(values.GetValueOrDefault("absorbpercentenergy")),
+                        Percent(values.GetValueOrDefault("absorbpercentdeath")),
+                        Percent(values.GetValueOrDefault("absorbpercentholy")));
                 });
     }
 
@@ -386,6 +425,22 @@ internal static class Program
     private static int ParseInt(string? value) =>
         int.TryParse(value, out var parsed) ? parsed : 0;
 
+    private static double BasisPoints(string? value) => Math.Max(ParseInt(value), 0) / 10000.0;
+
+    private static double Percent(params string?[] values) =>
+        Math.Max(values.Select(ParseInt).DefaultIfEmpty().Max(), 0) / 100.0;
+
+    private static (string Element, int Damage) ElementDamage(
+        IReadOnlyDictionary<string, string> values)
+    {
+        foreach (var element in new[] { "fire", "ice", "earth", "energy", "death", "holy", "physical" })
+        {
+            var damage = ParseInt(values.GetValueOrDefault($"element{element}"));
+            if (damage > 0) return (element, damage);
+        }
+        return ("physical", 0);
+    }
+
     private static string? EquipmentSlot(uint slot) => slot switch
     {
         1 => "helmet",
@@ -400,7 +455,7 @@ internal static class Program
     {
         "head" => "helmet",
         "armor" => "armor",
-        "hand" => "weapon",
+        "hand" or "left-hand" or "right-hand" or "two-handed" => "weapon",
         "necklace" => "necklace",
         "ring" => "ring",
         _ => null

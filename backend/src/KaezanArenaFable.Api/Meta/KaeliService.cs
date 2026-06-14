@@ -6,7 +6,7 @@ namespace KaezanArenaFable.Api.Meta;
 /// Profundidade de Kaeli: presentes (afinidade), skins e maestria.
 /// Tudo meta — nunca roda dentro do tick.
 /// </summary>
-public sealed class KaeliService(AccountStore store, GameData data, KaeliRegistry kaelis)
+public sealed class KaeliService(AccountStore store, KaeliRegistry kaelis, ItemRegistry items)
 {
     // ---- afinidade ----
 
@@ -73,7 +73,7 @@ public sealed class KaeliService(AccountStore store, GameData data, KaeliRegistr
     {
         var waifu = kaelis.Find(waifuId)
                     ?? throw new ArgumentException("Kaeli desconhecida");
-        if (!data.Items.TryGetValue(itemId, out var item))
+        if (items.Get(itemId) is not { } item)
             throw new ArgumentException("item desconhecido");
 
         return store.Mutate(state =>
@@ -98,7 +98,7 @@ public sealed class KaeliService(AccountStore store, GameData data, KaeliRegistr
             if (stack.Count == 0) state.Inventory.Remove(itemId);
 
             var favorite = waifu.FavoriteGiftItemIds.Contains(itemId);
-            var value = data.ItemValue(itemId);
+            var value = items.Value(itemId);
             var xp = (long)Math.Min(
                 (GameConfig.GiftBaseXp + value * GameConfig.GiftXpPerGold)
                 * (favorite ? GameConfig.GiftFavoriteMultiplier : 1.0),

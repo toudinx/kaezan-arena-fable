@@ -19,9 +19,23 @@ public sealed record EquipmentStats(
     int MaxHpBonus,
     double DamageReduction,
     double MoveSpeedPercent,
-    int MountLookType)
+    int MountLookType,
+    string Element,
+    double ElementDamageBonus,
+    double SkillPowerMultiplier,
+    double CritChance,
+    double CritDamage,
+    double LifeStealChance,
+    double LifeStealAmount,
+    double CooldownReduction,
+    IReadOnlyDictionary<string, double> Resistances)
 {
-    public static readonly EquipmentStats Empty = new(0, 0, 0, 0, 0);
+    public static readonly EquipmentStats Empty = new(
+        0, 0, 0, 0, 0, "physical", 0, 1, 0, 0, 0, 0, 0,
+        new Dictionary<string, double>());
+
+    public double Resistance(string damageType) =>
+        Resistances.GetValueOrDefault(damageType.ToLowerInvariant());
 }
 
 public static class EquipmentStatAggregator
@@ -37,6 +51,13 @@ public static class EquipmentStatAggregator
         double reduction = 0;
         double moveSpeed = 0;
         var mountLookType = 0;
+        var strongestElement = "physical";
+        double strongestElementDamage = 0;
+        var skillPower = 0;
+        double critChance = 0, critDamage = 0;
+        double lifeStealChance = 0, lifeStealAmount = 0;
+        double cooldownReduction = 0;
+        var resistances = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var slot in EquipmentSlots.All)
         {
@@ -50,6 +71,27 @@ public static class EquipmentStatAggregator
                   + item.Defense * GameConfig.EquipmentHpPerDefense;
             reduction += item.Armor * GameConfig.EquipmentDamageReductionPerArmor
                          + item.Defense * GameConfig.EquipmentDamageReductionPerDefense;
+            skillPower += item.SkillPower;
+            critChance += item.CritChance;
+            critDamage += item.CritDamage;
+            lifeStealChance += item.LifeStealChance;
+            lifeStealAmount += item.LifeStealAmount;
+            cooldownReduction += item.CooldownReduction;
+            moveSpeed += item.MoveSpeedPercent;
+
+            if (item.ElementDamage > strongestElementDamage)
+            {
+                strongestElement = item.Element;
+                strongestElementDamage = item.ElementDamage;
+            }
+
+            AddResistance("physical", item.PhysicalResistance);
+            AddResistance("fire", item.FireResistance);
+            AddResistance("ice", item.IceResistance);
+            AddResistance("earth", item.EarthResistance);
+            AddResistance("energy", item.EnergyResistance);
+            AddResistance("death", item.DeathResistance);
+            AddResistance("holy", item.HolyResistance);
 
             if (slot == EquipmentSlots.Mount)
             {
@@ -63,7 +105,24 @@ public static class EquipmentStatAggregator
             attack,
             hp,
             Math.Min(reduction, GameConfig.EquipmentDamageReductionCap),
-            moveSpeed,
-            mountLookType);
+            Math.Min(moveSpeed, GameConfig.EquipmentMoveSpeedCap),
+            mountLookType,
+            strongestElement,
+            strongestElementDamage * GameConfig.EquipmentAttackScale,
+            1 + skillPower * GameConfig.EquipmentSkillPowerPerPoint,
+            Math.Min(critChance, GameConfig.EquipmentCritChanceCap),
+            Math.Min(critDamage, GameConfig.EquipmentCritDamageCap),
+            Math.Min(lifeStealChance, GameConfig.EquipmentLifeStealChanceCap),
+            Math.Min(lifeStealAmount, GameConfig.EquipmentLifeStealAmountCap),
+            Math.Min(cooldownReduction, GameConfig.EquipmentCooldownReductionCap),
+            resistances);
+
+        void AddResistance(string element, double value)
+        {
+            if (value <= 0) return;
+            resistances[element] = Math.Min(
+                resistances.GetValueOrDefault(element) + value,
+                GameConfig.EquipmentResistanceCap);
+        }
     }
 }

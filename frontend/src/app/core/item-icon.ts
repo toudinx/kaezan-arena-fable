@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, ViewChild, input } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnChanges, ViewChild, input } from '@angular/core';
 import { ApiService } from './api.service';
 import { AssetsService } from './assets.service';
 
@@ -9,7 +9,7 @@ import { AssetsService } from './assets.service';
   template: `<canvas #cv [width]="size()" [height]="size()" [style.width.px]="size()" [style.height.px]="size()"></canvas>`,
   styles: [`:host { display: inline-block; line-height: 0; } canvas { image-rendering: pixelated; }`],
 })
-export class ItemIcon implements AfterViewInit {
+export class ItemIcon implements AfterViewInit, OnChanges {
   itemId = input.required<number>();
   size = input(48);
 
@@ -21,6 +21,14 @@ export class ItemIcon implements AfterViewInit {
   ) {}
 
   ngAfterViewInit(): void {
+    this.render();
+  }
+
+  ngOnChanges(): void {
+    if (this.cv) this.render();
+  }
+
+  private render(): void {
     void this.assets.load().then(() => {
       // small retry loop because the atlas image may still be loading
       let tries = 0;
@@ -38,7 +46,7 @@ export class ItemIcon implements AfterViewInit {
             ctx, item.mountLookType, offset, offset, scale, 2, false, 0,
           );
         } else {
-          this.assets.drawObject(ctx, this.itemId(), 0, 0, this.size() / 32);
+          this.assets.drawObject(ctx, item?.appearanceItemId ?? this.itemId(), 0, 0, this.size() / 32);
         }
         if (++tries < 10) setTimeout(tick, 200);
       };

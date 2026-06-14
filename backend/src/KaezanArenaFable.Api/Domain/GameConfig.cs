@@ -200,9 +200,26 @@ public static class GameConfig
     public const double EquipmentDamageReductionPerArmor = 0.004;
     public const double EquipmentDamageReductionPerDefense = 0.002;
     public const double EquipmentDamageReductionCap = 0.35;
+    public const double EquipmentSkillPowerPerPoint = 0.02;
+    public const double EquipmentCritChanceCap = 0.50;
+    public const double EquipmentCritDamageCap = 2.00;
+    public const double EquipmentLifeStealChanceCap = 1.00;
+    public const double EquipmentLifeStealAmountCap = 0.50;
+    public const double EquipmentCooldownReductionCap = 0.40;
+    public const double EquipmentMoveSpeedCap = 0.50;
+    public const double EquipmentResistanceCap = 0.75;
     public const int MountHpPerSpeed = 2;
     public const double MountMoveSpeedPercentPerSpeed = 0.005;
     public const double BossMountDropChance = 0.20;
+    public const int AuthoredItemIdBase = 900000;
+    public const int ItemMaxAttack = 500;
+    public const int ItemMaxArmor = 200;
+    public const int ItemMaxDefense = 300;
+    public const int ItemMaxElementDamage = 500;
+    public const int ItemMaxSkillPower = 50;
+    public const int ItemMaxMountSpeed = 100;
+    public const int ItemMaxSalePrice = 1_000_000_000;
+    public const int AdminItemGrantMax = 99;
     public static int MountItemId(int lookType) => -lookType;
     public static readonly IReadOnlyDictionary<int, int> TierMountLookTypes = new Dictionary<int, int>
     {

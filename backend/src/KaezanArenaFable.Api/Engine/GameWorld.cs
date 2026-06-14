@@ -111,6 +111,7 @@ public sealed class GameWorld
     private readonly double _affinityStatBonus; // +1% ATK/HP por nível de afinidade acima de 1
     private readonly double _gaugeRate;        // maestria × trait overcharge
     private readonly GameData _data;
+    private readonly ItemRegistry? _items;
     private readonly MonsterRegistry _monsterRegistry;
     private readonly Rng _rng;
     private readonly IReadOnlyDictionary<string, long> _bestiaryKills;
@@ -165,7 +166,7 @@ public sealed class GameWorld
 
     public GameWorld(long seed, DungeonTier tier, WaifuDef waifu, int ascension,
         GameData data, MonsterRegistry monsterRegistry, IReadOnlyDictionary<string, long> bestiaryKills,
-        EquipmentStats? equipmentStats = null, KaeliLoadout? loadout = null)
+        EquipmentStats? equipmentStats = null, KaeliLoadout? loadout = null, ItemRegistry? items = null)
     {
         Seed = seed;
         Tier = tier;
@@ -182,6 +183,7 @@ public sealed class GameWorld
         _gaugeRate = Loadout.Mastery.GaugeMult
                      * (_trait.Kind == "overcharge" ? 1 + _trait.Value * _traitMult : 1);
         _data = data;
+        _items = items;
         _monsterRegistry = monsterRegistry;
         _bestiaryKills = bestiaryKills;
         _rng = new Rng((ulong)seed);
@@ -577,7 +579,8 @@ public sealed class GameWorld
 
     private double CritChance()
     {
-        var crit = GameConfig.CritChance + CardValue("critChance") + Loadout.Mastery.CritChanceBonus;
+        var crit = GameConfig.CritChance + CardValue("critChance")
+                   + Loadout.Mastery.CritChanceBonus + EquipmentStats.CritChance;
         if (IsBuffActive("crit")) crit += 0.20;
         return crit;
     }
@@ -616,6 +619,14 @@ public sealed class GameWorld
             Emit("projectile", Player.X, Player.Y, target.X, target.Y, missile);
 
         DealDamageToMonster(target, PlayerAttack(), Waifu.Element, hitEffect: missile > 0 ? 0 : 216);
+        if (EquipmentStats.ElementDamageBonus > 0)
+            DealDamageToMonster(
+                target,
+                EquipmentStats.ElementDamageBonus,
+                EquipmentStats.Element,
+                hitEffect: 0,
+                canCrit: false,
+                canLifeSteal: false);
     }
 
     private void TryCastSkill(int slot)
@@ -647,7 +658,10 @@ public sealed class GameWorld
         }
 
         if (isUlt) _gauge = 0;
-        else _skillReadyAtMs[slot] = NowMs + (long)(skill.CooldownMs * Loadout.Mastery.CooldownMult);
+        else _skillReadyAtMs[slot] = NowMs + (long)(
+            skill.CooldownMs
+            * Loadout.Mastery.CooldownMult
+            * (1 - EquipmentStats.CooldownReduction));
 
         Emit("skill_cast", Player.X, Player.Y, 0, 0, 0, skill.Name);
         if (target is not null)
@@ -655,7 +669,8 @@ public sealed class GameWorld
 
         // maestria: slots 1-4 multiplicam o Power; a ultimate amplifica duração/cura (ultmod)
         var ultScale = isUlt ? Loadout.Mastery.UltimatePowerMult : 1.0;
-        var damage = PlayerAttack() * skill.Power * (isUlt ? 1.0 : Loadout.Mastery.SlotPowerMult(slot));
+        var damage = PlayerAttack() * skill.Power * EquipmentStats.SkillPowerMultiplier
+                     * (isUlt ? 1.0 : Loadout.Mastery.SlotPowerMult(slot));
         switch (skill.Shape)
         {
             case "buff":
@@ -761,7 +776,7 @@ public sealed class GameWorld
     }
 
     private void DealDamageToMonster(Actor monster, double raw, string element, int hitEffect,
-        bool fromSkill = false)
+        bool fromSkill = false, bool canCrit = true, bool canLifeSteal = true)
     {
         var roll = raw * (GameConfig.DamageRollMin + _rng.NextDouble() * (GameConfig.DamageRollMax - GameConfig.DamageRollMin));
         if (NowMs < monster.ExposedUntilMs)
@@ -771,8 +786,8 @@ public sealed class GameWorld
         var critChance = CritChance();
         if (_trait.Kind == "deadeye" && Chebyshev(Player, monster) >= (int)_trait.Param)
             critChance += _trait.Value * _traitMult;
-        var crit = _rng.Chance(critChance);
-        if (crit) roll *= GameConfig.CritMultiplier;
+        var crit = canCrit && _rng.Chance(critChance);
+        if (crit) roll *= GameConfig.CritMultiplier + EquipmentStats.CritDamage;
 
         if (_trait.Kind == "executioner" && monster.Hp < monster.MaxHp * _trait.Param)
             roll *= 1 + _trait.Value * _traitMult;
@@ -815,7 +830,10 @@ public sealed class GameWorld
         if (hitEffect > 0) Emit("effect", monster.X, monster.Y, 0, 0, hitEffect);
         if (crit) Emit("effect", monster.X, monster.Y, 0, 0, 173);
 
-        var lifesteal = CardValue("lifesteal") + GameConfig.BaselineLifesteal;
+        var lifesteal = canLifeSteal ? CardValue("lifesteal") + GameConfig.BaselineLifesteal : 0;
+        if (canLifeSteal && EquipmentStats.LifeStealAmount > 0
+            && _rng.Chance(EquipmentStats.LifeStealChance))
+            lifesteal += EquipmentStats.LifeStealAmount;
         if (lifesteal > 0) HealPlayer((int)Math.Max(final * lifesteal, 0));
 
         // traits pós-dano: seiva vital (lifesteal de skill) e mordida do norte (slow de gelo)
@@ -1007,7 +1025,7 @@ public sealed class GameWorld
                 });
                 continue;
             }
-            junkGold += (long)_data.ItemValue(entry.ItemId) * count;
+            junkGold += (long)(_items?.Value(entry.ItemId) ?? _data.ItemValue(entry.ItemId)) * count;
         }
 
         if (junkGold > 0)
@@ -1518,7 +1536,8 @@ public sealed class GameWorld
             CardValue("damageReduction") + EquipmentStats.DamageReduction
             + Loadout.Mastery.DamageReductionBonus + traitReduction,
             GameConfig.PlayerDamageReductionCap);
-        var final = damage * (1 - reduction);
+        var resistance = EquipmentStats.Resistance(damageType);
+        var final = damage * (1 - reduction) * (1 - resistance);
         if (NowMs < source.SappedUntilMs)
             final *= GameConfig.SappedStrengthDamageMultiplier;
         if (IsBuffActive("shield")) final *= 0.5;
@@ -1890,7 +1909,11 @@ public sealed class GameWorld
             var isUlt = i == 4;
             var remaining = isUlt ? 0 : Math.Max(_skillReadyAtMs[i] - NowMs, 0);
             var ready = isUlt ? _gauge >= GameConfig.UltimateGaugeMax : remaining == 0;
-            var cooldownTotal = isUlt ? skill.CooldownMs : (int)(skill.CooldownMs * Loadout.Mastery.CooldownMult);
+            var cooldownTotal = isUlt
+                ? skill.CooldownMs
+                : (int)(skill.CooldownMs
+                        * Loadout.Mastery.CooldownMult
+                        * (1 - EquipmentStats.CooldownReduction));
             skills.Add(new SkillStateDto(
                 skill.Id, skill.Name, skill.Element, skill.Description,
                 remaining, cooldownTotal, ready));
@@ -1917,7 +1940,11 @@ public sealed class GameWorld
                 EquipmentStats.AttackBonus,
                 EquipmentStats.MaxHpBonus,
                 EquipmentStats.DamageReduction,
-                EquipmentStats.MoveSpeedPercent));
+                EquipmentStats.MoveSpeedPercent,
+                EquipmentStats.SkillPowerMultiplier,
+                EquipmentStats.CritChance,
+                EquipmentStats.CritDamage,
+                EquipmentStats.CooldownReduction));
 
         var monsters = _monsters
             .Where(m => m.Hp > 0 && m.Floor == _currentFloor)

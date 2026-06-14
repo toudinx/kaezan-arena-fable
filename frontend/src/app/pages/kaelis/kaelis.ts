@@ -246,10 +246,16 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento';
                         }
                       </div>
                       <div class="gear-options">
-                        @for (item of equipmentCandidates(slot); track item.itemId) {
-                          <button class="gear-option" [disabled]="busy()" (click)="equip(w.id, slot, item.itemId)">
+                        @for (item of equipmentCandidates(w.id, slot); track item.itemId) {
+                          <button class="gear-option" [disabled]="busy() || !canEquip(w, item)"
+                                  [title]="itemRequirement(w, item)"
+                                  (click)="equip(w.id, slot, item.itemId)">
                             <app-item-icon [itemId]="item.itemId" [size]="38" />
-                            <span><b>{{ item.name }}</b><small>{{ itemStats(item) }}</small></span>
+                            <span><b>{{ item.name }}</b><small>{{ itemStats(item) }}</small>
+                              @if (itemRequirement(w, item)) {
+                                <small class="locked">{{ itemRequirement(w, item) }}</small>
+                              }
+                            </span>
                           </button>
                         } @empty {
                           <span class="muted">Nenhum item deste slot na Mochila.</span>
@@ -425,6 +431,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento';
       padding: 6px 8px; display: flex; align-items: center; gap: 8px; text-align: left;
     }
     .gear-option span { display: flex; flex-direction: column; }
+    .gear-option .locked { color: #e28a98; }
     .kit { margin-top: 18px; padding-top: 14px; border-top: 1px solid #26263a; }
     .kit h3 { margin-top: 0; }
     .class-desc { color: #9c9ab0; font-size: 13px; margin: -6px 0 10px; }
@@ -666,14 +673,35 @@ export class KaelisPage {
     return itemId === undefined ? undefined : this.itemById(itemId);
   }
 
-  equipmentCandidates(slot: EquipmentSlot): ItemCatalogEntry[] {
+  equipmentCandidates(waifuId: string, slot: EquipmentSlot): ItemCatalogEntry[] {
     const inventory = this.api.account()?.inventory ?? [];
     return inventory
       .map((stack) => this.itemById(stack.itemId))
       .filter((item): item is ItemCatalogEntry => item?.slot === slot)
       .sort((a, b) =>
+        Number(this.canEquipById(waifuId, b)) - Number(this.canEquipById(waifuId, a))
+        ||
         (b.attack + b.armor + b.defense + b.mountSpeed)
         - (a.attack + a.armor + a.defense + a.mountSpeed));
+  }
+
+  canEquip(waifu: WaifuDef, item: ItemCatalogEntry): boolean {
+    return !this.itemRequirement(waifu, item);
+  }
+
+  itemRequirement(waifu: WaifuDef, item: ItemCatalogEntry): string {
+    if (item.allowedClassIds.length && !item.allowedClassIds.includes(waifu.classId))
+      return `Restrito a ${item.allowedClassIds.join(', ')}`;
+    const mastery = this.api.account()?.mastery?.[waifu.id];
+    const total = (mastery?.points ?? 0) + (mastery?.spent ?? 0);
+    if (total < item.requiredMasteryPoints)
+      return `Requer ${item.requiredMasteryPoints} pontos de maestria`;
+    return '';
+  }
+
+  private canEquipById(waifuId: string, item: ItemCatalogEntry): boolean {
+    const waifu = this.allWaifus().find((entry) => entry.id === waifuId);
+    return !!waifu && this.canEquip(waifu, item);
   }
 
   mountLookType(waifuId: string): number {
@@ -690,6 +718,9 @@ export class KaelisPage {
       item.armor ? `ARM ${item.armor}` : '',
       item.defense ? `DEF ${item.defense}` : '',
       item.mountSpeed ? `VEL ${item.mountSpeed}` : '',
+      item.elementDamage ? `${item.element.toUpperCase()} +${item.elementDamage}` : '',
+      item.critChance ? `CRIT +${Math.round(item.critChance * 100)}%` : '',
+      item.physicalResistance ? `RES FIS ${Math.round(item.physicalResistance * 100)}%` : '',
     ].filter(Boolean).join(' · ') || 'equipável';
   }
 

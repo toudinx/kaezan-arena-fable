@@ -14,7 +14,8 @@ public static class MetaEndpoints
 
         // ---- catalog (static game data for the client) ----
         api.MapGet("/catalog", (
-            GameData data, ContentStore content, MonsterRegistry registry, KaeliRegistry kaelis) => Results.Ok(new
+            GameData data, ContentStore content, MonsterRegistry registry, KaeliRegistry kaelis,
+            ItemRegistry itemRegistry) => Results.Ok(new
         {
             waifus = kaelis.All,
             classes = Classes.All,
@@ -48,18 +49,40 @@ public static class MetaEndpoints
                 pointsPerVictory = GameConfig.MasteryPointsPerVictory,
                 pointsPerDefeat = GameConfig.MasteryPointsPerDefeat
             },
-            items = data.Items.Values.Select(i => new
+            items = itemRegistry.All.Values.Select(i => new
             {
                 i.ItemId,
                 i.Name,
-                salePrice = data.ItemValue(i.ItemId),
+                salePrice = itemRegistry.Value(i.ItemId),
                 i.Slot,
                 i.WeaponType,
                 i.Attack,
                 i.Armor,
                 i.Defense,
                 i.MountLookType,
-                i.MountSpeed
+                i.MountSpeed,
+                i.Description,
+                appearanceItemId = i.AppearanceItemId,
+                i.SourceItemId,
+                i.IsAuthored,
+                i.Element,
+                i.ElementDamage,
+                i.SkillPower,
+                i.CritChance,
+                i.CritDamage,
+                i.LifeStealChance,
+                i.LifeStealAmount,
+                i.CooldownReduction,
+                i.MoveSpeedPercent,
+                i.PhysicalResistance,
+                i.FireResistance,
+                i.IceResistance,
+                i.EarthResistance,
+                i.EnergyResistance,
+                i.DeathResistance,
+                i.HolyResistance,
+                allowedClassIds = i.AllowedClassIds ?? [],
+                i.RequiredMasteryPoints
             }),
             monsters = registry.All.Select(m => new
             {
@@ -192,27 +215,41 @@ public static class MetaEndpoints
         });
 
         // ---- inventory ----
-        api.MapPost("/items/sell", (SellRequest req, AccountStore store, GameData data) =>
+        api.MapPost("/items/sell", (SellRequest req, AccountStore store, ItemRegistry itemRegistry) =>
             store.Mutate(s =>
             {
                 if (!s.Inventory.TryGetValue(req.ItemId, out var stack) || stack.Count < req.Count || req.Count <= 0)
                     return Results.BadRequest(new { error = "quantidade inválida" });
                 stack.Count -= req.Count;
                 if (stack.Count == 0) s.Inventory.Remove(req.ItemId);
-                var gold = (long)req.Count * data.ItemValue(req.ItemId);
+                var gold = (long)req.Count * itemRegistry.Value(req.ItemId);
                 s.Gold += gold;
                 return Results.Ok(new { goldGained = gold, s.Gold });
             }));
 
-        api.MapPost("/equipment/equip", (EquipRequest req, AccountStore store, GameData data) =>
+        api.MapPost("/equipment/equip", (
+            EquipRequest req, AccountStore store, ItemRegistry items, KaeliRegistry kaelis) =>
             store.Mutate(s =>
             {
                 if (!s.OwnedWaifus.Contains(req.WaifuId))
                     return Results.BadRequest(new { error = "Kaeli não possuída" });
                 if (!EquipmentSlots.IsValid(req.Slot))
                     return Results.BadRequest(new { error = "slot inválido" });
-                if (!data.Items.TryGetValue(req.ItemId, out var item) || item.Slot != req.Slot)
+                if (items.Get(req.ItemId) is not { } item || item.Slot != req.Slot)
                     return Results.BadRequest(new { error = "item incompatível com o slot" });
+                if (kaelis.Find(req.WaifuId) is not { } waifu)
+                    return Results.BadRequest(new { error = "Kaeli desconhecida" });
+                if (item.AllowedClassIds is { Count: > 0 }
+                    && !item.AllowedClassIds.Contains(waifu.ClassId, StringComparer.OrdinalIgnoreCase))
+                    return Results.BadRequest(new { error = $"{item.Name} nao pode ser usado pela classe {waifu.ClassId}" });
+                var masteryPoints = s.Mastery.TryGetValue(req.WaifuId, out var mastery)
+                    ? mastery.Points + mastery.Spent
+                    : 0;
+                if (masteryPoints < item.RequiredMasteryPoints)
+                    return Results.BadRequest(new
+                    {
+                        error = $"{item.Name} exige {item.RequiredMasteryPoints} pontos totais de maestria"
+                    });
                 if (!s.Inventory.TryGetValue(req.ItemId, out var stack) || stack.Count <= 0)
                     return Results.BadRequest(new { error = "item não está na Mochila" });
 
@@ -223,7 +260,7 @@ public static class MetaEndpoints
                 if (stack.Count == 0) s.Inventory.Remove(req.ItemId);
 
                 if (loadout.TryGetValue(req.Slot, out var previousItemId)
-                    && data.Items.TryGetValue(previousItemId, out var previous))
+                    && items.Get(previousItemId) is { } previous)
                 {
                     if (s.Inventory.TryGetValue(previousItemId, out var previousStack))
                         previousStack.Count++;
@@ -240,14 +277,14 @@ public static class MetaEndpoints
                 return Results.Ok(new { req.WaifuId, req.Slot, req.ItemId });
             }));
 
-        api.MapPost("/equipment/unequip", (UnequipRequest req, AccountStore store, GameData data) =>
+        api.MapPost("/equipment/unequip", (UnequipRequest req, AccountStore store, ItemRegistry items) =>
             store.Mutate(s =>
             {
                 if (!EquipmentSlots.IsValid(req.Slot))
                     return Results.BadRequest(new { error = "slot inválido" });
                 if (!s.Equipment.TryGetValue(req.WaifuId, out var loadout)
                     || !loadout.Remove(req.Slot, out var itemId)
-                    || !data.Items.TryGetValue(itemId, out var item))
+                    || items.Get(itemId) is not { } item)
                     return Results.BadRequest(new { error = "slot vazio" });
 
                 if (s.Inventory.TryGetValue(itemId, out var stack))
@@ -417,6 +454,142 @@ public static class MetaEndpoints
                 return Results.NotFound(new { error = ex.Message });
             }
         });
+
+        // ---- admin: Item Studio (biblioteca Canary + CRUD de itens Kaezan) ----
+
+        admin.MapGet("/items", (GameData data, ContentStore content, ItemRegistry items) =>
+            Results.Ok(new
+            {
+                library = data.Items.Values
+                    .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(item => ItemView(item, data)),
+                authored = content.AuthoredItems
+                    .Select(definition => items.Get(definition.ItemId))
+                    .Where(item => item is not null)
+                    .Cast<ItemType>()
+                    .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(item => ItemView(item, data)),
+                classes = Classes.All.Select(item => new { item.Id, item.Name }),
+                elements = ItemAuthoring.Elements
+            }));
+
+        admin.MapPost("/items", (
+            AuthoredItemDefinition request, ContentStore content, GameData data, ItemRegistry items) =>
+        {
+            var definition = ItemAuthoring.Normalize(request with { ItemId = 0 });
+            var source = data.Items.GetValueOrDefault(definition.SourceItemId);
+            var error = ItemAuthoring.Validate(definition, source, content.AuthoredItems);
+            if (error is not null) return Results.BadRequest(new { error });
+            var created = content.CreateAuthoredItem(definition);
+            return Results.Ok(ItemView(items.Get(created.ItemId)!, data));
+        });
+
+        admin.MapPut("/items/{id:int}", (
+            int id, AuthoredItemDefinition request, ContentStore content, GameData data, ItemRegistry items) =>
+        {
+            var definition = ItemAuthoring.Normalize(request, id);
+            var source = data.Items.GetValueOrDefault(definition.SourceItemId);
+            var error = ItemAuthoring.Validate(definition, source, content.AuthoredItems, id);
+            if (error is not null) return Results.BadRequest(new { error });
+            try
+            {
+                content.UpdateAuthoredItem(id, definition);
+                return Results.Ok(ItemView(items.Get(id)!, data));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        });
+
+        admin.MapPost("/items/{id:int}/grant", (int id, ItemGrantRequest request,
+            ContentStore content, ItemRegistry items, AccountStore accounts) =>
+        {
+            if (!content.AuthoredItems.Any(item => item.ItemId == id)
+                || items.Get(id) is not { } item)
+                return Results.NotFound(new { error = $"item autoral desconhecido: {id}" });
+            if (request.Count is < 1 or > GameConfig.AdminItemGrantMax)
+                return Results.BadRequest(new
+                {
+                    error = $"quantidade deve ficar entre 1 e {GameConfig.AdminItemGrantMax}"
+                });
+
+            return accounts.Mutate(state =>
+            {
+                if (state.Inventory.TryGetValue(id, out var stack))
+                    stack.Count += request.Count;
+                else
+                    state.Inventory[id] = new InventoryStack
+                    {
+                        ItemId = id,
+                        Name = item.Name,
+                        Count = request.Count
+                    };
+                return Results.Ok(new { item.ItemId, item.Name, added = request.Count });
+            });
+        });
+
+        admin.MapDelete("/items/{id:int}", (int id, ContentStore content, AccountStore accounts) =>
+        {
+            var referenced = accounts.Read(state =>
+                state.Inventory.ContainsKey(id)
+                || state.Equipment.Values.Any(loadout => loadout.Values.Contains(id)));
+            if (referenced)
+                return Results.BadRequest(new { error = "remova o item dos inventarios e equipamentos antes de excluir" });
+            try
+            {
+                var removed = content.DeleteAuthoredItem(id);
+                return Results.Ok(new { removed.ItemId, removed.Name });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+        });
+    }
+
+    private static object ItemView(ItemType item, GameData data)
+    {
+        var (category, subcategory) =
+            ItemCategories.Of(item, data.IsFood(item.AppearanceItemId));
+        return new
+        {
+            item.ItemId,
+            item.SourceItemId,
+            appearanceItemId = item.AppearanceItemId,
+            item.IsAuthored,
+            item.Name,
+            item.Description,
+            item.Slot,
+            item.WeaponType,
+            item.Attack,
+            item.Armor,
+            item.Defense,
+            item.MountLookType,
+            item.MountSpeed,
+            item.SalePrice,
+            item.Element,
+            item.ElementDamage,
+            item.SkillPower,
+            item.CritChance,
+            item.CritDamage,
+            item.LifeStealChance,
+            item.LifeStealAmount,
+            item.CooldownReduction,
+            item.MoveSpeedPercent,
+            item.PhysicalResistance,
+            item.FireResistance,
+            item.IceResistance,
+            item.EarthResistance,
+            item.EnergyResistance,
+            item.DeathResistance,
+            item.HolyResistance,
+            allowedClassIds = item.AllowedClassIds ?? ItemAuthoring.DefaultClasses(item),
+            item.RequiredMasteryPoints,
+            category,
+            subcategory,
+            capabilities = ItemCapabilities.For(item)
+        };
     }
 
     private static string? ValidateKaeliSkin(
@@ -467,4 +640,5 @@ public static class MetaEndpoints
     public sealed record SellRequest(int ItemId, int Count);
     public sealed record EquipRequest(string WaifuId, string Slot, int ItemId);
     public sealed record UnequipRequest(string WaifuId, string Slot);
+    public sealed record ItemGrantRequest(int Count = 1);
 }

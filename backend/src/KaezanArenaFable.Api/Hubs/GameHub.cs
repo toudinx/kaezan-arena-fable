@@ -12,6 +12,7 @@ public sealed class GameHub(
     GameData data,
     MonsterRegistry monsters,
     KaeliRegistry kaelis,
+    ItemRegistry items,
     AccountStore store,
     ContentStore content) : Hub
 {
@@ -61,9 +62,9 @@ public sealed class GameHub(
             Mastery.Aggregate(waifu.Id, masteryNodes),
             skin);
 
-        var equipmentStats = EquipmentStatAggregator.Aggregate(equipment, data.Items);
+        var equipmentStats = EquipmentStatAggregator.Aggregate(equipment, items.All);
         var world = new GameWorld(
-            runSeed, tierDef, waifu, ascension, data, monsters, bestiary, equipmentStats, kaeliLoadout);
+            runSeed, tierDef, waifu, ascension, data, monsters, bestiary, equipmentStats, kaeliLoadout, items);
         runs.StartRun(Context.ConnectionId, world);
         return new { seed = runSeed, tier = tierDef.Tier, tierName = tierDef.Name, waifuId = waifu.Id, resumed = false };
     }

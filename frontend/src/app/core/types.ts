@@ -293,6 +293,7 @@ export interface MonsterAuthoringMetadata {
 export interface ItemCatalogEntry {
   itemId: number;
   name: string;
+  description: string;
   salePrice: number;
   slot: EquipmentSlot | null;
   weaponType: string | null;
@@ -301,10 +302,55 @@ export interface ItemCatalogEntry {
   defense: number;
   mountLookType: number;
   mountSpeed: number;
+  appearanceItemId: number;
+  sourceItemId: number;
+  isAuthored: boolean;
+  element: string;
+  elementDamage: number;
+  skillPower: number;
+  critChance: number;
+  critDamage: number;
+  lifeStealChance: number;
+  lifeStealAmount: number;
+  cooldownReduction: number;
+  moveSpeedPercent: number;
+  physicalResistance: number;
+  fireResistance: number;
+  iceResistance: number;
+  earthResistance: number;
+  energyResistance: number;
+  deathResistance: number;
+  holyResistance: number;
+  allowedClassIds: string[];
+  requiredMasteryPoints: number;
 }
 
 export type EquipmentSlot = 'helmet' | 'armor' | 'weapon' | 'necklace' | 'ring' | 'mount';
 export type EquipmentLoadout = Partial<Record<EquipmentSlot, number>>;
+
+/** Item enriquecido com categoria/subcategoria + flag de edição, para o editor de itens do admin. */
+export interface ItemCapabilities {
+  attack: boolean;
+  armor: boolean;
+  defense: boolean;
+  mountSpeed: boolean;
+  offense: boolean;
+  support: boolean;
+  resistance: boolean;
+}
+
+export interface AdminItem extends ItemCatalogEntry {
+  category: string;
+  subcategory: string;
+  capabilities: ItemCapabilities;
+}
+
+export interface AdminItemsPayload {
+  library: AdminItem[];
+  authored: AdminItem[];
+  classes: { id: string; name: string }[];
+  elements: string[];
+}
 
 export interface Catalog {
   waifus: WaifuDef[];
@@ -410,6 +456,10 @@ export interface EquipmentStatsDto {
   maxHpBonus: number;
   damageReduction: number;
   moveSpeedPercent: number;
+  skillPowerMultiplier: number;
+  critChance: number;
+  critDamage: number;
+  cooldownReduction: number;
 }
 
 export interface PoiDto {

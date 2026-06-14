@@ -35,7 +35,43 @@ public sealed record ItemType(
     int Armor = 0,
     int Defense = 0,
     int MountLookType = 0,
-    int MountSpeed = 0);
+    int MountSpeed = 0,
+    string Description = "",
+    int SourceItemId = 0,
+    bool IsAuthored = false,
+    string Element = "physical",
+    int ElementDamage = 0,
+    int SkillPower = 0,
+    double CritChance = 0,
+    double CritDamage = 0,
+    double LifeStealChance = 0,
+    double LifeStealAmount = 0,
+    double CooldownReduction = 0,
+    double MoveSpeedPercent = 0,
+    double PhysicalResistance = 0,
+    double FireResistance = 0,
+    double IceResistance = 0,
+    double EarthResistance = 0,
+    double EnergyResistance = 0,
+    double DeathResistance = 0,
+    double HolyResistance = 0,
+    IReadOnlyList<string>? AllowedClassIds = null,
+    int RequiredMasteryPoints = 0)
+{
+    public int AppearanceItemId => SourceItemId != 0 ? SourceItemId : ItemId;
+
+    public double Resistance(string damageType) => damageType.ToLowerInvariant() switch
+    {
+        "physical" => PhysicalResistance,
+        "fire" => FireResistance,
+        "ice" => IceResistance,
+        "earth" => EarthResistance,
+        "energy" => EnergyResistance,
+        "death" => DeathResistance,
+        "holy" => HolyResistance,
+        _ => 0
+    };
+}
 
 public sealed record MonsterType(
     string Name, string Description, int Experience, int Health, int Speed, int Corpse,

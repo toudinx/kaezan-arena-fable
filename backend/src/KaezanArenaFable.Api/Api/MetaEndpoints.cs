@@ -414,7 +414,10 @@ public static class MetaEndpoints
                 w.Rarity,
                 w.Element,
                 w.ClassId,
-                defaultSkin = new { w.DefaultSkin.LookType, w.DefaultSkin.Head, w.DefaultSkin.Body, w.DefaultSkin.Legs, w.DefaultSkin.Feet }
+                defaultSkin = new { w.DefaultSkin.LookType, w.DefaultSkin.Head, w.DefaultSkin.Body, w.DefaultSkin.Legs, w.DefaultSkin.Feet },
+                // ids das skins do código (para o guarda-roupa distinguir estática/override) + a padrão
+                staticSkinIds = w.Skins.Select(s => s.Id).ToArray(),
+                defaultSkinId = w.DefaultSkin.Id
             }),
             unlockKinds = KaeliAuthoring.UnlockKinds,
             outfitColorCount = KaeliAuthoring.OutfitColorCount,
@@ -423,20 +426,20 @@ public static class MetaEndpoints
 
         admin.MapGet("/content/kaeli-skins", (ContentStore content) => Results.Ok(content.AuthoredKaeliSkins));
 
-        admin.MapPost("/content/kaeli-skins", (KaeliSkinDefinition request, ContentStore content, KaeliRegistry kaelis) =>
+        admin.MapPost("/content/kaeli-skins", (KaeliSkinDefinition request, ContentStore content) =>
         {
             var definition = KaeliAuthoring.Normalize(request);
-            var error = ValidateKaeliSkin(definition, kaelis);
+            var error = ValidateKaeliSkin(definition, content);
             if (error is not null) return Results.BadRequest(new { error });
             try { return Results.Ok(content.CreateKaeliSkin(definition)); }
             catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
         });
 
         admin.MapPut("/content/kaeli-skins/{id}", (
-            string id, KaeliSkinDefinition request, ContentStore content, KaeliRegistry kaelis) =>
+            string id, KaeliSkinDefinition request, ContentStore content) =>
         {
             var definition = KaeliAuthoring.Normalize(request, id);
-            var error = ValidateKaeliSkin(definition, kaelis, id);
+            var error = ValidateKaeliSkin(definition, content, id);
             if (error is not null) return Results.BadRequest(new { error });
             try { return Results.Ok(content.UpdateKaeliSkin(id, definition)); }
             catch (KeyNotFoundException ex) { return Results.NotFound(new { error = ex.Message }); }
@@ -453,6 +456,14 @@ public static class MetaEndpoints
             {
                 return Results.NotFound(new { error = ex.Message });
             }
+        });
+
+        // reordena as skins autorais de uma Kaeli (guarda-roupa) — controla a ordem no seletor de skin
+        admin.MapPost("/content/kaeli-skins/reorder", (ReorderSkinsRequest request, ContentStore content) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.WaifuId) || request.OrderedIds is null)
+                return Results.BadRequest(new { error = "waifuId e orderedIds são obrigatórios" });
+            return Results.Ok(content.ReorderKaeliSkins(request.WaifuId, request.OrderedIds));
         });
 
         // ---- admin: Item Studio (biblioteca Canary + CRUD de itens Kaezan) ----
@@ -593,12 +604,27 @@ public static class MetaEndpoints
     }
 
     private static string? ValidateKaeliSkin(
-        KaeliSkinDefinition definition, KaeliRegistry kaelis, string? currentId = null)
+        KaeliSkinDefinition definition, ContentStore content, string? currentId = null)
     {
         var error = KaeliAuthoring.Validate(definition);
         if (error is not null) return error;
-        // a skin não pode colidir com nenhuma skin estática ou autoral existente (exceto ela mesma)
-        if (kaelis.SkinById.TryGetValue(definition.Id, out _)
+
+        // override de skin estática: permitido (edita a skin do código), mas só para a dona original
+        // — o id encoda a dona, então re-vincular um id estático a outra Kaeli é recusado.
+        if (Waifus.SkinById.ContainsKey(definition.Id))
+        {
+            var owner = Waifus.SkinOwner[definition.Id];
+            if (!definition.WaifuId.Equals(owner, StringComparison.OrdinalIgnoreCase))
+                return $"a skin {definition.Id} pertence a {owner} e não pode ser re-vinculada";
+            // a skin padrão tem de continuar grátis (é o visual base sempre disponível)
+            if (definition.Id.Equals(Waifus.ById[owner].DefaultSkin.Id, StringComparison.OrdinalIgnoreCase)
+                && definition.Unlock != "default")
+                return "a skin padrão precisa manter o desbloqueio Padrão";
+            return null;
+        }
+
+        // skin com id novo: não pode colidir com outra skin autoral (exceto ela mesma ao editar)
+        if (content.AuthoredKaeliSkins.Any(s => s.Id.Equals(definition.Id, StringComparison.OrdinalIgnoreCase))
             && !definition.Id.Equals(currentId, StringComparison.OrdinalIgnoreCase))
             return $"id de skin ja existe: {definition.Id}";
         return null;
@@ -632,6 +658,7 @@ public static class MetaEndpoints
     public sealed record ActiveWaifuRequest(string WaifuId);
     public sealed record GiftRequest(string WaifuId, int ItemId);
     public sealed record SkinRequest(string WaifuId, string SkinId);
+    public sealed record ReorderSkinsRequest(string WaifuId, List<string> OrderedIds);
     public sealed record MasteryNodeRequest(string WaifuId, string NodeId);
     public sealed record MasteryRespecRequest(string WaifuId);
     public sealed record PullRequest(string BannerId, int Count);

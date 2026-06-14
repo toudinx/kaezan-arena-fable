@@ -11,22 +11,39 @@ namespace KaezanArenaFable.Api.Domain;
 /// </summary>
 public sealed class KaeliRegistry(ContentStore content)
 {
-    /// <summary>Roster efetivo: cada Kaeli com suas skins estáticas + autorais (anexadas no fim,
-    /// preservando a skin padrão em índice 0).</summary>
+    /// <summary>
+    /// Roster efetivo: cada Kaeli com suas skins resolvidas. Uma skin autoral cujo id bate com uma
+    /// skin estática (do código) <b>sobrescreve</b> a estática no lugar — é como o admin edita a skin
+    /// padrão e as demais sem renomear ids (a invariante de ids estáveis fica intacta; remover o
+    /// override restaura a definição do código). As autorais com id novo continuam anexadas ao fim,
+    /// preservando a skin padrão em índice 0.
+    /// </summary>
     public IReadOnlyList<WaifuDef> All
     {
         get
         {
-            var authoredByWaifu = content.AuthoredKaeliSkins
+            var authored = content.AuthoredKaeliSkins;
+            if (authored.Count == 0) return Waifus.All;
+
+            // override por id (última vence) só para ids que existem como skin estática
+            var overrides = authored
+                .Where(s => Waifus.SkinById.ContainsKey(s.Id))
+                .GroupBy(s => s.Id, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => KaeliAuthoring.ToSkin(g.Last()), StringComparer.OrdinalIgnoreCase);
+            // skins genuinamente novas (id não-estático) anexam ao fim, agrupadas por Kaeli
+            var appendByWaifu = authored
+                .Where(s => !Waifus.SkinById.ContainsKey(s.Id))
                 .GroupBy(s => s.WaifuId)
                 .ToDictionary(g => g.Key, g => g.Select(KaeliAuthoring.ToSkin).ToList());
 
-            if (authoredByWaifu.Count == 0) return Waifus.All;
-
             return Waifus.All
-                .Select(waifu => authoredByWaifu.TryGetValue(waifu.Id, out var extra)
-                    ? waifu with { Skins = [.. waifu.Skins, .. extra] }
-                    : waifu)
+                .Select(waifu =>
+                {
+                    var statics = waifu.Skins
+                        .Select(s => overrides.TryGetValue(s.Id, out var ov) ? ov : s);
+                    var extra = appendByWaifu.GetValueOrDefault(waifu.Id) ?? [];
+                    return waifu with { Skins = [.. statics, .. extra] };
+                })
                 .ToList();
         }
     }

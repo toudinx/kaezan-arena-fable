@@ -248,6 +248,33 @@ public sealed class ContentStore
         }
     }
 
+    /// <summary>
+    /// Reordena as skins autorais de uma Kaeli na ordem dos ids recebidos, preservando a posição
+    /// relativa das skins das outras Kaelis (o <see cref="KaeliRegistry"/> anexa as autorais na
+    /// ordem persistida, então isso controla a ordem exibida no guarda-roupa/seletor de skin).
+    /// Ids desconhecidos são ignorados; skins omitidas mantêm a ordem atual ao final.
+    /// </summary>
+    public IReadOnlyList<KaeliSkinDefinition> ReorderKaeliSkins(string waifuId, IReadOnlyList<string> orderedIds)
+    {
+        var owner = waifuId.Trim().ToLowerInvariant();
+        lock (_lock)
+        {
+            bool Owns(KaeliSkinDefinition s) => s.WaifuId.Equals(owner, StringComparison.OrdinalIgnoreCase);
+            var mine = _kaeliSkins.Where(Owns).ToDictionary(s => s.Id, StringComparer.OrdinalIgnoreCase);
+            var ordered = new List<KaeliSkinDefinition>();
+            foreach (var id in orderedIds)
+                if (mine.Remove(id, out var skin)) ordered.Add(skin);
+            // skins não citadas preservam a ordem persistida original
+            ordered.AddRange(_kaeliSkins.Where(s => Owns(s) && mine.ContainsKey(s.Id)));
+
+            var queue = new Queue<KaeliSkinDefinition>(ordered);
+            for (var i = 0; i < _kaeliSkins.Count; i++)
+                if (Owns(_kaeliSkins[i])) _kaeliSkins[i] = queue.Dequeue();
+            WriteKaeliSkins(_kaeliSkins);
+            return _kaeliSkins.ToList();
+        }
+    }
+
     // ---- itens autorais (Item Studio) ----
 
     public IReadOnlyList<AuthoredItemDefinition> AuthoredItems

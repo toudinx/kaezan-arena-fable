@@ -111,6 +111,13 @@ export class ApiService {
     await this.reloadCatalog();
   }
 
+  async reorderKaeliSkins(waifuId: string, orderedIds: string[]): Promise<KaeliSkinDefinition[]> {
+    const saved = await this.request<KaeliSkinDefinition[]>(
+      'POST', '/admin/content/kaeli-skins/reorder', { waifuId, orderedIds });
+    await this.reloadCatalog();
+    return saved;
+  }
+
   // ---- admin: editor de itens ----
   async getAdminItems(): Promise<AdminItemsPayload> {
     return this.request<AdminItemsPayload>('GET', '/admin/items');

@@ -594,8 +594,16 @@ internal static class Program
                 Console.Error.WriteLine($"WARN: {category} id {id} not found in appearances");
                 continue;
             }
-            node[id.ToString()] = staticItems?.TryExport(app, category, dir, sheets)
-                                  ?? ExportAppearance(app, category, dir, sheets);
+            try
+            {
+                node[id.ToString()] = staticItems?.TryExport(app, category, dir, sheets)
+                                      ?? ExportAppearance(app, category, dir, sheets);
+            }
+            catch (Exception ex)
+            {
+                // um sheet ilegível não pode abortar a extração inteira: pula essa aparência e segue.
+                Console.Error.WriteLine($"WARN: {category} id {id} skipped: {ex.GetType().Name}: {ex.Message}");
+            }
         }
         Console.WriteLine($"{category}: exported {node.Count}");
         return node;

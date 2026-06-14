@@ -46,7 +46,15 @@ deduplicadas em 758 outfits, com filtros de monstro/boss, classe e placeholder l
 Kaezan podem ser reabertos, duplicados e excluídos; a exclusão é recusada enquanto a criatura ainda
 estiver referenciada por alguma dungeon.
 
-A aba **Kaelis** é o **Outfit Studio**: cria *skins* autorais para as Kaelis do roster, no espírito
+A aba **Kaelis** tem duas sub-telas. O **Guarda-roupa** é a entrada e a face de gestão de skins:
+lista o roster e mostra **todas** as skins de cada Kaeli — a padrão e as estáticas (do código) e as
+autorais (Kaezan). **Qualquer** skin pode ser editada por “Editar visual”, inclusive a padrão e as
+estáticas: a edição vira um *override* autoral com o **mesmo id** (a invariante de ids estáveis fica
+intacta — nada é renomeado), aparece como “Editada” e ganha **Restaurar padrão** para voltar à
+definição do código (`KaeliRegistry` substitui a estática pelo override por id). As skins autorais
+(id novo) também podem ter desbloqueio/ordem ajustados inline, ser **re-vinculadas** a outra Kaeli e
+reordenadas (afeta o seletor de skin no Hub); a skin padrão mantém sempre o desbloqueio Padrão. O
+**Outfit Studio** cria *skins* autorais para as Kaelis do roster, no espírito
 da janela de outfit do Tibia. A biblioteca classifica os lookTypes em **Feminino / Masculino /
 Monstros / Bosses / Todos** (com nome real e contadores por categoria): os outfits de jogador vêm de
 `assets/tibia/outfit-catalog.json` (gerado de `outfits.xml` do Canary — nome + gênero por lookType,

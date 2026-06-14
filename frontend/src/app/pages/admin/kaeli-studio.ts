@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, computed, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
 import { AssetsService } from '../../core/assets.service';
 import { OutfitPreview } from '../../core/outfit-preview';
@@ -13,6 +13,13 @@ import {
 
 type Region = 'head' | 'body' | 'legs' | 'feet';
 type OutfitCategory = 'feminino' | 'masculino' | 'monster' | 'boss' | 'all';
+
+/** Pedido vindo do guarda-roupa: editar uma skin existente ou criar uma nova já apontada à Kaeli. */
+export interface StudioSeed {
+  mode: 'new' | 'edit';
+  waifuId: string;
+  skin?: KaeliSkinDefinition;
+}
 
 /** Entrada de outfit-catalog.json (gerado de Canary outfits.xml: nome + gênero por lookType). */
 interface OutfitCatalogEntry {
@@ -92,6 +99,7 @@ const PAGE_SIZE = 48;
               @if (draft().id) { <code>{{ draft().id }}</code> }
             </div>
             <div class="actions">
+              <button type="button" class="secondary" (click)="closed.emit()">← Guarda-roupa</button>
               <button type="button" class="secondary" (click)="duplicateCurrent()">Duplicar</button>
               <button type="button" class="primary" [disabled]="saving()" (click)="save()">
                 {{ saving() ? 'Salvando...' : 'Salvar look' }}
@@ -182,21 +190,25 @@ const PAGE_SIZE = 48;
               <textarea rows="2" [value]="draft().description"
                 (input)="patch({ description: $any($event.target).value })"></textarea>
             </label>
-            <div class="unlock-grid">
-              <label>Desbloqueio
-                <select (change)="patch({ unlock: $any($event.target).value })">
-                  @for (k of unlockKinds(); track k) {
-                    <option [value]="k" [selected]="k === draft().unlock">{{ unlockLabel(k) }}</option>
-                  }
-                </select>
-              </label>
-              @if (draft().unlock !== 'default') {
-                <label>{{ unlockValueLabel() }}
-                  <input type="number" min="0" [value]="draft().unlockValue"
-                    (input)="patch({ unlockValue: clampValue($any($event.target).value) })" />
+            @if (isDefaultSkin()) {
+              <p class="hint locked">Esta é a skin <b>padrão</b> da Kaeli: o desbloqueio fica sempre “Padrão (grátis)”. Você pode trocar o visual livremente.</p>
+            } @else {
+              <div class="unlock-grid">
+                <label>Desbloqueio
+                  <select (change)="patch({ unlock: $any($event.target).value })">
+                    @for (k of unlockKinds(); track k) {
+                      <option [value]="k" [selected]="k === draft().unlock">{{ unlockLabel(k) }}</option>
+                    }
+                  </select>
                 </label>
-              }
-            </div>
+                @if (draft().unlock !== 'default') {
+                  <label>{{ unlockValueLabel() }}
+                    <input type="number" min="0" [value]="draft().unlockValue"
+                      (input)="patch({ unlockValue: clampValue($any($event.target).value) })" />
+                  </label>
+                }
+              </div>
+            }
             <p class="hint">
               Skins com desbloqueio “Padrão” já podem ser equipadas; as demais exigem afinidade, ouro ou Kaeros.
               Addons e montaria definidos aqui sobrescrevem ascensão/equipamento dentro da run.
@@ -340,6 +352,7 @@ const PAGE_SIZE = 48;
     .identity > label { margin-top: 8px; }
     .unlock-grid { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; margin-top: 8px; }
     .hint { color: #77758b; font-size: 8px; line-height: 1.5; margin-top: 8px; }
+    .hint.locked { background: #171721; border-left: 2px solid #4a6a64; border-radius: 4px; color: #8fb6ae; font-size: 9px; margin-top: 8px; padding: 7px 9px; }
     .authored > .filter-label { margin-bottom: 8px; }
     .authored-card { background: #11111a; border: 1px solid #29293a; border-radius: 6px; overflow: hidden; }
     .authored-card.active { background: #17201f; border-color: #2f8e82; }
@@ -374,6 +387,11 @@ const PAGE_SIZE = 48;
   `],
 })
 export class KaeliStudio implements OnInit {
+  /** Quando aberto a partir do guarda-roupa: edita uma skin ou semeia uma nova para a Kaeli. */
+  @Input() seed: StudioSeed | null = null;
+  /** Pede ao host (KaeliManager) para voltar ao guarda-roupa. */
+  @Output() readonly closed = new EventEmitter<void>();
+
   readonly metadata = signal<KaeliAuthoringMetadata | null>(null);
   readonly authored = signal<KaeliSkinDefinition[]>([]);
   readonly outfitList = signal<OutfitOption[]>([]);
@@ -409,6 +427,14 @@ export class KaeliStudio implements OnInit {
     return Array.from({ length: count }, (_, i) => this.cssColor(i));
   });
   readonly unlockKinds = computed(() => this.metadata()?.unlockKinds ?? ['default', 'affinity', 'gold', 'kaeros']);
+
+  /** A skin sendo editada é a padrão da Kaeli? (override da padrão mantém desbloqueio "default"). */
+  readonly isDefaultSkin = computed(() => {
+    const draft = this.draft();
+    if (!draft.id) return false;
+    const kaeli = this.metadata()?.kaelis.find((k) => k.id === draft.waifuId);
+    return kaeli?.defaultSkinId === draft.id;
+  });
 
   readonly categoryCounts = computed(() => {
     const list = this.outfitList();
@@ -507,7 +533,8 @@ export class KaeliStudio implements OnInit {
         .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })));
       this.metadata.set(metadata);
       this.authored.set(authored);
-      this.newSkin();
+      if (this.seed?.mode === 'edit' && this.seed.skin) this.editSkin(this.seed.skin);
+      else this.newSkin(this.seed?.waifuId);
     } catch (error) {
       this.status.set({ kind: 'err', msg: (error as Error).message });
     }
@@ -578,9 +605,9 @@ export class KaeliStudio implements OnInit {
     this.status.set(null);
   }
 
-  newSkin(): void {
-    const waifuId = this.draft().waifuId || this.roster()[0]?.id || '';
-    this.draft.set(this.emptyDraft(waifuId));
+  newSkin(waifuId?: string): void {
+    const target = waifuId || this.draft().waifuId || this.roster()[0]?.id || '';
+    this.draft.set(this.emptyDraft(target));
     this.loadKaeliDefault();
     this.selectedId.set('');
     this.status.set(null);
@@ -632,7 +659,10 @@ export class KaeliStudio implements OnInit {
     this.saving.set(true);
     this.status.set(null);
     try {
-      const saved = this.draft().id
+      // override de skin estática: tem id mas ainda não é um registro autoral → cria (POST com id fixo).
+      const id = this.draft().id;
+      const isExistingAuthored = !!id && this.authored().some((s) => s.id === id);
+      const saved = isExistingAuthored
         ? await this.api.updateKaeliSkin(this.draft())
         : await this.api.createKaeliSkin(this.draft());
       this.authored.update((list) => [...list.filter((s) => s.id !== saved.id), saved]);

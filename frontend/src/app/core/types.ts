@@ -50,6 +50,10 @@ export interface KaeliAuthoringKaeli {
   element: string;
   classId: string;
   defaultSkin: { lookType: number; head: number; body: number; legs: number; feet: number };
+  /** ids das skins definidas no código (estáticas) — o guarda-roupa usa para distinguir override. */
+  staticSkinIds: string[];
+  /** id da skin padrão (índice 0); precisa manter o desbloqueio "default". */
+  defaultSkinId: string;
 }
 
 export interface KaeliAuthoringMetadata {

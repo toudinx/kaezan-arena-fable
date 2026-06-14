@@ -3,7 +3,7 @@ import { ApiService } from '../../core/api.service';
 import { DungeonTier, MonsterCatalogEntry } from '../../core/types';
 import { CreaturePreview } from './creature-preview';
 import { MonsterEditor } from './monster-editor';
-import { KaeliStudio } from './kaeli-studio';
+import { KaeliManager } from './kaeli-manager';
 import { ItemEditor } from './item-editor';
 
 type AdminMode = 'dungeons' | 'monsters' | 'kaelis' | 'items';
@@ -14,7 +14,7 @@ type DropZone = MobKind | 'boss';
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CreaturePreview, MonsterEditor, KaeliStudio, ItemEditor],
+  imports: [CreaturePreview, MonsterEditor, KaeliManager, ItemEditor],
   template: `
     <div class="page">
       <header class="titlebar">
@@ -42,7 +42,7 @@ type DropZone = MobKind | 'boss';
       @if (pageMode() === 'monsters') {
         <app-monster-editor />
       } @else if (pageMode() === 'kaelis') {
-        <app-kaeli-studio />
+        <app-kaeli-manager />
       } @else if (pageMode() === 'items') {
         <app-item-editor />
       } @else {

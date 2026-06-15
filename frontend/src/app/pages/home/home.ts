@@ -138,15 +138,8 @@ export class HomePage {
     const selectedId = this.api.account()?.selectedSkins?.[w.id];
     return w.skins.find((s) => s.id === selectedId) ?? w.skins[0] ?? null;
   });
-  readonly activeAddons = computed(() => {
-    const skin = this.activeSkin();
-    if (skin?.addons) return skin.addons; // skin autoral pode fixar addons
-    const acc = this.api.account();
-    const cat = this.api.catalog();
-    if (!acc || !cat) return 0;
-    const asc = acc.ascension[acc.activeWaifuId] ?? 0;
-    return asc >= cat.addonAscensions[1] ? 3 : asc >= cat.addonAscensions[0] ? 1 : 0;
-  });
+  // Os addons exibidos vêm exclusivamente da skin selecionada (0 = nenhum); a ascensão não os força.
+  readonly activeAddons = computed(() => this.activeSkin()?.addons ?? 0);
   readonly activeMount = computed(() => this.activeSkin()?.mountLookType ?? 0);
   readonly busy = signal(false);
 

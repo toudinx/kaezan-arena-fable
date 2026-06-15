@@ -6,8 +6,24 @@ import { GameClientService } from '../../core/game-client.service';
 import { GameRenderer } from '../../core/renderer';
 import { ItemIcon } from '../../core/item-icon';
 
-const MOVE_HEARTBEAT_MS = 250;
+// G-01: alinhado abaixo do passo do player (~294ms a PlayerBaseSpeed=340) pra resend confiável.
+const MOVE_HEARTBEAT_MS = 200;
 const RESUME_TOAST_MS = 2500;
+
+const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = {
+  KeyW: { x: 0, y: -1 },
+  KeyA: { x: -1, y: 0 },
+  KeyS: { x: 0, y: 1 },
+  KeyD: { x: 1, y: 0 },
+  KeyQ: { x: -1, y: -1 },
+  KeyE: { x: 1, y: -1 },
+  KeyZ: { x: -1, y: 1 },
+  KeyC: { x: 1, y: 1 },
+  ArrowUp: { x: 0, y: -1 },
+  ArrowLeft: { x: -1, y: 0 },
+  ArrowDown: { x: 0, y: 1 },
+  ArrowRight: { x: 1, y: 0 },
+};
 
 @Component({
   selector: 'app-game',
@@ -315,15 +331,20 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   // ---- input ----
 
   private onKeyDown = (e: KeyboardEvent): void => {
+    const move = MOVE_KEYS[e.code];
+    if (move) {
+      if (!e.repeat) {
+        this.keys.add(e.code);
+        this.sendMoveDir();
+      }
+      e.preventDefault();
+      return;
+    }
     if (e.repeat) return;
     const k = e.key.toLowerCase();
-    if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) {
-      this.keys.add(k);
-      this.sendMoveDir();
-      e.preventDefault();
-    } else if (k === '1' || k === 'q') this.cast(0);
+    if (k === '1') this.cast(0);
     else if (k === '2') this.cast(1);
-    else if (k === '3' || k === 'e') this.cast(2);
+    else if (k === '3') this.cast(2);
     else if (k === '4') this.cast(3);
     else if (k === 'r') this.cast(4);
     else if (k === 'tab') { this.toggleStance(); e.preventDefault(); }
@@ -332,8 +353,10 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   };
 
   private onKeyUp = (e: KeyboardEvent): void => {
-    const k = e.key.toLowerCase();
-    if (this.keys.delete(k)) this.sendMoveDir();
+    if (this.keys.delete(e.code)) {
+      this.sendMoveDir();
+      e.preventDefault();
+    }
   };
 
   private onBlur = (): void => {
@@ -350,10 +373,14 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   private sendMoveDir(): void {
     let dx = 0;
     let dy = 0;
-    if (this.keys.has('a') || this.keys.has('arrowleft')) dx -= 1;
-    if (this.keys.has('d') || this.keys.has('arrowright')) dx += 1;
-    if (this.keys.has('w') || this.keys.has('arrowup')) dy -= 1;
-    if (this.keys.has('s') || this.keys.has('arrowdown')) dy += 1;
+    for (const code of this.keys) {
+      const move = MOVE_KEYS[code];
+      if (!move) continue;
+      dx += move.x;
+      dy += move.y;
+    }
+    dx = Math.sign(dx);
+    dy = Math.sign(dy);
     if (dx !== this.lastDir.x || dy !== this.lastDir.y) {
       this.lastDir = { x: dx, y: dy };
       this.client.move(dx, dy);

@@ -444,8 +444,14 @@ public sealed class GameWorld
         return (int)Math.Clamp(ms, GameConfig.MinStepMs, GameConfig.MaxStepMs);
     }
 
-    private static Dir FacingFrom(int dx, int dy) =>
-        Math.Abs(dx) >= Math.Abs(dy) ? (dx >= 0 ? Dir.East : Dir.West) : (dy >= 0 ? Dir.South : Dir.North);
+    private static Dir FacingFrom(int dx, int dy, Dir? previous = null)
+    {
+        if (dx != 0 && dy != 0 && previous is Dir.North or Dir.South)
+            return dy >= 0 ? Dir.South : Dir.North;
+        return Math.Abs(dx) >= Math.Abs(dy)
+            ? (dx >= 0 ? Dir.East : Dir.West)
+            : (dy >= 0 ? Dir.South : Dir.North);
+    }
 
     private bool CanStep(Actor actor, int dx, int dy)
     {
@@ -453,6 +459,10 @@ public sealed class GameWorld
         var nx = actor.X + dx;
         var ny = actor.Y + dy;
         var floor = _floors[actor.Floor];
+        if (dx != 0 && dy != 0
+            && (floor.IsBlocked(actor.X + dx, actor.Y)
+                || floor.IsBlocked(actor.X, actor.Y + dy)))
+            return false;
         return !floor.IsBlocked(nx, ny) && OccupiedBy(actor.Floor, nx, ny) is null;
     }
 
@@ -466,7 +476,7 @@ public sealed class GameWorld
         actor.Y += dy;
         actor.StepStartMs = stepStartMs ?? NowMs;
         actor.StepDurMs = StepDuration(speed, dx != 0 && dy != 0);
-        actor.Facing = FacingFrom(dx, dy);
+        actor.Facing = FacingFrom(dx, dy, actor.Facing);
         return true;
     }
 
@@ -1926,9 +1936,8 @@ public sealed class GameWorld
             Player.FromX, Player.FromY, Player.StepDurMs, Player.StepStartMs,
             new OutfitDto(Loadout.Skin.LookType, Loadout.Skin.Head, Loadout.Skin.Body,
                 Loadout.Skin.Legs, Loadout.Skin.Feet,
-                Loadout.Skin.Addons > 0
-                    ? Loadout.Skin.Addons
-                    : Ascension >= GameConfig.AddonTwoAscension ? 3 : Ascension >= GameConfig.AddonOneAscension ? 1 : 0,
+                // os addons vêm exclusivamente da skin escolhida (0 = nenhum); ascensão não os força
+                Loadout.Skin.Addons,
                 Loadout.Skin.MountLookType > 0 ? Loadout.Skin.MountLookType : EquipmentStats.MountLookType),
             Player.TargetId, _gauge, skills,
             PlayerClass.Id, PlayerClass.Name,

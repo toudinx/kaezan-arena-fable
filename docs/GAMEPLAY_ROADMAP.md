@@ -57,7 +57,8 @@ As "Ondas" abaixo agrupam por tema; a ordem real respeita **dependências e quic
 
 ## Onda 1 — Feel de movimento (quick wins)
 
-### [ ] G-01 — Velocidade & resposta de input
+### [x] G-01 — Velocidade & resposta de input
+_Tuning: `PlayerBaseSpeed` 250→340 (passo 400→~294ms/tile), `StepGraceMs` 80→130, `MinStepMs` 160→140, `MOVE_HEARTBEAT_MS` 250→200. `MonsterSpeedMultiplier` revisado e mantido em 2 (mobs já kitáveis)._
 **P0 · S · backend (+frontend leve) · Owner: Codex → Opus**
 _(Tuning bounded; escale a Opus se o feel exigir julgamento. Toca step timing no `GameWorld`.)_
 
@@ -71,7 +72,8 @@ Devagar pro ritmo de hunt. `StepGraceMs=80` ([GameWorld.cs:519](../backend/src/K
 **Aceite.** Andar/virar/parar responde melhor; player kita bem.
 **Armadilhas.** Não cruzar o piso `MinStepMs`; só tuning de constantes (determinismo ok).
 
-### [ ] G-12 — Andada em diagonal (8 direções)
+### [x] G-12 — Andada em diagonal (8 direções)
+_Input por código físico combina WASD/setas sem depender da ordem dos eventos e oferece diagonais diretas em Q/E/Z/C; o backend impede cortar quinas, mantém slide por eixo e estabiliza o facing cardinal durante diagonais._
 **P0 · S · frontend (+verificar backend) · Owner: Codex → Opus**
 _(Maioria frontend, mas a regra de não-cortar-quina toca `CanStep` no `GameWorld`.)_
 
@@ -84,7 +86,8 @@ GameWorld.cs:440-468); `sendMoveDir` já combina teclas (game.ts:350). Mas na pr
 **Aceite.** Anda nas 8 direções fluida e confiável.
 **Armadilhas.** Corner-cutting; não duplicar `DiagonalStepFactor`; determinismo.
 
-### [ ] G-02 — Suavidade visual (render delay / clock smoothing)
+### [x] G-02 — Suavidade visual (render delay / clock smoothing)
+_Renderer atrasado em 1 tick, relógio corrigido gradualmente (com resync após oferta de card), ciclo de caminhada contínuo e histórico curto de segmentos por ator para não descartar o fim de um passo quando chega o próximo snapshot._
 **P1 · S · frontend · Owner: Sonnet → Codex**
 _(Pura apresentação, sem simulação → piso Sonnet.)_
 

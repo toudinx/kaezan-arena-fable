@@ -1,9 +1,12 @@
 import { AssetsService } from './assets.service';
-import { EventDto, MapDto, MonsterDto, PlayerDto, SnapshotDto } from './types';
+import { EventDto, MapDto, MonsterDto, PlayerDto, SnapshotDto, TICK_MS } from './types';
 
 const TILE = 32;
 const SCALE = 2;
 const TS = TILE * SCALE; // screen px per tile
+const RENDER_DELAY_MS = TICK_MS;
+const CLOCK_SMOOTHING = 0.2;
+const MAX_CLOCK_CORRECTION_MS = 25;
 
 /** Tibia-style damage number colors by damage/condition type (player hits only). */
 const DAMAGE_TYPE_COLORS: Record<string, string> = {
@@ -18,6 +21,14 @@ interface ActiveProjectile { fromX: number; fromY: number; toX: number; toY: num
 interface FloatText { x: number; y: number; text: string; color: string; start: number; }
 interface Bubble { x: number; y: number; text: string; start: number; }
 interface Corpse { x: number; y: number; itemId: number; start: number; }
+interface MotionSample {
+  fromX: number;
+  fromY: number;
+  x: number;
+  y: number;
+  stepDurMs: number;
+  stepStartTick: number;
+}
 
 /** Canvas renderer for the live run. The game component feeds snapshots/events. */
 export class GameRenderer {
@@ -28,6 +39,8 @@ export class GameRenderer {
   private corpses: Corpse[] = [];
 
   private snapArrival = 0;
+  private serverClockOffsetMs: number | null = null;
+  private readonly motionHistory = new Map<number, MotionSample[]>();
   private snapshot: SnapshotDto | null = null;
   private map: MapDto | null = null;
 
@@ -43,12 +56,55 @@ export class GameRenderer {
     this.effects = [];
     this.projectiles = [];
     this.corpses = [];
+    this.motionHistory.clear();
   }
 
   setSnapshot(snap: SnapshotDto, nowPerf: number): void {
+    const previous = this.snapshot;
+    const isPaused = snap.run.offer !== null;
+    if (!isPaused) {
+      const resumed = previous?.run.offer !== null;
+      const resetClock = !previous || snap.tick <= previous.tick || resumed;
+      const measuredOffset = snap.simulationMs - nowPerf;
+      if (resetClock || this.serverClockOffsetMs === null) {
+        this.serverClockOffsetMs = measuredOffset;
+      } else {
+        const drift = measuredOffset - this.serverClockOffsetMs;
+        const correction = Math.max(
+          -MAX_CLOCK_CORRECTION_MS,
+          Math.min(drift, MAX_CLOCK_CORRECTION_MS),
+        );
+        this.serverClockOffsetMs += correction * CLOCK_SMOOTHING;
+      }
+    }
+    this.recordMotion(snap.player, snap.simulationMs);
+    for (const monster of snap.monsters) this.recordMotion(monster, snap.simulationMs);
     this.snapshot = snap;
     this.snapArrival = nowPerf;
     for (const ev of snap.events) this.ingest(ev, nowPerf);
+  }
+
+  private recordMotion(actor: PlayerDto | MonsterDto, simulationMs: number): void {
+    const sample: MotionSample = {
+      fromX: actor.fromX,
+      fromY: actor.fromY,
+      x: actor.x,
+      y: actor.y,
+      stepDurMs: actor.stepDurMs,
+      stepStartTick: actor.stepDurMs ? actor.stepStartTick : simulationMs,
+    };
+    const history = this.motionHistory.get(actor.id) ?? [];
+    const last = history[history.length - 1];
+    if (last
+      && last.fromX === sample.fromX
+      && last.fromY === sample.fromY
+      && last.x === sample.x
+      && last.y === sample.y
+      && last.stepDurMs === sample.stepDurMs
+      && (sample.stepDurMs > 0 || last.stepStartTick === sample.stepStartTick)) return;
+    history.push(sample);
+    if (history.length > 5) history.shift();
+    this.motionHistory.set(actor.id, history);
   }
 
   private ingest(ev: EventDto, now: number): void {
@@ -102,13 +158,35 @@ export class GameRenderer {
   private serverNow(nowPerf: number): number {
     if (!this.snapshot) return 0;
     if (this.snapshot.run.offer) return this.snapshot.simulationMs;
-    return this.snapshot.simulationMs + (nowPerf - this.snapArrival);
+    if (this.serverClockOffsetMs === null)
+      return this.snapshot.simulationMs + (nowPerf - this.snapArrival) - RENDER_DELAY_MS;
+    return nowPerf + this.serverClockOffsetMs - RENDER_DELAY_MS;
   }
 
-  private actorRenderPos(a: PlayerDto | MonsterDto, serverNow: number): { x: number; y: number } {
-    if (!a.stepDurMs) return { x: a.x, y: a.y };
-    const p = Math.min(Math.max((serverNow - a.stepStartTick) / a.stepDurMs, 0), 1);
-    return { x: a.fromX + (a.x - a.fromX) * p, y: a.fromY + (a.y - a.fromY) * p };
+  private actorMotionAt(actor: PlayerDto | MonsterDto, serverNow: number): MotionSample {
+    const history = this.motionHistory.get(actor.id);
+    if (!history?.length) return actor;
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i].stepStartTick <= serverNow) return history[i];
+    }
+    return history[0];
+  }
+
+  private actorRenderState(
+    actor: PlayerDto | MonsterDto,
+    serverNow: number,
+  ): { x: number; y: number; moving: boolean } {
+    const motion = this.actorMotionAt(actor, serverNow);
+    if (!motion.stepDurMs) return { x: motion.x, y: motion.y, moving: false };
+    const progress = Math.min(
+      Math.max((serverNow - motion.stepStartTick) / motion.stepDurMs, 0),
+      1,
+    );
+    return {
+      x: motion.fromX + (motion.x - motion.fromX) * progress,
+      y: motion.fromY + (motion.y - motion.fromY) * progress,
+      moving: progress < 1,
+    };
   }
 
   screenToTile(px: number, py: number, nowPerf: number): { x: number; y: number } | null {
@@ -128,7 +206,7 @@ export class GameRenderer {
 
   private camera(nowPerf: number): { x: number; y: number } {
     const serverNow = this.serverNow(nowPerf);
-    const pos = this.actorRenderPos(this.snapshot!.player, serverNow);
+    const pos = this.actorRenderState(this.snapshot!.player, serverNow);
     const camX = pos.x * TS + TS / 2 - this.canvas.width / 2;
     const camY = pos.y * TS + TS / 2 - this.canvas.height / 2;
     const maxX = this.map!.w * TS - this.canvas.width;
@@ -201,14 +279,13 @@ export class GameRenderer {
     // 4. walls and creatures, row by row (y-sorted)
     const creatures: { ry: number; draw: () => void; ref: PlayerDto | MonsterDto; pos: { x: number; y: number } }[] = [];
     for (const m of snap.monsters) {
-      const pos = this.actorRenderPos(m, serverNow);
+      const pos = this.actorRenderState(m, serverNow);
       creatures.push({
         ry: pos.y, pos, ref: m,
         draw: () => {
-          const moving = serverNow < m.stepStartTick + m.stepDurMs;
           this.assets.drawOutfit(
             ctx, m.outfit.lookType, Math.round(pos.x * TS - cam.x), Math.round(pos.y * TS - cam.y), SCALE,
-            m.dir, moving, moving ? serverNow : nowPerf,
+            m.dir, pos.moving, pos.moving ? serverNow : nowPerf,
             m.outfit.head, m.outfit.body, m.outfit.legs, m.outfit.feet, m.outfit.addons,
           );
         },
@@ -216,14 +293,13 @@ export class GameRenderer {
     }
     {
       const p = snap.player;
-      const pos = this.actorRenderPos(p, serverNow);
+      const pos = this.actorRenderState(p, serverNow);
       creatures.push({
         ry: pos.y, pos, ref: p,
         draw: () => {
-          const moving = serverNow < p.stepStartTick + p.stepDurMs;
           this.assets.drawOutfit(
             ctx, p.outfit.lookType, Math.round(pos.x * TS - cam.x), Math.round(pos.y * TS - cam.y), SCALE,
-            p.dir, moving, moving ? serverNow : nowPerf,
+            p.dir, pos.moving, pos.moving ? serverNow : nowPerf,
             p.outfit.head, p.outfit.body, p.outfit.legs, p.outfit.feet, p.outfit.addons,
             p.outfit.mountLookType,
           );
@@ -249,7 +325,7 @@ export class GameRenderer {
     if (snap.player.targetId) {
       const target = snap.monsters.find((m) => m.id === snap.player.targetId);
       if (target) {
-        const pos = this.actorRenderPos(target, serverNow);
+        const pos = this.actorRenderState(target, serverNow);
         ctx.strokeStyle = '#ff4d4d';
         ctx.lineWidth = 2;
         ctx.strokeRect(pos.x * TS - cam.x + 2, pos.y * TS - cam.y + 2, TS - 4, TS - 4);

@@ -46,7 +46,7 @@ import { PullResult, RARITY_COLORS } from '../../core/types';
         <h3>Taxas</h3>
         <p><b style="color:#e8a93c">5★</b> 0.8% (soft pity a partir de 65, garantido em 80 — banner promocional: 50% de ser a destaque, perdeu = próxima garantida)</p>
         <p><b style="color:#a06bd6">4★</b> 6% (garantido a cada 10)</p>
-        <p>Duplicatas viram <b>Echo Shards</b> da personagem — use para Ascensão (A2 desbloqueia o 1º addon do outfit, A4 o 2º).</p>
+        <p>Duplicatas viram <b>Echo Shards</b> da personagem — use para Ascensão (+8% stats por nível; os addons do outfit são definidos por skin no Outfit Studio).</p>
       </div>
     </div>
 

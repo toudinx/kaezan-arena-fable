@@ -24,7 +24,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento';
                     [style.--rc]="rarityColor(w.rarity)" (click)="select(w)">
               <app-outfit-preview [lookType]="skinFor(w).lookType" [head]="skinFor(w).head"
                 [body]="skinFor(w).body" [legs]="skinFor(w).legs" [feet]="skinFor(w).feet"
-                [addons]="addons(w.id)" [size]="64" [animate]="false" />
+                [addons]="skinFor(w).addons ?? 0" [size]="64" [animate]="false" />
               <span class="nm">{{ w.name }}</span>
               <span class="st" [style.color]="rarityColor(w.rarity)">{{ '★'.repeat(w.rarity) }}</span>
               @if (owned(w.id)) { <span class="aff-chip">❤ {{ affinityLevel(w.id) }}</span> }
@@ -39,7 +39,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento';
             <div class="hero">
               <app-outfit-preview [lookType]="skinFor(w).lookType" [head]="skinFor(w).head"
                 [body]="skinFor(w).body" [legs]="skinFor(w).legs" [feet]="skinFor(w).feet"
-                [addons]="addons(w.id)" [mountLookType]="mountLookType(w.id)" [size]="160" />
+                [addons]="skinFor(w).addons ?? 0" [mountLookType]="mountLookType(w.id)" [size]="160" />
               <div>
                 <div class="stars" [style.color]="rarityColor(w.rarity)">{{ '★'.repeat(w.rarity) }}</div>
                 <h2>{{ w.name }} <span class="title">— {{ w.title }}</span></h2>
@@ -131,10 +131,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento';
                   <h3>Ascensão A{{ ascension(w.id) }} <span class="muted">· {{ shards(w.id) }} shards</span></h3>
                   <div class="asc-dots">
                     @for (i of [1,2,3,4,5,6]; track i) {
-                      <span class="dot" [class.on]="ascension(w.id) >= i"
-                            [title]="i === 2 ? 'Addon 1 do outfit' : i === 4 ? 'Addon 2 do outfit' : '+8% stats'">
-                        {{ i === 2 || i === 4 ? '✦' : '●' }}
-                      </span>
+                      <span class="dot" [class.on]="ascension(w.id) >= i" title="+8% stats">●</span>
                     }
                   </div>
                   @if (ascension(w.id) < 6) {
@@ -157,7 +154,8 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento';
                     <div class="skin-card" [class.selected]="isSelectedSkin(w, skin)"
                          [class.locked]="!skinUnlocked(w, skin)">
                       <app-outfit-preview [lookType]="skin.lookType" [head]="skin.head" [body]="skin.body"
-                        [legs]="skin.legs" [feet]="skin.feet" [addons]="addons(w.id)" [size]="96" />
+                        [legs]="skin.legs" [feet]="skin.feet" [addons]="skin.addons ?? 0"
+                        [mountLookType]="skin.mountLookType ?? 0" [size]="96" />
                       <b>{{ skin.name }}</b>
                       <p class="skin-desc">{{ skin.description }}</p>
                       <span class="skin-badge">{{ skinBadge(skin) }}</span>
@@ -176,7 +174,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento';
                     </div>
                   }
                 </div>
-                <p class="muted small">A skin em uso aparece no Hub, nas runs e nesta página. Addons de ascensão aplicam-se a qualquer skin.</p>
+                <p class="muted small">A skin em uso aparece no Hub, nas runs e nesta página. Os addons exibidos são os definidos na skin (no Outfit Studio).</p>
               }
 
               <!-- ================= MAESTRIA ================= -->
@@ -510,13 +508,6 @@ export class KaelisPage {
   isActive(id: string): boolean { return this.api.account()?.activeWaifuId === id; }
   ascension(id: string): number { return this.api.account()?.ascension?.[id] ?? 0; }
   shards(id: string): number { return this.api.account()?.shards?.[id] ?? 0; }
-
-  addons(id: string): number {
-    const cat = this.api.catalog();
-    if (!cat) return 0;
-    const asc = this.ascension(id);
-    return asc >= cat.addonAscensions[1] ? 3 : asc >= cat.addonAscensions[0] ? 1 : 0;
-  }
 
   ascCost(id: string): number {
     const costs = this.api.catalog()?.ascensionShardCost ?? [];

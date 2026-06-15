@@ -8,13 +8,17 @@ public static class GameConfig
 {
     // ---- simulation ----
     public const int TickMs = 100;
-    public const int PlayerBaseSpeed = 250;
+    // G-01: 250→340 (passo 400ms→~294ms/tile) pro ritmo de hunt; mantém folga acima de MinStepMs.
+    public const int PlayerBaseSpeed = 340;
+    // G-01: revisado e mantido em 2 — mobs já andam a 430–625ms vs player ~294ms, kita bem.
     public const int MonsterSpeedMultiplier = 2;
     public const int GroundFriction = 100;
     public const double DiagonalStepFactor = 1.4;
-    public const int MinStepMs = 160;
+    // G-01: 160→140, mais teto pra haste/move-speed sem cruzar o piso no passo base.
+    public const int MinStepMs = 140;
     public const int MaxStepMs = 1400;
-    public const int StepGraceMs = 80;
+    // G-01: 80→130, suaviza virar/parar (buffer em SetMoveDirection + chain em TickPlayerMovement).
+    public const int StepGraceMs = 130;
     public const int MonsterAggroRange = 8;
     public const int AggroDropRange = 12;
     public const int AggroDropOutOfRangeMs = 4000;

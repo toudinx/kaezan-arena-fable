@@ -67,8 +67,9 @@ pés) com a paleta HSI de
 atribuída a uma Kaeli e a uma regra de desbloqueio (padrão/afinidade/ouro/Kaeros). As skins são
 persistidas em `.data/content/kaeli-skins.json` e mescladas ao roster estático pelo `KaeliRegistry`
 (catálogo, seleção/compra de skin e sanitização passam a enxergá-las), ficando imediatamente
-equipáveis no Hub e dentro das runs. Addons e montaria fixados na skin sobrescrevem o padrão
-(addons por ascensão, montaria por equipamento).
+equipáveis no Hub e dentro das runs. **Os addons exibidos vêm da skin** (bitmask 0/1/2/3 marcado no
+estúdio): o que a skin define é o que aparece no Hub, na página Kaelis e nas runs — a ascensão não
+força mais addons. Montaria fixada na skin sobrescreve o equipamento.
 
 A aba **Itens** segue o mesmo fluxo do Outfit Studio: biblioteca Canary à esquerda, Item Studio no
 centro e itens Kaezan à direita. O catálogo base tem 2.488 objetos, incluindo armas/equipamentos
@@ -98,10 +99,11 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
 
 | Tecla | Ação |
 |---|---|
-| WASD / setas | Movimento (8 direções, deslize em diagonal bloqueada) |
+| WASD / setas | Movimento cardinal (combinações de duas teclas também formam diagonais) |
+| Q / E / Z / C | Movimento diagonal (sem cortar quinas; diagonal bloqueada desliza pelo eixo livre) |
 | Espaço | Mirar no inimigo mais próximo |
 | Clique | Mirar inimigo / interagir (baú, escada) |
-| 1 / 2 / 3 / 4 (aliases Q/E) | Slots 1-4 do kit da classe |
+| 1 / 2 / 3 / 4 | Slots 1-4 do kit da classe |
 | R | Ultimate da classe (gauge) |
 | Tab | Alterna a postura elemental (quando a classe possui duas) |
 | ESC | Sair da run (abandono = metade do ouro) |
@@ -110,6 +112,8 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
 
 - Passos encadeiam sem pausa entre ticks, com buffer de direção e reenvio periódico do input
   enquanto uma tecla de movimento estiver pressionada.
+- O renderer mantém um tick de histórico e suaviza a deriva do relógio do servidor, preservando
+  a animação de caminhada durante todo o deslocamento entre tiles mesmo com jitter de snapshots.
 - Monstros desviam de bloqueios e aglomerações, perdem aggro após distância/LOS prolongados e
   respeitam `staticAttackChance` para sustentar posições de ataque.
 - **Kit real do Canary** (T-53): cada espécie executa o kit do seu `.lua` — condições viram DoT
@@ -150,8 +154,8 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
 3. Durante a run: XP → level-ups oferecem **cards passivos** (escolha 1 de 3, max 3 stacks);
    loot clássico do Tibia dropa no chão e é coletado andando por cima.
 4. **Recrutar** — banners com pity (4★ a cada 10; 5★ hard 80 / soft 65; 50/50 com garantia).
-   Dupes viram Echo Shards → **Ascensão** (+8% stats; A2/A4 desbloqueiam os addons visuais
-   do outfit do Tibia, visíveis em jogo).
+   Dupes viram Echo Shards → **Ascensão** (+8% stats por nível; os addons do outfit são definidos
+   por skin no Outfit Studio, não pela ascensão).
 5. **Kaelis (profundidade)** — cada Kaeli tem **trait de assinatura** (passiva única no engine),
    **afinidade** 1-10 (XP por runs com ela ativa + **presentes** — itens da Mochila, favoritos
    ×2, máx. 3/dia; níveis destravam **ecos de memória** (lore), Kaeros, skins e +1% ATK/HP por

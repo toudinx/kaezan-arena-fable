@@ -79,13 +79,25 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
             <b>{{ elementLabel(s.player.stanceElement) }}</b>
             @if (s.player.canToggleStance) { <small>TAB</small> }
           </button>
-          <button class="auto-helper" [class.on]="s.player.autoHelperEnabled"
-                  (click)="setAutoHelper(!s.player.autoHelperEnabled)"
-                  title="Helper de alvo e skills 1-4">
+          <div class="helper-panel" title="Controle do helper de combate">
             <span>Helper</span>
-            <i></i>
-            <b>{{ s.player.autoHelperEnabled ? 'ON' : 'OFF' }}</b>
-          </button>
+            <button [class.on]="s.player.autoHelper.targeting"
+                    (click)="setAutoHelper('targeting', !s.player.autoHelper.targeting)">Alvo</button>
+            <button [class.on]="s.player.autoHelper.skills"
+                    (click)="setAutoHelper('skills', !s.player.autoHelper.skills)">Skills</button>
+            <button [class.on]="s.player.autoHelper.ultimate"
+                    (click)="setAutoHelper('ultimate', !s.player.autoHelper.ultimate)">Ult</button>
+            <button class="wide" [class.on]="s.player.autoHelper.targetPreference === 'nearest'"
+                    (click)="toggleTargetPreference()">
+              Pref: {{ targetPreferenceLabel(s.player.autoHelper.targetPreference) }}
+            </button>
+            <button [class.on]="s.player.autoHelper.movementMode === 'none'"
+                    (click)="setAutoHelperMovement('none')">Stand</button>
+            <button [class.on]="s.player.autoHelper.movementMode === 'follow'"
+                    (click)="setAutoHelperMovement('follow')">Follow</button>
+            <button [class.on]="s.player.autoHelper.movementMode === 'avoid'"
+                    (click)="setAutoHelperMovement('avoid')">Avoid</button>
+          </div>
         }
         <button class="btn secondary leave" (click)="leave()">Sair</button>
       </div>
@@ -208,27 +220,22 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
     }
     .stance span { grid-column: 1 / -1; color: #8bfff1; font-size: 10px; font-weight: 800; text-transform: uppercase; }
     .stance.fixed { border-color: #3a3a4c; background: rgba(16,16,26,0.9); }
-    .auto-helper {
-      pointer-events: auto; width: 116px; height: 48px; border: 1px solid #3a3a4c; border-radius: 9px;
-      background: rgba(16,16,26,0.9); color: #cfcde0; padding: 6px 9px;
-      display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto 1fr; align-items: center;
-      gap: 2px 8px; text-align: left;
+    .helper-panel {
+      pointer-events: auto; width: 260px; min-height: 78px; border: 1px solid #3a3a4c; border-radius: 9px;
+      background: rgba(16,16,26,0.9); color: #cfcde0; padding: 6px 8px;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; align-items: center;
     }
-    .auto-helper span { grid-column: 1 / -1; color: #9c9ab0; font-size: 10px; font-weight: 900; text-transform: uppercase; }
-    .auto-helper i {
-      width: 36px; height: 18px; border-radius: 9px; background: #272738; border: 1px solid #4a4a5e;
-      position: relative;
+    .helper-panel span {
+      grid-column: 1 / -1; color: #8bfff1; font-size: 10px; font-weight: 900; text-transform: uppercase;
     }
-    .auto-helper i::after {
-      content: ''; position: absolute; width: 12px; height: 12px; border-radius: 50%;
-      left: 3px; top: 2px; background: #8b8a9c; transition: transform 0.12s ease, background 0.12s ease;
+    .helper-panel button {
+      height: 24px; border: 1px solid #4a4a5e; border-radius: 7px; background: #272738; color: #8b8a9c;
+      font-size: 10px; font-weight: 900; padding: 0; line-height: 1;
     }
-    .auto-helper b { color: #8b8a9c; font-size: 12px; justify-self: end; }
-    .auto-helper.on { border-color: #2dd4bf; background: rgba(10, 30, 32, 0.92); }
-    .auto-helper.on span { color: #8bfff1; }
-    .auto-helper.on i { background: rgba(45, 212, 191, 0.22); border-color: #2dd4bf; }
-    .auto-helper.on i::after { transform: translateX(17px); background: #8bfff1; }
-    .auto-helper.on b { color: #8bfff1; }
+    .helper-panel button.on {
+      border-color: #2dd4bf; background: rgba(45, 212, 191, 0.22); color: #8bfff1;
+    }
+    .helper-panel button.wide { grid-column: span 1; font-size: 9px; }
     .minimap { position: absolute; right: 14px; top: 64px; border: 1px solid #2c2c3e; border-radius: 8px; background: #000; opacity: 0.9; }
     .hud.skills { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
     .skill {
@@ -452,8 +459,44 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     this.client.toggleStance();
   }
 
-  setAutoHelper(enabled: boolean): void {
-    this.client.setAutoHelper(enabled);
+  setAutoHelper(module: 'targeting' | 'skills' | 'ultimate', enabled: boolean): void {
+    const current = this.snapshot()?.player.autoHelper;
+    if (!current) return;
+    this.client.setAutoHelper(
+      module === 'targeting' ? enabled : current.targeting,
+      module === 'skills' ? enabled : current.skills,
+      module === 'ultimate' ? enabled : current.ultimate,
+      current.targetPreference,
+      current.movementMode,
+    );
+  }
+
+  setAutoHelperMovement(movementMode: 'none' | 'follow' | 'avoid'): void {
+    const current = this.snapshot()?.player.autoHelper;
+    if (!current) return;
+    this.client.setAutoHelper(
+      current.targeting,
+      current.skills,
+      current.ultimate,
+      current.targetPreference,
+      movementMode,
+    );
+  }
+
+  toggleTargetPreference(): void {
+    const current = this.snapshot()?.player.autoHelper;
+    if (!current) return;
+    this.client.setAutoHelper(
+      current.targeting,
+      current.skills,
+      current.ultimate,
+      current.targetPreference === 'nearest' ? 'lowestHp' : 'nearest',
+      current.movementMode,
+    );
+  }
+
+  targetPreferenceLabel(preference: string): string {
+    return preference === 'nearest' ? 'Perto' : 'HP';
   }
 
   chooseCard(cardId: string): void {

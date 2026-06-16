@@ -64,15 +64,17 @@ public sealed record ClassDef(
 /// </summary>
 public static class Classes
 {
-    public const string WarriorId = "warrior";
-    public const string SentinelId = "sentinel";
-    public const string ShamanId = "shaman";
-    public const string PyromancerId = "pyromancer";
+    public const string WarriorId     = "warrior";
+    public const string SentinelId    = "sentinel";
+    public const string OracleId      = "oracle";
+    public const string ShamanId      = "shaman";
+    public const string CryomancerId  = "cryomancer";
+    public const string PyromancerId  = "pyromancer";
     public const string StormcallerId = "stormcaller";
-    public const string BarbarianId = "barbarian";
+    public const string BarbarianId   = "barbarian";
     public const string NecromancerId = "necromancer";
     public const string WizardId = PyromancerId;
-    public const string MonkId = BarbarianId;
+    public const string MonkId   = BarbarianId;
 
     public static readonly IReadOnlyDictionary<string, SkillDef> Skills = new[]
     {
@@ -262,8 +264,8 @@ public static class Classes
                     ],
                     "skill:warrior:blood-rage")
             ]),
-        new ClassDef(SentinelId, "Sentinel",
-            "Atiradora versatil que alterna entre poder sagrado e impacto fisico — cada postura luta de um jeito diferente.",
+        new ClassDef(OracleId, "Oracle",
+            "Invocadora sagrada de alcance: julgamentos em sequencia, feixe divino e halo sagrado.",
             "holy",
             [
                 new ClassStanceDef("holy", "Holy", "holy",
@@ -273,7 +275,12 @@ public static class Classes
                         "skill:sentinel:divine-beam",
                         "skill:sentinel:divine-caldera"
                     ],
-                    "skill:sentinel:aegis"),
+                    "skill:sentinel:aegis")
+            ]),
+        new ClassDef(SentinelId, "Sentinel",
+            "Atiradora fisica de precisao: projeteis que desaceleram, chain, slam e zona de vento.",
+            "physical",
+            [
                 new ClassStanceDef("physical", "Physical", "physical",
                     [
                         "skill:sentinel:storm-missile",
@@ -283,8 +290,8 @@ public static class Classes
                     ],
                     "skill:sentinel:aegis")
             ]),
-        new ClassDef(ShamanId, "Shaman",
-            "Conjuradora natural que alterna gelo e terra: controla com lentidao ou com armadilhas e DoT.",
+        new ClassDef(CryomancerId, "Cryomancer",
+            "Maga do gelo: desacelera com cada hit, congela o terreno e lanca avalanches.",
             "ice",
             [
                 new ClassStanceDef("ice", "Ice", "ice",
@@ -294,7 +301,12 @@ public static class Classes
                         "skill:shaman:forked-glacier",
                         "skill:shaman:glacial-prison"
                     ],
-                    "skill:shaman:natures-embrace"),
+                    "skill:shaman:natures-embrace")
+            ]),
+        new ClassDef(ShamanId, "Shaman",
+            "Conjuradora da terra: espinhos que atordoam, chuva de pedras em sequencia e armadilha de areia.",
+            "earth",
+            [
                 new ClassStanceDef("earth", "Earth", "earth",
                     [
                         "skill:shaman:stone-spikes",

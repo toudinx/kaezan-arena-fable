@@ -62,7 +62,7 @@ public static class Waifus
     [
         // ===== 3★ =====
         new("waifu:mira", "Mira", "Punho de Thais", 3, "physical", "melee",
-            17, 195, Classes.MonkId,
+            17, 195, Classes.BarbarianId,
             "Cresceu nas ruas de Thais e nunca recusou uma briga justa. Hoje briga pelas " +
             "justas dos outros — de graça, se a causa for boa; por queijo, se não for.",
             "Esquentada, leal, riso fácil. Resolve no soco o que a diplomacia demorar demais.",
@@ -189,39 +189,38 @@ public static class Waifus
                     156, 114, 0, 0, 114, "affinity", 6),
             ]),
 
-        new("waifu:sylwen", "Sylwen", "Vento Norsa", 4, "ice", "bow",
-            19, 160, Classes.ShamanId,
-            "O vento do norte sussurra; a flecha dela responde. Sylwen deixou as ilhas " +
-            "congeladas devendo um favor a uma tempestade — e veio pagar.",
-            "Calma glacial, ironia fina. Nunca tem pressa: o gelo sempre chega.",
-            new TraitDef("trait:sylwen", "Mordida do Norte", "chiller", 0.25, 2000, "",
-                "Dano de gelo de Sylwen aplica 25% de lentidão por 2s aos inimigos."),
+        new("waifu:sylwen", "Neva", "Geometria do Frio", 4, "ice", "wand",
+            19, 140, Classes.CryomancerId,
+            "Ve o frio como linguagem — cada cristal de gelo e uma equacao que o mundo " +
+            "esqueceu de resolver. Neva so traduz.",
+            "Precisa, fria, fala em angulos e segundos. Nao e cruel; so exata.",
+            new TraitDef("trait:sylwen", "Precisao Glacial", "chiller", 0.25, 2000, "",
+                "Dano de gelo de Neva aplica 25% de lentidão por 2s aos inimigos."),
             [
-                "Nas ilhas norsa, cada criança recebe um nome do vento no primeiro inverno. O " +
-                "vento que nomeou Sylwen veio do mar aberto, frio e constante — o tipo de vento " +
-                "que os pescadores respeitam e os navegadores temem.",
-                "Aos dezessete, o navio do seu clã ficou preso no gelo, a três dias de casa. " +
-                "Foi Sylwen quem caminhou sobre o mar congelado, sozinha, guiada só pelo canto " +
-                "do vento, e trouxe ajuda. Perdeu dois dedos do pé. 'Troca justa', diz ela.",
-                "A tempestade que canta — assim os norsa chamam a aurora de inverno. Sylwen " +
-                "jura que, na noite em que partiu, a tempestade cantou o nome dela e pediu uma " +
-                "coisa em troca da travessia segura. O que foi pedido, ela não conta a ninguém.",
-                "Ela atira melhor no frio, pensa melhor no frio, vive melhor no frio. 'O calor " +
-                "deixa tudo mole', resmunga, abanando-se nas dungeons de lava. 'Até as " +
-                "desculpas dos outros.'"
+                "Aos seis anos, fez florescer uma tempestade de neve perfeita dentro de casa. " +
+                "A mae varreu. Neva anotou o angulo de cada floco que sobrou no chao. Tinha " +
+                "dezenove paginas e nao parou desde entao.",
+                "Na academia de cristalomancia, entregou a tese final em branco. No verso havia " +
+                "uma unica equacao. O avaliador levou tres semanas para provar que estava certa. " +
+                "Ela esperou sem reclamar: 'O resultado nao muda enquanto voce calcula.'",
+                "Reconstruiu a Batalha do Gelo Partido em miniatura usando figuras de cristal. " +
+                "Cada figura morreu na ordem certa. Os generais pediram para destruir o modelo. " +
+                "Neva disse nao: 'Errar a geometria nao desfaz o que aconteceu.'",
+                "Ela veio porque os monstros tem padroes. 'Tudo tem', diz, ajustando as luvas. " +
+                "'Os que parecem caoticos sao so equacoes com variaveis que voce ainda nao encontrou.'"
             ],
-            [3029, 3583], // small sapphire, dragon ham
+            [3029, 3027], // small sapphire, black pearl
             [
-                new SkinDef("skin:sylwen:default", "Vento Norsa",
-                    "Couro do norte e penas de coruja-das-neves trançadas no capuz.",
+                new SkinDef("skin:sylwen:default", "Geometria do Frio",
+                    "Vestes brancas como estrutura de cristal. Cada dobra calculada.",
                     252, 9, 86, 87, 94, "default", 0),
-                new SkinDef("skin:sylwen:lanterns", "Festival das Lanternas",
-                    "Uma vez viajou ao oriente atrás de um vento que não conhecia. Voltou com esta seda — e sem responder se o vento foi encontrado.",
+                new SkinDef("skin:sylwen:lanterns", "Nevasca do Festival",
+                    "Uma vez foi a um festival para estudar como o gelo se comporta na multidao. Ficou mais tempo do que o previsto. Nao explica o motivo.",
                     150, 9, 28, 90, 115, "kaeros", 1000),
             ]),
 
         new("waifu:ember", "Ember", "Chama Viva", 4, "fire", "wand",
-            19, 140, Classes.WizardId,
+            19, 140, Classes.PyromancerId,
             "Expulsa da academia por entusiasmo excessivo com fogo. A academia ainda está " +
             "de pé, o que, segundo ela, prova que o entusiasmo era na medida certa.",
             "Elétrica, tagarela, gênia e desastrada na mesma frase. O fogo gosta dela de volta.",
@@ -293,7 +292,7 @@ public static class Waifus
             ]),
 
         new("waifu:aurora", "Aurora", "Invocadora do Alvorecer", 5, "holy", "wand",
-            22, 150, Classes.SentinelId,
+            22, 150, Classes.OracleId,
             "Cada amanhecer é um feitiço que ela mesma renova. Aurora não reza para a luz: " +
             "a luz é que marca hora com ela.",
             "Doce, pontualíssima, assustadoramente serena. Nunca dorme depois das 4h.",

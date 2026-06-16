@@ -216,7 +216,11 @@ public sealed class GameWorld
     private readonly long[] _skillReadyAtMs = new long[4];
     private string _stanceId;
     private long _autoAttackReadyAtMs;
-    private bool _autoHelperEnabled;
+    private bool _autoHelperTargeting = true;
+    private bool _autoHelperSkills = true;
+    private bool _autoHelperUltimate = true;
+    private string _autoHelperTargetPreference = GameConfig.AutoHelperTargetPreferenceLowestHp;
+    private string _autoHelperMovementMode = GameConfig.AutoHelperMovementModeNone;
     private int _manualTargetId;
     private int _moveDirX, _moveDirY; // held movement direction (-1..1)
     private int _bufferedMoveDirX, _bufferedMoveDirY;
@@ -257,6 +261,13 @@ public sealed class GameWorld
         _monsterRegistry = monsterRegistry;
         _bestiaryKills = bestiaryKills;
         _rng = new Rng((ulong)seed);
+        var isMelee = Waifus.WeaponRange(Waifu.Weapon) <= GameConfig.MeleeRange;
+        _autoHelperTargetPreference = isMelee
+            ? GameConfig.AutoHelperTargetPreferenceNearest
+            : GameConfig.AutoHelperTargetPreferenceLowestHp;
+        _autoHelperMovementMode = isMelee
+            ? GameConfig.AutoHelperMovementModeFollow
+            : GameConfig.AutoHelperMovementModeAvoid;
 
         var biome = Biomes.ForTier(tier.Tier);
         _floors = [DungeonGenerator.Generate(_rng, 0, false, biome), DungeonGenerator.Generate(_rng, 1, true, biome)];
@@ -419,9 +430,13 @@ public sealed class GameWorld
                 ToggleStance();
                 break;
             case CommandKind.ToggleAutoHelper:
-                _autoHelperEnabled = cmd.A != 0;
-                if (_autoHelperEnabled && Player.TargetId != 0)
-                    _manualTargetId = Player.TargetId;
+                _autoHelperTargeting = (cmd.A & 1) != 0;
+                _autoHelperSkills = (cmd.A & 2) != 0;
+                _autoHelperUltimate = (cmd.A & 4) != 0;
+                _autoHelperMovementMode = NormalizeAutoHelperMovementMode(cmd.B);
+                _autoHelperTargetPreference = NormalizeAutoHelperTargetPreference(cmd.S);
+                if (!_autoHelperTargeting && _manualTargetId == 0)
+                    Player.TargetId = 0;
                 break;
             case CommandKind.Interact:
                 TryInteract(cmd.A, cmd.B);
@@ -689,21 +704,108 @@ public sealed class GameWorld
 
     private void TickAutoHelper()
     {
-        if (!_autoHelperEnabled || Player.Hp <= 0 || Player.IsStunned(NowMs)) return;
+        if (Player.Hp <= 0) return;
 
-        var manualTarget = LockedManualTarget();
-        if (manualTarget is not null)
+        if (_autoHelperTargeting)
         {
-            Player.TargetId = manualTarget.Id;
+            var manualTarget = LockedManualTarget();
+            if (manualTarget is not null)
+            {
+                Player.TargetId = manualTarget.Id;
+            }
+            else
+            {
+                var target = BestAutoHelperTarget(GameConfig.AutoHelperTargetRange);
+                Player.TargetId = target?.Id ?? 0;
+            }
+        }
+
+        if (Player.IsStunned(NowMs)) return;
+
+        TickAutoHelperMovement();
+
+        if (_autoHelperSkills)
+            for (var slot = 0; slot < 4; slot++)
+                TryAutoHelperSkill(slot);
+
+        if (_autoHelperUltimate)
+            TryAutoHelperSkill(4);
+    }
+
+    private void TickAutoHelperMovement()
+    {
+        if (_autoHelperMovementMode == GameConfig.AutoHelperMovementModeNone || Player.IsMoving(NowMs)) return;
+        if (_moveDirX != 0 || _moveDirY != 0 || _hasBufferedMoveDir) return;
+
+        var target = CurrentPlayerTarget();
+        if (target is null) return;
+
+        var speed = PlayerSpeed();
+
+        if (_autoHelperMovementMode == GameConfig.AutoHelperMovementModeFollow)
+        {
+            var followDistance = Chebyshev(Player, target);
+            if (followDistance > GameConfig.AutoHelperFollowDistance)
+                TryAutoHelperCardinalStep(
+                    target,
+                    speed,
+                    moveAway: false,
+                    (_, nextDist) => nextDist >= GameConfig.AutoHelperFollowDistance && nextDist < followDistance);
+            return;
+        }
+
+        if (_autoHelperMovementMode != GameConfig.AutoHelperMovementModeAvoid) return;
+
+        var distance = Chebyshev(Player, target);
+        if (distance < GameConfig.AutoHelperAvoidDistance)
+        {
+            TryAutoHelperCardinalStep(target, speed, moveAway: true, (_, nextDist) => nextDist > distance);
+        }
+        else if (distance > GameConfig.AutoHelperAvoidDistance)
+        {
+            TryAutoHelperCardinalStep(
+                target,
+                speed,
+                moveAway: false,
+                (_, nextDist) => nextDist >= GameConfig.AutoHelperAvoidDistance && nextDist <= distance);
+        }
+    }
+
+    private bool TryAutoHelperCardinalStep(Actor target, int speed, bool moveAway, Func<int, int, bool> acceptDistance)
+    {
+        var currentDist = Chebyshev(Player, target);
+        foreach (var (dx, dy) in CardinalDirectionsToTarget(target, moveAway))
+        {
+            var nextDist = Math.Max(Math.Abs(target.X - (Player.X + dx)), Math.Abs(target.Y - (Player.Y + dy)));
+            if (!acceptDistance(currentDist, nextDist)) continue;
+            if (TryStep(Player, dx, dy, speed)) return true;
+        }
+        return false;
+    }
+
+    private IEnumerable<(int dx, int dy)> CardinalDirectionsToTarget(Actor target, bool moveAway)
+    {
+        var deltaX = target.X - Player.X;
+        var deltaY = target.Y - Player.Y;
+        var dx = Math.Sign(deltaX);
+        var dy = Math.Sign(deltaY);
+        if (moveAway)
+        {
+            dx = -dx;
+            dy = -dy;
+        }
+
+        var preferHorizontal = Math.Abs(deltaX) >= Math.Abs(deltaY);
+        if (preferHorizontal)
+        {
+            if (dx != 0) yield return (dx, 0);
+            if (dy != 0) yield return (0, dy);
         }
         else
         {
-            var target = BestAutoHelperTarget(GameConfig.AutoHelperTargetRange);
-            Player.TargetId = target?.Id ?? 0;
+            if (dy != 0) yield return (0, dy);
+            if (dx != 0) yield return (dx, 0);
         }
-
-        for (var slot = 0; slot < 4; slot++)
-            TryAutoHelperSkill(slot);
     }
 
     private Actor? LockedManualTarget()
@@ -719,6 +821,19 @@ public sealed class GameWorld
         return null;
     }
 
+    private static string NormalizeAutoHelperTargetPreference(string? preference) =>
+        preference == GameConfig.AutoHelperTargetPreferenceNearest
+            ? GameConfig.AutoHelperTargetPreferenceNearest
+            : GameConfig.AutoHelperTargetPreferenceLowestHp;
+
+    private static string NormalizeAutoHelperMovementMode(int movementMode) =>
+        movementMode switch
+        {
+            GameConfig.AutoHelperMovementModeFollowCode => GameConfig.AutoHelperMovementModeFollow,
+            GameConfig.AutoHelperMovementModeAvoidCode => GameConfig.AutoHelperMovementModeAvoid,
+            _ => GameConfig.AutoHelperMovementModeNone
+        };
+
     private Actor? BestAutoHelperTarget(int maxRange, Func<Actor, bool>? extra = null)
     {
         Actor? best = null;
@@ -730,8 +845,12 @@ public sealed class GameWorld
             if (extra is not null && !extra(m)) continue;
 
             var dist = Chebyshev(Player, m);
-            if (m.Hp < bestHp || (m.Hp == bestHp && dist < bestDist)
-                              || (m.Hp == bestHp && dist == bestDist && (best is null || m.Id < best.Id)))
+            var better = _autoHelperTargetPreference == GameConfig.AutoHelperTargetPreferenceNearest
+                ? dist < bestDist || (dist == bestDist && m.Hp < bestHp)
+                                  || (dist == bestDist && m.Hp == bestHp && (best is null || m.Id < best.Id))
+                : m.Hp < bestHp || (m.Hp == bestHp && dist < bestDist)
+                                  || (m.Hp == bestHp && dist == bestDist && (best is null || m.Id < best.Id));
+            if (better)
             {
                 best = m;
                 bestHp = m.Hp;
@@ -743,11 +862,13 @@ public sealed class GameWorld
 
     private void TryAutoHelperSkill(int slot)
     {
-        if (NowMs < _skillReadyAtMs[slot]) return;
+        if (slot < 4 && NowMs < _skillReadyAtMs[slot]) return;
+        if (slot == 4 && _gauge < GameConfig.UltimateGaugeMax) return;
+
         var skill = CurrentSkillBar()[slot];
         if (!ShouldAutoHelperCast(skill, out var target)) return;
 
-        if (_manualTargetId == 0 && target is not null)
+        if (_autoHelperTargeting && _manualTargetId == 0 && target is not null)
             Player.TargetId = target.Id;
 
         TryCastSkill(slot);
@@ -760,15 +881,17 @@ public sealed class GameWorld
         if (skill.Shape == "buff")
             return ShouldAutoHelperCastBuff(skill);
 
-        var manualTarget = LockedManualTarget();
-        if (manualTarget is not null)
+        var currentTarget = _autoHelperTargeting ? LockedManualTarget() : CurrentPlayerTarget();
+        if (currentTarget is not null)
         {
-            target = manualTarget;
-            return SkillWouldAffectMonster(skill, manualTarget);
+            target = currentTarget;
+            return SkillWouldAffectMonster(skill, currentTarget);
         }
 
         if (skill.Shape is "nova" or "ring" or "summon")
             return SkillWouldAffectMonster(skill, null);
+
+        if (!_autoHelperTargeting) return false;
 
         target = BestAutoHelperTarget(GameConfig.AutoHelperTargetRange, m => SkillWouldAffectMonster(skill, m));
         return target is not null;
@@ -783,6 +906,15 @@ public sealed class GameWorld
             return false;
 
         return BestAutoHelperTarget(GameConfig.AutoHelperTargetRange) is not null;
+    }
+
+    private Actor? CurrentPlayerTarget()
+    {
+        if (Player.TargetId == 0) return null;
+        var target = _monsters.FirstOrDefault(m => m.Id == Player.TargetId);
+        return target is not null && IsTargetableByPlayer(target, GameConfig.AutoHelperTargetRange)
+            ? target
+            : null;
     }
 
     private bool SkillWouldAffectMonster(SkillDef skill, Actor? target)
@@ -2498,7 +2630,10 @@ public sealed class GameWorld
             Player.TargetId, _gauge, skills,
             PlayerClass.Id, PlayerClass.Name,
             CurrentStance.Id, CurrentStance.Name, CurrentStance.Element, PlayerClass.CanToggleStance,
-            Math.Max(_autoAttackReadyAtMs - NowMs, 0), _autoHelperEnabled,
+            Math.Max(_autoAttackReadyAtMs - NowMs, 0),
+            new AutoHelperSettingsDto(
+                _autoHelperTargeting, _autoHelperSkills, _autoHelperUltimate,
+                _autoHelperTargetPreference, _autoHelperMovementMode),
             _buffsUntilMs.Where(b => NowMs < b.Value).Select(b => b.Key).ToList(),
             BuildActiveConditions(),
             new EquipmentStatsDto(

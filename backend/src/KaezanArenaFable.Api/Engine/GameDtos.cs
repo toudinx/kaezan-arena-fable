@@ -24,6 +24,10 @@ public sealed record EquipmentStatsDto(
     double AttackBonus, int MaxHpBonus, double DamageReduction, double MoveSpeedPercent,
     double SkillPowerMultiplier, double CritChance, double CritDamage, double CooldownReduction);
 
+public sealed record AutoHelperSettingsDto(
+    bool Targeting, bool Skills, bool Ultimate,
+    string TargetPreference, string MovementMode);
+
 public sealed record PlayerDto(
     int Id, int X, int Y, int Dir, int Hp, int MaxHp,
     int FromX, int FromY, int StepDurMs, long StepStartTick,
@@ -31,7 +35,7 @@ public sealed record PlayerDto(
     double Gauge, List<SkillStateDto> Skills,
     string ClassId, string ClassName,
     string StanceId, string StanceName, string StanceElement, bool CanToggleStance,
-    long AutoAttackReadyInMs, bool AutoHelperEnabled,
+    long AutoAttackReadyInMs, AutoHelperSettingsDto AutoHelper,
     List<string> ActiveBuffs, List<string> ActiveConditions,
     EquipmentStatsDto EquipmentStats);
 

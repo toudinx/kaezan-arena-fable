@@ -2,7 +2,9 @@ import { AssetsService } from './assets.service';
 import { EventDto, MapDto, MonsterDto, PlayerDto, SnapshotDto, TICK_MS } from './types';
 
 const TILE = 32;
-const SCALE = 2;
+const BASE_SCALE = 2;
+const GAMEPLAY_ZOOM = 1.25;
+const SCALE = BASE_SCALE * GAMEPLAY_ZOOM;
 const TS = TILE * SCALE; // screen px per tile
 const RENDER_DELAY_MS = TICK_MS;
 const CLOCK_SMOOTHING = 0.2;

@@ -176,10 +176,10 @@ public static class ItemAuthoring
     public static IReadOnlyList<string> DefaultClasses(ItemType source) =>
         source.WeaponType?.ToLowerInvariant() switch
         {
-            "fist" => [Classes.MonkId, Classes.WarriorId],
-            "sword" or "axe" or "club" => [Classes.WarriorId, Classes.MonkId],
-            "distance" or "ammunition" => [Classes.SentinelId, Classes.ShamanId],
-            "wand" or "rod" or "spellbook" => [Classes.SentinelId, Classes.ShamanId, Classes.WizardId, Classes.NecromancerId],
+            "fist" => [Classes.BarbarianId, Classes.WarriorId],
+            "sword" or "axe" or "club" => [Classes.WarriorId, Classes.BarbarianId],
+            "distance" or "ammunition" => [Classes.SentinelId],
+            "wand" or "rod" or "spellbook" => [Classes.OracleId, Classes.ShamanId, Classes.CryomancerId, Classes.PyromancerId, Classes.StormcallerId, Classes.NecromancerId],
             "shield" => [Classes.WarriorId, Classes.SentinelId],
             _ => Classes.All.Select(c => c.Id).ToArray()
         };

@@ -27,6 +27,16 @@ public static class GameConfig
     public const int PlayerAutoAttackMs = 1800;
     public const int AutoHelperTargetRange = 8;
     public const double AutoHelperHealHpFraction = 0.70;
+    public const string AutoHelperTargetPreferenceLowestHp = "lowestHp";
+    public const string AutoHelperTargetPreferenceNearest = "nearest";
+    public const string AutoHelperMovementModeNone = "none";
+    public const string AutoHelperMovementModeFollow = "follow";
+    public const string AutoHelperMovementModeAvoid = "avoid";
+    public const int AutoHelperMovementModeNoneCode = 0;
+    public const int AutoHelperMovementModeFollowCode = 1;
+    public const int AutoHelperMovementModeAvoidCode = 2;
+    public const int AutoHelperFollowDistance = 1;
+    public const int AutoHelperAvoidDistance = 2;
     public const int MeleeRange = 1;
     public const int BowRange = 5;
     public const int WandRange = 4;

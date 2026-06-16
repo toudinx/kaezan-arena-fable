@@ -81,8 +81,17 @@ public sealed class GameHub(
     public void ToggleStance() =>
         runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.ToggleStance, 0, 0, null));
 
-    public void SetAutoHelper(bool enabled) =>
-        runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.ToggleAutoHelper, enabled ? 1 : 0, 0, null));
+    public void SetAutoHelper(bool targeting, bool skills, bool ultimate, string targetPreference, string movementMode)
+    {
+        var flags = (targeting ? 1 : 0) | (skills ? 2 : 0) | (ultimate ? 4 : 0);
+        var movement = movementMode switch
+        {
+            GameConfig.AutoHelperMovementModeFollow => GameConfig.AutoHelperMovementModeFollowCode,
+            GameConfig.AutoHelperMovementModeAvoid => GameConfig.AutoHelperMovementModeAvoidCode,
+            _ => GameConfig.AutoHelperMovementModeNoneCode
+        };
+        runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.ToggleAutoHelper, flags, movement, targetPreference));
+    }
 
     public void Interact(int x, int y) =>
         runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.Interact, x, y, null));

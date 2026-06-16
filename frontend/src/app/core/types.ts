@@ -466,6 +466,14 @@ export interface EquipmentStatsDto {
   cooldownReduction: number;
 }
 
+export interface AutoHelperSettingsDto {
+  targeting: boolean;
+  skills: boolean;
+  ultimate: boolean;
+  targetPreference: 'lowestHp' | 'nearest';
+  movementMode: 'none' | 'follow' | 'avoid';
+}
+
 export interface PoiDto {
   id: number;
   kind: string;
@@ -522,7 +530,7 @@ export interface PlayerDto {
   stanceElement: string;
   canToggleStance: boolean;
   autoAttackReadyInMs: number;
-  autoHelperEnabled: boolean;
+  autoHelper: AutoHelperSettingsDto;
   activeBuffs: string[];
   activeConditions: string[];
   equipmentStats: EquipmentStatsDto;

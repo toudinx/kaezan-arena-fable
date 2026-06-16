@@ -70,8 +70,15 @@ export class GameClientService {
     void this.connection?.invoke('ToggleStance').catch(() => undefined);
   }
 
-  setAutoHelper(enabled: boolean): void {
-    void this.connection?.invoke('SetAutoHelper', enabled).catch(() => undefined);
+  setAutoHelper(
+    targeting: boolean,
+    skills: boolean,
+    ultimate: boolean,
+    targetPreference: 'lowestHp' | 'nearest',
+    movementMode: 'none' | 'follow' | 'avoid',
+  ): void {
+    void this.connection?.invoke('SetAutoHelper', targeting, skills, ultimate, targetPreference, movementMode)
+      .catch(() => undefined);
   }
 
   interact(x: number, y: number): void {

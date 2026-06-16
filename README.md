@@ -103,7 +103,7 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
 | Q / E / Z / C | Movimento diagonal (sem cortar quinas; diagonal bloqueada desliza pelo eixo livre) |
 | Espaço | Mirar no inimigo mais próximo |
 | Clique | Mirar inimigo / interagir (baú, escada) |
-| Botão Helper | Liga/desliga o helper de alvo, auto-attack e skills 1-4 |
+| Painel Helper | Controla alvo automático, preferência de alvo, skills, ultimate e modo de movimento |
 | 1 / 2 / 3 / 4 | Slots 1-4 do kit da classe |
 | R | Ultimate da classe (gauge) |
 | Tab | Alterna a postura elemental (quando a classe possui duas) |
@@ -117,9 +117,12 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
   a animação de caminhada durante todo o deslocamento entre tiles mesmo com jitter de snapshots.
 - Monstros desviam de bloqueios e aglomerações, perdem aggro após distância/LOS prolongados e
   respeitam `staticAttackChance` para sustentar posições de ataque.
-- O helper opcional escolhe alvos por menor HP absoluto dentro da zona visível, desempata por
-  proximidade, respeita a escolha manual até o alvo morrer/sair da zona e usa apenas skills 1-4
-  quando a área/linha alcançaria algum mob; movimento e ultimate continuam manuais.
+- O helper vem ligado por padrão e pode ser modularizado no HUD: alvo automático, preferência de
+  alvo (`HP` ou `Perto`), skills 1-4, ultimate e modo de movimento (`Stand`, `Follow` ou `Avoid`).
+  Kaelis melee começam preferindo `Perto` + `Follow`; ranged começa em `HP` + `Avoid`, tentando
+  manter 2 SQM do alvo. A escolha manual continua prevalecendo até o alvo morrer/sair da zona.
+  Skills e ultimate só são usadas quando a área/linha alcançaria algum mob; movimento continua
+  manual salvo quando um modo automático está ativo.
 - **Kit real do Canary** (T-53): cada espécie executa o kit do seu `.lua` — condições viram DoT
   no player (veneno/fogo/energia, com chip no HUD, FX e cor de dano por tipo), ataques `speed`
   aplicam lentidão, invocadores summonam de verdade (Necromancer → Ghoul/Ghost/Mummy, Demon →
@@ -185,22 +188,36 @@ com trait de assinatura, personalidade, 4 ecos de memória (lore por afinidade),
 favoritos e 2-3 skins. Tessa, Nyx, Lyra e Rosa saíram (contas antigas recebem 600 Kaeros por
 Kaeli removida via sanitização automática no boot). Kaela foi promovida a 5★.
 
-Cada Kaeli usa o kit completo de uma das seis classes canônicas do Kaezan World:
+Cada Kaeli usa o kit completo de uma das nove classes canônicas do Kaezan World:
 
-| Classe | Posturas | Kaelis | Traits |
+| Classe | Elemento | Kaelis | Traits |
 |---|---|---|---|
-| Warrior | Physical (fixa) | Mirai 4★, Kaela 5★ | Instinto de Matilha (+dano cercada) · Última Muralha (-12% dano) |
-| Sentinel | Holy ↔ Physical | Wren 3★, Aurora 5★ | Olho de Águia (+crit à distância) · Luz Purificadora (+dano em undead) |
-| Shaman | Ice ↔ Earth | Sage 3★, Sylwen 4★ | Seiva Vital (skills curam) · Mordida do Norte (gelo aplica slow) |
-| Wizard | Energy ↔ Fire | Ember 4★ | Combustão (gauge +30%) |
-| Monk | Physical (fixa) | Mira 3★ | Coração Valente (DR com HP baixo) |
-| Necromancer | Death (fixa) | Velvet 5★ | Fome do Abismo (+dano em alvos <30% HP) |
+| Warrior | Physical | Mirai 4★, Kaela 5★ | Instinto de Matilha (+dano cercada) · Última Muralha (-12% dano) |
+| Sentinel | Physical | Wren 3★ | Olho de Águia (+crit à distância) |
+| Oracle | Holy | Aurora 5★ | Luz Purificadora (+dano em undead) |
+| Pyromancer | Fire | Ember 4★ | Combustão (gauge +30%) |
+| Stormcaller | Energy | — (sem Kaeli ainda) | — |
+| Cryomancer | Ice | Neva 4★ | Precisão Glacial (gelo aplica slow 25%/2s) |
+| Shaman | Earth | Sage 3★ | Seiva Vital (skills curam 6% do dano) |
+| Barbarian | Physical | Mira 3★ | Coração Valente (DR com HP baixo) |
+| Necromancer | Death | Velvet 5★ | Fome do Abismo (+dano em alvos <30% HP) |
 
-**Monk** é lutador corpo-a-corpo (combo melee, ki à distância, atordoamentos). **Necromancer**
-corrói com **DoT** (Wither, Eternal Suffering), ergue um **construto** que pulsa dano em área
-(Raise Bone Construct) e dispara um feixe de morte. As geometrias de área seguem os formatos do
-Tibia, porém **reescaladas para o mapa da arena** (slot 1 pequeno → ultimate maior; sem mais
-círculos de ~37 tiles em todos os slots nem cones que tomam a tela inteira).
+Todas as classes são **single-stance** (sem alternância de postura). Cada kit usa um **shape
+diferente por slot** para que nenhuma habilidade seja "a mesma área com elemento trocado":
+`single`, `area`, `cone`, `beam`, `nova`, `chain`, `ring`, `field`, `barrage`, `summon` e `buff`
+podem todos aparecer no mesmo kit.
+
+**Warrior** é tanque de controle: stun melee (Shield Bash), taunt (Challenge), 1 AoE (Front Sweep)
+e escudo defensivo (Shield Wall). **Sentinel** é atiradora física: projétil que desacelera, chain
+ricocheteia, slam que atordoa e zona de vento (field). **Oracle** é invocadora sagrada: barrage de
+lanças, feixe divino e halo sagrado (ring). **Barbarian** é combo/mobilidade: chain (Rampage),
+shockwave (Palm Shockwave) e War Cry (haste). **Cryomancer** desacelera a cada hit, congela o
+terreno (Glacial Prison field) e lança avalanches. **Shaman** atordoa com espinhos, chuva de
+pedras em sequência (barrage) e armadilha de areia (ring). **Pyromancer** encadeia e incendeia
+(Combustion chain+DoT), poça de fogo (field) e meteoros (barrage). **Stormcaller** paralisa,
+estoura anel elétrico (ring) e termina com Rage of the Skies (nova r3). **Necromancer** corrói com
+DoT, ergue construto (summon) e dispara feixe de morte. Geometrias seguem o Tibia,
+**reescaladas para o mapa da arena** (sem círculos de ~37 tiles em slots básicos).
 
 Os cooldowns pertencem aos slots 1-4 e continuam correndo ao trocar de postura; alternar com
 `Tab` não reseta habilidades. A página Kaelis (abas Perfil / Skins / Maestria / Equipamento)

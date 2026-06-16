@@ -70,6 +70,10 @@ export class GameClientService {
     void this.connection?.invoke('ToggleStance').catch(() => undefined);
   }
 
+  setAutoHelper(enabled: boolean): void {
+    void this.connection?.invoke('SetAutoHelper', enabled).catch(() => undefined);
+  }
+
   interact(x: number, y: number): void {
     void this.connection?.invoke('Interact', x, y).catch(() => undefined);
   }

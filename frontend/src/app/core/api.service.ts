@@ -140,6 +140,11 @@ export class ApiService {
     await this.reloadCatalog();
   }
 
+  async grantKaeros(amount = 1600): Promise<void> {
+    await this.request('POST', '/admin/grant-kaeros', { amount });
+    await this.refreshAccount();
+  }
+
   async grantAdminItem(itemId: number, count = 1): Promise<void> {
     await this.request('POST', `/admin/items/${itemId}/grant`, { count });
     await this.refreshAccount();

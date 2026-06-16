@@ -40,20 +40,6 @@ import { ItemIcon } from '../../core/item-icon';
           <p class="muted">Mochila vazia — vá caçar! Os monstros de Tibia dropam o loot clássico deles.</p>
         }
       </div>
-      <h2>Bestiário</h2>
-      <p class="sub">Cada rank (10/50/100/250 abates) dá +1% de dano permanente contra a espécie.</p>
-      <div class="bestiary">
-        @for (b of bestiary(); track b.name) {
-          <div class="best panel">
-            <b>{{ b.name }}</b>
-            <span class="kills">{{ b.kills }} abates</span>
-            <span class="rank">Rank {{ b.rank }}</span>
-            <div class="bar"><div class="fill" [style.width.%]="b.pct"></div></div>
-          </div>
-        } @empty {
-          <p class="muted">Nenhum abate registrado ainda.</p>
-        }
-      </div>
     </div>
   `,
   styles: [`
@@ -67,12 +53,6 @@ import { ItemIcon } from '../../core/item-icon';
     .sale-tag { color: #707088; font-size: 10px; }
     .actions { display: flex; flex-direction: column; gap: 6px; }
     .actions .btn { padding: 5px 10px; font-size: 12px; }
-    .bestiary { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin-top: 14px; }
-    .best { padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
-    .kills { color: #9c9ab0; font-size: 13px; }
-    .rank { color: #e8a93c; font-weight: 700; font-size: 13px; }
-    .bar { height: 5px; background: #23232f; border-radius: 3px; overflow: hidden; }
-    .fill { height: 100%; background: linear-gradient(90deg, #e8a93c, #d97706); }
     .muted { color: #707088; }
   `],
 })
@@ -82,18 +62,6 @@ export class BackpackPage {
   readonly salePrices = computed(() =>
     new Map((this.api.catalog()?.items ?? []).map((item) => [item.itemId, item.salePrice])),
   );
-
-  readonly bestiary = computed(() => {
-    const kills = this.api.account()?.bestiaryKills ?? {};
-    const ranks = this.api.catalog()?.bestiaryRanks ?? [10, 50, 100, 250];
-    return Object.entries(kills)
-      .map(([name, k]) => {
-        const rank = ranks.filter((r) => k >= r).length;
-        const next = ranks[rank] ?? ranks[ranks.length - 1];
-        return { name, kills: k, rank, pct: Math.min((100 * k) / next, 100) };
-      })
-      .sort((a, b) => b.kills - a.kills);
-  });
 
   constructor(private readonly api: ApiService) {}
 

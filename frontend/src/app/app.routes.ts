@@ -10,6 +10,7 @@ export const routes: Routes = [
       { path: 'recruit', loadComponent: () => import('./pages/recruit/recruit').then((m) => m.RecruitPage) },
       { path: 'kaelis', loadComponent: () => import('./pages/kaelis/kaelis').then((m) => m.KaelisPage) },
       { path: 'backpack', loadComponent: () => import('./pages/backpack/backpack').then((m) => m.BackpackPage) },
+      { path: 'bestiary', loadComponent: () => import('./pages/bestiary/bestiary').then((m) => m.BestiaryPage) },
       { path: 'admin', loadComponent: () => import('./pages/admin/admin').then((m) => m.AdminPage) },
     ],
   },

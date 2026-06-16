@@ -540,6 +540,13 @@ public static class MetaEndpoints
             });
         });
 
+        admin.MapPost("/grant-kaeros", (GrantKaerosRequest req, AccountStore accounts) =>
+            accounts.Mutate(s =>
+            {
+                s.Kaeros += req.Amount;
+                return Results.Ok(new { added = req.Amount, s.Kaeros });
+            }));
+
         admin.MapDelete("/items/{id:int}", (int id, ContentStore content, AccountStore accounts) =>
         {
             var referenced = accounts.Read(state =>
@@ -668,4 +675,5 @@ public static class MetaEndpoints
     public sealed record EquipRequest(string WaifuId, string Slot, int ItemId);
     public sealed record UnequipRequest(string WaifuId, string Slot);
     public sealed record ItemGrantRequest(int Count = 1);
+    public sealed record GrantKaerosRequest(int Amount = 1600);
 }

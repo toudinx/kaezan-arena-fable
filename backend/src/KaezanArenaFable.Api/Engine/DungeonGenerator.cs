@@ -30,22 +30,15 @@ public sealed class DungeonFloor
 }
 
 /// <summary>
-/// Seeded rooms-and-corridors generator. Visual ids reference the Tibia object
-/// sprites exported by tools/AssetExtractor (cave biome).
+/// Seeded rooms-and-corridors generator. Visual ids come from a <see cref="BiomeDef"/> (per tier)
+/// so each dungeon themes its ground/walls/decor; see <see cref="Biomes"/>.
 /// </summary>
 public static class DungeonGenerator
 {
-    // tibia object ids (see tools/AssetExtractor/content-config.json semantic groups)
-    private static readonly ushort[] CaveGround = [351, 352, 353, 354, 355];
-    private static readonly ushort[] StoneGround = [416, 418];
-    private const ushort WallPole = 356;       // dirt wall variants; orientation refined client-side
-    private const ushort WallHorizontal = 357;
-    private const ushort WallVertical = 358;
-    private static readonly ushort[] CaveDecor = [1047, 1048, 1772, 1773, 1774, 1775];
     public const ushort ChestId = 2472;
     public const ushort LadderDownId = 386;
 
-    public static DungeonFloor Generate(Rng rng, int floorIndex, bool isBossFloor)
+    public static DungeonFloor Generate(Rng rng, int floorIndex, bool isBossFloor, BiomeDef biome)
     {
         var size = isBossFloor ? GameConfig.Floor2Size : GameConfig.Floor1Size;
         var roomCount = isBossFloor ? GameConfig.RoomsFloor2 : GameConfig.RoomsFloor1;
@@ -114,7 +107,7 @@ public static class DungeonGenerator
             floor.Chests.Add((room.X + 1, room.Y + 1));
         }
 
-        PaintTiles(floor, rng, isBossFloor);
+        PaintTiles(floor, rng, biome);
         return floor;
     }
 
@@ -133,9 +126,10 @@ public static class DungeonGenerator
         }
     }
 
-    private static void PaintTiles(DungeonFloor floor, Rng rng, bool isBossFloor)
+    private static void PaintTiles(DungeonFloor floor, Rng rng, BiomeDef biome)
     {
         var size = floor.W;
+        var reserved = ReservedCells(floor);
         for (var y = 0; y < size; y++)
         {
             for (var x = 0; x < size; x++)
@@ -143,10 +137,19 @@ public static class DungeonGenerator
                 var i = y * size + x;
                 if (!floor.Blocked[i])
                 {
-                    var bossRoom = floor.Rooms.FirstOrDefault(r => r.Role == "boss" && r.Contains(x, y));
-                    floor.Ground[i] = bossRoom is not null ? rng.Pick(StoneGround) : rng.Pick(CaveGround);
-                    if (rng.Chance(0.025) && floor.Rooms.Any(r => r.Contains(x, y)))
-                        floor.Decor[i] = rng.Pick(CaveDecor);
+                    var inRoom = floor.Rooms.FirstOrDefault(r => r.Contains(x, y));
+                    var bossRoom = inRoom is { Role: "boss" };
+                    floor.Ground[i] = bossRoom ? rng.Pick(biome.BossGround) : rng.Pick(biome.Ground);
+
+                    // accent (e.g. lava) then ambient decor — both purely cosmetic (Decor layer
+                    // never blocks), and skipped on entry/ladder/chest tiles so POIs stay readable.
+                    var accentRoll = rng.Chance(biome.AccentChance);
+                    var decorRoll = rng.Chance(biome.DecorChance);
+                    if (inRoom is not null && !reserved.Contains((x, y)))
+                    {
+                        if (biome.Accent.Length > 0 && accentRoll) floor.Decor[i] = rng.Pick(biome.Accent);
+                        else if (biome.Decor.Length > 0 && decorRoll) floor.Decor[i] = rng.Pick(biome.Decor);
+                    }
                     continue;
                 }
 
@@ -158,18 +161,40 @@ public static class DungeonGenerator
                             touchesFloor = true;
                 if (!touchesFloor) continue;
 
-                floor.Ground[i] = rng.Pick(CaveGround);
-                var openSouth = floor.InBounds(x, y + 1) && !floor.Blocked[(y + 1) * size + x];
-                var openNorth = floor.InBounds(x, y - 1) && !floor.Blocked[(y - 1) * size + x];
-                var openEast = floor.InBounds(x + 1, y) && !floor.Blocked[y * size + x + 1];
-                var openWest = floor.InBounds(x - 1, y) && !floor.Blocked[y * size + x - 1];
-                floor.Wall[i] = (openNorth || openSouth) switch
-                {
-                    true when openEast || openWest => WallPole,
-                    true => WallHorizontal,
-                    _ => WallVertical
-                };
+                floor.Ground[i] = rng.Pick(biome.Ground); // shows through alpha (stone) walls
+                floor.Wall[i] = ClassifyWall(floor, x, y, biome);
             }
         }
+    }
+
+    /// <summary>
+    /// Picks the wall piece from the 4-neighbourhood of open floor: floor on the N/S axis means an
+    /// E–W wall (WallH), floor on the E/W axis means an N–S wall (WallV), floor on both axes is a
+    /// junction (WallPole), and a cell with floor only on a diagonal is an outer corner (WallCorner).
+    /// The corner case is what removes the "teeth" at room quoins that a flat H/V choice leaves.
+    /// </summary>
+    private static ushort ClassifyWall(DungeonFloor floor, int x, int y, BiomeDef biome)
+    {
+        var size = floor.W;
+        var openN = floor.InBounds(x, y - 1) && !floor.Blocked[(y - 1) * size + x];
+        var openS = floor.InBounds(x, y + 1) && !floor.Blocked[(y + 1) * size + x];
+        var openE = floor.InBounds(x + 1, y) && !floor.Blocked[y * size + x + 1];
+        var openW = floor.InBounds(x - 1, y) && !floor.Blocked[y * size + x - 1];
+        var vertAxis = openN || openS;   // floor above/below → wall runs horizontally
+        var horizAxis = openE || openW;  // floor left/right  → wall runs vertically
+
+        if (vertAxis && horizAxis) return biome.WallPole;
+        if (vertAxis) return biome.WallH;
+        if (horizAxis) return biome.WallV;
+        return biome.WallCorner; // only a diagonal neighbour is open → outer corner
+    }
+
+    /// <summary>Cells that should never receive decor/accent so their POI sprite stays clear.</summary>
+    private static HashSet<(int X, int Y)> ReservedCells(DungeonFloor floor)
+    {
+        var set = new HashSet<(int, int)> { floor.Entry };
+        if (floor.LadderDown is { } ladder) set.Add(ladder);
+        foreach (var chest in floor.Chests) set.Add(chest);
+        return set;
     }
 }

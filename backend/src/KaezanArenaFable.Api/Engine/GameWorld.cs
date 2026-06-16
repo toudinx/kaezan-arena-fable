@@ -39,6 +39,9 @@ public sealed class Actor
     public long SlowUntilMs;
     public double SlowFactor = 1.0;
 
+    // DoT left on this monster by a player skill (necromancer wither / eternal suffering).
+    public readonly List<MonsterDot> Dots = [];
+
     // F-E: boss posture (echo break). Only populated on boss actors (PostureMax > 0).
     public double PostureBaseMax;
     public double PostureMax;
@@ -70,6 +73,68 @@ public sealed class ActiveCondition
     public long NextTickAtMs;
 }
 
+/// <summary>A DoT ticking on a monster, applied by a player skill (necromancer Wither/Eternal Suffering).</summary>
+public sealed class MonsterDot
+{
+    public string Element = "";
+    public int Fx;
+    public double DamagePerTick;
+    public int TicksLeft;
+    public int TickMs;
+    public long NextTickAtMs;
+}
+
+/// <summary>
+/// A stationary construct summoned by the player (necromancer Bone Construct). It pulses area
+/// damage around its tile for a while, then expires. Kept off the monster list so it never
+/// interferes with player targeting/auto-attack — it is pure scheduled area damage.
+/// </summary>
+public sealed class PlayerSummon
+{
+    public int Floor, X, Y;
+    public string Element = "";
+    public int Fx;
+    public int Radius;
+    public double DamagePerPulse;
+    public int PulseMs;
+    public long NextPulseAtMs;
+    public long ExpireAtMs;
+}
+
+/// <summary>A hazard tile painted by a player skill (shape "field"): damages/slows the monster
+/// standing on it each tick until it expires. Terrain modification — fire patch, frost patch, etc.</summary>
+public sealed class GroundField
+{
+    public int Floor, X, Y;
+    public string Element = "";
+    public int Fx;
+    public double DamagePerTick;
+    public double SlowFactor = 1;
+    public int SlowMs;
+    public int TickMs;
+    public long NextTickAtMs;
+    public long ExpireAtMs;
+}
+
+/// <summary>A future area hit scheduled by a multi-time skill (shape "barrage", delayed nukes,
+/// expanding rings). Resolved deterministically when NowMs reaches AtMs. Damage/DoT are
+/// pre-computed at cast time so they don't drift with buffs that change mid-flight.</summary>
+public sealed class ScheduledStrike
+{
+    public int Floor, X, Y;
+    public long AtMs;
+    public string Element = "";
+    public int Fx;
+    public double Damage;
+    public int Radius;
+    public int RingInner;
+    public int StunMs;
+    public double SlowFactor = 1;
+    public int SlowMs;
+    public int DotTicks, DotTickMs;
+    public double DotPower;
+}
+
 public sealed class GroundItem
 {
     public int Id;
@@ -87,7 +152,7 @@ public sealed class Poi
     public bool Used;
 }
 
-public enum CommandKind { SetMoveDir, SetTarget, CastSkill, ToggleStance, Interact, ChooseCard, Abandon }
+public enum CommandKind { SetMoveDir, SetTarget, CastSkill, ToggleStance, ToggleAutoHelper, Interact, ChooseCard, Abandon }
 
 public sealed record Command(CommandKind Kind, int A, int B, string? S);
 
@@ -151,6 +216,8 @@ public sealed class GameWorld
     private readonly long[] _skillReadyAtMs = new long[4];
     private string _stanceId;
     private long _autoAttackReadyAtMs;
+    private bool _autoHelperEnabled;
+    private int _manualTargetId;
     private int _moveDirX, _moveDirY; // held movement direction (-1..1)
     private int _bufferedMoveDirX, _bufferedMoveDirY;
     private bool _hasBufferedMoveDir;
@@ -158,6 +225,9 @@ public sealed class GameWorld
     private readonly Dictionary<string, long> _buffsUntilMs = [];
     private double _regenCarry;
     private readonly List<ActiveCondition> _playerConditions = [];
+    private readonly List<PlayerSummon> _summons = [];
+    private readonly List<GroundField> _fields = [];
+    private readonly List<ScheduledStrike> _pendingStrikes = [];
     private long _playerSlowUntilMs;
     private double _playerSlowFactor = 1.0;
 
@@ -188,7 +258,8 @@ public sealed class GameWorld
         _bestiaryKills = bestiaryKills;
         _rng = new Rng((ulong)seed);
 
-        _floors = [DungeonGenerator.Generate(_rng, 0, false), DungeonGenerator.Generate(_rng, 1, true)];
+        var biome = Biomes.ForTier(tier.Tier);
+        _floors = [DungeonGenerator.Generate(_rng, 0, false, biome), DungeonGenerator.Generate(_rng, 1, true, biome)];
 
         var hp = (int)(waifu.BaseHp * (1 + ascension * GameConfig.AscensionAtkBonus)
                        * (1 + _affinityStatBonus) * Loadout.Mastery.HpMult)
@@ -337,13 +408,20 @@ public sealed class GameWorld
                 SetMoveDirection(cmd.A, cmd.B);
                 break;
             case CommandKind.SetTarget:
-                Player.TargetId = _monsters.Any(m => m.Id == cmd.A && m.Hp > 0) ? cmd.A : 0;
+                var target = _monsters.FirstOrDefault(m => m.Id == cmd.A && m.Hp > 0);
+                Player.TargetId = target?.Id ?? 0;
+                _manualTargetId = Player.TargetId;
                 break;
             case CommandKind.CastSkill:
                 TryCastSkill(cmd.A);
                 break;
             case CommandKind.ToggleStance:
                 ToggleStance();
+                break;
+            case CommandKind.ToggleAutoHelper:
+                _autoHelperEnabled = cmd.A != 0;
+                if (_autoHelperEnabled && Player.TargetId != 0)
+                    _manualTargetId = Player.TargetId;
                 break;
             case CommandKind.Interact:
                 TryInteract(cmd.A, cmd.B);
@@ -382,6 +460,7 @@ public sealed class GameWorld
                     _simulationMs += GameConfig.TickMs;
 
                 TickPlayerMovement();
+                TickAutoHelper();
                 TickPlayerCombat();
 
                 if (_pendingOffer is null)
@@ -389,6 +468,9 @@ public sealed class GameWorld
                     TickPlayerRegen();
                     TickPlayerConditions();
                     TickMonsters();
+                    TickPlayerSummons();
+                    TickFields();
+                    TickPendingStrikes();
                     TickPostureDecay();
                     TickPickup();
                 }
@@ -605,6 +687,210 @@ public sealed class GameWorld
 
     // ---- combat: player ----
 
+    private void TickAutoHelper()
+    {
+        if (!_autoHelperEnabled || Player.Hp <= 0 || Player.IsStunned(NowMs)) return;
+
+        var manualTarget = LockedManualTarget();
+        if (manualTarget is not null)
+        {
+            Player.TargetId = manualTarget.Id;
+        }
+        else
+        {
+            var target = BestAutoHelperTarget(GameConfig.AutoHelperTargetRange);
+            Player.TargetId = target?.Id ?? 0;
+        }
+
+        for (var slot = 0; slot < 4; slot++)
+            TryAutoHelperSkill(slot);
+    }
+
+    private Actor? LockedManualTarget()
+    {
+        if (_manualTargetId == 0) return null;
+        var lockedId = _manualTargetId;
+        var target = _monsters.FirstOrDefault(m => m.Id == lockedId);
+        if (target is not null && IsTargetableByPlayer(target, GameConfig.AutoHelperTargetRange))
+            return target;
+
+        _manualTargetId = 0;
+        if (Player.TargetId == lockedId) Player.TargetId = 0;
+        return null;
+    }
+
+    private Actor? BestAutoHelperTarget(int maxRange, Func<Actor, bool>? extra = null)
+    {
+        Actor? best = null;
+        var bestHp = int.MaxValue;
+        var bestDist = int.MaxValue;
+        foreach (var m in _monsters)
+        {
+            if (!IsTargetableByPlayer(m, maxRange)) continue;
+            if (extra is not null && !extra(m)) continue;
+
+            var dist = Chebyshev(Player, m);
+            if (m.Hp < bestHp || (m.Hp == bestHp && dist < bestDist)
+                              || (m.Hp == bestHp && dist == bestDist && (best is null || m.Id < best.Id)))
+            {
+                best = m;
+                bestHp = m.Hp;
+                bestDist = dist;
+            }
+        }
+        return best;
+    }
+
+    private void TryAutoHelperSkill(int slot)
+    {
+        if (NowMs < _skillReadyAtMs[slot]) return;
+        var skill = CurrentSkillBar()[slot];
+        if (!ShouldAutoHelperCast(skill, out var target)) return;
+
+        if (_manualTargetId == 0 && target is not null)
+            Player.TargetId = target.Id;
+
+        TryCastSkill(slot);
+    }
+
+    private bool ShouldAutoHelperCast(SkillDef skill, out Actor? target)
+    {
+        target = null;
+
+        if (skill.Shape == "buff")
+            return ShouldAutoHelperCastBuff(skill);
+
+        var manualTarget = LockedManualTarget();
+        if (manualTarget is not null)
+        {
+            target = manualTarget;
+            return SkillWouldAffectMonster(skill, manualTarget);
+        }
+
+        if (skill.Shape is "nova" or "ring" or "summon")
+            return SkillWouldAffectMonster(skill, null);
+
+        target = BestAutoHelperTarget(GameConfig.AutoHelperTargetRange, m => SkillWouldAffectMonster(skill, m));
+        return target is not null;
+    }
+
+    private bool ShouldAutoHelperCastBuff(SkillDef skill)
+    {
+        if (skill.Buff == "heal")
+            return Player.Hp < Player.MaxHp * GameConfig.AutoHelperHealHpFraction;
+
+        if (skill.Buff is not null && IsBuffActive(skill.Buff))
+            return false;
+
+        return BestAutoHelperTarget(GameConfig.AutoHelperTargetRange) is not null;
+    }
+
+    private bool SkillWouldAffectMonster(SkillDef skill, Actor? target)
+    {
+        switch (skill.Shape)
+        {
+            case "single":
+                return target is not null && CanSkillReachTarget(skill, target);
+
+            case "area":
+            case "barrage":
+                if (target is null || !CanSkillReachTarget(skill, target)) return false;
+                return AnyMonsterOnTiles(CircleTiles(target.X, target.Y, skill.Radius));
+
+            case "field":
+                if (target is null || !CanSkillReachTarget(skill, target)) return false;
+                return AnyMonsterOnTiles(CircleTiles(target.X, target.Y, Math.Max(skill.SummonRadius, 0)));
+
+            case "nova":
+                return AnyMonsterOnTiles(CircleTiles(Player.X, Player.Y, skill.Radius),
+                    skipPlayerTile: true, requiredMonsterId: target?.Id ?? 0);
+
+            case "ring":
+                return AnyMonsterOnTiles(RingTiles(Player.X, Player.Y, skill.RingInner, Math.Max(skill.Radius, 1)),
+                    requiredMonsterId: target?.Id ?? 0);
+
+            case "summon":
+                return AnyMonsterOnTiles(CircleTiles(Player.X, Player.Y, Math.Max(skill.SummonRadius, 1)),
+                    skipPlayerTile: true, requiredMonsterId: target?.Id ?? 0);
+
+            case "beam":
+                return BeamWouldHitMonster(skill, target);
+
+            case "cone":
+                return ConeWouldHitMonster(skill, target);
+
+            case "chain":
+                return target is not null && CanSkillReachTarget(skill, target);
+
+            default:
+                return false;
+        }
+    }
+
+    private bool CanSkillReachTarget(SkillDef skill, Actor target)
+    {
+        var range = skill.Range > 0 ? skill.Range : SkillFootprintRange(skill);
+        return IsTargetableByPlayer(target, Math.Max(range, 1));
+    }
+
+    private static int SkillFootprintRange(SkillDef skill) => skill.Shape switch
+    {
+        "cone" => Math.Max(skill.Radius, 1),
+        "nova" or "ring" => Math.Max(skill.Radius, 1),
+        "summon" => Math.Max(skill.SummonRadius, 1),
+        _ => GameConfig.AutoHelperTargetRange
+    };
+
+    private bool BeamWouldHitMonster(SkillDef skill, Actor? target)
+    {
+        var (dx, dy) = DirDelta(Player.Facing, target);
+        for (var i = 1; i <= Math.Max(skill.Range, 1); i++)
+        {
+            var tx = Player.X + dx * i;
+            var ty = Player.Y + dy * i;
+            var px = Player.X + dx * (i - 1);
+            var py = Player.Y + dy * (i - 1);
+            if (DiagonalCornerBlocked(Floor, px, py, tx, ty)) break;
+            if (Floor.IsBlocked(tx, ty)) break;
+            if (MonsterAt(tx, ty) is not null) return true;
+        }
+        return false;
+    }
+
+    private bool ConeWouldHitMonster(SkillDef skill, Actor? target)
+    {
+        var (dx, dy) = DirDelta(Player.Facing, target);
+        foreach (var (tx, ty) in ConeTiles(Player.X, Player.Y, dx, dy, Math.Max(skill.Radius, 1)))
+        {
+            var victim = MonsterAt(tx, ty);
+            if (victim is not null && IsTargetableByPlayer(victim, Math.Max(skill.Radius, 1)))
+                return true;
+        }
+        return false;
+    }
+
+    private bool AnyMonsterOnTiles(IEnumerable<(int X, int Y)> tiles, bool skipPlayerTile = false, int requiredMonsterId = 0)
+    {
+        foreach (var (tx, ty) in tiles)
+        {
+            if (skipPlayerTile && tx == Player.X && ty == Player.Y) continue;
+            var victim = MonsterAt(tx, ty);
+            if (victim is null) continue;
+            if (requiredMonsterId != 0 && victim.Id != requiredMonsterId) continue;
+            return true;
+        }
+        return false;
+    }
+
+    private bool CanPlayerAutoAttack(Actor target) =>
+        IsTargetableByPlayer(target, Waifus.WeaponRange(Waifu.Weapon));
+
+    private bool IsTargetableByPlayer(Actor target, int maxRange) =>
+        target.Hp > 0
+        && target.Floor == Player.Floor
+        && Chebyshev(Player, target) <= maxRange
+        && HasLineOfSight(Player.X, Player.Y, target.X, target.Y);
+
     private void TickPlayerCombat()
     {
         if (Player.Hp <= 0) return;
@@ -616,10 +902,7 @@ public sealed class GameWorld
             return;
         }
 
-        var range = Waifus.WeaponRange(Waifu.Weapon);
-        if (Chebyshev(Player, target) > range) return;
-        // ranged auto-attacks respect walls, same as monsters (GameWorld:1293)
-        if (range > GameConfig.MeleeRange && !HasLineOfSight(Player.X, Player.Y, target.X, target.Y)) return;
+        if (!CanPlayerAutoAttack(target)) return;
 
         _autoAttackReadyAtMs = NowMs + AutoAttackInterval();
         Player.Facing = FacingFrom(target.X - Player.X, target.Y - Player.Y);
@@ -652,16 +935,17 @@ public sealed class GameWorld
         else if (NowMs < _skillReadyAtMs[slot]) return;
 
         var target = _monsters.FirstOrDefault(m => m.Id == Player.TargetId && m.Hp > 0 && m.Floor == Player.Floor)
-                     ?? NearestMonster(skill.Range > 0 ? skill.Range : 7);
+                     ?? NearestMonster(skill.Range > 0 ? skill.Range : GameConfig.AutoHelperTargetRange);
 
         // skills que precisam de alvo só exigem QUE EXISTA um alvo travado/próximo — não que ele
         // esteja em alcance. Se estiver longe, a magia dispara na reta da Kaeli até o limite/parede.
-        if (skill.Shape is "single" or "area" && target is null) return;
+        if (skill.Shape is "single" or "area" or "chain" or "barrage" && target is null) return;
+        if (skill.Shape == "chain" && !CanSkillReachTarget(skill, target!)) return;
 
         // ponto de mira: o alvo travado, mas limitado ao alcance da skill e parando antes da parede
         var aimX = target?.X ?? Player.X;
         var aimY = target?.Y ?? Player.Y;
-        if (skill.Shape is "single" or "area" && target is not null)
+        if (skill.Shape is "single" or "area" or "barrage" or "field" && target is not null)
         {
             (aimX, aimY) = AimAlongLine(target.X, target.Y, skill.Range);
             if (aimX == Player.X && aimY == Player.Y) return; // parede colada: nem sai (não gasta CD)
@@ -736,6 +1020,9 @@ public sealed class GameWorld
                 {
                     var tx = Player.X + dx * i;
                     var ty = Player.Y + dy * i;
+                    var px = Player.X + dx * (i - 1);
+                    var py = Player.Y + dy * (i - 1);
+                    if (DiagonalCornerBlocked(Floor, px, py, tx, ty)) break;
                     if (Floor.IsBlocked(tx, ty)) break;
                     Emit("effect", tx, ty, 0, 0, skill.EffectId);
                     var victim = MonsterAt(tx, ty);
@@ -754,6 +1041,100 @@ public sealed class GameWorld
                     var victim = MonsterAt(tx, ty);
                     if (victim is not null) HitMonster(victim, damage, skill, ultScale);
                 }
+                break;
+            }
+
+            case "summon":
+            {
+                // construct dropped on the caster's tile; pulses area damage for SummonMs.
+                var pulseMs = Math.Max(skill.SummonPulseMs, GameConfig.TickMs);
+                var slotMult = isUlt ? ultScale : Loadout.Mastery.SlotPowerMult(slot);
+                _summons.Add(new PlayerSummon
+                {
+                    Floor = _currentFloor, X = Player.X, Y = Player.Y,
+                    Element = skill.Element, Fx = skill.EffectId,
+                    Radius = Math.Max(skill.SummonRadius, 1),
+                    DamagePerPulse = PlayerAttack() * skill.SummonPower
+                        * EquipmentStats.SkillPowerMultiplier * slotMult,
+                    PulseMs = pulseMs,
+                    NextPulseAtMs = NowMs + pulseMs,
+                    ExpireAtMs = NowMs + Math.Max(skill.SummonMs, pulseMs),
+                });
+                Emit("effect", Player.X, Player.Y, 0, 0, skill.EffectId);
+                break;
+            }
+
+            case "chain":
+            {
+                if (target is null) break;
+                var hit = new HashSet<int> { target.Id };
+                var current = target;
+                var hops = Math.Max(skill.ChainJumps, 1);
+                var falloff = Math.Clamp(skill.ChainFalloff, 0, 0.9);
+                var jumpRange = Math.Max(skill.ChainRange, 1);
+                int fromX = Player.X, fromY = Player.Y;
+                var hopDamage = damage;
+                for (var h = 0; h < hops && current is not null; h++)
+                {
+                    if (skill.MissileId > 0) Emit("projectile", fromX, fromY, current.X, current.Y, skill.MissileId);
+                    Emit("effect", current.X, current.Y, 0, 0, skill.EffectId);
+                    HitMonster(current, hopDamage, skill, ultScale);
+                    fromX = current.X; fromY = current.Y;
+                    hopDamage *= 1 - falloff;
+                    current = NearestUnhitMonster(fromX, fromY, jumpRange, hit);
+                    if (current is not null) hit.Add(current.Id);
+                }
+                break;
+            }
+
+            case "ring":
+            {
+                foreach (var (tx, ty) in RingTiles(Player.X, Player.Y, skill.RingInner, Math.Max(skill.Radius, 1)))
+                {
+                    Emit("effect", tx, ty, 0, 0, skill.EffectId);
+                    var victim = MonsterAt(tx, ty);
+                    if (victim is not null) HitMonster(victim, damage, skill, ultScale);
+                }
+                break;
+            }
+
+            case "field":
+            {
+                // pinta tiles-perigo no chao (ao redor do alvo, ou de si mesma se sem alvo).
+                var dmg = PlayerAttack() * skill.SummonPower * EquipmentStats.SkillPowerMultiplier
+                    * (isUlt ? ultScale : Loadout.Mastery.SlotPowerMult(slot));
+                var tickMs = Math.Max(skill.SummonPulseMs, GameConfig.TickMs);
+                foreach (var (tx, ty) in CircleTiles(aimX, aimY, Math.Max(skill.SummonRadius, 0)))
+                {
+                    Emit("effect", tx, ty, 0, 0, skill.EffectId);
+                    _fields.Add(new GroundField
+                    {
+                        Floor = _currentFloor, X = tx, Y = ty, Element = skill.Element, Fx = skill.EffectId,
+                        DamagePerTick = dmg, SlowFactor = skill.SlowFactor, SlowMs = skill.SlowMs,
+                        TickMs = tickMs, NextTickAtMs = NowMs + tickMs,
+                        ExpireAtMs = NowMs + Math.Max(skill.SummonMs, tickMs),
+                    });
+                }
+                break;
+            }
+
+            case "barrage":
+            {
+                // golpes em multiplos tempos no ponto alvo (chuva/rajada que cai em sequencia).
+                var strikes = Math.Max(skill.Strikes, 1);
+                var interval = Math.Max(skill.StrikeIntervalMs, GameConfig.TickMs);
+                var dotPerTick = PlayerAttack() * skill.DotPower * EquipmentStats.SkillPowerMultiplier;
+                for (var k = 0; k < strikes; k++)
+                    _pendingStrikes.Add(new ScheduledStrike
+                    {
+                        Floor = _currentFloor, X = aimX, Y = aimY,
+                        AtMs = NowMs + skill.StrikeDelayMs + (long)k * interval,
+                        Element = skill.Element, Fx = skill.EffectId, Damage = damage,
+                        Radius = Math.Max(skill.Radius, 0), RingInner = skill.RingInner,
+                        StunMs = skill.StunMs, SlowFactor = skill.SlowFactor, SlowMs = skill.SlowMs,
+                        DotTicks = skill.DotTicks, DotTickMs = skill.DotTickMs, DotPower = dotPerTick,
+                    });
+                Emit("effect", aimX, aimY, 0, 0, skill.EffectId); // telegrafo inicial
                 break;
             }
         }
@@ -782,6 +1163,164 @@ public sealed class GameWorld
         {
             monster.StunUntilMs = NowMs + skill.StunMs;
             Emit("effect", monster.X, monster.Y, 0, 0, 32); // stun stars
+        }
+
+        if (monster.Hp > 0 && skill.DotTicks > 0 && skill.DotPower > 0)
+            ApplyDotToMonster(monster, skill.Element, skill.EffectId,
+                PlayerAttack() * skill.DotPower * EquipmentStats.SkillPowerMultiplier * buffScale,
+                skill.DotTicks, skill.DotTickMs > 0 ? skill.DotTickMs : GameConfig.ConditionDefaultTickMs);
+
+        if (monster.Hp > 0 && skill.SlowMs > 0 && skill.SlowFactor < 1)
+            ApplyMonsterSlow(monster, skill.SlowFactor, skill.SlowMs);
+    }
+
+    /// <summary>Slows a monster's movement (reuses the chiller/reaction slow fields).</summary>
+    private void ApplyMonsterSlow(Actor monster, double factor, int ms)
+    {
+        monster.SlowUntilMs = NowMs + ms;
+        monster.SlowFactor = Math.Clamp(factor, GameConfig.SlowFactorFloor, 1.0);
+    }
+
+    /// <summary>Adds (or refreshes) a damage-over-time on a monster. Same element never stacks:
+    /// reapplying keeps the stronger per-tick and the longer duration (no infinite ramp).</summary>
+    private void ApplyDotToMonster(Actor monster, string element, int fx, double dmgPerTick, int ticks, int tickMs)
+    {
+        var perTick = Math.Max(dmgPerTick, 1);
+        tickMs = Math.Max(tickMs, GameConfig.TickMs);
+        foreach (var existing in monster.Dots)
+        {
+            if (existing.Element != element) continue;
+            existing.DamagePerTick = Math.Max(existing.DamagePerTick, perTick);
+            existing.TicksLeft = Math.Max(existing.TicksLeft, ticks);
+            existing.TickMs = tickMs;
+            existing.NextTickAtMs = Math.Min(existing.NextTickAtMs, NowMs + tickMs);
+            return;
+        }
+        monster.Dots.Add(new MonsterDot
+        {
+            Element = element, Fx = fx, DamagePerTick = perTick,
+            TicksLeft = ticks, TickMs = tickMs, NextTickAtMs = NowMs + tickMs,
+        });
+    }
+
+    /// <summary>Ticks the DoTs on one monster. Reuses DealDamageToMonster so death/xp/posture/
+    /// reactions all behave identically to a normal hit (no crit, no lifesteal for ticks).</summary>
+    private void TickMonsterDots(Actor monster)
+    {
+        for (var i = monster.Dots.Count - 1; i >= 0; i--)
+        {
+            var dot = monster.Dots[i];
+            if (NowMs < dot.NextTickAtMs) continue;
+            dot.NextTickAtMs = NowMs + dot.TickMs;
+            dot.TicksLeft--;
+            DealDamageToMonster(monster, dot.DamagePerTick, dot.Element, dot.Fx,
+                fromSkill: false, canCrit: false, canLifeSteal: false);
+            if (monster.Hp <= 0) { monster.Dots.Clear(); return; }
+            if (dot.TicksLeft <= 0) monster.Dots.RemoveAt(i);
+        }
+    }
+
+    /// <summary>Ticks player-summoned constructs: each pulses area damage on its tile, then expires.</summary>
+    private void TickPlayerSummons()
+    {
+        if (_summons.Count == 0) return;
+        for (var i = _summons.Count - 1; i >= 0; i--)
+        {
+            var summon = _summons[i];
+            if (NowMs >= summon.ExpireAtMs) { _summons.RemoveAt(i); continue; }
+            if (summon.Floor != _currentFloor || NowMs < summon.NextPulseAtMs) continue;
+            summon.NextPulseAtMs = NowMs + summon.PulseMs;
+            Emit("effect", summon.X, summon.Y, 0, 0, summon.Fx);
+            foreach (var (tx, ty) in CircleTiles(summon.X, summon.Y, summon.Radius))
+            {
+                var victim = MonsterAt(tx, ty);
+                if (victim is null) continue;
+                if (tx != summon.X || ty != summon.Y) Emit("effect", tx, ty, 0, 0, summon.Fx);
+                DealDamageToMonster(victim, summon.DamagePerPulse, summon.Element, 0,
+                    fromSkill: false, canCrit: false, canLifeSteal: false);
+            }
+        }
+    }
+
+    /// <summary>Nearest living monster on the current floor within range, excluding ids in <paramref name="exclude"/>. For chain jumps.</summary>
+    private Actor? NearestUnhitMonster(int x, int y, int range, HashSet<int> exclude)
+    {
+        Actor? best = null;
+        var bestDist = int.MaxValue;
+        foreach (var m in _monsters)
+        {
+            if (m.Hp <= 0 || m.Floor != _currentFloor || exclude.Contains(m.Id)) continue;
+            var d = Chebyshev(x, y, m.X, m.Y);
+            if (d <= range && d < bestDist) { bestDist = d; best = m; }
+        }
+        return best;
+    }
+
+    /// <summary>Hollow diamond: tiles whose Manhattan distance is in (inner, outer]. inner 0 = solid (= CircleTiles).</summary>
+    private IEnumerable<(int X, int Y)> RingTiles(int cx, int cy, int inner, int outer)
+    {
+        for (var dy = -outer; dy <= outer; dy++)
+            for (var dx = -outer; dx <= outer; dx++)
+            {
+                var dist = Math.Abs(dx) + Math.Abs(dy);
+                if (dist > outer * 1.5 || dist <= inner) continue;
+                var x = cx + dx;
+                var y = cy + dy;
+                if (!Floor.IsBlocked(x, y)) yield return (x, y);
+            }
+    }
+
+    /// <summary>Resolves one scheduled multi-time strike on its footprint (circle or hollow ring).</summary>
+    private void ResolveStrike(ScheduledStrike s)
+    {
+        if (s.Floor != _currentFloor) return;
+        var tiles = s.RingInner > 0 ? RingTiles(s.X, s.Y, s.RingInner, s.Radius) : CircleTiles(s.X, s.Y, s.Radius);
+        foreach (var (tx, ty) in tiles)
+        {
+            Emit("effect", tx, ty, 0, 0, s.Fx);
+            var victim = MonsterAt(tx, ty);
+            if (victim is null) continue;
+            DealDamageToMonster(victim, s.Damage, s.Element, 0, fromSkill: true, canCrit: false, canLifeSteal: false);
+            if (victim.Hp <= 0) continue;
+            if (s.StunMs > 0) victim.StunUntilMs = NowMs + s.StunMs;
+            if (s.SlowMs > 0 && s.SlowFactor < 1) ApplyMonsterSlow(victim, s.SlowFactor, s.SlowMs);
+            if (s.DotTicks > 0 && s.DotPower > 0)
+                ApplyDotToMonster(victim, s.Element, s.Fx, s.DotPower, s.DotTicks,
+                    s.DotTickMs > 0 ? s.DotTickMs : GameConfig.ConditionDefaultTickMs);
+        }
+    }
+
+    /// <summary>Ticks player-painted ground fields: each damages/slows the monster on its tile, then expires.</summary>
+    private void TickFields()
+    {
+        if (_fields.Count == 0) return;
+        for (var i = _fields.Count - 1; i >= 0; i--)
+        {
+            var field = _fields[i];
+            if (NowMs >= field.ExpireAtMs) { _fields.RemoveAt(i); continue; }
+            if (field.Floor != _currentFloor || NowMs < field.NextTickAtMs) continue;
+            field.NextTickAtMs = NowMs + field.TickMs;
+            Emit("effect", field.X, field.Y, 0, 0, field.Fx);
+            var victim = MonsterAt(field.X, field.Y);
+            if (victim is null) continue;
+            if (field.DamagePerTick > 0)
+                DealDamageToMonster(victim, field.DamagePerTick, field.Element, 0,
+                    fromSkill: false, canCrit: false, canLifeSteal: false);
+            if (victim.Hp > 0 && field.SlowMs > 0 && field.SlowFactor < 1)
+                ApplyMonsterSlow(victim, field.SlowFactor, field.SlowMs);
+        }
+    }
+
+    /// <summary>Resolves multi-time strikes whose scheduled moment has arrived.</summary>
+    private void TickPendingStrikes()
+    {
+        if (_pendingStrikes.Count == 0) return;
+        for (var i = _pendingStrikes.Count - 1; i >= 0; i--)
+        {
+            var strike = _pendingStrikes[i];
+            if (NowMs < strike.AtMs) continue;
+            _pendingStrikes.RemoveAt(i);
+            ResolveStrike(strike);
         }
     }
 
@@ -1211,6 +1750,7 @@ public sealed class GameWorld
         {
             var monster = _monsters[idx];
             if (monster.Hp <= 0 || monster.Floor != _currentFloor) continue;
+            if (monster.Dots.Count > 0) { TickMonsterDots(monster); if (monster.Hp <= 0) continue; }
             var species = monster.Species!;
             var dist = Chebyshev(monster, Player);
             var hasLos = HasLineOfSight(monster.X, monster.Y, Player.X, Player.Y);
@@ -1749,6 +2289,7 @@ public sealed class GameWorld
         Player.FromX = entry.X; Player.FromY = entry.Y;
         Player.StepDurMs = 0;
         Player.TargetId = 0;
+        _manualTargetId = 0;
         MapDirty = true;
         Emit("effect", entry.X, entry.Y, 0, 0, 11);
     }
@@ -1781,9 +2322,12 @@ public sealed class GameWorld
         int x = x0, y = y0;
         while (x != x1 || y != y1)
         {
+            var px = x;
+            var py = y;
             var e2 = 2 * err;
             if (e2 > -dy) { err -= dy; x += sx; }
             if (e2 < dx) { err += dx; y += sy; }
+            if (DiagonalCornerBlocked(floor, px, py, x, y)) return false;
             if ((x != x1 || y != y1) && floor.IsBlocked(x, y)) return false;
         }
         return true;
@@ -1804,14 +2348,26 @@ public sealed class GameWorld
         int x = x0, y = y0, lastX = x0, lastY = y0;
         while (x != tx || y != ty)
         {
+            var px = x;
+            var py = y;
             var e2 = 2 * err;
             if (e2 > -dy) { err -= dy; x += sx; }
             if (e2 < dx) { err += dx; y += sy; }
+            if (DiagonalCornerBlocked(floor, px, py, x, y)) break;
             if (floor.IsBlocked(x, y)) break;
             if (Chebyshev(x0, y0, x, y) > maxRange) break;
             lastX = x; lastY = y;
         }
         return (lastX, lastY);
+    }
+
+    private static bool DiagonalCornerBlocked(DungeonFloor floor, int fromX, int fromY, int toX, int toY)
+    {
+        var dx = Math.Sign(toX - fromX);
+        var dy = Math.Sign(toY - fromY);
+        return dx != 0 && dy != 0
+            && (floor.IsBlocked(fromX + dx, fromY)
+                || floor.IsBlocked(fromX, fromY + dy));
     }
 
     private static int Chebyshev(Actor a, Actor b) => Math.Max(Math.Abs(a.X - b.X), Math.Abs(a.Y - b.Y));
@@ -1826,7 +2382,7 @@ public sealed class GameWorld
         var bestDist = int.MaxValue;
         foreach (var m in _monsters)
         {
-            if (m.Hp <= 0 || m.Floor != _currentFloor) continue;
+            if (!IsTargetableByPlayer(m, maxRange)) continue;
             var d = Chebyshev(m, Player);
             if (d <= maxRange && d < bestDist) { bestDist = d; best = m; }
         }
@@ -1942,7 +2498,7 @@ public sealed class GameWorld
             Player.TargetId, _gauge, skills,
             PlayerClass.Id, PlayerClass.Name,
             CurrentStance.Id, CurrentStance.Name, CurrentStance.Element, PlayerClass.CanToggleStance,
-            Math.Max(_autoAttackReadyAtMs - NowMs, 0),
+            Math.Max(_autoAttackReadyAtMs - NowMs, 0), _autoHelperEnabled,
             _buffsUntilMs.Where(b => NowMs < b.Value).Select(b => b.Key).ToList(),
             BuildActiveConditions(),
             new EquipmentStatsDto(

@@ -124,6 +124,11 @@ mas **não há field de chão** e `TryStep` não tem hook pós-passo (GameWorld.
 (reusar `ConditionTickFx`); fields do player danam mobs. 5. Render do field. 6. `fields[]` no snapshot.
 **Aceite.** Pisar/ficar em poison/fire aplica condição e dana ao longo do tempo; fields visíveis e expiram.
 **Armadilhas.** `ConditionResistCap`; re-aplicar só refresca; perf via dict.
+**Groundwork já existente (2026-06-16).** O kit da Necromancer adicionou primitivos reusáveis:
+**DoT em monstro** (`MonsterDot` + `Actor.Dots` + `ApplyDotToMonster`/`TickMonsterDots`, GameWorld.cs)
+e **pulso de área do player** (`PlayerSummon` + `TickPlayerSummons`, totem que dana mobs por tick).
+Ambos com refresh-não-stacka e reuso de `DealDamageToMonster`. Um field de chão para mobs pode
+espelhar `TickPlayerSummons` (lista por floor + pulso) em vez de criar caminho novo.
 
 ### [ ] G-04 — Fog of war (mapa velado) — **absorve T-22**
 **P1 · M · backend + frontend · Owner: Codex → Opus**

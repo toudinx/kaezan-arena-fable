@@ -79,6 +79,13 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
             <b>{{ elementLabel(s.player.stanceElement) }}</b>
             @if (s.player.canToggleStance) { <small>TAB</small> }
           </button>
+          <button class="auto-helper" [class.on]="s.player.autoHelperEnabled"
+                  (click)="setAutoHelper(!s.player.autoHelperEnabled)"
+                  title="Helper de alvo e skills 1-4">
+            <span>Helper</span>
+            <i></i>
+            <b>{{ s.player.autoHelperEnabled ? 'ON' : 'OFF' }}</b>
+          </button>
         }
         <button class="btn secondary leave" (click)="leave()">Sair</button>
       </div>
@@ -201,6 +208,27 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
     }
     .stance span { grid-column: 1 / -1; color: #8bfff1; font-size: 10px; font-weight: 800; text-transform: uppercase; }
     .stance.fixed { border-color: #3a3a4c; background: rgba(16,16,26,0.9); }
+    .auto-helper {
+      pointer-events: auto; width: 116px; height: 48px; border: 1px solid #3a3a4c; border-radius: 9px;
+      background: rgba(16,16,26,0.9); color: #cfcde0; padding: 6px 9px;
+      display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto 1fr; align-items: center;
+      gap: 2px 8px; text-align: left;
+    }
+    .auto-helper span { grid-column: 1 / -1; color: #9c9ab0; font-size: 10px; font-weight: 900; text-transform: uppercase; }
+    .auto-helper i {
+      width: 36px; height: 18px; border-radius: 9px; background: #272738; border: 1px solid #4a4a5e;
+      position: relative;
+    }
+    .auto-helper i::after {
+      content: ''; position: absolute; width: 12px; height: 12px; border-radius: 50%;
+      left: 3px; top: 2px; background: #8b8a9c; transition: transform 0.12s ease, background 0.12s ease;
+    }
+    .auto-helper b { color: #8b8a9c; font-size: 12px; justify-self: end; }
+    .auto-helper.on { border-color: #2dd4bf; background: rgba(10, 30, 32, 0.92); }
+    .auto-helper.on span { color: #8bfff1; }
+    .auto-helper.on i { background: rgba(45, 212, 191, 0.22); border-color: #2dd4bf; }
+    .auto-helper.on i::after { transform: translateX(17px); background: #8bfff1; }
+    .auto-helper.on b { color: #8bfff1; }
     .minimap { position: absolute; right: 14px; top: 64px; border: 1px solid #2c2c3e; border-radius: 8px; background: #000; opacity: 0.9; }
     .hud.skills { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
     .skill {
@@ -422,6 +450,10 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
 
   toggleStance(): void {
     this.client.toggleStance();
+  }
+
+  setAutoHelper(enabled: boolean): void {
+    this.client.setAutoHelper(enabled);
   }
 
   chooseCard(cardId: string): void {

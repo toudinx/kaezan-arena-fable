@@ -16,6 +16,7 @@ import { AssetsService } from '../core/assets.service';
         <a routerLink="/kaelis" routerLinkActive="active">Kaelis</a>
         <a routerLink="/recruit" routerLinkActive="active">Recrutar</a>
         <a routerLink="/backpack" routerLinkActive="active">Mochila</a>
+        <a routerLink="/bestiary" routerLinkActive="active">Bestiário</a>
         <a routerLink="/admin" routerLinkActive="active" class="admin-link">⚙ Admin</a>
       </nav>
       <div class="currencies">
@@ -23,6 +24,7 @@ import { AssetsService } from '../core/assets.service';
           <span class="cur lvl" title="Nível de conta">Lv. {{ acc.accountLevel }}</span>
           <span class="cur gold" title="Ouro">🪙 {{ acc.gold }}</span>
           <span class="cur kaeros" title="Kaeros">✦ {{ acc.kaeros }}</span>
+          <button class="btn-dev" title="[DEV] +1600 kaeros (10 pulls)" (click)="addKaeros()">+ 1600✦</button>
         }
       </div>
     </header>
@@ -52,6 +54,12 @@ import { AssetsService } from '../core/assets.service';
     .cur.gold { color: #fbbf24; }
     .cur.kaeros { color: #c084fc; }
     .cur.lvl { color: #7df0ff; }
+    .btn-dev {
+      background: #1a1a2e; border: 1px dashed #c084fc; color: #c084fc;
+      font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 6px;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .btn-dev:hover { background: #2a1a3e; }
     main { min-height: calc(100vh - 53px); }
   `],
 })
@@ -62,6 +70,10 @@ export class Shell implements OnInit {
     private readonly api: ApiService,
     private readonly assets: AssetsService,
   ) {}
+
+  addKaeros(): void {
+    void this.api.grantKaeros(1600);
+  }
 
   ngOnInit(): void {
     void this.api.loadCatalog();

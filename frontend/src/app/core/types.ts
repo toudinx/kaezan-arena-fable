@@ -522,6 +522,7 @@ export interface PlayerDto {
   stanceElement: string;
   canToggleStance: boolean;
   autoAttackReadyInMs: number;
+  autoHelperEnabled: boolean;
   activeBuffs: string[];
   activeConditions: string[];
   equipmentStats: EquipmentStatsDto;

@@ -62,7 +62,7 @@ public static class Waifus
     [
         // ===== 3★ =====
         new("waifu:mira", "Mira", "Punho de Thais", 3, "physical", "melee",
-            17, 195, Classes.WarriorId,
+            17, 195, Classes.MonkId,
             "Cresceu nas ruas de Thais e nunca recusou uma briga justa. Hoje briga pelas " +
             "justas dos outros — de graça, se a causa for boa; por queijo, se não for.",
             "Esquentada, leal, riso fácil. Resolve no soco o que a diplomacia demorar demais.",
@@ -328,7 +328,7 @@ public static class Waifus
             ]),
 
         new("waifu:velvet", "Velvet", "Eco do Pesadelo", 5, "death", "wand",
-            22, 150, Classes.WizardId,
+            22, 150, Classes.NecromancerId,
             "Dizem que ela voltou do abismo. O abismo discorda: nunca a deixou ir. Velvet " +
             "caminha com um pé em cada mundo — e os dois mundos fingem que não é com eles.",
             "Voz baixa, cortesia antiga, humor de lápide. Sabe o seu nome antes de você dizer.",

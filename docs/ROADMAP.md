@@ -283,8 +283,21 @@ appearances tem `AppearanceFlagNPC npcsaledata` com `sale_price`/`buy_price` por
 **Aceite.** Vender um dragon ham paga o preço real do Tibia; itens sem comprador pagam 5;
 `items.json` commitado; nenhum `itemId % 35` restante no código.
 
-### [ ] T-12 — Biomas visuais por tier + cantos de parede
+### [x] T-12 — Biomas visuais por tier + cantos de parede
 **P1 · L · tools + backend + frontend leve**
+
+**Concluída (2026-06-16):** `Domain/Biomes.cs` define um `BiomeDef` por tier (caverna/forte
+gramado/cripta de pedra com ossos/covil com lava/abismo); `DungeonGenerator.Generate` recebe o
+bioma e `ClassifyWall` escolhe a peça por vizinhança 4-dir (H/V/pole/canto — cantos via 1116
+sólido, fim das "dentes"); lava/ossos entram na camada Decor (nunca bloqueiam) e POIs ficam
+livres. Todos os ids já estavam extraídos (verificado no manifest) — nenhuma re-extração foi
+necessária. Renderer é genérico, então não houve mudança de frontend. Validado renderizando os
+biomas dos tiers 1/3/5 a partir de um dump determinístico do gerador.
+
+> **Gap registrado:** os 4 cantos do `wall.stone` (1116/1118/1120/1122) compartilham a mesma
+> máscara, então o canto não é orientado por quadrante (NE/NW/SE/SW) — usamos um canto sólido que
+> preenche a quina. Cantos orientados de verdade exigiriam sprites dedicados (não presentes no
+> set extraído).
 
 **Contexto.** Todos os tiers usam o tileset de caverna (`DungeonGenerator` hardcoda
 `CaveGround`/`Wall*`). Tiles de stone wall (1112-1122) e lava (727-730) já estão extraídos.

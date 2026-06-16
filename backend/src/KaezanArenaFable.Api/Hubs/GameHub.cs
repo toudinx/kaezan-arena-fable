@@ -81,6 +81,9 @@ public sealed class GameHub(
     public void ToggleStance() =>
         runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.ToggleStance, 0, 0, null));
 
+    public void SetAutoHelper(bool enabled) =>
+        runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.ToggleAutoHelper, enabled ? 1 : 0, 0, null));
+
     public void Interact(int x, int y) =>
         runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.Interact, x, y, null));
 

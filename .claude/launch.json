@@ -2,10 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "frontend",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["ng", "serve", "--port", "4200"],
-      "cwd": "frontend",
+      "name": "kaezan-fable-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start"],
       "port": 4200
     }
   ]

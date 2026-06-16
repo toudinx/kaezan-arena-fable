@@ -25,6 +25,8 @@ public static class GameConfig
     public const int AggroDropNoLosMs = 6000;
     public const int MonsterWanderIntervalMs = 1600;
     public const int PlayerAutoAttackMs = 1800;
+    public const int AutoHelperTargetRange = 8;
+    public const double AutoHelperHealHpFraction = 0.70;
     public const int MeleeRange = 1;
     public const int BowRange = 5;
     public const int WandRange = 4;
@@ -279,19 +281,19 @@ public static class GameConfig
         new(2, "Forte Uruk", "Um bastião orc tomado pela ganância.",
             ["Orc", "Orc Spearman", "Goblin", "Goblin Scavenger", "Dwarf", "War Wolf"],
             ["Orc Warrior", "Orc Shaman", "Dwarf Soldier", "Orc Rider", "Orc Berserker"],
-            "Orc Warlord", 4, 1.35),
+            "Orc Warlord", 2, 1.35),
         new(3, "Cripta Sombria", "Catacumbas onde os mortos não descansam.",
             ["Skeleton", "Ghoul", "Ghost", "Mummy", "Bonelord"],
             ["Crypt Shambler", "Demon Skeleton", "Witch", "Vampire", "Necromancer", "Banshee"],
-            "Black Knight", 8, 1.8),
+            "Black Knight", 3, 1.8),
         new(4, "Covil Escamado", "Ninhos de dragões nas profundezas vulcânicas.",
             ["Minotaur", "Minotaur Archer", "Minotaur Mage", "Minotaur Guard", "Fire Elemental", "Dragon Hatchling"],
             ["Cyclops", "Earth Elemental", "Dragon", "Dragon Lord Hatchling", "Frost Dragon Hatchling"],
-            "Dragon Lord", 14, 2.4),
+            "Dragon Lord", 4, 2.4),
         new(5, "Abismo Ecoante", "Onde os ecos do abismo ganham forma.",
             ["Cyclops", "Fire Devil", "Dragon", "Dragon Lord Hatchling", "Frost Dragon Hatchling"],
             ["Giant Spider", "Dragon Lord", "Frost Dragon", "Hydra", "Hellfire Fighter", "Behemoth", "Hellhound", "Dark Torturer", "Juggernaut"],
-            "Demon", 22, 3.2),
+            "Demon", 5, 3.2),
     ];
 
     public static readonly int[] BossHpMultiplier = [1, 8, 10, 4, 5, 2];

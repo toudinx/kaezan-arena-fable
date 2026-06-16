@@ -103,6 +103,7 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
 | Q / E / Z / C | Movimento diagonal (sem cortar quinas; diagonal bloqueada desliza pelo eixo livre) |
 | Espaço | Mirar no inimigo mais próximo |
 | Clique | Mirar inimigo / interagir (baú, escada) |
+| Botão Helper | Liga/desliga o helper de alvo, auto-attack e skills 1-4 |
 | 1 / 2 / 3 / 4 | Slots 1-4 do kit da classe |
 | R | Ultimate da classe (gauge) |
 | Tab | Alterna a postura elemental (quando a classe possui duas) |
@@ -116,6 +117,9 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
   a animação de caminhada durante todo o deslocamento entre tiles mesmo com jitter de snapshots.
 - Monstros desviam de bloqueios e aglomerações, perdem aggro após distância/LOS prolongados e
   respeitam `staticAttackChance` para sustentar posições de ataque.
+- O helper opcional escolhe alvos por menor HP absoluto dentro da zona visível, desempata por
+  proximidade, respeita a escolha manual até o alvo morrer/sair da zona e usa apenas skills 1-4
+  quando a área/linha alcançaria algum mob; movimento e ultimate continuam manuais.
 - **Kit real do Canary** (T-53): cada espécie executa o kit do seu `.lua` — condições viram DoT
   no player (veneno/fogo/energia, com chip no HUD, FX e cor de dano por tipo), ataques `speed`
   aplicam lentidão, invocadores summonam de verdade (Necromancer → Ghoul/Ghost/Mummy, Demon →
@@ -150,7 +154,11 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
 2. **Caçada** — 5 tiers de dungeon (gate por nível de conta). Cada run: 2 andares procedurais
    (salas de mobs com spawn por *budget* estilo Echo Spots, baús com chance de emboscada,
    escada para o covil) e um **boss do Tibia** no fundo (Rotworm Queen → Orc Warlord →
-   Black Knight → Dragon Lord → Demon).
+   Black Knight → Dragon Lord → Demon). Cada tier tem um **bioma visual próprio**
+   (`Domain/Biomes.cs`): caverna de terra (1), forte gramado (2), cripta de pedra com ossos (3),
+   covil escuro com poças de lava (4) e abismo (5). As paredes escolhem a peça por vizinhança
+   (horizontal/vertical/canto), e os acentos de lava ficam na camada de decoração — nunca
+   bloqueiam o caminho.
 3. Durante a run: XP → level-ups oferecem **cards passivos** (escolha 1 de 3, max 3 stacks);
    loot clássico do Tibia dropa no chão e é coletado andando por cima.
 4. **Recrutar** — banners com pity (4★ a cada 10; 5★ hard 80 / soft 65; 50/50 com garantia).
@@ -177,14 +185,22 @@ com trait de assinatura, personalidade, 4 ecos de memória (lore por afinidade),
 favoritos e 2-3 skins. Tessa, Nyx, Lyra e Rosa saíram (contas antigas recebem 600 Kaeros por
 Kaeli removida via sanitização automática no boot). Kaela foi promovida a 5★.
 
-Cada Kaeli usa o kit completo de uma das quatro classes canônicas do Kaezan World:
+Cada Kaeli usa o kit completo de uma das seis classes canônicas do Kaezan World:
 
 | Classe | Posturas | Kaelis | Traits |
 |---|---|---|---|
-| Warrior | Physical (fixa) | Mira 3★, Mirai 4★, Kaela 5★ | Coração Valente (DR com HP baixo) · Instinto de Matilha (+dano cercada) · Última Muralha (-12% dano) |
+| Warrior | Physical (fixa) | Mirai 4★, Kaela 5★ | Instinto de Matilha (+dano cercada) · Última Muralha (-12% dano) |
 | Sentinel | Holy ↔ Physical | Wren 3★, Aurora 5★ | Olho de Águia (+crit à distância) · Luz Purificadora (+dano em undead) |
 | Shaman | Ice ↔ Earth | Sage 3★, Sylwen 4★ | Seiva Vital (skills curam) · Mordida do Norte (gelo aplica slow) |
-| Wizard | Energy ↔ Fire | Ember 4★, Velvet 5★ | Combustão (gauge +30%) · Fome do Abismo (+dano em alvos <30% HP) |
+| Wizard | Energy ↔ Fire | Ember 4★ | Combustão (gauge +30%) |
+| Monk | Physical (fixa) | Mira 3★ | Coração Valente (DR com HP baixo) |
+| Necromancer | Death (fixa) | Velvet 5★ | Fome do Abismo (+dano em alvos <30% HP) |
+
+**Monk** é lutador corpo-a-corpo (combo melee, ki à distância, atordoamentos). **Necromancer**
+corrói com **DoT** (Wither, Eternal Suffering), ergue um **construto** que pulsa dano em área
+(Raise Bone Construct) e dispara um feixe de morte. As geometrias de área seguem os formatos do
+Tibia, porém **reescaladas para o mapa da arena** (slot 1 pequeno → ultimate maior; sem mais
+círculos de ~37 tiles em todos os slots nem cones que tomam a tela inteira).
 
 Os cooldowns pertencem aos slots 1-4 e continuam correndo ao trocar de postura; alternar com
 `Tab` não reseta habilidades. A página Kaelis (abas Perfil / Skins / Maestria / Equipamento)
@@ -195,7 +211,7 @@ permite visualizar os dois kits elementais, presentear, trocar skins e gastar po
 ```
 backend/src/KaezanArenaFable.Api/
   Domain/    GameConfig (TODAS as constantes), Waifus (roster+traits+skins+lore), Mastery
-             (árvores de maestria), Cards, GameData (monsters.json)
+             (árvores de maestria), Cards, Biomes (tema visual por tier), GameData (monsters.json)
   Engine/    GameWorld (tick/movimento/IA/combate), DungeonGenerator, Rng, RunManager, GameDtos
   Meta/      AccountStore (JSON/MySQL), GachaService, KaeliService (presentes/skins/maestria),
              AccountSanitizer, DailyService, RewardService

@@ -31,7 +31,8 @@ public sealed record PlayerDto(
     double Gauge, List<SkillStateDto> Skills,
     string ClassId, string ClassName,
     string StanceId, string StanceName, string StanceElement, bool CanToggleStance,
-    long AutoAttackReadyInMs, List<string> ActiveBuffs, List<string> ActiveConditions,
+    long AutoAttackReadyInMs, bool AutoHelperEnabled,
+    List<string> ActiveBuffs, List<string> ActiveConditions,
     EquipmentStatsDto EquipmentStats);
 
 public sealed record SkillStateDto(

@@ -152,7 +152,7 @@ public sealed class Poi
     public bool Used;
 }
 
-public enum CommandKind { SetMoveDir, SetTarget, CastSkill, ToggleStance, ToggleAutoHelper, Interact, ChooseCard, Abandon }
+public enum CommandKind { SetMoveDir, SetTarget, CastSkill, ToggleStance, ToggleAutoHelper, Interact, ChooseCard, Abandon, UsePotion }
 
 public sealed record Command(CommandKind Kind, int A, int B, string? S);
 
@@ -209,6 +209,8 @@ public sealed class GameWorld
     private int _queuedOffers;
     public Dictionary<string, int> KillsBySpecies { get; } = [];
     public List<RewardItemDto> ItemsLooted { get; } = [];
+    private int _potionCharges = GameConfig.PotionChargesPerRun;
+    private long _potionReadyAtMs;
     private int _chestsOpened;
     public int ChestsOpened => _chestsOpened;
 
@@ -219,8 +221,11 @@ public sealed class GameWorld
     private bool _autoHelperTargeting = true;
     private bool _autoHelperSkills = true;
     private bool _autoHelperUltimate = true;
-    private string _autoHelperTargetPreference = GameConfig.AutoHelperTargetPreferenceLowestHp;
+    private string _autoHelperTargetPreference = GameConfig.AutoHelperTargetPreferenceNearest;
     private string _autoHelperMovementMode = GameConfig.AutoHelperMovementModeNone;
+    private string _savedAutoHelperMovementMode = GameConfig.AutoHelperMovementModeNone;
+    private string _defaultAutoHelperMovementMode = GameConfig.AutoHelperMovementModeNone;
+    private int _helperMovementOverrideTargetId;
     private int _manualTargetId;
     private int _moveDirX, _moveDirY; // held movement direction (-1..1)
     private int _bufferedMoveDirX, _bufferedMoveDirY;
@@ -262,12 +267,11 @@ public sealed class GameWorld
         _bestiaryKills = bestiaryKills;
         _rng = new Rng((ulong)seed);
         var isMelee = Waifus.WeaponRange(Waifu.Weapon) <= GameConfig.MeleeRange;
-        _autoHelperTargetPreference = isMelee
-            ? GameConfig.AutoHelperTargetPreferenceNearest
-            : GameConfig.AutoHelperTargetPreferenceLowestHp;
-        _autoHelperMovementMode = isMelee
+        _autoHelperTargetPreference = GameConfig.AutoHelperTargetPreferenceNearest;
+        _defaultAutoHelperMovementMode = isMelee
             ? GameConfig.AutoHelperMovementModeFollow
             : GameConfig.AutoHelperMovementModeAvoid;
+        _autoHelperMovementMode = _defaultAutoHelperMovementMode;
 
         var biome = Biomes.ForTier(tier.Tier);
         _floors = [DungeonGenerator.Generate(_rng, 0, false, biome), DungeonGenerator.Generate(_rng, 1, true, biome)];
@@ -426,6 +430,9 @@ public sealed class GameWorld
             case CommandKind.CastSkill:
                 TryCastSkill(cmd.A);
                 break;
+            case CommandKind.UsePotion:
+                TryUsePotion();
+                break;
             case CommandKind.ToggleStance:
                 ToggleStance();
                 break;
@@ -435,6 +442,7 @@ public sealed class GameWorld
                 _autoHelperUltimate = (cmd.A & 4) != 0;
                 _autoHelperMovementMode = NormalizeAutoHelperMovementMode(cmd.B);
                 _autoHelperTargetPreference = NormalizeAutoHelperTargetPreference(cmd.S);
+                _helperMovementOverrideTargetId = 0;
                 if (!_autoHelperTargeting && _manualTargetId == 0)
                     Player.TargetId = 0;
                 break;
@@ -487,7 +495,6 @@ public sealed class GameWorld
                     TickFields();
                     TickPendingStrikes();
                     TickPostureDecay();
-                    TickPickup();
                 }
             }
         }
@@ -520,6 +527,19 @@ public sealed class GameWorld
         _moveDirX = dx;
         _moveDirY = dy;
         _moveDirChangedAtMs = NowMs;
+
+        // When player manually moves while follow/avoid is active, pause helper movement until target dies
+        if ((dx != 0 || dy != 0) && _helperMovementOverrideTargetId == 0
+            && _autoHelperMovementMode != GameConfig.AutoHelperMovementModeNone)
+        {
+            var target = CurrentPlayerTarget();
+            if (target is not null)
+            {
+                _savedAutoHelperMovementMode = _autoHelperMovementMode;
+                _autoHelperMovementMode = GameConfig.AutoHelperMovementModeNone;
+                _helperMovementOverrideTargetId = target.Id;
+            }
+        }
 
         var remaining = Player.StepStartMs + Player.StepDurMs - NowMs;
         if (Player.IsMoving(NowMs) && remaining <= GameConfig.StepGraceMs)
@@ -734,6 +754,17 @@ public sealed class GameWorld
 
     private void TickAutoHelperMovement()
     {
+        if (_helperMovementOverrideTargetId != 0)
+        {
+            var overrideDead = _monsters.All(m => m.Id != _helperMovementOverrideTargetId || m.Hp <= 0);
+            var newTarget = Player.TargetId != 0 && Player.TargetId != _helperMovementOverrideTargetId;
+            if (overrideDead || newTarget)
+            {
+                _autoHelperMovementMode = _savedAutoHelperMovementMode;
+                _helperMovementOverrideTargetId = 0;
+            }
+        }
+
         if (_autoHelperMovementMode == GameConfig.AutoHelperMovementModeNone || Player.IsMoving(NowMs)) return;
         if (_moveDirX != 0 || _moveDirY != 0 || _hasBufferedMoveDir) return;
 
@@ -1690,22 +1721,14 @@ public sealed class GameWorld
             {
                 var gold = (long)(count * (1 + CardValue("goldPercent")) * Tier.StatMultiplier);
                 _gold += gold;
-                Emit("gold", monster.X, monster.Y, 0, 0, (int)gold);
+                EmitLootFly(GameConfig.GoldCoinItemId, $"+{gold} gold", monster.X, monster.Y, isGold: true);
                 continue;
             }
-            // comida, poção de vida e equip caem como item no chão; o resto (lixo) é auto-vendido em ouro
+            // comida/poção/equip são coletados na hora (voam até o player); o resto (lixo) vira ouro
             if (_data.IsFood(entry.ItemId) || _data.PotionHealFraction(entry.ItemId) > 0
                 || _data.IsEquippableLoot(entry.ItemId))
             {
-                _groundItems.Add(new GroundItem
-                {
-                    Id = _nextActorId++,
-                    Floor = monster.Floor,
-                    X = monster.X, Y = monster.Y,
-                    ItemId = entry.ItemId,
-                    Count = count,
-                    Name = entry.Name
-                });
+                CollectLoot(entry.ItemId, entry.Name, count, monster.X, monster.Y);
                 continue;
             }
             junkGold += (long)(_items?.Value(entry.ItemId) ?? _data.ItemValue(entry.ItemId)) * count;
@@ -1715,7 +1738,7 @@ public sealed class GameWorld
         {
             var gold = (long)(junkGold * (1 + CardValue("goldPercent")));
             _gold += gold;
-            Emit("gold", monster.X, monster.Y, 0, 0, (int)gold);
+            EmitLootFly(GameConfig.GoldCoinItemId, $"+{gold} gold", monster.X, monster.Y, isGold: true);
         }
 
         if (monster.IsBossActor
@@ -1724,11 +1747,41 @@ public sealed class GameWorld
         {
             var itemId = GameConfig.MountItemId(mountLookType);
             if (_data.Items.TryGetValue(itemId, out var mount))
-            {
-                AddLootedItem(mount.ItemId, mount.Name, 1);
-                Emit("pickup", monster.X, monster.Y, 0, 0, mount.ItemId, mount.Name);
-            }
+                CollectLoot(mount.ItemId, mount.Name, 1, monster.X, monster.Y);
         }
+    }
+
+    /// <summary>
+    /// Credita um item de loot imediatamente (sem cair no chão): consumíveis curam na hora,
+    /// o resto vai pra mochila da run. Sempre dispara o efeito de voo do item até o player.
+    /// </summary>
+    private void CollectLoot(int itemId, string name, int count, int fromX, int fromY)
+    {
+        var potionFraction = _data.PotionHealFraction(itemId);
+        if (potionFraction > 0)
+            HealPlayer((int)Math.Ceiling(Player.MaxHp * potionFraction) * count);
+        else if (_data.IsFood(itemId))
+            HealPlayer((int)Math.Ceiling(Player.MaxHp * GameConfig.FoodHealPct) * count);
+        else
+            AddLootedItem(itemId, name, count);
+
+        EmitLootFly(itemId, name, fromX, fromY, isGold: false);
+    }
+
+    /// <summary>Evento visual: o item/moeda voa em arco da origem até o player. crit=true marca ouro (cor dourada).</summary>
+    private void EmitLootFly(int spriteItemId, string label, int fromX, int fromY, bool isGold) =>
+        Emit("loot", fromX, fromY, 0, 0, spriteItemId, label, 0, isGold);
+
+    private void TryUsePotion()
+    {
+        if (Player.Hp <= 0 || _potionCharges <= 0 || NowMs < _potionReadyAtMs) return;
+        if (Player.Hp >= Player.MaxHp) return; // não desperdiça carga com vida cheia
+        var heal = (int)Math.Ceiling(Player.MaxHp * GameConfig.PotionSlotHealFraction(Tier.Tier));
+        HealPlayer(heal);
+        _potionCharges--;
+        _potionReadyAtMs = NowMs + GameConfig.PotionCooldownMs;
+        Emit("effect", Player.X, Player.Y, 0, 0, 12); // sparkles
+        Emit("heal", Player.X, Player.Y, 0, 0, heal);
     }
 
     private void GainXp(long xp)
@@ -2314,39 +2367,6 @@ public sealed class GameWorld
 
     // ---- pickup / POIs ----
 
-    private void TickPickup()
-    {
-        if (Player.Hp <= 0) return;
-        for (var i = _groundItems.Count - 1; i >= 0; i--)
-        {
-            var item = _groundItems[i];
-            if (item.Floor != Player.Floor || item.X != Player.X || item.Y != Player.Y) continue;
-            _groundItems.RemoveAt(i);
-
-            // consumíveis curam na hora; o resto vai pra mochila
-            var potionFraction = _data.PotionHealFraction(item.ItemId);
-            if (potionFraction > 0)
-            {
-                var heal = (int)Math.Ceiling(Player.MaxHp * potionFraction) * item.Count;
-                HealPlayer(heal);
-                Emit("effect", Player.X, Player.Y, 0, 0, 12); // sparkles
-                Emit("pickup", Player.X, Player.Y, 0, 0, item.ItemId, item.Name);
-                continue;
-            }
-            if (_data.IsFood(item.ItemId))
-            {
-                var heal = (int)Math.Ceiling(Player.MaxHp * GameConfig.FoodHealPct) * item.Count;
-                HealPlayer(heal);
-                Emit("effect", Player.X, Player.Y, 0, 0, 12); // sparkles
-                Emit("pickup", Player.X, Player.Y, 0, 0, item.ItemId, item.Name);
-                continue;
-            }
-
-            AddLootedItem(item.ItemId, item.Name, item.Count);
-            Emit("pickup", Player.X, Player.Y, 0, 0, item.ItemId, item.Name);
-        }
-    }
-
     private void AddLootedItem(int itemId, string name, int count)
     {
         var existing = ItemsLooted.FirstOrDefault(item => item.ItemId == itemId);
@@ -2393,10 +2413,10 @@ public sealed class GameWorld
             return;
         }
 
-        // loot burst: gold + random items from the tier's mob loot tables
+        // loot burst: gold + random items from the tier's mob loot tables (voam até o player)
         var gold = (long)(_rng.Range(40, 120) * Tier.StatMultiplier * (1 + CardValue("goldPercent")));
         _gold += gold;
-        Emit("gold", x, y, 0, 0, (int)gold);
+        EmitLootFly(GameConfig.GoldCoinItemId, $"+{gold} gold", x, y, isGold: true);
         Emit("effect", x, y, 0, 0, 29); // fireworks
 
         var lootPool = Tier.CommonMobs.Concat(Tier.EliteMobs)
@@ -2406,11 +2426,7 @@ public sealed class GameWorld
         for (var i = 0; i < 2 && lootPool.Count > 0; i++)
         {
             var entry = _rng.Pick(lootPool);
-            _groundItems.Add(new GroundItem
-            {
-                Id = _nextActorId++, Floor = _currentFloor,
-                X = x, Y = y, ItemId = entry.ItemId, Count = 1, Name = entry.Name
-            });
+            CollectLoot(entry.ItemId, entry.Name, 1, x, y);
         }
     }
 
@@ -2635,7 +2651,7 @@ public sealed class GameWorld
             Math.Max(_autoAttackReadyAtMs - NowMs, 0),
             new AutoHelperSettingsDto(
                 _autoHelperTargeting, _autoHelperSkills, _autoHelperUltimate,
-                _autoHelperTargetPreference, _autoHelperMovementMode),
+                _autoHelperTargetPreference, _autoHelperMovementMode, _defaultAutoHelperMovementMode),
             _buffsUntilMs.Where(b => NowMs < b.Value).Select(b => b.Key).ToList(),
             BuildActiveConditions(),
             new EquipmentStatsDto(
@@ -2646,7 +2662,10 @@ public sealed class GameWorld
                 EquipmentStats.SkillPowerMultiplier,
                 EquipmentStats.CritChance,
                 EquipmentStats.CritDamage,
-                EquipmentStats.CooldownReduction));
+                EquipmentStats.CooldownReduction),
+            _potionCharges, GameConfig.PotionChargesPerRun, GameConfig.PotionSlotItemId(Tier.Tier),
+            Math.Max(_potionReadyAtMs - NowMs, 0), GameConfig.PotionCooldownMs,
+            GameConfig.PotionSlotHealFraction(Tier.Tier));
 
         var monsters = _monsters
             .Where(m => m.Hp > 0 && m.Floor == _currentFloor)
@@ -2674,7 +2693,8 @@ public sealed class GameWorld
             boss is { PostureMax: > 0 } ? boss.PostureMax : null,
             boss is not null && boss.IsStaggered(NowMs),
             boss?.PostureCycle ?? 0,
-            NowMs, Ended);
+            NowMs, Ended,
+            ItemsLooted.ToList());
 
         return new SnapshotDto(TickCount, NowMs, _currentFloor, player, monsters, items, _events.ToList(), run);
     }

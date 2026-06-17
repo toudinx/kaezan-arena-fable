@@ -26,7 +26,7 @@ public sealed record EquipmentStatsDto(
 
 public sealed record AutoHelperSettingsDto(
     bool Targeting, bool Skills, bool Ultimate,
-    string TargetPreference, string MovementMode);
+    string TargetPreference, string MovementMode, string DefaultMovementMode);
 
 public sealed record PlayerDto(
     int Id, int X, int Y, int Dir, int Hp, int MaxHp,
@@ -37,7 +37,9 @@ public sealed record PlayerDto(
     string StanceId, string StanceName, string StanceElement, bool CanToggleStance,
     long AutoAttackReadyInMs, AutoHelperSettingsDto AutoHelper,
     List<string> ActiveBuffs, List<string> ActiveConditions,
-    EquipmentStatsDto EquipmentStats);
+    EquipmentStatsDto EquipmentStats,
+    int PotionCharges, int PotionMaxCharges, int PotionItemId,
+    long PotionCooldownRemainingMs, long PotionCooldownTotalMs, double PotionHealPct);
 
 public sealed record SkillStateDto(
     string Id, string Name, string Element, string Description,
@@ -65,7 +67,8 @@ public sealed record RunStateDto(
     int? BossHp, int? BossMaxHp, string? BossName,
     double? BossPosture, double? BossPostureMax, bool BossStaggered, int BossPostureCycle,
     long ElapsedMs,
-    RunEndDto? Ended);
+    RunEndDto? Ended,
+    List<RewardItemDto> Items);
 
 public sealed record CardStackDto(string Id, string Name, int Stacks);
 

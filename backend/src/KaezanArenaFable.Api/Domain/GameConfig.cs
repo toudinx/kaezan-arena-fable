@@ -362,6 +362,30 @@ public static class GameConfig
     public const double PotionHealBasic = 0.15;
     public const double PotionHealStrong = 0.25;
     public const double PotionHealGreat = 0.40;
+    /// <summary>Sprite da moeda de ouro (Tibia) usado na animação de loot voando até o player.</summary>
+    public const int GoldCoinItemId = 3031;
+
+    // ---- poção de slot (recurso da run, independente do loot dos mobs) ----
+    /// <summary>Cargas de poção com que o jogador começa cada run (slot 5).</summary>
+    public const int PotionChargesPerRun = 2;
+    /// <summary>Cooldown entre usos da poção do slot.</summary>
+    public const int PotionCooldownMs = 1500;
+
+    /// <summary>Fração de cura da poção do slot conforme o tier da run (escala como o equipamento).</summary>
+    public static double PotionSlotHealFraction(int tier) => tier switch
+    {
+        <= 2 => PotionHealBasic,
+        <= 4 => PotionHealStrong,
+        _ => PotionHealGreat,
+    };
+
+    /// <summary>Sprite/ícone da poção do slot conforme o tier — casa com a cura.</summary>
+    public static int PotionSlotItemId(int tier) => tier switch
+    {
+        <= 2 => 266, // health potion
+        <= 4 => 236, // strong health potion
+        _ => 239,    // great health potion
+    };
     /// <summary>Palavras que marcam um item como comida (resolvidas para ids em GameData).</summary>
     public static readonly string[] FoodNameWords =
     [

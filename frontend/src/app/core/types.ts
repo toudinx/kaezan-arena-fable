@@ -513,6 +513,7 @@ export interface AutoHelperSettingsDto {
   ultimate: boolean;
   targetPreference: 'lowestHp' | 'nearest';
   movementMode: 'none' | 'follow' | 'avoid';
+  defaultMovementMode: 'follow' | 'avoid';
 }
 
 export interface PoiDto {
@@ -575,6 +576,12 @@ export interface PlayerDto {
   activeBuffs: string[];
   activeConditions: string[];
   equipmentStats: EquipmentStatsDto;
+  potionCharges: number;
+  potionMaxCharges: number;
+  potionItemId: number;
+  potionCooldownRemainingMs: number;
+  potionCooldownTotalMs: number;
+  potionHealPct: number;
 }
 
 export interface MonsterDto {
@@ -667,6 +674,7 @@ export interface RunStateDto {
   bossPostureCycle: number;
   elapsedMs: number;
   ended: RunEndDto | null;
+  items: RewardItemDto[];
 }
 
 export interface SnapshotDto {

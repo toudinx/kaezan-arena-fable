@@ -5,6 +5,8 @@ import { AssetsService } from '../../core/assets.service';
 import { GameClientService } from '../../core/game-client.service';
 import { GameRenderer } from '../../core/renderer';
 import { ItemIcon } from '../../core/item-icon';
+import { SoundService } from '../../core/sound.service';
+import { SnapshotDto } from '../../core/types';
 
 // G-01: alinhado abaixo do passo do player (~294ms a PlayerBaseSpeed=340) pra resend confiável.
 const MOVE_HEARTBEAT_MS = 200;
@@ -100,6 +102,8 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
           </div>
         }
         <button class="btn secondary leave" (click)="leave()">Sair</button>
+        <button class="btn secondary bag-toggle" [class.on]="showBag()" (click)="toggleBag()" title="Mochila da caçada (B)">🎒</button>
+        <button class="btn secondary snd-toggle" [class.muted]="sound.muted()" (click)="sound.toggleMute()" [title]="sound.muted() ? 'Som desligado (M)' : 'Som ligado (M)'">{{ sound.muted() ? '🔇' : '🔊' }}</button>
       </div>
 
       <!-- minimap -->
@@ -121,7 +125,37 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
               }
             </button>
           }
+          <button class="skill potion"
+                  [class.ready]="s.player.potionCharges > 0 && s.player.potionCooldownRemainingMs === 0"
+                  [disabled]="s.player.potionCharges === 0"
+                  [title]="potionTitle(s.player.potionHealPct)"
+                  (click)="usePotion()">
+            <span class="key">T</span>
+            <app-item-icon [itemId]="s.player.potionItemId" [size]="28" />
+            <span class="charges">{{ s.player.potionCharges }}/{{ s.player.potionMaxCharges }}</span>
+            @if (s.player.potionCooldownRemainingMs > 0) {
+              <div class="cd" [style.height.%]="(100 * s.player.potionCooldownRemainingMs) / s.player.potionCooldownTotalMs"></div>
+            }
+          </button>
         </div>
+
+        @if (showBag()) {
+          <div class="bagpanel">
+            <div class="baghead"><b>Mochila da caçada</b><span>🪙 {{ s.run.gold }}</span></div>
+            @if (s.run.items.length) {
+              <div class="baggrid">
+                @for (item of s.run.items; track item.itemId) {
+                  <div class="bagitem" [title]="item.name">
+                    <app-item-icon [itemId]="item.itemId" [size]="40" />
+                    <span>×{{ item.count }}</span>
+                  </div>
+                }
+              </div>
+            } @else {
+              <p class="bagempty">Nada coletado ainda — vá caçar!</p>
+            }
+          </div>
+        }
       }
 
       <!-- card offer -->
@@ -129,11 +163,12 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
         <div class="overlay cards">
           <h2>Level up! Escolha um eco:</h2>
           <div class="choices">
-            @for (c of offer; track c.id) {
+            @for (c of offer; track c.id; let i = $index) {
               <button class="choice" (click)="chooseCard(c.id)">
                 <b>{{ c.name }}</b>
                 <p>{{ c.description }}</p>
                 <span class="stacks">{{ c.currentStacks }}/3</span>
+                <small class="card-key">[{{ i + 1 }}]</small>
               </button>
             }
           </div>
@@ -251,6 +286,22 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
     .skill .cd { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.65); pointer-events: none; }
     .gaugewrap { width: 80%; height: 5px; background: #1c1c28; border-radius: 3px; overflow: hidden; }
     .gauge { height: 100%; background: linear-gradient(90deg, #e8a93c, #fbbf24); }
+    .skill.potion { width: 72px; cursor: pointer; }
+    .skill.potion.ready { border-color: #ff6b8b; box-shadow: 0 0 10px rgba(255,107,139,0.4); }
+    .skill.potion:disabled { opacity: 0.45; cursor: default; }
+    .skill.potion .charges { font-size: 11px; font-weight: 800; color: #ffd1dc; }
+    .bag-toggle, .snd-toggle { pointer-events: auto; font-size: 16px; padding: 4px 9px; }
+    .bag-toggle.on { border-color: #2dd4bf; color: #8bfff1; }
+    .snd-toggle.muted { opacity: 0.5; }
+    .bagpanel {
+      position: absolute; right: 14px; bottom: 100px; width: 250px; max-height: 46vh; overflow-y: auto;
+      background: rgba(10,10,16,0.94); border: 1px solid #2c2c3e; border-radius: 10px; padding: 10px 12px; z-index: 15;
+    }
+    .baghead { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #cfcde0; margin-bottom: 8px; }
+    .baghead span { color: #ffd35d; font-weight: 800; }
+    .baggrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 8px; }
+    .bagitem { background: #15151f; border: 1px solid #2c2c3e; border-radius: 8px; padding: 5px; display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #9c9ab0; }
+    .bagempty { color: #707088; font-size: 12px; margin: 4px 0; }
     .overlay {
       position: absolute; inset: 0; background: rgba(5,5,10,0.88); z-index: 20;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
@@ -265,6 +316,7 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
     .choice:hover { transform: translateY(-4px); }
     .choice p { margin: 0; color: #9c9ab0; font-size: 13px; }
     .choice .stacks { color: #707088; font-size: 11px; }
+    .choice .card-key { color: rgba(125, 240, 255, 0.55); font-size: 11px; font-weight: 700; font-family: monospace; align-self: flex-end; }
     .overlay.end h1 { font-size: 52px; margin: 0; color: #ff5d5d; letter-spacing: 4px; }
     .overlay.end h1.victory { color: #2dd4bf; }
     .reason { color: #9c9ab0; margin: 0; }
@@ -286,6 +338,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   readonly snapshot = computed(() => this.client.snapshot());
   readonly busyChoosing = signal(false);
   readonly resumeToast = signal(false);
+  readonly showBag = signal(false);
 
   private renderer: GameRenderer | null = null;
   private raf = 0;
@@ -295,21 +348,25 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   private lastDir = { x: 0, y: 0 };
   private moveHeartbeat = 0;
   private resumeToastTimer = 0;
+  private ladderTriggered = false;
 
   constructor(
     private readonly client: GameClientService,
     private readonly assets: AssetsService,
     private readonly api: ApiService,
+    readonly sound: SoundService,
     private readonly route: ActivatedRoute,
     private readonly router: Router,
   ) {
     effect(() => {
       const map = this.client.map();
       if (map && this.renderer) this.renderer.setMap(map);
+      this.ladderTriggered = false;
     });
     effect(() => {
       const snap = this.client.snapshot();
       if (snap && this.renderer) this.renderer.setSnapshot(snap, performance.now());
+      if (snap && !snap.run.ended && !snap.run.offer) this.tryAutoLadder(snap);
     });
   }
 
@@ -330,7 +387,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     await this.assets.load();
     // best-effort atlas warmup; the renderer also lazy-loads on demand
     void this.assets.preload(['outfits', 'objects', 'effects', 'missiles']).catch(() => undefined);
-    this.renderer = new GameRenderer(canvas, this.assets);
+    this.renderer = new GameRenderer(canvas, this.assets, this.sound);
     (window as unknown as Record<string, unknown>)['__kaezanRenderer'] = this.renderer; // debug/e2e hook
     const map = this.client.map();
     if (map) this.renderer.setMap(map);
@@ -379,11 +436,18 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     }
     if (e.repeat) return;
     const k = e.key.toLowerCase();
-    if (k === '1') this.cast(0);
-    else if (k === '2') this.cast(1);
-    else if (k === '3') this.cast(2);
-    else if (k === '4') this.cast(3);
+    if (k === '1' || k === '2' || k === '3') {
+      const idx = Number(k) - 1;
+      const offer = this.snapshot()?.run?.offer;
+      if (offer) { const c = offer[idx]; if (c) this.chooseCard(c.id); }
+      else this.cast(idx);
+    } else if (k === '4') this.cast(3);
     else if (k === 'r') this.cast(4);
+    else if (k === 't') this.usePotion();
+    else if (k === '5') this.cycleMovementMode();
+    else if (k === 'b') this.toggleBag();
+    else if (k === 'm') this.sound.toggleMute();
+    else if (k === 'f') this.interactNearest();
     else if (k === 'tab') { this.toggleStance(); e.preventDefault(); }
     else if (k === ' ') { this.targetNearest(); e.preventDefault(); }
     else if (k === 'escape') this.leave();
@@ -457,6 +521,18 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     this.client.castSkill(slot);
   }
 
+  usePotion(): void {
+    this.client.usePotion();
+  }
+
+  toggleBag(): void {
+    this.showBag.update((v) => !v);
+  }
+
+  potionTitle(healPct: number): string {
+    return `Poção de cura — restaura ${Math.round(healPct * 100)}% da vida (tecla 5)`;
+  }
+
   toggleStance(): void {
     this.client.toggleStance();
   }
@@ -471,6 +547,13 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
       current.targetPreference,
       current.movementMode,
     );
+  }
+
+  cycleMovementMode(): void {
+    const current = this.snapshot()?.player.autoHelper;
+    if (!current) return;
+    const next = current.movementMode === 'none' ? current.defaultMovementMode : 'none';
+    this.setAutoHelperMovement(next);
   }
 
   setAutoHelperMovement(movementMode: 'none' | 'follow' | 'avoid'): void {
@@ -503,6 +586,25 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
 
   chooseCard(cardId: string): void {
     this.client.chooseCard(cardId);
+  }
+
+  private interactNearest(): void {
+    const snap = this.snapshot();
+    const map = this.client.map();
+    if (!snap || !map) return;
+    const { x: px, y: py } = snap.player;
+    const poi = map.pois.find(p => !p.used && Math.max(Math.abs(p.x - px), Math.abs(p.y - py)) <= 1);
+    if (poi) this.client.interact(poi.x, poi.y);
+  }
+
+  private tryAutoLadder(snap: SnapshotDto): void {
+    const map = this.client.map();
+    if (!map || this.ladderTriggered) return;
+    const ladder = map.pois.find(p => p.kind === 'ladder' && !p.used && p.x === snap.player.x && p.y === snap.player.y);
+    if (ladder) {
+      this.ladderTriggered = true;
+      this.client.interact(ladder.x, ladder.y);
+    }
   }
 
   buffLabel(buff: string): string {

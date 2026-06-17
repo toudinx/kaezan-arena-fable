@@ -28,9 +28,10 @@ npx ng serve
 Abra `http://localhost:4200`. Sem configuração de banco, a conta local é criada automaticamente
 em `backend/src/KaezanArenaFable.Api/.data/account.json` com a Mirai (4★) e 4000 Kaeros.
 
-O painel `http://localhost:4200/admin` traz um bestiário visual com abas de monstros e bosses.
-Cada tier pode receber muitos mobs comuns, um grupo menor de elites e um boss; salvar persiste a
-composição em `.data/content/tiers.json` e afeta somente as próximas runs.
+O painel `http://localhost:4200/admin` traz o editor de conteúdo Kaezan com abas **Monstros**,
+**Items**, **Dungeons** e **Skins**. Cada tier de dungeon pode receber mobs comuns, elites e um
+boss autorais; salvar persiste a composição em `.data/content/tiers.json` e afeta somente as
+próximas runs.
 
 A aba **Monstros** cria conteúdo autoral sem copiar os stats do Canary. Cada criatura escolhe
 uma aparência, power tier, função (`common|elite|boss`), comportamento curado e elemento ofensivo.
@@ -46,7 +47,7 @@ deduplicadas em 758 outfits, com filtros de monstro/boss, classe e placeholder l
 Kaezan podem ser reabertos, duplicados e excluídos; a exclusão é recusada enquanto a criatura ainda
 estiver referenciada por alguma dungeon.
 
-A aba **Kaelis** tem duas sub-telas. O **Guarda-roupa** é a entrada e a face de gestão de skins:
+A aba **Skins** tem duas sub-telas. O **Guarda-roupa** é a entrada e a face de gestão de skins:
 lista o roster e mostra **todas** as skins de cada Kaeli — a padrão e as estáticas (do código) e as
 autorais (Kaezan). **Qualquer** skin pode ser editada por “Editar visual”, inclusive a padrão e as
 estáticas: a edição vira um *override* autoral com o **mesmo id** (a invariante de ids estáveis fica
@@ -71,7 +72,7 @@ equipáveis no Hub e dentro das runs. **Os addons exibidos vêm da skin** (bitma
 estúdio): o que a skin define é o que aparece no Hub, na página Kaelis e nas runs — a ascensão não
 força mais addons. Montaria fixada na skin sobrescreve o equipamento.
 
-A aba **Itens** segue o mesmo fluxo do Outfit Studio: biblioteca Canary à esquerda, Item Studio no
+A aba **Items** segue o mesmo fluxo do Outfit Studio: biblioteca Canary à esquerda, Item Studio no
 centro e itens Kaezan à direita. O catálogo base tem 2.488 objetos, incluindo armas/equipamentos
 descobertos por `clothes.slot` **ou** pelos metadados do `items.xml`; o admin cria uma cópia autoral
 com ID estável próprio e reutiliza o sprite da fonte como referência visual. Slot, tipo de arma,
@@ -116,8 +117,15 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
 | Painel Helper | Controla alvo automático, preferência de alvo, skills, ultimate e modo de movimento |
 | 1 / 2 / 3 / 4 | Slots 1-4 do kit da classe |
 | R | Ultimate da classe (gauge) |
+| 5 | Poção de cura (2 cargas por run; cura escala com o tier; cooldown curto) |
+| B | Abre/fecha a mochila da caçada (loot acumulado na run) |
 | Tab | Alterna a postura elemental (quando a classe possui duas) |
 | ESC | Sair da run (abandono = metade do ouro) |
+
+O loot agora é **coletado automaticamente no abate**: moedas e itens explodem do monstro e voam
+em arco até a Kaeli (com som de "cha-ching"), sem precisar pisar sobre eles. Equipamentos vão
+direto pra mochila da caçada; comida/poções dropadas curam na hora. O slot 5 é uma poção própria
+da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
 
 ## Fluidez e segurança da run
 

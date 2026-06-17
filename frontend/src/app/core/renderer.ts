@@ -18,8 +18,13 @@ const DAMAGE_TYPE_COLORS: Record<string, string> = {
   bleed: '#ff5d5d', physical: '#ff5d5d',
 };
 
+const LOOT_FLY_MS = 460;
+const LOOT_ARC_TILES = 0.9;
+
 interface ActiveEffect { x: number; y: number; id: number; start: number; }
 interface ActiveProjectile { fromX: number; fromY: number; toX: number; toY: number; id: number; start: number; dur: number; }
+/** A coin/item that bursts from a kill and homes in on the player along an arc. */
+interface ActiveLoot { fromX: number; fromY: number; id: number; text: string; color: string; start: number; }
 interface FloatText { x: number; y: number; text: string; color: string; start: number; }
 interface Bubble { x: number; y: number; text: string; start: number; }
 interface Corpse { x: number; y: number; itemId: number; start: number; }
@@ -36,6 +41,8 @@ interface MotionSample {
 export class GameRenderer {
   private effects: ActiveEffect[] = [];
   private projectiles: ActiveProjectile[] = [];
+  private loot: ActiveLoot[] = [];
+  private lootChain = 0;
   private texts: FloatText[] = [];
   private bubbles: Bubble[] = [];
   private corpses: Corpse[] = [];
@@ -51,12 +58,14 @@ export class GameRenderer {
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly assets: AssetsService,
+    private readonly sound?: { coinChing(chainIndex: number): void },
   ) {}
 
   setMap(map: MapDto): void {
     this.map = map;
     this.effects = [];
     this.projectiles = [];
+    this.loot = [];
     this.corpses = [];
     this.motionHistory.clear();
   }
@@ -142,6 +151,13 @@ export class GameRenderer {
         break;
       case 'pickup':
         this.texts.push({ x: ev.x, y: ev.y, text: ev.text, color: '#9dff9d', start: now });
+        break;
+      case 'loot':
+        // value = sprite que voa, text = rótulo na chegada, crit = é ouro (cor dourada)
+        this.loot.push({
+          fromX: ev.x, fromY: ev.y, id: ev.value, text: ev.text,
+          color: ev.crit ? '#ffd35d' : '#9dff9d', start: now,
+        });
         break;
       case 'levelup':
         this.texts.push({ x: ev.x, y: ev.y, text: `LEVEL ${ev.value}!`, color: '#7dff7d', start: now });
@@ -276,6 +292,24 @@ export class GameRenderer {
       ctx.strokeStyle = poi.kind === 'chest' ? `rgba(255, 211, 93, ${pulse})` : `rgba(125, 240, 255, ${pulse})`;
       ctx.lineWidth = 2;
       ctx.strokeRect(sx(poi.x) + 4, sy(poi.y) + 4, TS - 8, TS - 8);
+      // show [F] hint when player is adjacent to a chest (ladder is auto)
+      if (poi.kind === 'chest' && snap.player) {
+        const dist = Math.max(Math.abs(poi.x - snap.player.x), Math.abs(poi.y - snap.player.y));
+        if (dist <= 1) {
+          const cx = sx(poi.x) + TS / 2;
+          const cy = sy(poi.y) - 2;
+          ctx.fillStyle = 'rgba(10,12,20,0.88)';
+          ctx.fillRect(cx - 7, cy - 12, 14, 12);
+          ctx.strokeStyle = 'rgba(255,211,93,0.9)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(cx - 7, cy - 12, 14, 12);
+          ctx.fillStyle = '#fef3c7';
+          ctx.font = 'bold 9px monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('F', cx, cy - 6);
+        }
+      }
     }
 
     // 4. walls and creatures, row by row (y-sorted)
@@ -354,6 +388,28 @@ export class GameRenderer {
       this.assets.drawMissile(ctx, p.id, Math.round(x * TS - cam.x), Math.round(y * TS - cam.y), SCALE, p.toX - p.fromX, p.toY - p.fromY);
       return true;
     });
+
+    // 7.5 loot bursting from kills, arcing in and getting sucked into the player
+    const lootTarget = this.actorRenderState(snap.player, serverNow);
+    this.loot = this.loot.filter((l) => {
+      const t = (nowPerf - l.start) / LOOT_FLY_MS;
+      if (t >= 1) {
+        // arrived: pop the label at the player and play the chained "cha-ching"
+        this.texts.push({ x: lootTarget.x, y: lootTarget.y, text: l.text, color: l.color, start: nowPerf });
+        this.sound?.coinChing(this.lootChain++);
+        return false;
+      }
+      const ease = t * t; // accelerate toward the player (suck-in)
+      const lx = l.fromX + (lootTarget.x - l.fromX) * ease;
+      const ly = l.fromY + (lootTarget.y - l.fromY) * ease;
+      const arc = Math.sin(t * Math.PI) * LOOT_ARC_TILES;
+      this.assets.drawObject(
+        ctx, l.id, Math.round(lx * TS - cam.x), Math.round((ly - arc) * TS - cam.y), SCALE,
+        Math.round(lx), Math.round(ly), nowPerf,
+      );
+      return true;
+    });
+    if (this.loot.length === 0) this.lootChain = 0;
 
     // 8. health bars + names (tibia style)
     for (const c of creatures) {

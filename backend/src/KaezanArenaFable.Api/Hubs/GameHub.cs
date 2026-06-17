@@ -85,6 +85,9 @@ public sealed class GameHub(
     public void CastSkill(int slot) =>
         runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.CastSkill, slot, 0, null));
 
+    public void UsePotion() =>
+        runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.UsePotion, 0, 0, null));
+
     public void ToggleStance() =>
         runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.ToggleStance, 0, 0, null));
 

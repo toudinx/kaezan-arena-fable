@@ -66,6 +66,10 @@ export class GameClientService {
     void this.connection?.invoke('CastSkill', slot).catch(() => undefined);
   }
 
+  usePotion(): void {
+    void this.connection?.invoke('UsePotion').catch(() => undefined);
+  }
+
   toggleStance(): void {
     void this.connection?.invoke('ToggleStance').catch(() => undefined);
   }

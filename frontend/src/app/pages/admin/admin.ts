@@ -7,7 +7,7 @@ import { KaeliManager } from './kaeli-manager';
 import { ItemEditor } from './item-editor';
 
 type AdminMode = 'dungeons' | 'monsters' | 'kaelis' | 'items';
-type CatalogMode = 'monsters' | 'bosses';
+type CatalogMode = 'monsters' | 'elites' | 'bosses';
 type MobKind = 'commonMobs' | 'eliteMobs';
 type DropZone = MobKind | 'boss';
 
@@ -20,22 +20,16 @@ type DropZone = MobKind | 'boss';
       <header class="titlebar">
         <div>
           <span class="eyebrow">Editor de conteudo</span>
-          <h1>Bestiario & Dungeons</h1>
-          <p>{{ monsters().length }} criaturas disponiveis. Alteracoes afetam apenas as proximas runs.</p>
+          <h1>Conteudo Kaezan</h1>
+          <p>Crie monstros, items, dungeons e skins usados nas proximas runs.</p>
         </div>
         <div class="header-actions">
           <div class="tabs page-tabs">
-            <button type="button" [class.active]="pageMode() === 'dungeons'" (click)="pageMode.set('dungeons')">Dungeons</button>
             <button type="button" [class.active]="pageMode() === 'monsters'" (click)="pageMode.set('monsters')">Monstros</button>
-            <button type="button" [class.active]="pageMode() === 'kaelis'" (click)="pageMode.set('kaelis')">Kaelis</button>
-            <button type="button" [class.active]="pageMode() === 'items'" (click)="pageMode.set('items')">Itens</button>
+            <button type="button" [class.active]="pageMode() === 'items'" (click)="pageMode.set('items')">Items</button>
+            <button type="button" [class.active]="pageMode() === 'dungeons'" (click)="pageMode.set('dungeons')">Dungeons</button>
+            <button type="button" [class.active]="pageMode() === 'kaelis'" (click)="pageMode.set('kaelis')">Skins</button>
           </div>
-          @if (pageMode() === 'dungeons') {
-            <button class="secondary" type="button" [disabled]="busy()" (click)="reset()">Recarregar</button>
-            <button class="primary" type="button" [disabled]="busy()" (click)="save()">
-              {{ saving() ? 'Salvando...' : 'Salvar dungeons' }}
-            </button>
-          }
         </div>
       </header>
 
@@ -55,7 +49,10 @@ type DropZone = MobKind | 'boss';
             <div class="catalog-head">
               <div class="tabs">
                 <button type="button" [class.active]="mode() === 'monsters'" (click)="setMode('monsters')">
-                  Monstros <span>{{ monsterCount() }}</span>
+                  Monstros <span>{{ commonCount() }}</span>
+                </button>
+                <button type="button" [class.active]="mode() === 'elites'" (click)="setMode('elites')">
+                  Elites <span>{{ eliteCount() }}</span>
                 </button>
                 <button type="button" [class.active]="mode() === 'bosses'" (click)="setMode('bosses')">
                   Bosses <span>{{ bossCount() }}</span>
@@ -79,16 +76,16 @@ type DropZone = MobKind | 'boss';
               </label>
               <label>Origem
                 <select (change)="originFilter.set($any($event.target).value)">
-                  <option value="">Todas</option>
+                  <option value="" [selected]="originFilter() === ''">todas</option>
                   @for (origin of origins(); track origin) {
-                    <option [value]="origin" [selected]="origin === originFilter()">{{ origin }}</option>
+                    <option [value]="origin" [selected]="origin === originFilter()">{{ originLabel(origin) }}</option>
                   }
                 </select>
               </label>
             </div>
 
             @if (loading()) {
-              <div class="empty">Carregando bestiario...</div>
+              <div class="empty">Carregando conteudo...</div>
             } @else {
               <div class="creature-grid">
                 @for (monster of filtered(); track monster.id) {
@@ -109,7 +106,7 @@ type DropZone = MobKind | 'boss';
                       </div>
                       <small>{{ monster.bestiaryClass || 'Sem classe' }}</small>
                       <div class="badges">
-                        <span>{{ monster.source === 'authored' ? 'KAEZAN' : (monster.origin || 'LEGADO') }}</span>
+                        <span>{{ sourceLabel(monster) }}</span>
                         @if (monster.source === 'authored') { <span>T{{ monster.powerTier }}</span> }
                       </div>
                       <div class="stats"><span>HP {{ monster.health }}</span><span>XP {{ monster.experience }}</span></div>
@@ -119,6 +116,7 @@ type DropZone = MobKind | 'boss';
                         <button type="button" [class.active-common]="inCommon(monster.id)"
                           [disabled]="!canPlace(monster, 'commonMobs')"
                           (click)="toggle(monster.id, 'commonMobs')">Comum</button>
+                      } @else if (mode() === 'elites') {
                         <button type="button" [class.active-elite]="inElite(monster.id)"
                           [disabled]="!canPlace(monster, 'eliteMobs')"
                           (click)="toggle(monster.id, 'eliteMobs')">Elite</button>
@@ -140,7 +138,12 @@ type DropZone = MobKind | 'boss';
           <aside class="dungeon panel">
             <div class="dungeon-head">
               <div><span class="eyebrow">Composicao</span><h2>Dungeon</h2></div>
-              @if (current(); as tier) { <b class="tier-badge">Tier {{ tier.tier }}</b> }
+              <div class="dungeon-actions">
+                @if (current(); as tier) { <b class="tier-badge">Tier {{ tier.tier }}</b> }
+                <button class="primary" type="button" [disabled]="busy()" (click)="save()">
+                  {{ saving() ? 'Salvando...' : 'Salvar dungeon' }}
+                </button>
+              </div>
             </div>
 
             <div class="tier-tabs">
@@ -161,12 +164,7 @@ type DropZone = MobKind | 'boss';
                   <input type="number" min="1" [value]="tier.requiredAccountLevel"
                     (input)="setNum('requiredAccountLevel', $any($event.target).value, 1)" />
                 </label>
-                <label>Multiplicador legado
-                  <input type="number" min=".1" step=".05" [value]="tier.statMultiplier"
-                    (input)="setNum('statMultiplier', $any($event.target).value, .1)" />
-                </label>
               </div>
-              <p class="legacy-note">O multiplicador acima afeta apenas placeholders legados. Monstros autorais usam tier e funcao.</p>
 
               <section class="group common">
                 <div class="group-head"><h3>Comuns <span>{{ tier.commonMobs.length }}</span></h3><small>Maior presenca no mapa.</small></div>
@@ -223,7 +221,7 @@ type DropZone = MobKind | 'boss';
   styles: [`
     :host { display: block; }
     .page { max-width: 1680px; margin: 0 auto; padding: 24px 28px 40px; }
-    .titlebar, .header-actions, .catalog-head, .dungeon-head, .group-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .titlebar, .header-actions, .catalog-head, .dungeon-head, .dungeon-actions, .group-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .titlebar { border-bottom: 1px solid #29293a; margin-bottom: 14px; padding-bottom: 15px; }
     h1, h2, h3, p { margin: 0; } h1 { font-size: 29px; } h2 { font-size: 21px; }
     .eyebrow { color: #2dd4bf; display: block; font-size: 9px; font-weight: 900; letter-spacing: 1.3px; text-transform: uppercase; }
@@ -270,8 +268,9 @@ type DropZone = MobKind | 'boss';
     .tier-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin: 11px 0; }
     .tier-tabs button { background: #11111a; border-color: #2c2c3e; color: #8f8da3; font-size: 10px; height: 31px; }
     .tier-tabs button.active { background: #183933; border-color: #2db7a5; color: #58ddca; }
-    .dungeon-name { font-size: 14px; font-weight: 900; } .numbers { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
-    .legacy-note { background: #171721; border-left: 2px solid #77604a; color: #77758b; font-size: 9px; line-height: 1.4; margin-top: 9px; padding: 6px 8px; }
+    .dungeon-actions { justify-content: flex-end; }
+    .dungeon-actions .primary { min-height: 31px; padding: 0 10px; white-space: nowrap; }
+    .dungeon-name { font-size: 14px; font-weight: 900; } .numbers { display: grid; grid-template-columns: 1fr; gap: 9px; }
     .group { margin-top: 13px; } .group-head h3 { color: #c7c5d2; font-size: 10px; letter-spacing: .5px; text-transform: uppercase; }
     .group-head h3 span { border-radius: 3px; margin-left: 3px; padding: 2px 5px; }
     .group-head small { color: #6f6d80; font-size: 9px; }
@@ -293,7 +292,7 @@ type DropZone = MobKind | 'boss';
   `],
 })
 export class AdminPage implements OnInit {
-  readonly pageMode = signal<AdminMode>('dungeons');
+  readonly pageMode = signal<AdminMode>('monsters');
   readonly draft = signal<DungeonTier[]>([]);
   readonly sel = signal(0);
   readonly mode = signal<CatalogMode>('monsters');
@@ -302,7 +301,7 @@ export class AdminPage implements OnInit {
   readonly saving = signal(false);
   readonly search = signal('');
   readonly typeFilter = signal('');
-  readonly originFilter = signal('');
+  readonly originFilter = signal('KAEZAN');
   readonly dragged = signal<MonsterCatalogEntry | null>(null);
   readonly dropTarget = signal<DropZone | null>(null);
 
@@ -315,18 +314,28 @@ export class AdminPage implements OnInit {
     ...this.draft().map((tier) => tier.boss),
   ]));
   readonly modeMonsters = computed(() => this.monsters().filter((monster) =>
-    this.mode() === 'bosses' ? this.isBossCandidate(monster) : !this.isBossCandidate(monster)));
-  readonly monsterCount = computed(() => this.monsters().filter((monster) => !this.isBossCandidate(monster)).length);
+    this.mode() === 'bosses'
+      ? this.isBossCandidate(monster)
+      : this.mode() === 'elites'
+        ? monster.source === 'authored' && monster.rank === 'elite'
+        : monster.source === 'authored'
+          ? monster.rank === 'common'
+          : !this.isBossCandidate(monster)));
+  readonly commonCount = computed(() => this.monsters().filter((monster) =>
+    monster.source === 'authored' ? monster.rank === 'common' : !this.isBossCandidate(monster)).length);
+  readonly eliteCount = computed(() => this.monsters().filter((monster) =>
+    monster.source === 'authored' && monster.rank === 'elite').length);
   readonly bossCount = computed(() => this.monsters().filter((monster) => this.isBossCandidate(monster)).length);
   readonly classes = computed(() => [...new Set(this.modeMonsters().map((monster) => monster.bestiaryClass).filter(Boolean))].sort());
-  readonly origins = computed(() => [...new Set(this.modeMonsters().map((monster) => monster.origin).filter((value): value is string => !!value))].sort());
+  readonly origins = computed(() => [...new Set(['KAEZAN', ...this.modeMonsters().map((monster) => this.originKey(monster)).filter((value): value is string => !!value)])].sort());
   readonly filtered = computed(() => {
     const query = this.search().trim().toLocaleLowerCase();
     return this.modeMonsters().filter((monster) => {
-      const text = `${monster.name} ${monster.bestiaryClass} ${monster.origin ?? ''}`.toLocaleLowerCase();
+      const origin = this.originKey(monster);
+      const text = `${monster.name} ${monster.bestiaryClass} ${origin ?? ''} ${this.sourceLabel(monster)}`.toLocaleLowerCase();
       return (!query || text.includes(query))
         && (!this.typeFilter() || monster.bestiaryClass === this.typeFilter())
-        && (!this.originFilter() || monster.origin === this.originFilter());
+        && (!this.originFilter() || origin === this.originFilter());
     }).sort((a, b) => a.name.localeCompare(b.name));
   });
 
@@ -353,7 +362,7 @@ export class AdminPage implements OnInit {
     this.mode.set(mode);
     this.search.set('');
     this.typeFilter.set('');
-    this.originFilter.set('');
+    this.originFilter.set('KAEZAN');
   }
 
   selectTier(index: number): void {
@@ -377,6 +386,18 @@ export class AdminPage implements OnInit {
     return kind === 'commonMobs' ? monster.rank === 'common' : monster.rank === 'elite';
   }
 
+  originKey(monster: MonsterCatalogEntry): string | null {
+    return monster.source === 'authored' ? 'KAEZAN' : monster.origin;
+  }
+
+  originLabel(origin: string): string {
+    return origin === 'KAEZAN' ? 'kaezan' : origin.toLocaleLowerCase();
+  }
+
+  sourceLabel(monster: MonsterCatalogEntry): string {
+    return this.originLabel(this.originKey(monster) || 'LEGADO');
+  }
+
   roleLabel(reference: string): { label: string; kind: string } | null {
     if (this.isBoss(reference)) return { label: 'BOSS', kind: 'boss' };
     if (this.inElite(reference)) return { label: 'ELITE', kind: 'elite' };
@@ -394,8 +415,8 @@ export class AdminPage implements OnInit {
     this.patch({ [field]: value } as Partial<DungeonTier>);
   }
 
-  setNum(field: 'requiredAccountLevel' | 'statMultiplier', value: string, min: number): void {
-    const parsed = field === 'requiredAccountLevel' ? Math.floor(+value || min) : +value || min;
+  setNum(field: 'requiredAccountLevel', value: string, min: number): void {
+    const parsed = Math.floor(+value || min);
     this.patch({ [field]: Math.max(min, parsed) } as Partial<DungeonTier>);
   }
 

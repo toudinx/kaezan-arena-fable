@@ -16,7 +16,7 @@ public sealed class GameHub(
     AccountStore store,
     ContentStore content) : Hub
 {
-    public object JoinRun(int tier, long? seed = null, bool resume = false)
+    public object JoinRun(int tier, string? waifuId = null, long? seed = null, bool resume = false)
     {
         var tierDef = content.Tier(tier)
                       ?? throw new HubException("tier desconhecido");
@@ -33,25 +33,32 @@ public sealed class GameHub(
             };
         }
 
-        var (accountLevel, waifuId, ascension, bestiary, equipment, affinityXp, masteryNodes, skinId) =
+        // A Kaeli da run é explícita: o cliente manda quem entra (tela de pré-run). Sem waifuId
+        // (compat), cai na fixada (ActiveWaifuId) e por fim na starter.
+        var (accountLevel, runWaifuId, ascension, bestiary, equipment, affinityXp, masteryNodes, skinId) =
             store.Read(s =>
             {
-                s.Equipment.TryGetValue(s.ActiveWaifuId, out var loadout);
+                var target = waifuId is { Length: > 0 } && s.OwnedWaifus.Contains(waifuId)
+                    ? waifuId
+                    : s.OwnedWaifus.Contains(s.ActiveWaifuId) ? s.ActiveWaifuId : Waifus.StarterWaifuId;
+                if (waifuId is { Length: > 0 } && !s.OwnedWaifus.Contains(waifuId))
+                    throw new HubException("Kaeli não recrutada");
+                s.Equipment.TryGetValue(AccountState.EquipKey(target, tierDef.Tier), out var loadout);
                 return (
                     s.AccountLevel,
-                    s.ActiveWaifuId,
-                    s.Ascension.GetValueOrDefault(s.ActiveWaifuId),
+                    target,
+                    s.Ascension.GetValueOrDefault(target),
                     new Dictionary<string, long>(s.BestiaryKills),
                     loadout?.ToDictionary() ?? [],
-                    s.AffinityXp.GetValueOrDefault(s.ActiveWaifuId),
-                    s.Mastery.TryGetValue(s.ActiveWaifuId, out var mastery) ? mastery.Nodes.ToList() : [],
-                    s.SelectedSkins.GetValueOrDefault(s.ActiveWaifuId));
+                    s.AffinityXp.GetValueOrDefault(target),
+                    s.Mastery.TryGetValue(target, out var mastery) ? mastery.Nodes.ToList() : [],
+                    s.SelectedSkins.GetValueOrDefault(target));
             });
 
         if (accountLevel < tierDef.RequiredAccountLevel)
             throw new HubException($"requer conta nível {tierDef.RequiredAccountLevel}");
 
-        var waifu = kaelis.Find(waifuId) ?? kaelis.ById[Waifus.StarterWaifuId];
+        var waifu = kaelis.Find(runWaifuId) ?? kaelis.ById[Waifus.StarterWaifuId];
         var runSeed = seed ?? Random.Shared.NextInt64(1, long.MaxValue);
 
         var skin = skinId is not null

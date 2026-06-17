@@ -74,12 +74,22 @@ força mais addons. Montaria fixada na skin sobrescreve o equipamento.
 A aba **Itens** segue o mesmo fluxo do Outfit Studio: biblioteca Canary à esquerda, Item Studio no
 centro e itens Kaezan à direita. O catálogo base tem 2.488 objetos, incluindo armas/equipamentos
 descobertos por `clothes.slot` **ou** pelos metadados do `items.xml`; o admin cria uma cópia autoral
-com ID estável próprio, reutilizando o sprite, slot e tipo de arma da fonte. Itens criados ficam em
-`.data/content/authored-items.json` e podem definir ataque/armadura/defesa conforme o tipo, preço,
-dano elemental, poder de skill, crítico, roubo de vida, redução de recarga, movimento e resistências.
-Armas e equipamentos também aceitam restrição por classe e por pontos totais de maestria, validadas
-pelo backend ao equipar. Depois de salvar, **Adicionar 1 à Mochila** concede uma cópia para testes
-sem depender de drop; os bônus são congelados no início da run pelo `EquipmentStatAggregator`.
+com ID estável próprio e reutiliza o sprite da fonte como referência visual. Slot, tipo de arma,
+elemento, tier e números de gameplay pertencem ao item Kaezan criado, não ao item Canary original.
+Itens criados ficam em `.data/content/authored-items.json` e recebem um atributo base por tipo:
+armas usam ataque, armaduras/capacetes usam armadura, anéis/amuletos usam defesa e montarias usam
+velocidade. O Item Studio aplica automaticamente o valor recomendado do tier quando tier, tipo ou
+bônus habilitado muda; depois cada campo continua editável e valores fora da faixa aparecem com
+aviso, mas continuam salváveis para testes. Bônus extras são curados por tipo: arma pode ter dano
+crítico, armadura pode ter resistência física e uma elemental, capacete pode ter recarga e
+vampirismo, montaria pode ter movimento, anel pode ter chance crítica e amuleto pode ter afinidade
+elemental. A afinidade elemental não cria dano misto: ela aumenta dano apenas quando o elemento ativo
+combina com o elemento do item; armas também ganham uma passiva fixa de +10% quando elemento da arma
+e postura/Kaeli combinam. T0 é sem-tier/legado e pode entrar em qualquer loadout; T1-T5 ficam
+travados ao set daquele tier. Classes permitidas começam vazias; vazio significa sem restrição, e
+marcar classes transforma o item em equipamento restrito por classe. Depois de salvar, **Adicionar 1
+à Mochila** concede uma cópia para testes sem depender de drop; os bônus são congelados no início da
+run pelo `EquipmentStatAggregator`.
 
 ### Persistência MySQL opcional
 

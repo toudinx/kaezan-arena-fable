@@ -56,7 +56,8 @@ public sealed record ItemType(
     double DeathResistance = 0,
     double HolyResistance = 0,
     IReadOnlyList<string>? AllowedClassIds = null,
-    int RequiredMasteryPoints = 0)
+    int RequiredMasteryPoints = 0,
+    int Tier = 0)
 {
     public int AppearanceItemId => SourceItemId != 0 ? SourceItemId : ItemId;
 

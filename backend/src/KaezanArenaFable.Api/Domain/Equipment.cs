@@ -20,6 +20,7 @@ public sealed record EquipmentStats(
     double DamageReduction,
     double MoveSpeedPercent,
     int MountLookType,
+    string WeaponElement,
     string Element,
     double ElementDamageBonus,
     double SkillPowerMultiplier,
@@ -31,7 +32,7 @@ public sealed record EquipmentStats(
     IReadOnlyDictionary<string, double> Resistances)
 {
     public static readonly EquipmentStats Empty = new(
-        0, 0, 0, 0, 0, "physical", 0, 1, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, "physical", "physical", 0, 1, 0, 0, 0, 0, 0,
         new Dictionary<string, double>());
 
     public double Resistance(string damageType) =>
@@ -51,6 +52,7 @@ public static class EquipmentStatAggregator
         double reduction = 0;
         double moveSpeed = 0;
         var mountLookType = 0;
+        var weaponElement = "physical";
         var strongestElement = "physical";
         double strongestElementDamage = 0;
         var skillPower = 0;
@@ -79,10 +81,16 @@ public static class EquipmentStatAggregator
             cooldownReduction += item.CooldownReduction;
             moveSpeed += item.MoveSpeedPercent;
 
-            if (item.ElementDamage > strongestElementDamage)
+            if (slot == EquipmentSlots.Weapon)
+                weaponElement = item.Element;
+
+            var elementBonus = item.IsAuthored
+                ? item.ElementDamage / 100.0
+                : item.ElementDamage * GameConfig.EquipmentAttackScale / 100.0;
+            if (elementBonus > strongestElementDamage)
             {
                 strongestElement = item.Element;
-                strongestElementDamage = item.ElementDamage;
+                strongestElementDamage = elementBonus;
             }
 
             AddResistance("physical", item.PhysicalResistance);
@@ -107,8 +115,9 @@ public static class EquipmentStatAggregator
             Math.Min(reduction, GameConfig.EquipmentDamageReductionCap),
             Math.Min(moveSpeed, GameConfig.EquipmentMoveSpeedCap),
             mountLookType,
+            weaponElement,
             strongestElement,
-            strongestElementDamage * GameConfig.EquipmentAttackScale,
+            strongestElementDamage,
             1 + skillPower * GameConfig.EquipmentSkillPowerPerPoint,
             Math.Min(critChance, GameConfig.EquipmentCritChanceCap),
             Math.Min(critDamage, GameConfig.EquipmentCritDamageCap),

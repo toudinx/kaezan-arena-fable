@@ -94,14 +94,18 @@ public sealed class MySqlAccountRepository(
             Name = stack.Name,
             Count = stack.Count
         }));
-        db.AccountEquipment.AddRange(state.Equipment.SelectMany(waifu =>
-            waifu.Value.Select(slot => new AccountEquipmentRow
+        db.AccountEquipment.AddRange(state.Equipment.SelectMany(entry =>
+        {
+            var (waifuId, tier) = AccountState.ParseEquipKey(entry.Key);
+            return entry.Value.Select(slot => new AccountEquipmentRow
             {
                 AccountId = state.Id,
-                WaifuId = waifu.Key,
+                WaifuId = waifuId,
+                Tier = tier,
                 Slot = slot.Key,
                 ItemId = slot.Value
-            })));
+            });
+        }));
         db.GachaPity.AddRange(state.Pity.Select(entry => new GachaPityRow
         {
             AccountId = state.Id,
@@ -193,8 +197,9 @@ public sealed class MySqlAccountRepository(
 
         foreach (var row in db.AccountEquipment.AsNoTracking().Where(row => row.AccountId == account.Id))
         {
-            if (!state.Equipment.TryGetValue(row.WaifuId, out var loadout))
-                state.Equipment[row.WaifuId] = loadout = [];
+            var key = AccountState.EquipKey(row.WaifuId, row.Tier);
+            if (!state.Equipment.TryGetValue(key, out var loadout))
+                state.Equipment[key] = loadout = [];
             loadout[row.Slot] = row.ItemId;
         }
 

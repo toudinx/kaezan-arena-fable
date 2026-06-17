@@ -33,11 +33,11 @@ export class GameClientService {
     this.connected.set(true);
   }
 
-  async joinRun(tier: number, seed?: number, resume = false): Promise<JoinRunResult> {
+  async joinRun(tier: number, waifuId?: string, seed?: number, resume = false): Promise<JoinRunResult> {
     this.snapshot.set(null);
     this.map.set(null);
     await this.connect();
-    return this.connection!.invoke<JoinRunResult>('JoinRun', tier, seed ?? null, resume);
+    return this.connection!.invoke<JoinRunResult>('JoinRun', tier, waifuId ?? null, seed ?? null, resume);
   }
 
   async leave(abandon = false): Promise<void> {

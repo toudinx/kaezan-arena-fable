@@ -327,10 +327,20 @@ export interface ItemCatalogEntry {
   holyResistance: number;
   allowedClassIds: string[];
   requiredMasteryPoints: number;
+  /** 0 = sem-tier (legado, equipável em qualquer loadout); 1..5 = peça de set travada no tier. */
+  tier: number;
 }
 
 export type EquipmentSlot = 'helmet' | 'armor' | 'weapon' | 'necklace' | 'ring' | 'mount';
 export type EquipmentLoadout = Partial<Record<EquipmentSlot, number>>;
+
+/** Chave do loadout: um set por Kaeli POR tier. Espelha AccountState.EquipKey no backend. */
+export function equipKey(waifuId: string, tier: number): string {
+  return `${waifuId}#${tier}`;
+}
+
+/** Tiers de set disponíveis (1..5), alinhados aos tiers de dungeon. */
+export const SET_TIERS = [1, 2, 3, 4, 5] as const;
 
 /** Item enriquecido com categoria/subcategoria + flag de edição, para o editor de itens do admin. */
 export interface ItemCapabilities {
@@ -341,6 +351,14 @@ export interface ItemCapabilities {
   offense: boolean;
   support: boolean;
   resistance: boolean;
+  critChance: boolean;
+  critDamage: boolean;
+  vampiric: boolean;
+  cooldownReduction: boolean;
+  moveSpeed: boolean;
+  physicalResistance: boolean;
+  elementResistance: boolean;
+  elementAffinity: boolean;
 }
 
 export interface AdminItem extends ItemCatalogEntry {
@@ -349,11 +367,34 @@ export interface AdminItem extends ItemCatalogEntry {
   capabilities: ItemCapabilities;
 }
 
+export interface ItemBalanceGrade {
+  id: 'low' | 'moderate' | 'high';
+  name: string;
+}
+
+export interface ItemBalanceRange {
+  stat: string;
+  tier: number;
+  lowMin: number;
+  lowMax: number;
+  moderateMin: number;
+  moderateMax: number;
+  highMin: number;
+  highMax: number;
+}
+
+export interface ItemBalanceMetadata {
+  tiers: number[];
+  grades: ItemBalanceGrade[];
+  ranges: ItemBalanceRange[];
+}
+
 export interface AdminItemsPayload {
   library: AdminItem[];
   authored: AdminItem[];
   classes: { id: string; name: string }[];
   elements: string[];
+  balance: ItemBalanceMetadata;
 }
 
 export interface Catalog {

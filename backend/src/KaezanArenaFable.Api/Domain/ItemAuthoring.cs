@@ -2,7 +2,7 @@ namespace KaezanArenaFable.Api.Domain;
 
 /// <summary>
 /// Item autoral do Kaezan. O SourceItemId aponta para um objeto imutavel do Canary e fornece
-/// sprite, slot e tipo de arma; os demais campos sao balanceamento proprio do jogo.
+/// sprite; slot, tipo e balanceamento sao identidade propria do Kaezan.
 /// Percentuais usam fracao (0.10 = 10%).
 /// </summary>
 public sealed record AuthoredItemDefinition(
@@ -32,39 +32,49 @@ public sealed record AuthoredItemDefinition(
     double DeathResistance,
     double HolyResistance,
     IReadOnlyList<string> AllowedClassIds,
-    int RequiredMasteryPoints)
+    int RequiredMasteryPoints,
+    int Tier = 0,
+    string? Slot = null,
+    string? WeaponType = null)
 {
-    public ItemType Apply(ItemType source) => source with
+    public ItemType Apply(ItemType source)
     {
-        ItemId = ItemId,
-        SourceItemId = SourceItemId,
-        IsAuthored = true,
-        Name = Name,
-        Description = Description,
-        SalePrice = SalePrice,
-        Attack = Attack,
-        Armor = Armor,
-        Defense = Defense,
-        MountSpeed = MountSpeed,
-        Element = Element,
-        ElementDamage = ElementDamage,
-        SkillPower = SkillPower,
-        CritChance = CritChance,
-        CritDamage = CritDamage,
-        LifeStealChance = LifeStealChance,
-        LifeStealAmount = LifeStealAmount,
-        CooldownReduction = CooldownReduction,
-        MoveSpeedPercent = MoveSpeedPercent,
-        PhysicalResistance = PhysicalResistance,
-        FireResistance = FireResistance,
-        IceResistance = IceResistance,
-        EarthResistance = EarthResistance,
-        EnergyResistance = EnergyResistance,
-        DeathResistance = DeathResistance,
-        HolyResistance = HolyResistance,
-        AllowedClassIds = AllowedClassIds,
-        RequiredMasteryPoints = RequiredMasteryPoints
-    };
+        var effectiveSlot = Slot ?? source.Slot;
+        return source with
+        {
+            Tier = Tier,
+            ItemId = ItemId,
+            SourceItemId = SourceItemId,
+            IsAuthored = true,
+            Name = Name,
+            Description = Description,
+            Slot = effectiveSlot,
+            WeaponType = effectiveSlot == EquipmentSlots.Weapon ? (WeaponType ?? source.WeaponType) : null,
+            SalePrice = SalePrice,
+            Attack = Attack,
+            Armor = Armor,
+            Defense = Defense,
+            MountSpeed = MountSpeed,
+            Element = Element,
+            ElementDamage = ElementDamage,
+            SkillPower = SkillPower,
+            CritChance = CritChance,
+            CritDamage = CritDamage,
+            LifeStealChance = LifeStealChance,
+            LifeStealAmount = LifeStealAmount,
+            CooldownReduction = CooldownReduction,
+            MoveSpeedPercent = MoveSpeedPercent,
+            PhysicalResistance = PhysicalResistance,
+            FireResistance = FireResistance,
+            IceResistance = IceResistance,
+            EarthResistance = EarthResistance,
+            EnergyResistance = EnergyResistance,
+            DeathResistance = DeathResistance,
+            HolyResistance = HolyResistance,
+            AllowedClassIds = AllowedClassIds,
+            RequiredMasteryPoints = RequiredMasteryPoints
+        };
+    }
 }
 
 public static class ItemAuthoring
@@ -84,7 +94,7 @@ public static class ItemAuthoring
         source.MountSpeed,
         source.Element,
         source.ElementDamage,
-        source.SkillPower,
+        0,
         source.CritChance,
         source.CritDamage,
         source.LifeStealChance,
@@ -98,8 +108,11 @@ public static class ItemAuthoring
         source.EnergyResistance,
         source.DeathResistance,
         source.HolyResistance,
-        DefaultClasses(source),
-        0);
+        [],
+        0,
+        source.Tier,
+        source.Slot,
+        source.WeaponType);
 
     public static AuthoredItemDefinition Normalize(
         AuthoredItemDefinition definition, int? itemId = null)
@@ -112,6 +125,14 @@ public static class ItemAuthoring
         var element = Elements.Contains(definition.Element, StringComparer.OrdinalIgnoreCase)
             ? definition.Element.ToLowerInvariant()
             : "physical";
+        var slot = string.IsNullOrWhiteSpace(definition.Slot)
+            ? null
+            : definition.Slot.ToLowerInvariant();
+        if (slot is not null && !EquipmentSlots.IsValid(slot))
+            slot = null;
+        var weaponType = slot == EquipmentSlots.Weapon && !string.IsNullOrWhiteSpace(definition.WeaponType)
+            ? definition.WeaponType.Trim().ToLowerInvariant()
+            : null;
         return definition with
         {
             ItemId = itemId ?? definition.ItemId,
@@ -124,7 +145,7 @@ public static class ItemAuthoring
             MountSpeed = Math.Clamp(definition.MountSpeed, 0, GameConfig.ItemMaxMountSpeed),
             Element = element,
             ElementDamage = Math.Clamp(definition.ElementDamage, 0, GameConfig.ItemMaxElementDamage),
-            SkillPower = Math.Clamp(definition.SkillPower, 0, GameConfig.ItemMaxSkillPower),
+            SkillPower = 0,
             CritChance = Clamp(definition.CritChance, GameConfig.EquipmentCritChanceCap),
             CritDamage = Clamp(definition.CritDamage, GameConfig.EquipmentCritDamageCap),
             LifeStealChance = Clamp(definition.LifeStealChance, GameConfig.EquipmentLifeStealChanceCap),
@@ -139,7 +160,10 @@ public static class ItemAuthoring
             DeathResistance = Clamp(definition.DeathResistance, GameConfig.EquipmentResistanceCap),
             HolyResistance = Clamp(definition.HolyResistance, GameConfig.EquipmentResistanceCap),
             AllowedClassIds = classes,
-            RequiredMasteryPoints = Math.Max(0, definition.RequiredMasteryPoints)
+            RequiredMasteryPoints = 0,
+            Tier = Math.Clamp(definition.Tier, 0, 5),
+            Slot = slot,
+            WeaponType = weaponType
         };
     }
 
@@ -153,23 +177,33 @@ public static class ItemAuthoring
             return $"item Canary desconhecido: {definition.SourceItemId}";
         if (string.IsNullOrWhiteSpace(definition.Name))
             return "nome obrigatorio";
-        if (definition.AllowedClassIds.Count == 0 && source.Slot is not null)
-            return "selecione ao menos uma classe permitida";
         if (existing.Any(item =>
                 item.ItemId != currentId
                 && item.Name.Equals(definition.Name, StringComparison.OrdinalIgnoreCase)))
             return $"nome ja existe: {definition.Name}";
 
-        var caps = ItemCapabilities.For(source);
+        var effective = definition.Apply(source);
+        var caps = ItemCapabilities.For(effective);
         if (!caps.Attack && definition.Attack != 0) return "ataque so pode ser definido em armas";
         if (!caps.Armor && definition.Armor != 0) return "armadura so pode ser definida em equipamentos defensivos";
         if (!caps.Defense && definition.Defense != 0) return "defesa so pode ser definida em armas ou equipamentos defensivos";
         if (!caps.MountSpeed && definition.MountSpeed != 0) return "velocidade de montaria so pode ser definida em montarias";
-        if (!caps.Offense && HasOffense(definition)) return "atributos ofensivos so podem ser definidos em armas";
-        if (!caps.Support && (definition.CooldownReduction != 0 || definition.MoveSpeedPercent != 0))
-            return "atributos de suporte exigem arma ou equipamento";
-        if (!caps.Resistance && HasResistance(definition))
-            return "resistencias exigem arma ou equipamento defensivo";
+        if (!caps.CritDamage && definition.CritDamage != 0) return "dano critico so pode ser definido em armas";
+        if (!caps.CritChance && definition.CritChance != 0) return "chance critica so pode ser definida em aneis";
+        if (!caps.Vampiric && (definition.LifeStealChance != 0 || definition.LifeStealAmount != 0))
+            return "vampirismo so pode ser definido em capacetes";
+        if (!caps.CooldownReduction && definition.CooldownReduction != 0)
+            return "recarga so pode ser definida em capacetes";
+        if (!caps.MoveSpeed && definition.MoveSpeedPercent != 0)
+            return "movimento so pode ser definido em montarias";
+        if (!caps.ElementAffinity && definition.ElementDamage != 0)
+            return "afinidade elemental so pode ser definida em amuletos";
+        if (!caps.PhysicalResistance && definition.PhysicalResistance != 0)
+            return "resistencia fisica so pode ser definida em armaduras";
+        if (!caps.ElementResistance && HasElementResistance(definition))
+            return "resistencia elemental so pode ser definida em armaduras";
+        if (ElementResistanceCount(definition) > 1)
+            return "armaduras podem ter no maximo uma resistencia elemental";
         return null;
     }
 
@@ -185,32 +219,47 @@ public static class ItemAuthoring
         };
 
     private static double Clamp(double value, double max) => Math.Clamp(value, 0, max);
-    private static bool HasOffense(AuthoredItemDefinition item) =>
-        item.ElementDamage != 0 || item.SkillPower != 0 || item.CritChance != 0
-        || item.CritDamage != 0 || item.LifeStealChance != 0 || item.LifeStealAmount != 0;
-    private static bool HasResistance(AuthoredItemDefinition item) =>
-        item.PhysicalResistance != 0 || item.FireResistance != 0 || item.IceResistance != 0
-        || item.EarthResistance != 0 || item.EnergyResistance != 0
-        || item.DeathResistance != 0 || item.HolyResistance != 0;
+    private static bool HasElementResistance(AuthoredItemDefinition item) => ElementResistanceCount(item) > 0;
+
+    private static int ElementResistanceCount(AuthoredItemDefinition item) =>
+        Count(item.FireResistance) + Count(item.IceResistance) + Count(item.EarthResistance)
+        + Count(item.EnergyResistance) + Count(item.DeathResistance) + Count(item.HolyResistance);
+
+    private static int Count(double value) => value != 0 ? 1 : 0;
 }
 
 public sealed record ItemCapabilities(
     bool Attack, bool Armor, bool Defense, bool MountSpeed,
-    bool Offense, bool Support, bool Resistance)
+    bool Offense, bool Support, bool Resistance,
+    bool CritChance, bool CritDamage, bool Vampiric, bool CooldownReduction,
+    bool MoveSpeed, bool PhysicalResistance, bool ElementResistance, bool ElementAffinity)
 {
     public static ItemCapabilities For(ItemType item)
     {
         var weapon = item.Slot == EquipmentSlots.Weapon || !string.IsNullOrWhiteSpace(item.WeaponType);
         var defensive = item.Slot is EquipmentSlots.Helmet or EquipmentSlots.Armor
             or EquipmentSlots.Necklace or EquipmentSlots.Ring;
+        var armor = item.Slot == EquipmentSlots.Armor;
+        var helmet = item.Slot == EquipmentSlots.Helmet;
+        var ring = item.Slot == EquipmentSlots.Ring;
+        var necklace = item.Slot == EquipmentSlots.Necklace;
+        var mount = item.Slot == EquipmentSlots.Mount;
         return new(
             weapon,
-            defensive,
+            item.Slot is EquipmentSlots.Armor or EquipmentSlots.Helmet,
             weapon || defensive,
-            item.Slot == EquipmentSlots.Mount,
+            mount,
             weapon,
             weapon || defensive,
-            weapon || defensive);
+            armor,
+            ring,
+            weapon,
+            helmet,
+            helmet,
+            mount,
+            armor,
+            armor,
+            necklace);
     }
 }
 

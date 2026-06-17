@@ -35,6 +35,7 @@ public sealed class AccountEquipmentRow
 {
     public string AccountId { get; set; } = "";
     public string WaifuId { get; set; } = "";
+    public int Tier { get; set; } = 1;
     public string Slot { get; set; } = "";
     public int ItemId { get; set; }
 }

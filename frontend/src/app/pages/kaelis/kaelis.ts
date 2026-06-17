@@ -4,7 +4,7 @@ import { ItemIcon } from '../../core/item-icon';
 import { OutfitPreview } from '../../core/outfit-preview';
 import {
   ClassDef, ClassStanceDef, ELEMENT_LABELS, EquipmentSlot, ItemCatalogEntry,
-  MasteryNodeDef, MasteryState, RARITY_COLORS, SkillDef, SkinDef, WEAPON_LABELS, WaifuDef,
+  MasteryNodeDef, MasteryState, RARITY_COLORS, SET_TIERS, SkillDef, SkinDef, WEAPON_LABELS, WaifuDef, equipKey,
 } from '../../core/types';
 
 type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
@@ -41,11 +41,6 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
               <div class="stat-pill"><span>Afinidade</span><b>{{ affinityLevel(w.id) }}</b></div>
               <div class="stat-pill"><span>Ascensão</span><b>A{{ ascension(w.id) }}</b></div>
             </div>
-            @if (isActive(w.id)) {
-              <span class="active-badge">ATIVA</span>
-            } @else if (owned(w.id)) {
-              <button class="btn secondary compact" [disabled]="busy()" (click)="setActive(w.id)">Tornar ativa</button>
-            }
           } @else {
             <p class="muted" style="padding:24px;text-align:center">Selecione uma Kaeli abaixo.</p>
           }
@@ -170,6 +165,13 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
               <!-- ═══ EQUIPAMENTO ═══ -->
               @if (tab() === 'equipamento') {
                 <div class="tab-content">
+                  <div class="tier-tabs">
+                    <span class="tier-tabs-lbl">Set por tier</span>
+                    @for (t of setTiers; track t) {
+                      <button class="tier-tab" [class.active]="selectedTier() === t" (click)="selectTier(t)">T{{ t }}</button>
+                    }
+                    <span class="muted small tier-hint">A dungeon usa o set do seu tier. Itens são travados por tier.</span>
+                  </div>
                   @if (equipmentTotals(w.id).length > 0) {
                     <div class="equip-summary">
                       <h4>Atributos do Equipamento</h4>
@@ -380,7 +382,6 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
               [addons]="skinFor(w).addons ?? 0" [size]="54" [animate]="false" />
             <span class="cs-name">{{ w.name }}</span>
             <span class="cs-stars" [style.color]="rarityColor(w.rarity)">{{ '★'.repeat(w.rarity) }}</span>
-            @if (isActive(w.id)) { <span class="cs-active">ATIVA</span> }
             @if (!owned(w.id)) { <span class="cs-lock">🔒</span> }
           </button>
         }
@@ -508,6 +509,14 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .node-cost { color: #e8a93c; font-size: 11px; font-weight: 800; }
 
     /* ── EQUIPAMENTO ── */
+    .tier-tabs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .tier-tabs-lbl { font-size: 10px; font-weight: 800; color: #8bfff1; text-transform: uppercase; letter-spacing: 1px; margin-right: 4px; }
+    .tier-tab {
+      border: 1px solid #3a3a52; border-radius: 7px; background: #181824; color: #9c9ab0;
+      padding: 5px 12px; font-size: 12px; font-weight: 800; cursor: pointer;
+    }
+    .tier-tab.active { border-color: #e8a93c; color: #e8a93c; background: #1c180a; }
+    .tier-hint { flex-basis: 100%; margin-top: 2px; }
     .equip-summary {
       background: #10101a; border: 1px solid #2c2c3e; border-radius: 10px; padding: 12px 16px;
     }
@@ -641,6 +650,8 @@ export class KaelisPage {
   readonly tab = signal<KaeliTab>('perfil');
   readonly previewStanceId = signal('');
   readonly selectedEquipmentSlot = signal<EquipmentSlot | null>(null);
+  readonly selectedTier = signal(1);
+  readonly setTiers = SET_TIERS;
   readonly busy = signal(false);
   readonly tabs: { id: KaeliTab; label: string }[] = [
     { id: 'perfil', label: 'Perfil' },
@@ -688,7 +699,6 @@ export class KaelisPage {
   }
 
   owned(id: string): boolean { return this.api.account()?.ownedWaifus.includes(id) ?? false; }
-  isActive(id: string): boolean { return this.api.account()?.activeWaifuId === id; }
   ascension(id: string): number { return this.api.account()?.ascension?.[id] ?? 0; }
   shards(id: string): number { return this.api.account()?.shards?.[id] ?? 0; }
 
@@ -862,16 +872,23 @@ export class KaelisPage {
     return this.api.catalog()?.items.find((item) => item.itemId === itemId);
   }
 
+  selectTier(tier: number): void {
+    this.selectedTier.set(tier);
+    this.selectedEquipmentSlot.set(null);
+  }
+
   equippedItem(waifuId: string, slot: EquipmentSlot): ItemCatalogEntry | undefined {
-    const itemId = this.api.account()?.equipment?.[waifuId]?.[slot];
+    const itemId = this.api.account()?.equipment?.[equipKey(waifuId, this.selectedTier())]?.[slot];
     return itemId === undefined ? undefined : this.itemById(itemId);
   }
 
   equipmentCandidates(waifuId: string, slot: EquipmentSlot): ItemCatalogEntry[] {
     const inventory = this.api.account()?.inventory ?? [];
+    const tier = this.selectedTier();
     return inventory
       .map((stack) => this.itemById(stack.itemId))
-      .filter((item): item is ItemCatalogEntry => item?.slot === slot)
+      .filter((item): item is ItemCatalogEntry =>
+        item?.slot === slot && (item.tier === 0 || item.tier === tier))
       .sort((a, b) =>
         Number(this.canEquipById(waifuId, b)) - Number(this.canEquipById(waifuId, a))
         || (b.attack + b.armor + b.defense + b.mountSpeed)
@@ -959,14 +976,14 @@ export class KaelisPage {
 
   async equip(waifuId: string, slot: EquipmentSlot, itemId: number): Promise<void> {
     this.busy.set(true);
-    try { await this.api.equipItem(waifuId, slot, itemId); }
+    try { await this.api.equipItem(waifuId, slot, itemId, this.selectedTier()); }
     catch (e) { alert((e as Error).message); }
     finally { this.busy.set(false); }
   }
 
   async unequip(waifuId: string, slot: EquipmentSlot): Promise<void> {
     this.busy.set(true);
-    try { await this.api.unequipItem(waifuId, slot); }
+    try { await this.api.unequipItem(waifuId, slot, this.selectedTier()); }
     catch (e) { alert((e as Error).message); }
     finally { this.busy.set(false); }
   }
@@ -978,10 +995,4 @@ export class KaelisPage {
     finally { this.busy.set(false); }
   }
 
-  async setActive(id: string): Promise<void> {
-    this.busy.set(true);
-    try { await this.api.setActiveWaifu(id); }
-    catch (e) { alert((e as Error).message); }
-    finally { this.busy.set(false); }
-  }
 }

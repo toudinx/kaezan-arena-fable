@@ -2,7 +2,7 @@ import { Component, computed, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { OutfitPreview } from '../../core/outfit-preview';
-import { RARITY_COLORS } from '../../core/types';
+import { RARITY_COLORS, SkinDef, WaifuDef } from '../../core/types';
 
 @Component({
   selector: 'app-home',
@@ -11,13 +11,13 @@ import { RARITY_COLORS } from '../../core/types';
   template: `
     <div class="hub">
       <section class="showcase panel">
-        @if (activeWaifu(); as w) {
+        @if (pinnedWaifu(); as w) {
           <div class="stage">
-            @if (activeSkin(); as skin) {
+            @if (pinnedSkin(); as skin) {
               <app-outfit-preview
                 [lookType]="skin.lookType" [head]="skin.head" [body]="skin.body"
-                [legs]="skin.legs" [feet]="skin.feet" [addons]="activeAddons()"
-                [mountLookType]="activeMount()" [size]="180" />
+                [legs]="skin.legs" [feet]="skin.feet" [addons]="pinnedAddons()"
+                [mountLookType]="pinnedMount()" [size]="180" />
             }
           </div>
           <div class="who">
@@ -25,9 +25,25 @@ import { RARITY_COLORS } from '../../core/types';
             <h1>{{ w.name }}</h1>
             <p class="title">{{ w.title }}</p>
             <p class="desc">{{ w.description }}</p>
+            @if (owned().length > 1) {
+              <div class="pin-picker">
+                <span class="pin-label">★ Destaque</span>
+                <div class="pin-strip">
+                  @for (o of owned(); track o.id) {
+                    <button class="pin-thumb" [class.active]="o.id === w.id"
+                            [style.--rc]="rarityColor(o.rarity)" [title]="o.name"
+                            [disabled]="busy()" (click)="pick(o.id)">
+                      <app-outfit-preview [lookType]="skinFor(o).lookType" [head]="skinFor(o).head"
+                        [body]="skinFor(o).body" [legs]="skinFor(o).legs" [feet]="skinFor(o).feet"
+                        [addons]="skinFor(o).addons ?? 0" [size]="38" [animate]="false" />
+                    </button>
+                  }
+                </div>
+              </div>
+            }
           </div>
         } @else {
-          <p>Carregando...</p>
+          <p>Recrute uma Kaeli no banner para vê-la aqui.</p>
         }
       </section>
 
@@ -91,6 +107,17 @@ import { RARITY_COLORS } from '../../core/types';
     .who h1 { margin: 4px 0; font-size: 34px; }
     .who .title { color: #2dd4bf; font-weight: 700; margin: 0 0 10px; }
     .who .desc { color: #9c9ab0; line-height: 1.5; }
+    .pin-picker { margin-top: 16px; }
+    .pin-label { font-size: 10px; font-weight: 800; color: #707088; text-transform: uppercase; letter-spacing: 1px; }
+    .pin-strip { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .pin-thumb {
+      width: 46px; height: 46px; padding: 0; border-radius: 9px; cursor: pointer;
+      background: #13131e; border: 2px solid #2a2a3e; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pin-thumb:hover:not(:disabled) { border-color: var(--rc); }
+    .pin-thumb.active { border-color: #2dd4bf; box-shadow: 0 0 8px rgba(45,212,191,0.4); }
+    .pin-thumb:disabled { cursor: default; }
     .stars { font-size: 18px; letter-spacing: 2px; }
     .rail { display: flex; flex-direction: column; gap: 12px; }
     .action {
@@ -126,27 +153,54 @@ import { RARITY_COLORS } from '../../core/types';
 export class HomePage {
   readonly account = computed(() => this.api.account());
   readonly dailies = computed(() => this.api.account()?.dailies ?? []);
-  readonly activeWaifu = computed(() => {
+  // Protagonista do Início = Kaeli fixada (favorita) pelo jogador; senão a primeira possuída.
+  readonly pinnedWaifu = computed(() => {
     const acc = this.api.account();
     const cat = this.api.catalog();
     if (!acc || !cat) return null;
-    return cat.waifus.find((w) => w.id === acc.activeWaifuId) ?? null;
+    const owned = cat.waifus.filter((w) => acc.ownedWaifus.includes(w.id));
+    return owned.find((w) => w.id === acc.activeWaifuId) ?? owned[0] ?? null;
   });
-  readonly activeSkin = computed(() => {
-    const w = this.activeWaifu();
+  readonly pinnedSkin = computed(() => {
+    const w = this.pinnedWaifu();
     if (!w) return null;
     const selectedId = this.api.account()?.selectedSkins?.[w.id];
     return w.skins.find((s) => s.id === selectedId) ?? w.skins[0] ?? null;
   });
   // Os addons exibidos vêm exclusivamente da skin selecionada (0 = nenhum); a ascensão não os força.
-  readonly activeAddons = computed(() => this.activeSkin()?.addons ?? 0);
-  readonly activeMount = computed(() => this.activeSkin()?.mountLookType ?? 0);
+  readonly pinnedAddons = computed(() => this.pinnedSkin()?.addons ?? 0);
+  readonly pinnedMount = computed(() => this.pinnedSkin()?.mountLookType ?? 0);
+  readonly owned = computed(() => {
+    const acc = this.api.account();
+    const cat = this.api.catalog();
+    if (!acc || !cat) return [];
+    return cat.waifus
+      .filter((w) => acc.ownedWaifus.includes(w.id))
+      .sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name));
+  });
   readonly busy = signal(false);
 
   constructor(private readonly api: ApiService) {}
 
   rarityColor(r: number): string {
     return RARITY_COLORS[r] ?? '#fff';
+  }
+
+  skinFor(w: WaifuDef): SkinDef {
+    const selectedId = this.api.account()?.selectedSkins?.[w.id];
+    return w.skins.find((s) => s.id === selectedId) ?? w.skins[0];
+  }
+
+  async pick(waifuId: string): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
+    try {
+      await this.api.pinWaifu(waifuId);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   async claim(id: string): Promise<void> {

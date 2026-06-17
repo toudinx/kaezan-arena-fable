@@ -132,9 +132,10 @@ public sealed class AccountDbContext(DbContextOptions<AccountDbContext> options)
         modelBuilder.Entity<AccountEquipmentRow>(entity =>
         {
             entity.ToTable("account_equipment");
-            entity.HasKey(row => new { row.AccountId, row.WaifuId, row.Slot });
+            entity.HasKey(row => new { row.AccountId, row.WaifuId, row.Tier, row.Slot });
             AccountForeignKey(entity);
             entity.Property(row => row.WaifuId).HasColumnName("waifu_id").HasMaxLength(64);
+            entity.Property(row => row.Tier).HasColumnName("tier").HasDefaultValue(1);
             entity.Property(row => row.Slot).HasColumnName("slot").HasMaxLength(24);
             entity.Property(row => row.ItemId).HasColumnName("item_id");
         });

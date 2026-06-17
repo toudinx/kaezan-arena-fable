@@ -59,6 +59,18 @@ public sealed class AccountState
     public int RunsPlayed { get; set; }
     public int RunsWon { get; set; }
     public Dictionary<int, int> TierClears { get; set; } = [];
+
+    /// <summary>Chave do loadout de equipamento: um set por Kaeli POR tier ("waifu:x#3").</summary>
+    public static string EquipKey(string waifuId, int tier) => $"{waifuId}#{tier}";
+
+    /// <summary>Decompõe a chave do loadout. Chave legada (sem "#tier") cai no tier 1.</summary>
+    public static (string WaifuId, int Tier) ParseEquipKey(string key)
+    {
+        var hash = key.LastIndexOf('#');
+        return hash > 0 && int.TryParse(key[(hash + 1)..], out var tier)
+            ? (key[..hash], tier)
+            : (key, 1);
+    }
 }
 
 public sealed class InventoryStack

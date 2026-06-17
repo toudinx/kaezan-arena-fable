@@ -290,6 +290,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   private renderer: GameRenderer | null = null;
   private raf = 0;
   private tier = 1;
+  private waifuId: string | undefined;
   private keys = new Set<string>();
   private lastDir = { x: 0, y: 0 };
   private moveHeartbeat = 0;
@@ -314,6 +315,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.tier = Number(this.route.snapshot.paramMap.get('tier') ?? '1');
+    this.waifuId = this.route.snapshot.queryParamMap.get('waifu') ?? undefined;
   }
 
   async ngAfterViewInit(): Promise<void> {
@@ -334,7 +336,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     if (map) this.renderer.setMap(map);
 
     try {
-      const joined = await this.client.joinRun(this.tier, undefined, true);
+      const joined = await this.client.joinRun(this.tier, this.waifuId, undefined, true);
       if (joined.resumed) {
         this.resumeToast.set(true);
         this.resumeToastTimer = window.setTimeout(() => this.resumeToast.set(false), RESUME_TOAST_MS);
@@ -562,7 +564,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async again(): Promise<void> {
-    await this.client.joinRun(this.tier, undefined, false);
+    await this.client.joinRun(this.tier, this.waifuId, undefined, false);
     void this.api.refreshAccount();
   }
 

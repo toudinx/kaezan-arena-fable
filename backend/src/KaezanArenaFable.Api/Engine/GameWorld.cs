@@ -1043,15 +1043,10 @@ public sealed class GameWorld
         if (missile > 0)
             Emit("projectile", Player.X, Player.Y, target.X, target.Y, missile);
 
-        DealDamageToMonster(target, PlayerAttack(), Waifu.Element, hitEffect: missile > 0 ? 0 : 216);
-        if (EquipmentStats.ElementDamageBonus > 0)
-            DealDamageToMonster(
-                target,
-                EquipmentStats.ElementDamageBonus,
-                EquipmentStats.Element,
-                hitEffect: 0,
-                canCrit: false,
-                canLifeSteal: false);
+        var attackElement = string.IsNullOrWhiteSpace(EquipmentStats.WeaponElement)
+            ? Waifu.Element
+            : EquipmentStats.WeaponElement;
+        DealDamageToMonster(target, PlayerAttack(), attackElement, hitEffect: missile > 0 ? 0 : 216);
     }
 
     private void TryCastSkill(int slot)
@@ -1477,6 +1472,13 @@ public sealed class GameWorld
 
         // element bonus card
         if (element == Waifu.Element) roll *= 1 + CardValue("elementPercent");
+        if (element == CurrentStance.Element)
+        {
+            if (element == EquipmentStats.WeaponElement)
+                roll *= 1 + GameConfig.EquipmentWeaponElementMatchDamageBonus;
+            if (element == EquipmentStats.Element && EquipmentStats.ElementDamageBonus > 0)
+                roll *= 1 + EquipmentStats.ElementDamageBonus;
+        }
 
         // bestiary mastery bonus
         var rank = BestiaryRank(monster.Species!.StableId);

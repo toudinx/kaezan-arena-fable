@@ -82,7 +82,8 @@ public static class MetaEndpoints
                 i.DeathResistance,
                 i.HolyResistance,
                 allowedClassIds = i.AllowedClassIds ?? [],
-                i.RequiredMasteryPoints
+                i.RequiredMasteryPoints,
+                i.Tier
             }),
             monsters = registry.All.Select(m => new
             {
@@ -235,26 +236,23 @@ public static class MetaEndpoints
                     return Results.BadRequest(new { error = "Kaeli não possuída" });
                 if (!EquipmentSlots.IsValid(req.Slot))
                     return Results.BadRequest(new { error = "slot inválido" });
+                if (req.Tier is < 1 or > 5)
+                    return Results.BadRequest(new { error = "tier inválido" });
                 if (items.Get(req.ItemId) is not { } item || item.Slot != req.Slot)
                     return Results.BadRequest(new { error = "item incompatível com o slot" });
+                if (item.Tier != 0 && item.Tier != req.Tier)
+                    return Results.BadRequest(new { error = $"{item.Name} é do tier {item.Tier}, não do tier {req.Tier}" });
                 if (kaelis.Find(req.WaifuId) is not { } waifu)
                     return Results.BadRequest(new { error = "Kaeli desconhecida" });
                 if (item.AllowedClassIds is { Count: > 0 }
                     && !item.AllowedClassIds.Contains(waifu.ClassId, StringComparer.OrdinalIgnoreCase))
                     return Results.BadRequest(new { error = $"{item.Name} nao pode ser usado pela classe {waifu.ClassId}" });
-                var masteryPoints = s.Mastery.TryGetValue(req.WaifuId, out var mastery)
-                    ? mastery.Points + mastery.Spent
-                    : 0;
-                if (masteryPoints < item.RequiredMasteryPoints)
-                    return Results.BadRequest(new
-                    {
-                        error = $"{item.Name} exige {item.RequiredMasteryPoints} pontos totais de maestria"
-                    });
                 if (!s.Inventory.TryGetValue(req.ItemId, out var stack) || stack.Count <= 0)
                     return Results.BadRequest(new { error = "item não está na Mochila" });
 
-                if (!s.Equipment.TryGetValue(req.WaifuId, out var loadout))
-                    s.Equipment[req.WaifuId] = loadout = [];
+                var equipKey = AccountState.EquipKey(req.WaifuId, req.Tier);
+                if (!s.Equipment.TryGetValue(equipKey, out var loadout))
+                    s.Equipment[equipKey] = loadout = [];
 
                 stack.Count--;
                 if (stack.Count == 0) s.Inventory.Remove(req.ItemId);
@@ -274,7 +272,7 @@ public static class MetaEndpoints
                 }
 
                 loadout[req.Slot] = req.ItemId;
-                return Results.Ok(new { req.WaifuId, req.Slot, req.ItemId });
+                return Results.Ok(new { req.WaifuId, req.Slot, req.ItemId, req.Tier });
             }));
 
         api.MapPost("/equipment/unequip", (UnequipRequest req, AccountStore store, ItemRegistry items) =>
@@ -282,7 +280,10 @@ public static class MetaEndpoints
             {
                 if (!EquipmentSlots.IsValid(req.Slot))
                     return Results.BadRequest(new { error = "slot inválido" });
-                if (!s.Equipment.TryGetValue(req.WaifuId, out var loadout)
+                if (req.Tier is < 1 or > 5)
+                    return Results.BadRequest(new { error = "tier inválido" });
+                var equipKey = AccountState.EquipKey(req.WaifuId, req.Tier);
+                if (!s.Equipment.TryGetValue(equipKey, out var loadout)
                     || !loadout.Remove(req.Slot, out var itemId)
                     || items.Get(itemId) is not { } item)
                     return Results.BadRequest(new { error = "slot vazio" });
@@ -297,8 +298,8 @@ public static class MetaEndpoints
                         Count = 1
                     };
 
-                if (loadout.Count == 0) s.Equipment.Remove(req.WaifuId);
-                return Results.Ok(new { req.WaifuId, req.Slot, itemId });
+                if (loadout.Count == 0) s.Equipment.Remove(equipKey);
+                return Results.Ok(new { req.WaifuId, req.Slot, itemId, req.Tier });
             }));
 
         // ---- admin: autoria de conteúdo (editor in-game) ----
@@ -481,7 +482,13 @@ public static class MetaEndpoints
                     .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
                     .Select(item => ItemView(item, data)),
                 classes = Classes.All.Select(item => new { item.Id, item.Name }),
-                elements = ItemAuthoring.Elements
+                elements = ItemAuthoring.Elements,
+                balance = new
+                {
+                    tiers = GameConfig.AuthoredItemSetTiers,
+                    grades = GameConfig.AuthoredItemBalanceGrades,
+                    ranges = GameConfig.AuthoredItemBalanceRanges
+                }
             }));
 
         admin.MapPost("/items", (
@@ -602,8 +609,9 @@ public static class MetaEndpoints
             item.EnergyResistance,
             item.DeathResistance,
             item.HolyResistance,
-            allowedClassIds = item.AllowedClassIds ?? ItemAuthoring.DefaultClasses(item),
+            allowedClassIds = item.AllowedClassIds ?? [],
             item.RequiredMasteryPoints,
+            item.Tier,
             category,
             subcategory,
             capabilities = ItemCapabilities.For(item)
@@ -672,8 +680,8 @@ public static class MetaEndpoints
     public sealed record AscendRequest(string WaifuId);
     public sealed record ClaimRequest(string ContractId);
     public sealed record SellRequest(int ItemId, int Count);
-    public sealed record EquipRequest(string WaifuId, string Slot, int ItemId);
-    public sealed record UnequipRequest(string WaifuId, string Slot);
+    public sealed record EquipRequest(string WaifuId, string Slot, int ItemId, int Tier = 1);
+    public sealed record UnequipRequest(string WaifuId, string Slot, int Tier = 1);
     public sealed record ItemGrantRequest(int Count = 1);
     public sealed record GrantKaerosRequest(int Amount = 1600);
 }

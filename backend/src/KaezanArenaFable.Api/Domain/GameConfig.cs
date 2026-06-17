@@ -224,6 +224,7 @@ public static class GameConfig
     public const double EquipmentCooldownReductionCap = 0.40;
     public const double EquipmentMoveSpeedCap = 0.50;
     public const double EquipmentResistanceCap = 0.75;
+    public const double EquipmentWeaponElementMatchDamageBonus = 0.10;
     public const int MountHpPerSpeed = 2;
     public const double MountMoveSpeedPercentPerSpeed = 0.005;
     public const double BossMountDropChance = 0.20;
@@ -236,6 +237,106 @@ public static class GameConfig
     public const int ItemMaxMountSpeed = 100;
     public const int ItemMaxSalePrice = 1_000_000_000;
     public const int AdminItemGrantMax = 99;
+    public static readonly int[] AuthoredItemSetTiers = [0, 1, 2, 3, 4, 5];
+    public static readonly ItemBalanceGrade[] AuthoredItemBalanceGrades =
+    [
+        new("low", "Baixa"),
+        new("moderate", "Moderada"),
+        new("high", "Alta"),
+    ];
+    public static readonly ItemBalanceRange[] AuthoredItemBalanceRanges =
+    [
+        new("attack", 0, 8, 14, 15, 22, 23, 30),
+        new("attack", 1, 8, 14, 15, 22, 23, 30),
+        new("attack", 2, 22, 34, 35, 48, 49, 62),
+        new("attack", 3, 48, 68, 69, 92, 93, 118),
+        new("attack", 4, 90, 120, 121, 155, 156, 190),
+        new("attack", 5, 150, 190, 191, 235, 236, 290),
+
+        new("armor", 0, 2, 4, 5, 7, 8, 10),
+        new("armor", 1, 2, 4, 5, 7, 8, 10),
+        new("armor", 2, 7, 11, 12, 16, 17, 22),
+        new("armor", 3, 16, 24, 25, 34, 35, 45),
+        new("armor", 4, 32, 43, 44, 58, 59, 74),
+        new("armor", 5, 52, 68, 69, 86, 87, 105),
+
+        new("defense", 0, 4, 8, 9, 13, 14, 18),
+        new("defense", 1, 4, 8, 9, 13, 14, 18),
+        new("defense", 2, 14, 22, 23, 31, 32, 42),
+        new("defense", 3, 34, 48, 49, 64, 65, 82),
+        new("defense", 4, 58, 78, 79, 102, 103, 128),
+        new("defense", 5, 88, 112, 113, 142, 143, 176),
+
+        new("mountSpeed", 0, 6, 10, 11, 16, 17, 22),
+        new("mountSpeed", 1, 6, 10, 11, 16, 17, 22),
+        new("mountSpeed", 2, 14, 20, 21, 28, 29, 36),
+        new("mountSpeed", 3, 24, 32, 33, 42, 43, 52),
+        new("mountSpeed", 4, 36, 46, 47, 58, 59, 70),
+        new("mountSpeed", 5, 48, 60, 61, 74, 75, 90),
+
+        new("elementDamage", 0, 3, 5, 6, 8, 9, 12),
+        new("elementDamage", 1, 3, 5, 6, 8, 9, 12),
+        new("elementDamage", 2, 8, 12, 13, 18, 19, 25),
+        new("elementDamage", 3, 18, 26, 27, 36, 37, 48),
+        new("elementDamage", 4, 32, 43, 44, 56, 57, 72),
+        new("elementDamage", 5, 50, 66, 67, 84, 85, 105),
+
+        new("skillPower", 0, 1, 2, 3, 4, 5, 6),
+        new("skillPower", 1, 1, 2, 3, 4, 5, 6),
+        new("skillPower", 2, 4, 6, 7, 9, 10, 12),
+        new("skillPower", 3, 7, 10, 11, 14, 15, 18),
+        new("skillPower", 4, 11, 15, 16, 20, 21, 25),
+        new("skillPower", 5, 16, 21, 22, 28, 29, 35),
+
+        new("critChance", 0, 0.02, 0.04, 0.05, 0.07, 0.08, 0.10),
+        new("critChance", 1, 0.02, 0.04, 0.05, 0.07, 0.08, 0.10),
+        new("critChance", 2, 0.05, 0.07, 0.08, 0.11, 0.12, 0.15),
+        new("critChance", 3, 0.08, 0.11, 0.12, 0.16, 0.17, 0.21),
+        new("critChance", 4, 0.10, 0.14, 0.15, 0.20, 0.21, 0.26),
+        new("critChance", 5, 0.12, 0.16, 0.17, 0.23, 0.24, 0.30),
+
+        new("critDamage", 0, 0.08, 0.12, 0.13, 0.18, 0.19, 0.25),
+        new("critDamage", 1, 0.08, 0.12, 0.13, 0.18, 0.19, 0.25),
+        new("critDamage", 2, 0.16, 0.24, 0.25, 0.34, 0.35, 0.46),
+        new("critDamage", 3, 0.28, 0.40, 0.41, 0.54, 0.55, 0.70),
+        new("critDamage", 4, 0.40, 0.54, 0.55, 0.72, 0.73, 0.92),
+        new("critDamage", 5, 0.52, 0.68, 0.69, 0.90, 0.91, 1.15),
+
+        new("lifeStealChance", 0, 0.03, 0.05, 0.06, 0.08, 0.09, 0.12),
+        new("lifeStealChance", 1, 0.03, 0.05, 0.06, 0.08, 0.09, 0.12),
+        new("lifeStealChance", 2, 0.06, 0.09, 0.10, 0.13, 0.14, 0.18),
+        new("lifeStealChance", 3, 0.09, 0.13, 0.14, 0.19, 0.20, 0.26),
+        new("lifeStealChance", 4, 0.12, 0.17, 0.18, 0.24, 0.25, 0.33),
+        new("lifeStealChance", 5, 0.16, 0.22, 0.23, 0.30, 0.31, 0.40),
+
+        new("lifeStealAmount", 0, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07),
+        new("lifeStealAmount", 1, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07),
+        new("lifeStealAmount", 2, 0.04, 0.06, 0.07, 0.09, 0.10, 0.12),
+        new("lifeStealAmount", 3, 0.06, 0.09, 0.10, 0.13, 0.14, 0.17),
+        new("lifeStealAmount", 4, 0.08, 0.12, 0.13, 0.17, 0.18, 0.22),
+        new("lifeStealAmount", 5, 0.10, 0.15, 0.16, 0.21, 0.22, 0.28),
+
+        new("cooldownReduction", 0, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07),
+        new("cooldownReduction", 1, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07),
+        new("cooldownReduction", 2, 0.04, 0.06, 0.07, 0.09, 0.10, 0.12),
+        new("cooldownReduction", 3, 0.06, 0.09, 0.10, 0.13, 0.14, 0.17),
+        new("cooldownReduction", 4, 0.08, 0.12, 0.13, 0.17, 0.18, 0.22),
+        new("cooldownReduction", 5, 0.10, 0.14, 0.15, 0.19, 0.20, 0.24),
+
+        new("moveSpeedPercent", 0, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07),
+        new("moveSpeedPercent", 1, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07),
+        new("moveSpeedPercent", 2, 0.04, 0.06, 0.07, 0.09, 0.10, 0.12),
+        new("moveSpeedPercent", 3, 0.06, 0.09, 0.10, 0.13, 0.14, 0.17),
+        new("moveSpeedPercent", 4, 0.08, 0.12, 0.13, 0.17, 0.18, 0.22),
+        new("moveSpeedPercent", 5, 0.10, 0.14, 0.15, 0.19, 0.20, 0.24),
+
+        new("resistance", 0, 0.03, 0.05, 0.06, 0.08, 0.09, 0.10),
+        new("resistance", 1, 0.03, 0.05, 0.06, 0.08, 0.09, 0.10),
+        new("resistance", 2, 0.05, 0.08, 0.09, 0.12, 0.13, 0.16),
+        new("resistance", 3, 0.07, 0.11, 0.12, 0.16, 0.17, 0.22),
+        new("resistance", 4, 0.10, 0.14, 0.15, 0.20, 0.21, 0.27),
+        new("resistance", 5, 0.12, 0.16, 0.17, 0.22, 0.23, 0.30),
+    ];
     public static int MountItemId(int lookType) => -lookType;
     public static readonly IReadOnlyDictionary<int, int> TierMountLookTypes = new Dictionary<int, int>
     {
@@ -413,6 +514,12 @@ public sealed record MonsterStatLine(int Health, int Damage, int Armor, int Spee
 public sealed record MonsterStatPreset(
     string Id, string Name, string Description,
     double HpMultiplier, double DamageMultiplier, double SpeedMultiplier, double CadenceMultiplier);
+public sealed record ItemBalanceGrade(string Id, string Name);
+public sealed record ItemBalanceRange(
+    string Stat, int Tier,
+    double LowMin, double LowMax,
+    double ModerateMin, double ModerateMax,
+    double HighMin, double HighMax);
 public sealed record MonsterElementProfile(
     string Id, string Name, int AreaEffect, int ShootEffect, string? ConditionType);
 public sealed record MonsterAttackPattern(

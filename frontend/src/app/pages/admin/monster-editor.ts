@@ -13,6 +13,8 @@ import { CreaturePreview } from './creature-preview';
 type AppearanceKindFilter = 'all' | 'normal' | 'boss';
 type AppearanceScopeFilter = 'all' | 'legacy';
 type AuthoredRankFilter = 'all' | 'common' | 'elite' | 'boss';
+type ResistanceKind = 'neutral' | 'weak' | 'resist';
+type ResistanceGrade = 'low' | 'moderate' | 'high';
 
 const APPEARANCE_PAGE_SIZE = 60;
 
@@ -231,18 +233,35 @@ const APPEARANCE_PAGE_SIZE = 60;
 
             <section class="form-section resistances">
               <h3>Fraquezas e resistencias</h3>
-              <p class="hint">Positivo reduz dano; negativo aumenta. Cada elemento e independente.</p>
+              <p class="hint">Escolha fraqueza ou resistencia por elemento. O valor padrao e 5%, mas pode ser editado.</p>
+              <div class="resistance-toolbar">
+                <button type="button" class="secondary compact" (click)="clearResistances()">Limpar resistencias</button>
+              </div>
               <div class="resistance-grid">
                 @for (element of meta.elements; track element.id) {
-                  <label>{{ element.name }}
+                  <label
+                    class="resistance-card"
+                    [class.weak]="resistance(element.id) < 0"
+                    [class.resist]="resistance(element.id) > 0"
+                  >
+                    <span>{{ element.name }}</span>
+                    <select
+                      [value]="resistanceKind(element.id)"
+                      (change)="setResistanceKind(element.id, $any($event.target).value)"
+                    >
+                      <option value="neutral">Neutro</option>
+                      <option value="weak">Fraqueza</option>
+                      <option value="resist">Resistencia</option>
+                    </select>
                     <div class="suffix">
                       <input
                         type="number"
-                        [min]="meta.resistanceMin"
-                        [max]="meta.resistanceMax"
-                        step="5"
-                        [value]="resistance(element.id)"
-                        (input)="setResistance(element.id, $any($event.target).value)"
+                        min="0"
+                        [max]="maxResistanceMagnitude()"
+                        step="1"
+                        [disabled]="resistanceKind(element.id) === 'neutral'"
+                        [value]="resistanceMagnitude(element.id)"
+                        (input)="setResistanceAmount(element.id, $any($event.target).value)"
                       />
                       <span>%</span>
                     </div>
@@ -400,7 +419,8 @@ const APPEARANCE_PAGE_SIZE = 60;
     .status.err { background: #32191e; border-color: #6d303b; color: #ff9aa5; }
     .editor-grid { display: grid; gap: 12px; grid-template-columns: 1.08fr .92fr; margin-top: 12px; }
     .form-section { background: #11111a; border: 1px solid #29293a; border-radius: 6px; padding: 13px; }
-    .identity, .resistances { grid-column: 1; }
+    .identity { grid-column: 1; }
+    .resistances { grid-column: 1 / -1; }
     .build { grid-column: 2; grid-row: 1 / span 2; }
     .result { grid-column: 1; }
     .identity-grid { display: grid; gap: 12px; grid-template-columns: 140px minmax(0, 1fr); }
@@ -423,7 +443,12 @@ const APPEARANCE_PAGE_SIZE = 60;
     .stat-cards b { color: #55decc; font-size: 16px; margin-top: 4px; }
     .stat-cards small { color: #6f6d80; font-size: 7px; margin-top: 2px; }
     .boss-note { background: #2e2016; border: 1px solid #684526; border-radius: 4px; color: #e3ae69; font-size: 8px; margin-top: 8px; padding: 7px; }
-    .resistance-grid { grid-template-columns: repeat(4, 1fr); margin-top: 10px; }
+    .resistance-grid { grid-template-columns: repeat(7, minmax(108px, 1fr)); margin-top: 10px; }
+    .resistance-toolbar { display: flex; justify-content: flex-end; margin-top: 8px; }
+    .resistance-card { border: 1px solid #29293a; border-radius: 6px; padding: 8px; }
+    .resistance-card.weak { background: #25141a; border-color: #70303d; }
+    .resistance-card.resist { background: #10251f; border-color: #286f62; }
+    .resistance-card > span { color: #cfccd9; font-size: 9px; }
     .suffix { display: grid; grid-template-columns: minmax(0, 1fr) 26px; }
     .suffix input { border-radius: 5px 0 0 5px; min-width: 0; }
     .suffix span { align-items: center; background: #1d1d29; border: 1px solid #303043; border-left: 0; border-radius: 0 5px 5px 0; color: #77758b; display: flex; justify-content: center; }
@@ -725,11 +750,83 @@ export class MonsterEditor implements OnInit {
     return this.draft().resistances[element] ?? 0;
   }
 
+  resistanceMagnitude(element: string): number {
+    return Math.abs(this.resistance(element));
+  }
+
+  maxResistanceMagnitude(): number {
+    const meta = this.metadata();
+    return Math.max(Math.abs(meta?.resistanceMin ?? -100), Math.abs(meta?.resistanceMax ?? 100));
+  }
+
+  resistanceKind(element: string): ResistanceKind {
+    const value = this.resistance(element);
+    return value < 0 ? 'weak' : value > 0 ? 'resist' : 'neutral';
+  }
+
+  resistanceGrade(element: string): ResistanceGrade {
+    const magnitude = Math.abs(this.resistance(element));
+    if (magnitude >= 15) return 'high';
+    if (magnitude >= 10) return 'moderate';
+    return 'low';
+  }
+
+  setResistanceKind(element: string, kind: ResistanceKind): void {
+    if (kind === 'neutral') {
+      const next = { ...this.draft().resistances };
+      delete next[element];
+      this.patch({ resistances: next });
+      return;
+    }
+    const magnitude = this.resistanceMagnitude(element) || 5;
+    this.patch({
+      resistances: {
+        ...this.draft().resistances,
+        [element]: kind === 'weak' ? -magnitude : magnitude,
+      },
+    });
+  }
+
+  setResistanceGrade(element: string, grade: ResistanceGrade): void {
+    const kind = this.resistanceKind(element);
+    if (kind === 'neutral') return;
+    this.applyResistance(element, kind, grade);
+  }
+
   setResistance(element: string, value: string): void {
     const meta = this.metadata();
     if (!meta) return;
     const resistance = Math.max(meta.resistanceMin, Math.min(meta.resistanceMax, +value || 0));
     this.patch({ resistances: { ...this.draft().resistances, [element]: resistance } });
+  }
+
+  setResistanceAmount(element: string, value: string): void {
+    const meta = this.metadata();
+    if (!meta) return;
+    const kind = this.resistanceKind(element);
+    if (kind === 'neutral') return;
+    const max = this.maxResistanceMagnitude();
+    const magnitude = Math.max(0, Math.min(max, +value || 0));
+    this.patch({
+      resistances: {
+        ...this.draft().resistances,
+        [element]: kind === 'weak' ? -magnitude : magnitude,
+      },
+    });
+  }
+
+  clearResistances(): void {
+    this.patch({ resistances: {} });
+  }
+
+  private applyResistance(element: string, kind: Exclude<ResistanceKind, 'neutral'>, grade: ResistanceGrade): void {
+    const value = grade === 'high' ? 15 : grade === 'moderate' ? 10 : 5;
+    this.patch({
+      resistances: {
+        ...this.draft().resistances,
+        [element]: kind === 'weak' ? -value : value,
+      },
+    });
   }
 
   usageFor(monster: MonsterDefinition): string[] {

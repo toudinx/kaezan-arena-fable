@@ -14,7 +14,19 @@ public static class AccountSanitizer
     {
         var changed = false;
 
-        // Kaelis removidas do roster: refund + devolução de equipamento
+        // Migração sets por tier: loadout único legado (chave = waifuId) vira o set do tier 1
+        // (chave = "waifuId#1"). Idempotente — chaves já com "#" são ignoradas.
+        var legacyKeys = state.Equipment.Keys.Where(k => !k.Contains('#')).ToList();
+        foreach (var key in legacyKeys)
+        {
+            var migrated = AccountState.EquipKey(key, 1);
+            if (!state.Equipment.ContainsKey(migrated))
+                state.Equipment[migrated] = state.Equipment[key];
+            state.Equipment.Remove(key);
+            changed = true;
+        }
+
+        // Kaelis removidas do roster: refund + devolução de equipamento (de todos os tiers)
         var unknown = state.OwnedWaifus.Where(id => !Waifus.ById.ContainsKey(id)).ToList();
         foreach (var waifuId in unknown)
         {
@@ -27,8 +39,11 @@ public static class AccountSanitizer
             state.SelectedSkins.Remove(waifuId);
             state.Mastery.Remove(waifuId);
 
-            if (state.Equipment.Remove(waifuId, out var loadout))
+            var loadoutKeys = state.Equipment.Keys
+                .Where(k => AccountState.ParseEquipKey(k).WaifuId == waifuId).ToList();
+            foreach (var key in loadoutKeys)
             {
+                if (!state.Equipment.Remove(key, out var loadout)) continue;
                 foreach (var itemId in loadout.Values)
                 {
                     if (items.Get(itemId) is not { } item) continue;

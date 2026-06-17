@@ -162,7 +162,8 @@ export class ApiService {
     return res;
   }
 
-  async setActiveWaifu(waifuId: string): Promise<void> {
+  /** Fixa a Kaeli favorita exibida no Início (não tem mais relação com a run). */
+  async pinWaifu(waifuId: string): Promise<void> {
     await this.request('POST', '/account/active-waifu', { waifuId });
     await this.refreshAccount();
   }
@@ -209,13 +210,13 @@ export class ApiService {
     await this.refreshAccount();
   }
 
-  async equipItem(waifuId: string, slot: string, itemId: number): Promise<void> {
-    await this.request('POST', '/equipment/equip', { waifuId, slot, itemId });
+  async equipItem(waifuId: string, slot: string, itemId: number, tier: number): Promise<void> {
+    await this.request('POST', '/equipment/equip', { waifuId, slot, itemId, tier });
     await this.refreshAccount();
   }
 
-  async unequipItem(waifuId: string, slot: string): Promise<void> {
-    await this.request('POST', '/equipment/unequip', { waifuId, slot });
+  async unequipItem(waifuId: string, slot: string, tier: number): Promise<void> {
+    await this.request('POST', '/equipment/unequip', { waifuId, slot, tier });
     await this.refreshAccount();
   }
 }

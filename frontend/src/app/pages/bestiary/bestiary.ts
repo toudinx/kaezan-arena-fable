@@ -23,15 +23,28 @@ import { ApiService } from '../../core/api.service';
     </div>
   `,
   styles: [`
-    .page { max-width: 1100px; margin: 0 auto; padding: 24px; }
-    .sub { color: #9c9ab0; margin-bottom: 24px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
-    .entry { padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
-    .kills { color: #9c9ab0; font-size: 13px; }
-    .rank { color: #e8a93c; font-weight: 700; font-size: 13px; }
-    .bar { height: 5px; background: #23232f; border-radius: 3px; overflow: hidden; }
-    .fill { height: 100%; background: linear-gradient(90deg, #e8a93c, #d97706); }
-    .muted { color: #707088; }
+    .page { max-width: 1100px; margin: 0 auto; padding: var(--sp-6) var(--sp-5); }
+    h1 { margin-bottom: var(--sp-2); }
+    .sub { color: var(--text-dim); margin: 0 0 var(--sp-5); max-width: 720px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--sp-3); }
+    .entry {
+      padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-1);
+      background: var(--glass-bg);
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.25);
+      backdrop-filter: blur(var(--glass-blur)) saturate(1.25);
+      border-color: var(--line-strong);
+      box-shadow: var(--glass-edge), var(--sh-1);
+    }
+    .entry b { color: var(--text); }
+    .kills { color: var(--text-dim); font-size: 13px; }
+    .rank { color: var(--gold-bright); font-weight: 700; font-size: 13px; }
+    .bar { height: 6px; background: var(--bg-3); border-radius: var(--r-full); overflow: hidden; border: 1px solid var(--line); }
+    .fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-bright)); box-shadow: 0 0 16px var(--gold-glow); }
+    .muted { color: var(--text-mute); }
+
+    @media (max-width: 680px) {
+      .page { padding: var(--sp-5) var(--sp-4); }
+    }
   `],
 })
 export class BestiaryPage {

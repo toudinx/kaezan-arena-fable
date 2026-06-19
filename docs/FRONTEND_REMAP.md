@@ -358,6 +358,10 @@ um fluxo de cada aba via preview + console limpo.
 # PROMPT 7 — Shell / navegação + admin discreto
 
 - **Modelo:** GPT-5.5 (Codex) · **Effort:** medium · **Skill:** nenhuma (segue `STYLE_GUIDE.md` + padrão da Home) · **Depende de:** 1, 3
+- **[x] Concluído** — shell global mantido como barra fina e translúcida também na Home (sem competir
+  com o rail full-bleed): logo premium, nav principal sem Admin, active state iris/aurum, nível +
+  moedas via `currency-pill`; `/admin` permanece na rota e foi movido para o menu discreto de
+  ferramentas (engrenagem). O grant de Kaeros ficou escondido atrás de `isDevMode()`.
 
 **Objetivo.** Alinhar a top bar/navegação ao novo idioma e **tirar o Admin da nav principal**.
 
@@ -382,6 +386,9 @@ um fluxo de cada aba via preview + console limpo.
 # PROMPT 8 — Telas secundárias (pass de tokens)
 
 - **Modelo:** GPT-5.5 (Codex) · **Effort:** medium · **Skill:** nenhuma (segue `STYLE_GUIDE.md`) · **Depende de:** 1
+- **[x] Concluído** — hunt, mode, prerun, backpack e bestiary migradas para tokens/primitivos do
+  `STYLE_GUIDE.md` (vidro, acentos íris/aurum, estados de foco/hover e responsivo básico), sem
+  alterar lógica. Build de desenvolvimento limpo; screenshots desktop das 5 telas e console sem erro.
 
 **Objetivo.** Aplicar o design system às telas restantes que ninguém vê "primeiro" mas que ainda
 parecem PowerPoint: **hunt, mode, prerun, backpack, bestiary**.

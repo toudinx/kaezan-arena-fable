@@ -43,17 +43,33 @@ import { ItemIcon } from '../../core/item-icon';
     </div>
   `,
   styles: [`
-    .page { max-width: 1100px; margin: 0 auto; padding: 24px; }
-    .sub { color: #9c9ab0; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin: 16px 0 30px; }
-    .item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
-    .meta { flex: 1; display: flex; flex-direction: column; }
-    .count { color: #9c9ab0; font-size: 13px; }
-    .equip-tag { color: #2dd4bf; font-size: 11px; font-weight: 700; }
-    .sale-tag { color: #707088; font-size: 10px; }
-    .actions { display: flex; flex-direction: column; gap: 6px; }
-    .actions .btn { padding: 5px 10px; font-size: 12px; }
-    .muted { color: #707088; }
+    .page { max-width: 1100px; margin: 0 auto; padding: var(--sp-6) var(--sp-5); }
+    h1 { margin-bottom: var(--sp-2); }
+    .sub { color: var(--text-dim); margin: 0; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--sp-3); margin: var(--sp-5) 0 var(--sp-6); }
+    .item {
+      display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4);
+      background: var(--glass-bg);
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.25);
+      backdrop-filter: blur(var(--glass-blur)) saturate(1.25);
+      border-color: var(--line-strong);
+      box-shadow: var(--glass-edge), var(--sh-1);
+    }
+    .meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .meta b { color: var(--text); }
+    .count { color: var(--text-dim); font-size: 13px; }
+    .equip-tag { color: var(--accent-bright); font-size: 11px; font-weight: 700; }
+    .sale-tag { color: var(--text-mute); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+    .actions { display: flex; flex-direction: column; gap: 6px; min-width: 100px; }
+    .actions .btn { padding: 5px 10px; font-size: 12px; white-space: normal; }
+    .muted { color: var(--text-mute); }
+
+    @media (max-width: 680px) {
+      .page { padding: var(--sp-5) var(--sp-4); }
+      .item { align-items: flex-start; }
+      .actions { width: 100%; }
+      .actions .btn { width: 100%; }
+    }
   `],
 })
 export class BackpackPage {

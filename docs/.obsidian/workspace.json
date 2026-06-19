@@ -185,9 +185,14 @@
   },
   "active": "217f5cb9e28e1151",
   "lastOpenFiles": [
-    "GAMEPLAY_ROADMAP.md",
     "prompts/velvet.md",
+    "FRONTEND_REMAP.md",
     "prompts/roster-base.md",
+    "FABLE_TRACK.md",
+    "DESIGN_NOTES.md",
+    "GAMEPLAY_ROADMAP.md",
+    "GDD.md",
+    "ROADMAP.md",
     "STYLE_GUIDE.md"
   ]
 }

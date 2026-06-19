@@ -32,6 +32,8 @@ O painel `http://localhost:4200/admin` traz o editor de conteúdo Kaezan com aba
 **Items**, **Dungeons** e **Skins**. Cada tier de dungeon pode receber mobs comuns, elites e um
 boss autorais; salvar persiste a composição em `.data/content/tiers.json` e afeta somente as
 próximas runs.
+Na navegação principal, o Admin fica fora do fluxo de jogo: use a engrenagem discreta no shell ou
+acesse `/admin` diretamente.
 
 A aba **Monstros** cria conteúdo autoral sem copiar os stats do Canary. Cada criatura escolhe
 uma aparência, power tier, função (`common|elite|boss`), comportamento curado e elemento ofensivo.

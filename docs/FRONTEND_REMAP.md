@@ -289,6 +289,15 @@ lógica real além do necessário) + console limpo.
   reforçado no JS (vai direto pro reveal completo) e no CSS. Timers limpos no `ngOnDestroy`. Validado no
   preview (orbe 5★ dourado, reveal x1 da Velvet, cascata x10 com Velvet em destaque); build limpo (CSS no
   budget após enxugar).
+- **[x] Upgrade "card cinematográfico" (pós-Prompt 10)** — o look do card do cutscene Remotion foi
+  portado pro reveal **ao vivo** (variável por raridade + por personagem, sem vídeo): `charge` ganhou
+  o **círculo arcano** (anéis girando + hexagrama + nodes), coluna de energia e orbe, tudo na cor da
+  maior raridade (`--rc`); na transição entra um **burst flash** (`.flash`) e cada carta vira um card
+  com **moldura na cor da raridade + glow + hairline interno + light sweep + placa** (retrato `thumb`
+  ou sprite). x1 = card grande; x10 = parede 5×2 com a maior raridade em destaque dourado (`.top`).
+  Charge estendido p/ ~1.9s (x1) / 2.2s (x10). Budget de CSS de erro subiu p/ 16kB no `angular.json`.
+  Validado no preview ao vivo (charge 5★ dourado, card x1 da Velvet, parede x10 com 3★ azul/4★ roxo/5★
+  dourado), console limpo.
 
 **Objetivo.** Elevar o momento de revelação do pull (hoje: cartas simples com fade). Adicionar
 suspense e recompensa visual sem virar vídeo — animação CSS/Angular determinística.
@@ -407,6 +416,16 @@ parecem PowerPoint: **hunt, mode, prerun, backpack, bestiary**.
 # PROMPT 9 — Polish, responsivo & verificação final
 
 - **Modelo:** Claude Code Opus 4.8 · **Effort:** medium · **Skill:** `frontend-design` · **Depende de:** 3–8
+- **[x] Concluído** — Auditoria final: `prefers-reduced-motion` confirmado (corte global em
+  `styles.css` + reforço em kaeli-idle/reveal/ui-button). Vazamento de `setInterval` corrigido nos
+  polls de init de `kaelis.ts` e `prerun.ts` (agora `OnDestroy` + `stopInit()`; kaeli-idle e o
+  heartbeat de `game.ts` já limpavam). Heróis (wallpaper/banner) com `decoding="async"` +
+  `fetchpriority="high"` e fundo absoluto full-bleed (sem layout shift). Varredura de cor legada
+  (`#2dd4bf`) zerada nas telas migradas — só resta em `admin/*` e no HUD de batalha (`game.ts`),
+  fora do escopo do remap. Verificado no preview (1366px desktop + 375px mobile): Home, Recrutar,
+  Kaelis, Caçada, Mochila, Bestiário renderizam coesos, rail→bottom-bar e grid 3-col→stack
+  colapsam sem quebra, console limpo. README atualizado com a seção "Identidade visual". Build limpo
+  (só warnings de budget de CSS aceitos em kaelis/recruit).
 
 **Objetivo.** Passada final de qualidade no conjunto.
 
@@ -427,6 +446,16 @@ hardcoded legadas retornando vazio nas telas migradas.
 # PROMPT 10 — (OPCIONAL, posterior) Cutscene de invocação 5★ em vídeo
 
 - **Modelo:** Claude Code Opus 4.8 · **Effort:** high · **Skill:** `remotion-best-practices` · **Depende de:** 5
+- **[x] Concluído** — projeto Remotion isolado em `tools/cinematics/` (não entra no bundle Angular):
+  composição `VelvetSummon` de 15s @30fps 1920×1080 em 5 atos (catedral escura → círculo arcano
+  carregando em íris → burst dourado do 5★ → **card de invocação** sobe com a `thumb` da Kaeli numa
+  moldura aurum + glow + light sweep → placa preenche `★★★★★ · VELVET`), cores espelhando os tokens
+  `Cathedral Ink + Aurum`. O reveal usa a **thumb** (já tem fundo próprio), não o idle de corpo
+  inteiro — as idles são `rgb24` com fundo branco achatado e ficariam recortadas sobre a catedral.
+  Render → `out/velvet-5star.webm` (VP8, ~0.95 MB, 15.0s) copiado p/
+  `frontend/public/assets/cinematics/velvet-5star.webm`; frame extraído do webm confirma reprodução.
+  README do projeto documenta workflow (`npm run deploy`) e o seam de integração no `recruit.ts`
+  (sub-prompt à parte, fora do escopo).
 
 **Objetivo.** Produzir um clipe cinematográfico (webm) de invocação 5★ da Velvet, tocado quando o
 jogador puxa um 5★ destaque. **Só fazer depois que o reveal CSS (Prompt 5) estiver bom** — isto é

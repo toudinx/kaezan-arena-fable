@@ -1,4 +1,4 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, OnDestroy, computed, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { ItemIcon } from '../../core/item-icon';
@@ -253,7 +253,7 @@ const EQUIPMENT_SLOTS: { id: EquipmentSlot; label: string }[] = [
     }
   `],
 })
-export class PrerunPage {
+export class PrerunPage implements OnDestroy {
   readonly equipmentSlots = EQUIPMENT_SLOTS;
   readonly tierNum = signal(1);
   readonly selected = signal<WaifuDef | null>(null);
@@ -278,16 +278,24 @@ export class PrerunPage {
     private readonly router: Router,
   ) {
     this.tierNum.set(Number(this.route.snapshot.paramMap.get('tier') ?? '1'));
-    const tryInit = setInterval(() => {
-      if (this.selected()) { clearInterval(tryInit); return; }
+    this.initTimer = setInterval(() => {
+      if (this.selected()) { this.stopInit(); return; }
       const owned = this.ownedWaifus();
       const acc = this.api.account();
       if (owned.length && acc) {
         this.selected.set(owned.find((w) => w.id === acc.activeWaifuId) ?? owned[0]);
-        clearInterval(tryInit);
+        this.stopInit();
       }
     }, 150);
   }
+
+  private initTimer: ReturnType<typeof setInterval> | null = null;
+
+  private stopInit(): void {
+    if (this.initTimer !== null) { clearInterval(this.initTimer); this.initTimer = null; }
+  }
+
+  ngOnDestroy(): void { this.stopInit(); }
 
   rarityColor(r: number): string { return RARITY_COLORS[r] ?? 'var(--text)'; }
   elementLabel(e: string): string { return ELEMENT_LABELS[e] ?? e; }

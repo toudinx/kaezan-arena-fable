@@ -12,6 +12,17 @@ movimentação livre em grid, mapas gerados proceduralmente, monstros/outfits/it
 | Assets | Pipeline próprio de extração (protobuf appearances + sheets LZMA → PNG atlases) |
 | Dados | Monstros convertidos dos `.lua` do Canary para JSON |
 
+### Identidade visual
+
+O frontend segue a direção **"Cathedral Ink + Aurum"** — gacha premium (alvo Wuthering Waves):
+superfícies de vidro com aresta de luz, tipografia editorial (Fraunces display + Sora UI) e
+**acento duplo** (íris para UI, aurum para recompensa). A Home é um hub full-bleed com a Kaeli
+fixada; a página Kaelis traz idle rotativo (3 poses, crossfade a cada 7s); o reveal de convocação
+é cinematográfico em CSS. O contrato de tokens/primitivos vive em
+[`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md); o remap completo está em
+[`docs/FRONTEND_REMAP.md`](docs/FRONTEND_REMAP.md). Todas as animações de destaque respeitam
+`prefers-reduced-motion`.
+
 ## Como rodar
 
 ```powershell

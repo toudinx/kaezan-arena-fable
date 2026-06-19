@@ -1,0 +1,25 @@
+{
+  "name": "kaezan-cinematics",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Remotion cutscenes for Kaezan Arena Fable (5★ summon reveals). Not part of the Angular bundle.",
+  "scripts": {
+    "dev": "remotion studio",
+    "studio": "remotion studio",
+    "render": "remotion render VelvetSummon out/velvet-5star.webm --codec=vp8",
+    "deploy": "npm run render && node -e \"require('fs').copyFileSync('out/velvet-5star.webm','../../frontend/public/assets/cinematics/velvet-5star.webm')\"",
+    "still": "remotion still VelvetSummon out/frame.png"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.481",
+    "@remotion/google-fonts": "4.0.481",
+    "@remotion/media": "4.0.481",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "remotion": "4.0.481"
+  },
+  "devDependencies": {
+    "@types/react": "19.0.0",
+    "typescript": "5.8.2"
+  }
+}

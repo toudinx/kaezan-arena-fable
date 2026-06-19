@@ -142,13 +142,34 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
         @if (phase() === 'charge') {
           <div class="charge" [class.intense]="topRarity() >= 5"
                [style.--rc]="rarityColor(topRarity())">
-            <div class="orb-stage" aria-hidden="true">
+            <div class="rune-stage" aria-hidden="true">
               <span class="rays"></span>
+              <svg class="rune" viewBox="0 0 400 400">
+                <g class="grp cw-slow"><circle class="ring solid" cx="200" cy="200" r="190" /></g>
+                <g class="grp cw"><circle class="ring dash" cx="200" cy="200" r="168" /></g>
+                <g class="grp ccw">
+                  <circle class="ring thin" cx="200" cy="200" r="140" />
+                  <polygon class="tri" points="200,64 312,256 88,256" />
+                  <polygon class="tri" points="200,336 312,144 88,144" />
+                </g>
+                <g class="grp cw-fast">
+                  <circle class="node" cx="378" cy="200" r="5" />
+                  <circle class="node" cx="326" cy="326" r="5" />
+                  <circle class="node" cx="200" cy="378" r="5" />
+                  <circle class="node" cx="74" cy="326" r="5" />
+                  <circle class="node" cx="22" cy="200" r="5" />
+                  <circle class="node" cx="74" cy="74" r="5" />
+                  <circle class="node" cx="200" cy="22" r="5" />
+                  <circle class="node" cx="326" cy="74" r="5" />
+                </g>
+              </svg>
+              <span class="column"></span>
               <span class="orb"></span>
             </div>
             <span class="charge-label eyebrow">Convocando</span>
           </div>
         } @else {
+          <span class="flash" [style.--rc]="rarityColor(topRarity())" aria-hidden="true"></span>
           <div class="reveal" [class.single]="!isBatch()" [class.batch]="isBatch()">
             @for (r of res; track $index) {
               <div class="card" [class.revealed]="$index < revealed()"
@@ -166,7 +187,8 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
                         [mountLookType]="w.skins[0].mountLookType ?? 0" [size]="spriteSize()" [animate]="false" />
                     }
                   </div>
-                  <div class="meta">
+                  <span class="sweep" aria-hidden="true"></span>
+                  <div class="plate">
                     <div class="stars" [style.color]="rarityColor(r.rarity)">{{ '★'.repeat(r.rarity) }}</div>
                     <div class="name">{{ r.name }}</div>
                     <div class="tags">
@@ -449,27 +471,66 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
     }
     @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
 
-    /* ---- charge: orbe que antecipa a raridade ---- */
+    /* ---- charge: círculo arcano + coluna + orbe que antecipam a raridade ---- */
     .charge { display: flex; flex-direction: column; align-items: center; gap: 26px; animation: chargeIn var(--dur) var(--ease-out); }
     @keyframes chargeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
-    .orb-stage { position: relative; width: min(56vmin, 380px); height: min(56vmin, 380px); display: grid; place-items: center; }
+    .rune-stage {
+      position: relative; width: min(60vmin, 420px); height: min(60vmin, 420px);
+      display: grid; place-items: center; color: var(--rc);
+    }
     .rays {
-      position: absolute; inset: 0; border-radius: 50%; filter: blur(3px); opacity: 0.55;
+      position: absolute; inset: -6%; border-radius: 50%; filter: blur(3px); opacity: 0.5;
       background: conic-gradient(from 0deg,
         transparent 0deg, color-mix(in srgb, var(--rc) 60%, transparent) 14deg, transparent 40deg,
         transparent 180deg, color-mix(in srgb, var(--rc) 60%, transparent) 194deg, transparent 220deg);
       animation: spin 9s linear infinite;
     }
+    .rune {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      filter: drop-shadow(0 0 14px color-mix(in srgb, var(--rc) 60%, transparent));
+      animation: runeGrow 1.4s var(--ease-out) both;
+    }
+    @keyframes runeGrow { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .grp { transform-box: fill-box; transform-origin: center; }
+    .cw-slow { animation: spin 26s linear infinite; }
+    .cw { animation: spin 10s linear infinite; }
+    .cw-fast { animation: spin 6s linear infinite; }
+    .ccw { animation: spinRev 14s linear infinite; }
+    .ring { fill: none; stroke: var(--rc); }
+    .ring.solid { stroke-width: 2; opacity: 0.42; }
+    .ring.dash { stroke-width: 3; opacity: 0.85; stroke-dasharray: 5 24; }
+    .ring.thin { stroke-width: 1.5; opacity: 0.4; }
+    .tri { fill: none; stroke: var(--rc); stroke-width: 2; opacity: 0.5; }
+    .node { fill: var(--rc); opacity: 0.85; }
+    .column {
+      width: 13%; height: 128%; mix-blend-mode: screen; filter: blur(14px); opacity: 0.4;
+      background: linear-gradient(to top, transparent,
+        color-mix(in srgb, var(--rc) 85%, transparent) 28%, #fff 50%,
+        color-mix(in srgb, var(--rc) 85%, transparent) 72%, transparent);
+      animation: column 1.6s var(--ease-in-out) infinite;
+    }
+    @keyframes column { 0%,100% { opacity: 0.16; transform: scaleX(0.6); } 50% { opacity: 0.7; transform: scaleX(1.1); } }
     .orb {
-      position: relative; width: 38%; height: 38%; border-radius: 50%;
+      width: 30%; height: 30%; border-radius: 50%;
       background: radial-gradient(circle at 50% 40%, #fff 0%, color-mix(in srgb, var(--rc) 80%, #fff) 26%, var(--rc) 58%, transparent 76%);
       box-shadow: 0 0 50px 12px color-mix(in srgb, var(--rc) 60%, transparent), 0 0 140px 44px color-mix(in srgb, var(--rc) 30%, transparent);
       animation: orbPulse 1.2s var(--ease-in-out) infinite;
     }
     .charge.intense .orb { animation-duration: 0.85s; }
     .charge.intense .rays { opacity: 0.8; animation-duration: 6s; }
+    .charge.intense .cw { animation-duration: 7s; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spinRev { to { transform: rotate(-360deg); } }
     @keyframes orbPulse { 0%,100% { transform: scale(0.9); } 50% { transform: scale(1.08); } }
+
+    /* burst de luz no instante da revelação (cor = maior raridade do lote) */
+    .flash {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
+      background: radial-gradient(circle at 50% 48%, #fff 0%,
+        color-mix(in srgb, var(--rc) 60%, #fff) 26%, color-mix(in srgb, var(--rc) 75%, transparent) 46%, transparent 68%);
+      animation: flash 0.55s var(--ease-out);
+    }
+    @keyframes flash { 0% { opacity: 0; } 14% { opacity: 0.92; } 100% { opacity: 0; } }
 
     /* ---- reveal: cartas ---- */
     .reveal { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
@@ -492,18 +553,42 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
       position: relative; height: 100%; border-radius: var(--r-lg); border: 1.5px solid var(--rc);
       background: linear-gradient(180deg, rgba(28,28,42,0.96), rgba(14,14,22,0.98));
       box-shadow: 0 0 18px color-mix(in srgb, var(--rc) 38%, transparent), var(--sh-2);
-      display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 8px;
-      padding: 10px; overflow: hidden;
+      overflow: hidden;
+    }
+    /* hairline interno (crystal edge) na cor da raridade */
+    .inner::after {
+      content: ''; position: absolute; inset: 5px; z-index: 2; pointer-events: none;
+      border: 1px solid color-mix(in srgb, var(--rc) 45%, transparent);
+      border-radius: calc(var(--r-lg) - 4px);
     }
     .card.top .inner {
       box-shadow: 0 0 0 1px var(--rc), 0 0 34px color-mix(in srgb, var(--rc) 55%, transparent), 0 0 90px color-mix(in srgb, var(--rc) 28%, transparent);
     }
-    .art { flex: 1 1 auto; width: 100%; min-height: 0; display: grid; place-items: center; }
-    .portrait { width: 100%; height: 100%; object-fit: cover; }
-    .meta { display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; z-index: 1; }
-    .stars { font-size: 14px; }
+    .art { position: absolute; inset: 0; display: grid; place-items: center; }
+    .portrait { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+    /* light sweep dourado/raridade cruzando o retrato ao revelar */
+    .sweep {
+      position: absolute; top: 0; bottom: 0; left: -45%; width: 38%; z-index: 1; pointer-events: none;
+      transform: skewX(-16deg); opacity: 0; mix-blend-mode: screen;
+      background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--rc) 55%, #fff), transparent);
+    }
+    .card.revealed .sweep { animation: sweep 0.9s var(--ease-out); animation-delay: var(--d, 0ms); }
+    @keyframes sweep {
+      0% { opacity: 0; transform: translateX(0) skewX(-16deg); }
+      30% { opacity: 0.9; }
+      100% { opacity: 0; transform: translateX(420%) skewX(-16deg); }
+    }
+    .plate {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 3;
+      display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center;
+      padding: 28px 8px 9px;
+      background: linear-gradient(to top, rgba(7,7,13,0.96) 28%, rgba(7,7,13,0.6) 62%, transparent);
+    }
+    .stars { font-size: 14px; letter-spacing: 1px; text-shadow: 0 0 10px color-mix(in srgb, var(--rc) 60%, transparent); }
     .name { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; line-height: 1.1; }
-    .reveal.single .name { font-size: 1.7rem; }
+    .reveal.single .name { font-size: 1.85rem; }
+    .reveal.single .stars { font-size: 22px; }
+    .reveal.single .plate { padding: 44px 12px 16px; }
     .tags { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 2px; }
     .tag { font-size: 10px; font-weight: 800; letter-spacing: 0.04em; padding: 2px 7px; border-radius: var(--r-full); }
     .tag.new { color: var(--bg-0); background: var(--el-energy); }
@@ -699,7 +784,8 @@ export class RecruitPage implements OnDestroy {
       this.startReveal();
       return;
     }
-    const chargeMs = results.length > 1 ? 1600 : 1400;
+    // build-up arcano completo (círculo + coluna + orbe) antes do burst
+    const chargeMs = results.length > 1 ? 2200 : 1900;
     this.timers.push(setTimeout(() => this.startReveal(), chargeMs));
   }
 

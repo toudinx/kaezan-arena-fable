@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
 import { KaeliArtService } from '../../core/kaeli-art.service';
 import { ItemIcon } from '../../core/item-icon';
@@ -608,7 +608,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     }
   `],
 })
-export class KaelisPage {
+export class KaelisPage implements OnDestroy {
   readonly allWaifus = computed(() => {
     const list = [...(this.api.catalog()?.waifus ?? [])];
     return list.sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name));
@@ -643,18 +643,26 @@ export class KaelisPage {
 
   private readonly art = inject(KaeliArtService);
 
+  private initTimer: ReturnType<typeof setInterval> | null = null;
+
   constructor(private readonly api: ApiService) {
-    const tryInit = setInterval(() => {
-      if (this.selected()) { clearInterval(tryInit); return; }
+    this.initTimer = setInterval(() => {
+      if (this.selected()) { this.stopInit(); return; }
       const acc = this.api.account();
       const cat = this.api.catalog();
       if (acc && cat) {
         const waifu = cat.waifus.find((w) => w.id === acc.activeWaifuId) ?? cat.waifus[0] ?? null;
         if (waifu) this.select(waifu);
-        clearInterval(tryInit);
+        this.stopInit();
       }
     }, 200);
   }
+
+  private stopInit(): void {
+    if (this.initTimer !== null) { clearInterval(this.initTimer); this.initTimer = null; }
+  }
+
+  ngOnDestroy(): void { this.stopInit(); }
 
   rarityColor(r: number): string { return RARITY_COLORS[r] ?? '#fff'; }
   elementLabel(e: string): string { return ELEMENT_LABELS[e] ?? e; }

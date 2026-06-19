@@ -74,6 +74,17 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
               <span class="buff cond" [class]="'buff cond cond-' + c">{{ condLabel(c) }}</span>
             }
           </div>
+          @if (s.player.trait; as tr) {
+            <div class="passive" [class]="'passive trait-' + tr.kind"
+                 [class.charged]="tr.max > 0 && tr.value >= tr.max"
+                 [title]="tr.name">
+              <span class="pname">{{ tr.name }}</span>
+              @if (tr.max > 0) {
+                <div class="pbar"><div class="pfill" [style.width.%]="(100 * tr.value) / tr.max"></div></div>
+              }
+              @if (tr.text && tr.text !== '—') { <span class="ptext">{{ tr.text }}</span> }
+            </div>
+          }
           <button class="stance" [class.fixed]="!s.player.canToggleStance"
                   [disabled]="!s.player.canToggleStance" (click)="toggleStance()"
                   title="Tab alterna a postura">
@@ -248,6 +259,18 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
     .buff.cond-fire { background: rgba(255, 140, 60, 0.18); border-color: #ff8c3c; color: #ff8c3c; }
     .buff.cond-energy { background: rgba(196, 125, 255, 0.18); border-color: #c47dff; color: #c47dff; }
     .buff.cond-slow { background: rgba(125, 240, 255, 0.18); border-color: #7df0ff; color: #7df0ff; }
+
+    /* K-04: chip da passiva assinatura — nome + barra/texto do estado vivo */
+    .passive { display: flex; align-items: center; gap: 7px; background: rgba(20, 16, 28, 0.82);
+      border: 1px solid #6b51a8; border-radius: 8px; padding: 3px 9px; }
+    .passive .pname { font-size: 11px; font-weight: 800; color: #c9aaff; letter-spacing: 0.2px; }
+    .passive .ptext { font-size: 11px; font-weight: 800; color: #f4ecff; }
+    .passive .pbar { width: 64px; height: 6px; background: #241a36; border-radius: 4px; overflow: hidden; }
+    .passive .pfill { height: 100%; background: linear-gradient(90deg, #a07bff, #d6b3ff);
+      transition: width 0.12s linear; }
+    .passive.charged { border-color: #f4d35e; box-shadow: 0 0 10px rgba(244, 211, 94, 0.7); }
+    .passive.charged .pfill { background: linear-gradient(90deg, #fff, #f4d35e); }
+    .passive.charged .ptext, .passive.charged .pname { color: #f4d35e; }
     .stance {
       pointer-events: auto; min-width: 116px; border: 1px solid #2dd4bf; border-radius: 9px;
       background: rgba(10, 30, 32, 0.92); color: #b8fff5; padding: 6px 10px;

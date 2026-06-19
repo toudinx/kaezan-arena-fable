@@ -35,9 +35,18 @@ public sealed class Actor
     public long HasteUntilMs;
     public double HasteFactor = 1.0;
 
-    // slow applied by the player (trait chiller)
+    // slow applied by the player (trait chiller/shatter)
     public long SlowUntilMs;
     public double SlowFactor = 1.0;
+
+    // K-04 signature trait state carried per target.
+    public int SinStacks;       // Eloa — Selo de Julgamento (3 = Julgado, próximo acerto detona)
+    public long SinUntilMs;
+    public int DecayStacks;     // Velvet — Maldição Acumulada (sobe o limiar de execução)
+    public long DecayUntilMs;
+    public int FrostHits;       // Lunara — acertos no alvo lento até estilhaçar
+    public bool IsPrey;         // Gaia — alvo marcado como Presa (HUD/render)
+    public bool Killed;         // guard: KillMonster processa cada morte uma única vez
 
     // DoT left on this monster by a player skill (necromancer wither / eternal suffering).
     public readonly List<MonsterDot> Dots = [];
@@ -240,6 +249,18 @@ public sealed class GameWorld
     private long _playerSlowUntilMs;
     private double _playerSlowFactor = 1.0;
 
+    // K-04 signature trait state carried per Kaeli (the player side of the passive).
+    private int _comboTargetId;          // Seren — Disciplina: alvo do ramp atual
+    private int _comboHits;              // acertos consecutivos no alvo
+    private long _comboExpireMs;         // zera o ramp se passar sem bater
+    private double _staticCharge;        // Rynna — Carga Estática (0..RynnaChargeMax)
+    private int _preyId;                 // Gaia — Presa: id do alvo marcado
+    private long _preyStartMs;           // início da caça (ramp por tempo)
+    private long _preyHuntBonusUntilMs;  // janela de cadência após uma execução
+    private long _traitHasteUntilMs;     // Lunara — haste do Estilhaçar (move speed)
+    private double _traitHasteFactor = 1.0;
+    private long _contagionNextJumpMs;   // Rin — Contágio: próximo salto periódico do burn
+
     public RunEndDto? Ended { get; private set; }
     public bool MapDirty { get; private set; } = true;
 
@@ -260,7 +281,7 @@ public sealed class GameWorld
         _traitMult = Loadout.Mastery.TraitMult;
         _affinityStatBonus = (Loadout.AffinityLevel - 1) * GameConfig.AffinityStatBonusPerLevel;
         _gaugeRate = Loadout.Mastery.GaugeMult
-                     * (_trait.Kind == "overcharge" ? 1 + _trait.Value * _traitMult : 1);
+                     * (_trait.Kind is "overcharge" or "static_charge" ? 1 + _trait.Value * _traitMult : 1);
         _data = data;
         _items = items;
         _monsterRegistry = monsterRegistry;
@@ -495,6 +516,7 @@ public sealed class GameWorld
                     TickFields();
                     TickPendingStrikes();
                     TickPostureDecay();
+                    TickTraitTimers();
                 }
             }
         }
@@ -609,6 +631,7 @@ public sealed class GameWorld
         var speed = GameConfig.PlayerBaseSpeed
                     * (1 + EquipmentStats.MoveSpeedPercent + CardValue("moveSpeedPercent"));
         if (IsBuffActive("haste")) speed *= 1.30;
+        if (NowMs < _traitHasteUntilMs) speed *= _traitHasteFactor; // Lunara — haste do Estilhaçar
         if (NowMs < _playerSlowUntilMs) speed *= _playerSlowFactor;
         return (int)speed;
     }
@@ -717,6 +740,7 @@ public sealed class GameWorld
         var interval = GameConfig.PlayerAutoAttackMs / (1 + CardValue("atkSpeedPercent"));
         if (IsBuffActive("atkspeed")) interval /= 1.40;
         if (IsBuffActive("aegis")) interval /= GameConfig.SentinelAegisAttackSpeedMultiplier;
+        if (NowMs < _preyHuntBonusUntilMs) interval /= 1 + GameConfig.GaiaHuntAtkSpeedBonus; // Gaia — caça
         return (long)Math.Max(interval, 400);
     }
 
@@ -1483,8 +1507,12 @@ public sealed class GameWorld
     }
 
     private void DealDamageToMonster(Actor monster, double raw, string element, int hitEffect,
-        bool fromSkill = false, bool canCrit = true, bool canLifeSteal = true)
+        bool fromSkill = false, bool canCrit = true, bool canLifeSteal = true, bool fromTrait = false)
     {
+        // "acerto direto" = auto-attack ou hit de skill (não DoT/campo/invocação/burst de trait).
+        // É o que move o estado das passivas (combo, carga, marca, presa, estilhaço).
+        var directHit = (fromSkill || canCrit) && !fromTrait;
+
         var roll = raw * (GameConfig.DamageRollMin + _rng.NextDouble() * (GameConfig.DamageRollMax - GameConfig.DamageRollMin));
         if (NowMs < monster.ExposedUntilMs)
             roll *= GameConfig.ExposedWeaknessDamageMultiplier;
@@ -1493,7 +1521,13 @@ public sealed class GameWorld
         var critChance = CritChance();
         if (_trait.Kind == "deadeye" && Chebyshev(Player, monster) >= (int)_trait.Param)
             critChance += _trait.Value * _traitMult;
-        var crit = canCrit && _rng.Chance(critChance);
+
+        // K-04: pré-dano das passivas assinatura (ramp/execução/bônus + crit garantido)
+        var forceCrit = false;
+        if (!fromTrait)
+            ApplyTraitPreDamage(monster, element, directHit, ref roll, ref forceCrit);
+
+        var crit = canCrit && (forceCrit || _rng.Chance(critChance));
         if (crit) roll *= GameConfig.CritMultiplier + EquipmentStats.CritDamage;
 
         if (_trait.Kind == "executioner" && monster.Hp < monster.MaxHp * _trait.Param)
@@ -1550,7 +1584,7 @@ public sealed class GameWorld
             lifesteal += EquipmentStats.LifeStealAmount;
         if (lifesteal > 0) HealPlayer((int)Math.Max(final * lifesteal, 0));
 
-        // traits pós-dano: seiva vital (lifesteal de skill) e mordida do norte (slow de gelo)
+        // traits de reserva pós-dano: seiva vital (lifesteal de skill) e mordida do norte (slow de gelo)
         if (fromSkill && _trait.Kind == "skill_lifesteal")
             HealPlayer((int)Math.Max(final * _trait.Value * _traitMult, 0));
         if (_trait.Kind == "chiller" && element == "ice" && monster.Hp > 0)
@@ -1558,6 +1592,10 @@ public sealed class GameWorld
             monster.SlowUntilMs = NowMs + (long)_trait.Param;
             monster.SlowFactor = Math.Max(1 - _trait.Value * _traitMult, GameConfig.SlowFactorFloor);
         }
+
+        // K-04: pós-dano das passivas assinatura (marcas, stacks, carga, estilhaço, contágio)
+        if (!fromTrait)
+            ApplyTraitPostDamage(monster, final, element, directHit);
 
         // F-E: posture build (boss only) and elemental reactions (any target)
         if (monster.Hp > 0 && monster.PostureMax > 0 && !staggered)
@@ -1569,6 +1607,268 @@ public sealed class GameWorld
         if (monster.TargetId == 0) AcquirePlayer(monster);
 
         if (monster.Hp <= 0) KillMonster(monster);
+    }
+
+    // ================= K-04: passivas assinatura =================
+    // Uma família mecânica por Kaeli. Determinístico: só NowMs/_rng da run, contadores estáveis e
+    // seleção de alvo por menor distância com desempate por menor id. _traitMult (maestria) sempre
+    // amplifica o efeito principal. Bursts internos chamam DealDamageToMonster com fromTrait:true
+    // para não re-disparar a própria passiva (a guarda Killed evita dupla contagem de morte).
+
+    /// <summary>Pré-dano: ramp/execução/bônus que multiplicam o roll, e crit garantido (Seren).</summary>
+    private void ApplyTraitPreDamage(Actor monster, string element, bool directHit, ref double roll, ref bool forceCrit)
+    {
+        switch (_trait.Kind)
+        {
+            case "discipline": // Seren — combo no mesmo alvo, 3º acerto = Corte Perfeito
+                if (!directHit) break;
+                if (_comboTargetId != monster.Id || NowMs > _comboExpireMs)
+                {
+                    _comboTargetId = monster.Id;
+                    _comboHits = 0;
+                }
+                _comboHits++;
+                _comboExpireMs = NowMs + GameConfig.SerenDisciplineResetMs;
+                roll *= 1 + Math.Min(_comboHits * _trait.Value, _trait.Param) * _traitMult;
+                if (_comboHits % GameConfig.SerenPerfectCutEvery == 0) forceCrit = true;
+                break;
+
+            case "decay": // Velvet — limiar de execução sobe com os stacks de Decadência
+            {
+                var threshold = Math.Min(
+                    _trait.Param + ActiveDecayStacks(monster) * GameConfig.VelvetThresholdPerStack,
+                    GameConfig.VelvetThresholdCap);
+                if (monster.Hp < monster.MaxHp * threshold)
+                    roll *= 1 + _trait.Value * _traitMult;
+                break;
+            }
+
+            case "shatter": // Lunara — dano bônus contra alvo já lento
+                if (element == "ice" && NowMs < monster.SlowUntilMs)
+                    roll *= 1 + _trait.Value * _traitMult;
+                break;
+
+            case "prey": // Gaia — ramp por tempo de caça contra a Presa
+                if (!directHit) break;
+                if (_preyId == 0 || !IsMonsterAlive(_preyId)) SetPrey(monster);
+                if (monster.Id == _preyId)
+                {
+                    var huntSec = (NowMs - _preyStartMs) / 1000.0;
+                    roll *= 1 + Math.Min(huntSec * _trait.Value, _trait.Param) * _traitMult;
+                }
+                break;
+        }
+    }
+
+    /// <summary>Pós-dano: marcas, stacks, carga, contágio e estilhaço (alvo ainda vivo).</summary>
+    private void ApplyTraitPostDamage(Actor monster, int final, string element, bool directHit)
+    {
+        switch (_trait.Kind)
+        {
+            case "judgment": // Eloa — Pecado acumula; ao Julgar, o próximo acerto detona
+                if (!directHit || monster.Hp <= 0) break;
+                if (ActiveSinStacks(monster) >= GameConfig.EloaSinStacksToJudge)
+                {
+                    monster.SinStacks = 0;
+                    monster.SinUntilMs = 0;
+                    EloaDetonate(monster, final);
+                }
+                else
+                {
+                    monster.SinStacks = ActiveSinStacks(monster) + 1;
+                    monster.SinUntilMs = NowMs + GameConfig.EloaSinDurationMs;
+                }
+                break;
+
+            case "decay": // Velvet — cada acerto empilha Decadência (DoT) e sobe o limiar
+                if (!directHit || monster.Hp <= 0) break;
+                monster.DecayStacks = Math.Min(ActiveDecayStacks(monster) + 1, GameConfig.VelvetDecayMaxStacks);
+                monster.DecayUntilMs = NowMs + GameConfig.VelvetDecayDurationMs;
+                ApplyDotToMonster(monster, "death", GameConfig.ConditionTickFx["curse"],
+                    PlayerAttack() * GameConfig.VelvetDecayDamagePerStack * monster.DecayStacks,
+                    GameConfig.VelvetDecayTicks, GameConfig.VelvetDecayTickMs);
+                break;
+
+            case "contagion": // Rin — acerto de fogo incendeia; tick de burn cura (pacto)
+                if (element != "fire") break;
+                if (directHit && monster.Hp > 0) ApplyContagionBurn(monster);
+                else if (!directHit) HealPlayer((int)Math.Max(final * _trait.Value * _traitMult, 0));
+                break;
+
+            case "static_charge": // Rynna — acertos enchem a carga; cheia, descarrega
+                if (!directHit || monster.Hp <= 0) break;
+                _staticCharge += GameConfig.RynnaChargePerHit;
+                if (_staticCharge >= GameConfig.RynnaChargeMax)
+                {
+                    _staticCharge = 0;
+                    RynnaDischarge(monster, final);
+                }
+                break;
+
+            case "shatter": // Lunara — acerto no lento dá haste e conta pro estilhaço
+                if (directHit && element == "ice" && monster.Hp > 0) ApplyShatter(monster);
+                break;
+        }
+    }
+
+    /// <summary>Gaia/Rin: ao matar um alvo, a caça salta de presa e o incêndio se propaga.</summary>
+    private void OnMonsterKilledTrait(Actor monster)
+    {
+        if (_trait.Kind == "prey" && monster.Id == _preyId)
+        {
+            monster.IsPrey = false;
+            _preyId = 0;
+            var next = NearestLivingMonster(monster.X, monster.Y, m => m.Id != monster.Id);
+            if (next is not null) SetPrey(next);
+            _preyHuntBonusUntilMs = NowMs + GameConfig.GaiaHuntBonusMs;
+        }
+        else if (_trait.Kind == "contagion" && IsBurning(monster))
+        {
+            SpreadBurnFrom(monster);
+        }
+    }
+
+    /// <summary>Rin: salto periódico do incêndio independente de mortes.</summary>
+    private void TickTraitTimers()
+    {
+        if (_trait.Kind != "contagion" || NowMs < _contagionNextJumpMs) return;
+        _contagionNextJumpMs = NowMs + GameConfig.RinContagionIntervalMs;
+        var src = FirstBurningMonster();
+        if (src is not null) SpreadBurnFrom(src);
+    }
+
+    // Eloa — detona o Selo numa pequena área e cura a Serafim por fração do estouro.
+    private void EloaDetonate(Actor center, int triggerDamage)
+    {
+        var burst = triggerDamage * _trait.Value * _traitMult;
+        Emit("text", center.X, center.Y, 0, 0, 0, "JULGADO");
+        foreach (var (tx, ty) in CircleTiles(center.X, center.Y, GameConfig.EloaJudgmentRadius))
+        {
+            Emit("effect", tx, ty, 0, 0, 40); // holy area fx
+            var victim = MonsterAt(tx, ty);
+            if (victim is not null)
+                DealDamageToMonster(victim, burst, "holy", 0,
+                    fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
+        }
+        HealPlayer((int)Math.Max(burst * _trait.Param, 0));
+    }
+
+    // Rynna — corrente curta que paralisa os alvos próximos e acelera a ultimate.
+    private void RynnaDischarge(Actor origin, int triggerDamage)
+    {
+        Emit("text", origin.X, origin.Y, 0, 0, 0, "DESCARGA");
+        var dmg = PlayerAttack() * GameConfig.RynnaDischargeDamageMult;
+        var hit = new HashSet<int>();
+        var current = origin;
+        int fromX = Player.X, fromY = Player.Y;
+        for (var h = 0; h < GameConfig.RynnaDischargeChainJumps && current is not null; h++)
+        {
+            hit.Add(current.Id);
+            Emit("projectile", fromX, fromY, current.X, current.Y, 5); // energy
+            current.StunUntilMs = Math.Max(current.StunUntilMs, NowMs + GameConfig.RynnaParalyzeMs);
+            Emit("effect", current.X, current.Y, 0, 0, 32); // stun stars
+            _gauge = Math.Min(_gauge + GameConfig.RynnaParalyzeGaugeBonus, GameConfig.UltimateGaugeMax);
+            fromX = current.X; fromY = current.Y;
+            DealDamageToMonster(current, dmg, "energy", 12,
+                fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
+            current = NearestUnhitMonster(fromX, fromY, GameConfig.RynnaDischargeChainRange, hit);
+        }
+    }
+
+    // Lunara — haste breve ao bater no lento; o 3º acerto estilhaça e consome o slow.
+    private void ApplyShatter(Actor monster)
+    {
+        if (NowMs < monster.SlowUntilMs)
+        {
+            _traitHasteUntilMs = NowMs + GameConfig.LunaraHasteMs;
+            _traitHasteFactor = GameConfig.LunaraHasteFactor;
+            monster.FrostHits++;
+            if (monster.FrostHits >= GameConfig.LunaraShatterHits)
+            {
+                monster.FrostHits = 0;
+                Emit("text", monster.X, monster.Y, 0, 0, 0, "ESTILHAÇO");
+                Emit("effect", monster.X, monster.Y, 0, 0, 44); // ice fx
+                DealDamageToMonster(monster, PlayerAttack() * GameConfig.LunaraShatterDamageMult, "ice", 0,
+                    fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
+                monster.SlowUntilMs = NowMs; // consome o slow
+                return;
+            }
+        }
+        else
+        {
+            monster.FrostHits = 1;
+        }
+        monster.SlowUntilMs = NowMs + (long)_trait.Param;
+        monster.SlowFactor = GameConfig.LunaraSlowFactor;
+    }
+
+    private void ApplyContagionBurn(Actor monster) =>
+        ApplyDotToMonster(monster, "fire", GameConfig.ConditionTickFx["fire"],
+            PlayerAttack() * GameConfig.RinContagionBurnPower,
+            GameConfig.RinContagionBurnTicks, GameConfig.RinContagionBurnTickMs);
+
+    private void SpreadBurnFrom(Actor source)
+    {
+        var dst = NearestLivingMonster(source.X, source.Y,
+            m => m.Id != source.Id && !IsBurning(m)
+                 && Chebyshev(source.X, source.Y, m.X, m.Y) <= (int)_trait.Param);
+        if (dst is null) return;
+        ApplyContagionBurn(dst);
+        Emit("projectile", source.X, source.Y, dst.X, dst.Y, 4); // fire arc
+    }
+
+    private void SetPrey(Actor m)
+    {
+        foreach (var mon in _monsters)
+            if (mon.IsPrey && mon.Id != m.Id) mon.IsPrey = false;
+        _preyId = m.Id;
+        _preyStartMs = NowMs;
+        m.IsPrey = true;
+        Emit("text", m.X, m.Y, 0, 0, 0, "PRESA");
+    }
+
+    private int ActiveSinStacks(Actor m)
+    {
+        if (NowMs >= m.SinUntilMs) m.SinStacks = 0;
+        return m.SinStacks;
+    }
+
+    private int ActiveDecayStacks(Actor m)
+    {
+        if (NowMs >= m.DecayUntilMs) m.DecayStacks = 0;
+        return m.DecayStacks;
+    }
+
+    private bool IsMonsterAlive(int id) => _monsters.Any(m => m.Id == id && m.Hp > 0);
+
+    private static bool IsBurning(Actor m) => m.Dots.Any(d => d.Element == "fire");
+
+    private Actor? FirstBurningMonster()
+    {
+        Actor? best = null;
+        foreach (var m in _monsters)
+        {
+            if (m.Hp <= 0 || m.Floor != _currentFloor || !IsBurning(m)) continue;
+            if (best is null || m.Id < best.Id) best = m;
+        }
+        return best;
+    }
+
+    private Actor? NearestLivingMonster(int x, int y, Func<Actor, bool> predicate)
+    {
+        Actor? best = null;
+        var bestDist = int.MaxValue;
+        foreach (var m in _monsters)
+        {
+            if (m.Hp <= 0 || m.Floor != _currentFloor || !predicate(m)) continue;
+            var d = Chebyshev(x, y, m.X, m.Y);
+            if (d < bestDist || (d == bestDist && (best is null || m.Id < best.Id)))
+            {
+                bestDist = d;
+                best = m;
+            }
+        }
+        return best;
     }
 
     // ---- F-E: boss posture (echo break) ----
@@ -1687,14 +1987,17 @@ public sealed class GameWorld
 
     private void KillMonster(Actor monster, bool overkill = false)
     {
-        if (monster.Hp <= 0 && !overkill && _kills > 0)
-        {
-            // already processed in same tick chain — guard double kill
-        }
+        // guarda contra dupla contagem: bursts de trait (julgamento, estilhaço, descarga) podem
+        // matar o mesmo alvo já marcado pra morrer pelo acerto que os disparou.
+        if (monster.Killed) return;
+        monster.Killed = true;
         monster.Hp = 0;
         _kills++;
         var speciesId = monster.Species!.StableId;
         KillsBySpecies[speciesId] = KillsBySpecies.GetValueOrDefault(speciesId) + 1;
+
+        // K-04: caça da Gaia salta de presa; incêndio da Rin se propaga ao morrer um alvo em chamas
+        OnMonsterKilledTrait(monster);
 
         Emit("death", monster.X, monster.Y, 0, 0, monster.Species.Corpse, monster.Species.Name, monster.Id);
 
@@ -2615,6 +2918,63 @@ public sealed class GameWorld
         return conditions;
     }
 
+    /// <summary>K-04: estado vivo da passiva assinatura (lado do jogador) para o HUD.</summary>
+    private TraitStateDto BuildTraitState()
+    {
+        var kind = _trait.Kind;
+        var name = _trait.Name;
+        switch (kind)
+        {
+            case "discipline": // Seren — combo no mesmo alvo
+            {
+                var hits = NowMs <= _comboExpireMs ? _comboHits : 0;
+                var steps = _trait.Value > 0 ? Math.Ceiling(_trait.Param / _trait.Value) : 0;
+                var bonus = Math.Min(hits * _trait.Value, _trait.Param) * _traitMult;
+                return new TraitStateDto(kind, name, hits, steps,
+                    hits > 0 ? $"x{hits} (+{Math.Round(bonus * 100)}%)" : "—");
+            }
+            case "static_charge": // Rynna — barra de carga
+                return new TraitStateDto(kind, name, Math.Round(_staticCharge), GameConfig.RynnaChargeMax,
+                    $"{Math.Round(_staticCharge)}/{GameConfig.RynnaChargeMax:0}");
+            case "contagion": // Rin — inimigos em chamas
+            {
+                var burning = _monsters.Count(m => m.Hp > 0 && m.Floor == _currentFloor && IsBurning(m));
+                return new TraitStateDto(kind, name, burning, 0, burning > 0 ? $"{burning} em chamas" : "—");
+            }
+            case "prey": // Gaia — ramp de caça contra a Presa
+            {
+                var prey = _monsters.FirstOrDefault(m => m.Id == _preyId && m.Hp > 0);
+                if (prey is null) return new TraitStateDto(kind, name, 0, 0, "sem presa");
+                var ramp = Math.Min((NowMs - _preyStartMs) / 1000.0 * _trait.Value, _trait.Param) * _traitMult;
+                return new TraitStateDto(kind, name, Math.Round(ramp * 100), 0, $"+{Math.Round(ramp * 100)}%");
+            }
+            case "shatter": // Lunara — haste do Estilhaçar
+                return new TraitStateDto(kind, name, 0, 0, NowMs < _traitHasteUntilMs ? "HASTE" : "—");
+            default: // judgment / decay: o estado vivo aparece como marca por-alvo
+                return new TraitStateDto(kind, name, 0, 0, "");
+        }
+    }
+
+    /// <summary>K-04: marca por-alvo (stacks/tag) que o render desenha sobre o monstro.</summary>
+    private (int Stacks, string Tag) MonsterTraitState(Actor m)
+    {
+        switch (_trait.Kind)
+        {
+            case "judgment":
+                var sin = NowMs < m.SinUntilMs ? m.SinStacks : 0;
+                return (sin, sin >= GameConfig.EloaSinStacksToJudge ? "judged" : "");
+            case "decay":
+                return (NowMs < m.DecayUntilMs ? m.DecayStacks : 0, "");
+            case "shatter":
+                var slowed = NowMs < m.SlowUntilMs;
+                return (slowed ? m.FrostHits : 0, slowed ? "frozen" : "");
+            case "prey":
+                return (0, m.IsPrey ? "prey" : "");
+            default:
+                return (0, "");
+        }
+    }
+
     private SnapshotDto BuildSnapshot()
     {
         var skillBar = CurrentSkillBar();
@@ -2665,16 +3025,22 @@ public sealed class GameWorld
                 EquipmentStats.CooldownReduction),
             _potionCharges, GameConfig.PotionChargesPerRun, GameConfig.PotionSlotItemId(Tier.Tier),
             Math.Max(_potionReadyAtMs - NowMs, 0), GameConfig.PotionCooldownMs,
-            GameConfig.PotionSlotHealFraction(Tier.Tier));
+            GameConfig.PotionSlotHealFraction(Tier.Tier),
+            BuildTraitState());
 
         var monsters = _monsters
             .Where(m => m.Hp > 0 && m.Floor == _currentFloor)
-            .Select(m => new MonsterDto(
-                m.Id, m.Species!.Name, m.X, m.Y, (int)m.Facing, m.Hp, m.MaxHp,
-                m.FromX, m.FromY, m.StepDurMs, m.StepStartMs,
-                new OutfitDto(m.Species.Outfit.LookType, m.Species.Outfit.Head, m.Species.Outfit.Body,
-                    m.Species.Outfit.Legs, m.Species.Outfit.Feet, m.Species.Outfit.Addons),
-                m.IsBossActor, m.IsStunned(NowMs), m.ActiveMark(NowMs)))
+            .Select(m =>
+            {
+                var (traitStacks, traitTag) = MonsterTraitState(m);
+                return new MonsterDto(
+                    m.Id, m.Species!.Name, m.X, m.Y, (int)m.Facing, m.Hp, m.MaxHp,
+                    m.FromX, m.FromY, m.StepDurMs, m.StepStartMs,
+                    new OutfitDto(m.Species.Outfit.LookType, m.Species.Outfit.Head, m.Species.Outfit.Body,
+                        m.Species.Outfit.Legs, m.Species.Outfit.Feet, m.Species.Outfit.Addons),
+                    m.IsBossActor, m.IsStunned(NowMs), m.ActiveMark(NowMs),
+                    traitStacks, traitTag);
+            })
             .ToList();
 
         var items = _groundItems

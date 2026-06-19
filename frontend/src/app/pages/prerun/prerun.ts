@@ -275,6 +275,7 @@ import { ELEMENT_LABELS, RARITY_COLORS, SkinDef, WaifuDef } from '../../core/typ
       font-size: 1rem;
     }
     .art-stage {
+      --sprite-lift: clamp(34px, 5vh, 68px);
       position: relative;
       display: grid;
       place-items: end center;
@@ -286,11 +287,12 @@ import { ELEMENT_LABELS, RARITY_COLORS, SkinDef, WaifuDef } from '../../core/typ
       z-index: 1;
       image-rendering: pixelated;
       filter: drop-shadow(0 24px 32px rgba(0,0,0,0.72));
+      transform: translateY(calc(-1 * var(--sprite-lift)));
     }
     .floor-glow {
       position: absolute;
       left: 50%;
-      bottom: 3%;
+      bottom: calc(3% + var(--sprite-lift));
       width: min(540px, 78%);
       height: 92px;
       transform: translateX(-50%);

@@ -61,57 +61,185 @@ public sealed record ClassDef(
 /// ClassDef entry; waifus only point at the class id. Cada kit usa um shape diferente por slot
 /// (single/area/cone/beam/nova/chain/ring/field/barrage/summon/buff) para que nenhuma habilidade
 /// vire so "a mesma area com elemento trocado".
+///
+/// Refundação Kaelis (K-03): as 7 classes do roster ganharam kits AUTORAIS, um arquétipo claro por
+/// Kaeli, ainda 100% data-driven por shape (nenhum dispatch novo no engine). O id da classe é
+/// estável e interno (não persistido por conta); o nome de exibição é que casa com a fantasia da
+/// Kaeli dona. Mapa id→Kaeli: oracle=Eloa, warrior=Seren, necromancer=Velvet, pyromancer=Rin,
+/// stormcaller=Rynna, cryomancer=Lunara, shaman=Gaia. Sentinel e Barbarian ficam como classes de
+/// reserva (sem Kaeli ainda) porque ItemAuthoring mapeia tipos de arma → ids de classe por elas.
 /// </summary>
 public static class Classes
 {
-    public const string WarriorId     = "warrior";
-    public const string SentinelId    = "sentinel";
-    public const string OracleId      = "oracle";
-    public const string ShamanId      = "shaman";
-    public const string CryomancerId  = "cryomancer";
-    public const string PyromancerId  = "pyromancer";
-    public const string StormcallerId = "stormcaller";
-    public const string BarbarianId   = "barbarian";
-    public const string NecromancerId = "necromancer";
+    public const string WarriorId     = "warrior";     // Seren — Cavaleira Astral (physical melee)
+    public const string SentinelId    = "sentinel";    // reserva (distance/shield) — sem Kaeli
+    public const string OracleId      = "oracle";      // Eloa — Serafim (holy ranged)
+    public const string ShamanId      = "shaman";      // Gaia — Arqueira dos Monólitos (earth ranged)
+    public const string CryomancerId  = "cryomancer";  // Lunara — Bailarina Lunar (ice melee)
+    public const string PyromancerId  = "pyromancer";  // Rin — Súcubus do Pacto (fire ranged)
+    public const string StormcallerId = "stormcaller"; // Rynna — Dragoa do Trovão (energy melee)
+    public const string BarbarianId   = "barbarian";   // reserva (fist) — sem Kaeli
+    public const string NecromancerId = "necromancer"; // Velvet — Necromancer (death ranged)
     public const string WizardId = PyromancerId;
     public const string MonkId   = BarbarianId;
 
     public static readonly IReadOnlyDictionary<string, SkillDef> Skills = new[]
     {
-        // Warrior: linha de frente fisica. Controle (taunt/stun/shield) > dano em area —
-        // so 1 skill de dano em area no kit (front-sweep).
-        new SkillDef("skill:warrior:shield-bash", "Shield Bash", "single", "physical",
-            1.30, 2200, 1, 0, 0, 10, 500, null, 0,
-            "Golpeia o alvo adjacente com o escudo, atordoando-o."),
-        new SkillDef("skill:warrior:challenge", "Chivalrous Challenge", "nova", "physical",
-            0, 6000, 0, 3, 0, 10, 0, "taunt", 8000,
-            "Provoca os inimigos proximos e os forca a enfrentar a Kaeli."),
-        new SkillDef("skill:warrior:front-sweep", "Front Sweep", "cone", "physical",
-            1.55, 6000, 0, 2, 0, 10, 0, null, 0,
-            "Varre uma onda fisica a frente."),
-        new SkillDef("skill:warrior:shield-wall", "Shield Wall", "buff", "physical",
-            0, 16000, 0, 0, 0, 35, 0, "shield", 5000,
-            "Ergue a guarda, reduzindo a metade o dano recebido por 5s."),
-        new SkillDef("skill:warrior:blood-rage", "Blood Rage", "buff", "physical",
-            0, 0, 0, 0, 0, 15, 0, "bloodrage", 10000,
-            "Aumenta o ataque por 10s."),
+        // ============================ ROSTER — KITS AUTORAIS (K-03) ============================
 
-        // Sentinel: Holy <-> Physical, mas cada slot da stance usa um shape diferente — alternar
-        // a postura troca o JEITO de lutar, nao so o elemento.
-        new SkillDef("skill:sentinel:divine-missile", "Divine Missile", "single", "holy",
-            1.15, 2000, 4, 0, 38, 40, 0, null, 0,
-            "Disparo sagrado preciso contra um alvo."),
-        new SkillDef("skill:sentinel:divine-judgment", "Divine Judgment", "barrage", "holy",
+        // Eloa — Serafim (holy ranged). Julgamento à distância: lança precisa, julgamento em
+        // sequência, feixe sacro, halo defensivo e a absolvição final em nova.
+        new SkillDef("skill:eloa:lance", "Lança de Luz", "single", "holy",
+            1.15, 2000, 5, 0, 38, 40, 0, null, 0,
+            "Arremessa uma lança de luz precisa contra um alvo."),
+        new SkillDef("skill:eloa:judgment", "Julgamento", "barrage", "holy",
             1.20, 9000, 6, 1, 38, 40, 0, null, 0,
-            "Convoca lancas sagradas que caem em sequencia sobre o alvo.",
+            "Convoca lanças sagradas que caem em sequência sobre o alvo.",
             Strikes: 3, StrikeIntervalMs: 450, StrikeDelayMs: 300),
-        new SkillDef("skill:sentinel:divine-beam", "Divine Beam", "beam", "holy",
+        new SkillDef("skill:eloa:radiance", "Raio Sacro", "beam", "holy",
             1.75, 6000, 5, 0, 0, 40, 0, null, 0,
             "Canaliza um longo feixe sagrado em linha."),
-        new SkillDef("skill:sentinel:divine-caldera", "Divine Caldera", "ring", "holy",
+        new SkillDef("skill:eloa:halo", "Halo", "ring", "holy",
             1.45, 7000, 0, 2, 0, 50, 0, null, 0,
-            "Cria um halo sagrado ao redor da Kaeli, deixando o centro intocado.",
+            "Abre um halo sagrado ao redor da Serafim, deixando o centro intocado.",
             RingInner: 1),
+        new SkillDef("skill:eloa:absolution", "Absolvição", "nova", "holy",
+            2.60, 0, 0, 3, 0, 40, 0, null, 0,
+            "Libera toda a luz acumulada numa onda de absolvição ao redor da Serafim."),
+
+        // Seren — Cavaleira Astral (physical melee). Duelista: corte preciso, avanço que rica
+        // entre alvos, arco amplo, postura ofensiva e o zênite que atordoa em volta.
+        new SkillDef("skill:seren:cut", "Corte Preciso", "single", "physical",
+            1.35, 1800, 1, 0, 0, 10, 0, null, 0,
+            "Um corte limpo e decisivo no alvo adjacente."),
+        new SkillDef("skill:seren:advance", "Avanço Astral", "chain", "physical",
+            1.35, 7000, 2, 0, 0, 10, 0, null, 0,
+            "Investe contra o alvo e o golpe segue para os inimigos mais próximos.",
+            ChainJumps: 3, ChainRange: 3, ChainFalloff: 0.25),
+        new SkillDef("skill:seren:arc", "Arco de Espada", "cone", "physical",
+            1.55, 6000, 0, 2, 0, 10, 0, null, 0,
+            "Desenha um arco de lâmina à frente, cortando todos no leque."),
+        new SkillDef("skill:seren:stance", "Postura do Zênite", "buff", "support",
+            0, 14000, 0, 0, 0, 13, 0, "aegis", 10000,
+            "Assume a postura de duelo: aumenta ataque e velocidade de ataque por 10s."),
+        new SkillDef("skill:seren:zenith", "Zênite", "nova", "physical",
+            2.60, 0, 0, 3, 0, 35, 500, null, 0,
+            "Descarrega o golpe do zênite numa explosão que atordoa quem estiver perto."),
+
+        // Velvet — Necromancer (death ranged). Maldição e execução: golpe mortal, maldição
+        // em área que apodrece, feixe-pesadelo, sombra invocada e a praga eterna em nova.
+        new SkillDef("skill:velvet:strike", "Golpe Mortal", "single", "death",
+            1.30, 2000, 4, 0, 11, 18, 0, null, 0,
+            "Dispara energia mortal precisa contra um alvo."),
+        new SkillDef("skill:velvet:curse", "Maldição", "area", "death",
+            0.70, 6000, 5, 1, 11, 18, 0, null, 0,
+            "Amaldiçoa uma área; os atingidos apodrecem ao longo do tempo.",
+            DotTicks: 5, DotTickMs: 1000, DotPower: 0.55),
+        new SkillDef("skill:velvet:nightmare", "Pesadelo", "beam", "death",
+            1.80, 8000, 7, 0, 0, 18, 0, null, 0,
+            "Projeta um longo feixe de pesadelo em linha."),
+        new SkillDef("skill:velvet:shade", "Sombra do Abismo", "summon", "death",
+            0, 12000, 0, 1, 0, 18, 0, null, 0,
+            "Ergue uma sombra do abismo que pulsa morte ao redor por alguns segundos.",
+            SummonMs: 6000, SummonPulseMs: 800, SummonPower: 0.70, SummonRadius: 1),
+        new SkillDef("skill:velvet:plague", "Praga Eterna", "nova", "death",
+            1.40, 0, 0, 3, 0, 18, 0, null, 0,
+            "Detona uma praga em área que continua corroendo os atingidos.",
+            DotTicks: 6, DotTickMs: 1000, DotPower: 0.80),
+
+        // Rin — Súcubus do Pacto (fire ranged). Charme e brasa: beijo de brasa, contrato que
+        // incendeia em cadeia, salão em chamas no chão, asas de cinza em cone e o baile infernal.
+        new SkillDef("skill:rin:ember-kiss", "Beijo de Brasa", "single", "fire",
+            1.30, 2200, 5, 0, 4, 7, 0, null, 0,
+            "Sopra um beijo de brasa preciso contra um alvo."),
+        new SkillDef("skill:rin:contract", "Contrato Ardente", "chain", "fire",
+            1.25, 8000, 6, 0, 4, 7, 0, null, 0,
+            "Sela um pacto ardente: o fogo salta entre os inimigos, incendiando cada um.",
+            ChainJumps: 3, ChainRange: 3, ChainFalloff: 0.20,
+            DotTicks: 3, DotTickMs: 1000, DotPower: 0.30),
+        new SkillDef("skill:rin:hall", "Salão em Chamas", "field", "fire",
+            0, 10000, 6, 0, 4, 7, 0, null, 0,
+            "Lança uma chama que abre um salão ardente no chão.",
+            SummonMs: 6000, SummonPulseMs: 1000, SummonPower: 0.45, SummonRadius: 1),
+        new SkillDef("skill:rin:ashwings", "Asas de Cinza", "cone", "fire",
+            1.65, 6000, 0, 3, 0, 7, 0, null, 0,
+            "Abre as asas de cinza e varre uma onda larga de fogo à frente."),
+        new SkillDef("skill:rin:infernal-ball", "Baile Infernal", "barrage", "fire",
+            1.50, 0, 7, 2, 4, 7, 400, null, 0,
+            "Conduz um baile de meteoros que caem em sequência, atordoando quem sobreviver.",
+            Strikes: 3, StrikeIntervalMs: 500, StrikeDelayMs: 400),
+
+        // Rynna — Dragoa do Trovão (energy melee). Engaja e paralisa: garra elétrica que paralisa,
+        // cauda trovejante em cone, descarga curta em cadeia, escama condutora (buff) e o coração
+        // da tempestade em nova. Curta distância — é uma dragoa de impacto, não maga de longe.
+        new SkillDef("skill:rynna:claw", "Garra Elétrica", "single", "energy",
+            1.30, 1800, 1, 0, 0, 12, 300, null, 0,
+            "Crava a garra carregada no alvo adjacente, paralisando-o brevemente."),
+        new SkillDef("skill:rynna:tail", "Cauda Trovejante", "cone", "energy",
+            1.55, 6000, 0, 2, 0, 12, 0, null, 0,
+            "Gira e açoita com a cauda trovejante, atingindo todos no leque."),
+        new SkillDef("skill:rynna:discharge", "Descarga Curta", "chain", "energy",
+            1.30, 7000, 2, 0, 0, 12, 0, null, 0,
+            "Libera uma descarga que ricocheteia entre os inimigos próximos.",
+            ChainJumps: 3, ChainRange: 3, ChainFalloff: 0.25),
+        new SkillDef("skill:rynna:scale", "Escama Condutora", "buff", "support",
+            0, 11000, 0, 0, 0, 41, 0, "atkspeed", 5000,
+            "Carrega a escama condutora: acelera a cadência dos golpes por alguns segundos."),
+        new SkillDef("skill:rynna:storm-heart", "Coração da Tempestade", "nova", "energy",
+            2.70, 0, 0, 3, 0, 41, 0, null, 0,
+            "Faz o céu descer junto: descarrega a tempestade ao redor da dragoa."),
+
+        // Lunara — Bailarina Lunar (ice melee). Mobilidade e slow: corte lunar que desacelera,
+        // saltos de geada em cadeia, jardim congelado no chão, crescente em anel e a lua nova.
+        // O trait Geada Lunar empilha slow em cima do gelo do kit.
+        new SkillDef("skill:lunara:cut", "Corte Lunar", "single", "ice",
+            1.30, 1800, 1, 0, 0, 42, 0, null, 0,
+            "Um corte de luar gelado que fere e desacelera o alvo.",
+            SlowFactor: 0.7, SlowMs: 1500),
+        new SkillDef("skill:lunara:frost-leap", "Saltos de Geada", "chain", "ice",
+            1.30, 7000, 2, 0, 0, 42, 0, null, 0,
+            "Salta entre os inimigos deixando geada em cada um.",
+            ChainJumps: 3, ChainRange: 3, ChainFalloff: 0.25,
+            SlowFactor: 0.7, SlowMs: 1200),
+        new SkillDef("skill:lunara:garden", "Jardim Congelado", "field", "ice",
+            0, 10000, 4, 0, 37, 44, 0, null, 0,
+            "Faz florescer um jardim de gelo no chão, desacelerando e ferindo quem permanece nele.",
+            SummonMs: 5000, SummonPulseMs: 1000, SummonPower: 0.35, SummonRadius: 1,
+            SlowFactor: 0.5, SlowMs: 1500),
+        new SkillDef("skill:lunara:crescent", "Crescente", "ring", "ice",
+            1.45, 7000, 0, 2, 0, 44, 0, null, 0,
+            "Desenha um crescente de gelo ao redor de si, fatiando e desacelerando em volta.",
+            SlowFactor: 0.7, SlowMs: 1200, RingInner: 1),
+        new SkillDef("skill:lunara:new-moon", "Lua Nova", "nova", "ice",
+            2.50, 0, 0, 3, 0, 44, 0, null, 0,
+            "Invoca a lua nova: uma onda de frio absoluto que congela o passo de todos em volta.",
+            SlowFactor: 0.6, SlowMs: 2000),
+
+        // Gaia — Arqueira dos Monólitos (earth ranged, arco). Ranger mineral: flecha de pedra,
+        // queda de monólito em área que atordoa, raízes que prendem no chão, estilhaços em cone e
+        // a chuva tectônica. O trait Olho Mineral premia manter distância — raízes ajudam nisso.
+        new SkillDef("skill:gaia:arrow", "Flecha Mineral", "single", "earth",
+            1.30, 2200, 5, 0, 30, 46, 0, null, 0,
+            "Dispara uma flecha de pedra petrificada, certeira de longe."),
+        new SkillDef("skill:gaia:monolith", "Queda de Monólito", "area", "earth",
+            1.45, 4000, 7, 2, 30, 46, 300, null, 0,
+            "Despenca um monólito sobre a área alvo, atordoando quem estiver embaixo."),
+        new SkillDef("skill:gaia:roots", "Raízes Aprisionantes", "field", "earth",
+            0, 9000, 6, 0, 30, 46, 0, null, 0,
+            "Faz raízes de pedra brotarem do chão, prendendo e ferindo quem pisa nelas.",
+            SummonMs: 5000, SummonPulseMs: 1000, SummonPower: 0.40, SummonRadius: 1,
+            SlowFactor: 0.4, SlowMs: 2000),
+        new SkillDef("skill:gaia:shards", "Estilhaços de Pedra", "cone", "earth",
+            1.55, 6000, 0, 3, 0, 46, 0, null, 0,
+            "Lasca a rocha à frente numa rajada larga de estilhaços."),
+        new SkillDef("skill:gaia:tectonic", "Chuva Tectônica", "barrage", "earth",
+            1.45, 0, 7, 2, 30, 46, 300, null, 0,
+            "Rasga a crosta e faz pedras tectônicas caírem em sequência, atordoando os sobreviventes.",
+            Strikes: 3, StrikeIntervalMs: 450, StrikeDelayMs: 400),
+
+        // ============================ RESERVA — sem Kaeli ainda (ItemAuthoring) ============================
+        // Sentinel: atiradora física de precisão (distance/shield). Mantida para o mapa arma→classe
+        // e como base de uma futura Kaeli física ranged.
         new SkillDef("skill:sentinel:storm-missile", "Storm Missile", "single", "physical",
             1.15, 2000, 4, 0, 12, 10, 0, null, 0,
             "Disparo fisico preciso que desequilibra o alvo.",
@@ -132,82 +260,6 @@ public static class Classes
             0, 0, 0, 0, 0, 13, 0, "aegis", 10000,
             "Aumenta ataque e velocidade de ataque por 10s."),
 
-        // Shaman: Ice <-> Earth. Ice controla com lentidao, Earth controla com DoT/armadilha —
-        // so o "cone" se repete entre as duas posturas.
-        new SkillDef("skill:shaman:frost-shard", "Frost Shard", "single", "ice",
-            1.25, 2200, 5, 0, 37, 42, 0, null, 0,
-            "Arremessa um estilhaco de gelo que desacelera o alvo.",
-            SlowFactor: 0.7, SlowMs: 1500),
-        new SkillDef("skill:shaman:avalanche", "Avalanche", "area", "ice",
-            1.45, 4000, 7, 2, 37, 42, 0, null, 0,
-            "Faz uma avalanche cair sobre a area alvo."),
-        new SkillDef("skill:shaman:forked-glacier", "Forked Glacier", "cone", "ice",
-            1.55, 6000, 0, 3, 0, 44, 0, null, 0,
-            "Projeta uma onda larga de gelo."),
-        new SkillDef("skill:shaman:glacial-prison", "Glacial Prison", "field", "ice",
-            0, 10000, 6, 0, 37, 44, 0, null, 0,
-            "Congela o solo numa area, desacelerando e ferindo quem pisar nela.",
-            SummonMs: 5000, SummonPulseMs: 1000, SummonPower: 0.35, SummonRadius: 1,
-            SlowFactor: 0.5, SlowMs: 1500),
-        new SkillDef("skill:shaman:stone-spikes", "Stone Spikes", "single", "earth",
-            1.30, 2200, 5, 0, 39, 46, 300, null, 0,
-            "Faz espinhos de pedra emergirem sob o alvo."),
-        new SkillDef("skill:shaman:stone-shower", "Stone Shower", "barrage", "earth",
-            1.05, 9000, 6, 1, 39, 46, 0, null, 0,
-            "Pedras caem em sequencia sobre a area alvo.",
-            Strikes: 3, StrikeIntervalMs: 450, StrikeDelayMs: 300),
-        new SkillDef("skill:shaman:earth-wave", "Earth Wave", "cone", "earth",
-            1.55, 6000, 0, 3, 0, 46, 0, null, 0,
-            "Projeta uma onda larga de terra."),
-        new SkillDef("skill:shaman:quicksand-trap", "Quicksand Trap", "ring", "earth",
-            1.40, 9000, 0, 2, 0, 46, 0, null, 0,
-            "Cria um anel de areia movedica ao redor da Kaeli, prendendo quem entrar nele.",
-            SlowFactor: 0.55, SlowMs: 2000, RingInner: 1),
-        new SkillDef("skill:shaman:natures-embrace", "Nature's Embrace", "buff", "support",
-            0, 0, 0, 0, 0, 15, 0, "heal", 0,
-            "Restaura uma grande parte da vida da Kaeli."),
-
-        // Pyromancer: fogo puro. Combustion encadeia e incendeia; Inferno Pool deixa poca no
-        // chao; o ultimate chove meteoros em sequencia.
-        new SkillDef("skill:pyromancer:fireball", "Fireball", "single", "fire",
-            1.30, 2200, 5, 0, 4, 7, 0, null, 0,
-            "Arremessa uma bola de fogo precisa contra um alvo."),
-        new SkillDef("skill:pyromancer:combustion", "Combustion", "chain", "fire",
-            1.25, 8000, 6, 0, 4, 7, 0, null, 0,
-            "O fogo salta entre os inimigos, incendiando cada um deles.",
-            ChainJumps: 3, ChainRange: 3, ChainFalloff: 0.20,
-            DotTicks: 3, DotTickMs: 1000, DotPower: 0.30),
-        new SkillDef("skill:pyromancer:inferno-pool", "Inferno Pool", "field", "fire",
-            0, 10000, 6, 0, 4, 7, 0, null, 0,
-            "Lanca uma bola de fogo que deixa uma poca em chamas no chao.",
-            SummonMs: 6000, SummonPulseMs: 1000, SummonPower: 0.45, SummonRadius: 1),
-        new SkillDef("skill:pyromancer:fire-wave", "Great Fire Wave", "cone", "fire",
-            1.65, 6000, 0, 3, 0, 7, 0, null, 0,
-            "Projeta uma onda larga de fogo."),
-        new SkillDef("skill:pyromancer:meteor-barrage", "Meteor Barrage", "barrage", "fire",
-            1.50, 0, 7, 2, 4, 7, 400, null, 0,
-            "Chama meteoros que caem em sequencia sobre a area alvo, atordoando quem sobreviver.",
-            Strikes: 3, StrikeIntervalMs: 500, StrikeDelayMs: 400),
-
-        // Stormcaller: energia pura. Energy Strike paraliza, Static Ring estoura ao redor da
-        // Kaeli, Storm Cloud descarrega na area, o ultimate e a tempestade classica.
-        new SkillDef("skill:stormcaller:energy-strike", "Energy Strike", "single", "energy",
-            1.30, 2200, 5, 0, 5, 38, 300, null, 0,
-            "Choque preciso que paralisa brevemente o alvo."),
-        new SkillDef("skill:stormcaller:energy-beam", "Great Energy Beam", "beam", "energy",
-            1.80, 6000, 8, 0, 0, 12, 0, null, 0,
-            "Canaliza um longo feixe de energia."),
-        new SkillDef("skill:stormcaller:static-ring", "Static Ring", "ring", "energy",
-            1.45, 7000, 0, 2, 0, 38, 0, null, 0,
-            "Solta um anel de eletricidade estatica ao redor da Kaeli.",
-            RingInner: 1),
-        new SkillDef("skill:stormcaller:storm-cloud", "Storm Cloud", "area", "energy",
-            1.45, 4000, 7, 2, 5, 38, 0, null, 0,
-            "Convoca uma nuvem de tempestade que descarrega sobre a area alvo."),
-        new SkillDef("skill:stormcaller:rage-of-the-skies", "Rage of the Skies", "nova", "energy",
-            2.70, 0, 0, 3, 0, 41, 0, null, 0,
-            "Faz os ceus descarregarem energia ao redor da Kaeli."),
-
         // Barbarian: marcial corpo-a-corpo. Rampage e o combo de assinatura (salta entre
         // inimigos), War Cry da velocidade — nada de area solida parada como o Warrior.
         new SkillDef("skill:barbarian:double-jab", "Double Jab", "single", "physical",
@@ -226,56 +278,35 @@ public static class Classes
         new SkillDef("skill:barbarian:spiritual-outburst", "Spiritual Outburst", "nova", "physical",
             2.60, 0, 0, 3, 0, 35, 600, null, 0,
             "Libera toda a harmonia interior numa explosao de ki."),
-
-        // Necromancer: Death magic, fixed stance. DoT (Wither/Eternal Suffering), um construto
-        // (summon) e um feixe de morte. Cobre single + dot + summon + beam + nova de praga.
-        new SkillDef("skill:necromancer:death-strike", "Death Strike", "single", "death",
-            1.30, 2000, 4, 0, 11, 18, 0, null, 0,
-            "Dispara energia mortal precisa contra um alvo."),
-        new SkillDef("skill:necromancer:wither", "Wither", "area", "death",
-            0.70, 6000, 5, 1, 11, 18, 0, null, 0,
-            "Amaldicoa uma area; os atingidos apodrecem ao longo do tempo.",
-            DotTicks: 5, DotTickMs: 1000, DotPower: 0.55),
-        new SkillDef("skill:necromancer:death-beam", "Great Death Beam", "beam", "death",
-            1.80, 8000, 7, 0, 0, 18, 0, null, 0,
-            "Canaliza um longo feixe de morte em linha."),
-        new SkillDef("skill:necromancer:bone-construct", "Raise Bone Construct", "summon", "death",
-            0, 12000, 0, 1, 0, 18, 0, null, 0,
-            "Ergue um construto osseo que pulsa morte ao redor por alguns segundos.",
-            SummonMs: 6000, SummonPulseMs: 800, SummonPower: 0.70, SummonRadius: 1),
-        new SkillDef("skill:necromancer:eternal-suffering", "Eternal Suffering", "nova", "death",
-            1.40, 0, 0, 3, 0, 18, 0, null, 0,
-            "Detona uma praga em area que continua corroendo os atingidos.",
-            DotTicks: 6, DotTickMs: 1000, DotPower: 0.80),
     }.ToDictionary(s => s.Id);
 
     public static readonly IReadOnlyList<ClassDef> All =
     [
-        new ClassDef(WarriorId, "Warrior",
-            "Combatente fisico de linha de frente: provoca, atordoa e se defende mais do que espalha dano em area.",
+        new ClassDef(WarriorId, "Cavaleira Astral",
+            "Duelista física corpo a corpo: corte preciso, avanço que rica entre alvos, arco de espada e a postura de duelo — fecha no zênite que atordoa em volta.",
             "physical",
             [
                 new ClassStanceDef("physical", "Physical", "physical",
                     [
-                        "skill:warrior:shield-bash",
-                        "skill:warrior:challenge",
-                        "skill:warrior:front-sweep",
-                        "skill:warrior:shield-wall"
+                        "skill:seren:cut",
+                        "skill:seren:advance",
+                        "skill:seren:arc",
+                        "skill:seren:stance"
                     ],
-                    "skill:warrior:blood-rage")
+                    "skill:seren:zenith")
             ]),
-        new ClassDef(OracleId, "Oracle",
-            "Invocadora sagrada de alcance: julgamentos em sequencia, feixe divino e halo sagrado.",
+        new ClassDef(OracleId, "Serafim",
+            "Serafim de luz à distância: lança precisa, julgamento em sequência, raio sacro e halo defensivo — encerra na absolvição em nova.",
             "holy",
             [
                 new ClassStanceDef("holy", "Holy", "holy",
                     [
-                        "skill:sentinel:divine-missile",
-                        "skill:sentinel:divine-judgment",
-                        "skill:sentinel:divine-beam",
-                        "skill:sentinel:divine-caldera"
+                        "skill:eloa:lance",
+                        "skill:eloa:judgment",
+                        "skill:eloa:radiance",
+                        "skill:eloa:halo"
                     ],
-                    "skill:sentinel:aegis")
+                    "skill:eloa:absolution")
             ]),
         new ClassDef(SentinelId, "Sentinel",
             "Atiradora fisica de precisao: projeteis que desaceleram, chain, slam e zona de vento.",
@@ -290,57 +321,57 @@ public static class Classes
                     ],
                     "skill:sentinel:aegis")
             ]),
-        new ClassDef(CryomancerId, "Cryomancer",
-            "Maga do gelo: desacelera com cada hit, congela o terreno e lanca avalanches.",
+        new ClassDef(CryomancerId, "Bailarina Lunar",
+            "Lutadora de gelo corpo a corpo, toda mobilidade e slow: corte lunar, saltos de geada, jardim congelado e crescente — encerra na lua nova que prende todos em volta.",
             "ice",
             [
                 new ClassStanceDef("ice", "Ice", "ice",
                     [
-                        "skill:shaman:frost-shard",
-                        "skill:shaman:avalanche",
-                        "skill:shaman:forked-glacier",
-                        "skill:shaman:glacial-prison"
+                        "skill:lunara:cut",
+                        "skill:lunara:frost-leap",
+                        "skill:lunara:garden",
+                        "skill:lunara:crescent"
                     ],
-                    "skill:shaman:natures-embrace")
+                    "skill:lunara:new-moon")
             ]),
-        new ClassDef(ShamanId, "Shaman",
-            "Conjuradora da terra: espinhos que atordoam, chuva de pedras em sequencia e armadilha de areia.",
+        new ClassDef(ShamanId, "Arqueira dos Monólitos",
+            "Arqueira mineral à distância: flecha de pedra, queda de monólito que atordoa, raízes que prendem e estilhaços em cone — fecha na chuva tectônica.",
             "earth",
             [
                 new ClassStanceDef("earth", "Earth", "earth",
                     [
-                        "skill:shaman:stone-spikes",
-                        "skill:shaman:stone-shower",
-                        "skill:shaman:earth-wave",
-                        "skill:shaman:quicksand-trap"
+                        "skill:gaia:arrow",
+                        "skill:gaia:monolith",
+                        "skill:gaia:roots",
+                        "skill:gaia:shards"
                     ],
-                    "skill:shaman:natures-embrace")
+                    "skill:gaia:tectonic")
             ]),
-        new ClassDef(PyromancerId, "Pyromancer",
-            "Maga do fogo: incendeia em cadeia, deixa pocas em chamas no chao e chove meteoros.",
+        new ClassDef(PyromancerId, "Súcubus do Pacto",
+            "Conjuradora de fogo à distância: beijo de brasa, contrato que incendeia em cadeia, salão em chamas no chão e asas de cinza em cone — encerra no baile infernal.",
             "fire",
             [
                 new ClassStanceDef("fire", "Fire", "fire",
                     [
-                        "skill:pyromancer:fireball",
-                        "skill:pyromancer:combustion",
-                        "skill:pyromancer:inferno-pool",
-                        "skill:pyromancer:fire-wave"
+                        "skill:rin:ember-kiss",
+                        "skill:rin:contract",
+                        "skill:rin:hall",
+                        "skill:rin:ashwings"
                     ],
-                    "skill:pyromancer:meteor-barrage")
+                    "skill:rin:infernal-ball")
             ]),
-        new ClassDef(StormcallerId, "Stormcaller",
-            "Maga da energia: paralisa, estoura aneis eletricos e descarrega tempestades.",
+        new ClassDef(StormcallerId, "Dragoa do Trovão",
+            "Dragoa de energia corpo a corpo: garra que paralisa, cauda trovejante em cone, descarga em cadeia e a escama condutora que acelera — fecha no coração da tempestade.",
             "energy",
             [
                 new ClassStanceDef("energy", "Energy", "energy",
                     [
-                        "skill:stormcaller:energy-strike",
-                        "skill:stormcaller:energy-beam",
-                        "skill:stormcaller:static-ring",
-                        "skill:stormcaller:storm-cloud"
+                        "skill:rynna:claw",
+                        "skill:rynna:tail",
+                        "skill:rynna:discharge",
+                        "skill:rynna:scale"
                     ],
-                    "skill:stormcaller:rage-of-the-skies")
+                    "skill:rynna:storm-heart")
             ]),
         new ClassDef(BarbarianId, "Barbarian",
             "Artista marcial que encadeia golpes corpo a corpo e acelera os proprios passos — combo e mobilidade, nao area parada.",
@@ -356,17 +387,17 @@ public static class Classes
                     "skill:barbarian:spiritual-outburst")
             ]),
         new ClassDef(NecromancerId, "Necromancer",
-            "Conjuradora da morte: corroi com DoT, ergue construtos e dispara feixes mortais.",
+            "Conjuradora de morte à distância: golpe mortal, maldição em área que apodrece, feixe-pesadelo e a sombra do abismo invocada — encerra na praga eterna.",
             "death",
             [
                 new ClassStanceDef("death", "Death", "death",
                     [
-                        "skill:necromancer:death-strike",
-                        "skill:necromancer:wither",
-                        "skill:necromancer:death-beam",
-                        "skill:necromancer:bone-construct"
+                        "skill:velvet:strike",
+                        "skill:velvet:curse",
+                        "skill:velvet:nightmare",
+                        "skill:velvet:shade"
                     ],
-                    "skill:necromancer:eternal-suffering")
+                    "skill:velvet:plague")
             ])
     ];
 

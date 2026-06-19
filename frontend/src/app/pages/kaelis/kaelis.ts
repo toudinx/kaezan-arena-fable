@@ -5,10 +5,9 @@ import { KaeliArtService } from '../../core/kaeli-art.service';
 import { ItemIcon } from '../../core/item-icon';
 import { OutfitPreview } from '../../core/outfit-preview';
 import { KaeliIdle } from '../../core/ui/kaeli-idle';
-import { RarityStars } from '../../core/ui/rarity-stars';
 import {
   ClassDef, ClassStanceDef, ELEMENT_LABELS, EquipmentSlot, ItemCatalogEntry,
-  MasteryNodeDef, MasteryState, RARITY_COLORS, SET_TIERS, SkillDef, SkinDef, WEAPON_LABELS, WaifuDef, equipKey,
+  MasteryNodeDef, MasteryState, RARITY_COLORS, SET_TIERS, SkillDef, SkinDef, WaifuDef, equipKey,
 } from '../../core/types';
 
 type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
@@ -16,7 +15,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
 @Component({
   selector: 'app-kaelis',
   standalone: true,
-  imports: [OutfitPreview, ItemIcon, KaeliIdle, RarityStars],
+  imports: [OutfitPreview, ItemIcon, KaeliIdle],
   template: `
     <div class="atelier">
 
@@ -24,7 +23,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
       <nav class="roster" aria-label="Selecionar Kaeli">
         @for (w of allWaifus(); track w.id) {
           <button class="roster-item" [class.owned]="owned(w.id)" [class.active]="selected()?.id === w.id"
-                  [style.--rc]="rarityColor(w.rarity)" [title]="w.name + ' · ' + w.rarity + '★'"
+                  [style.--rc]="rarityColor(w.rarity)" [title]="w.name + ' - Kaeli'"
                   [attr.aria-label]="w.name" [attr.aria-pressed]="selected()?.id === w.id" (click)="select(w)">
             <span class="bust">
               @if (thumb(w.id); as t) {
@@ -69,13 +68,12 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
           <div class="identity">
             <div class="id-tags">
               <span class="el-tag" [style.--el]="elementColor(w.element)">{{ elementLabel(w.element) }}</span>
-              <rarity-stars [rarity]="w.rarity" [size]="16" />
+              <span class="kaeli-tag">Kaeli</span>
             </div>
             <h1 class="id-name">{{ w.name }}</h1>
             <p class="id-title">{{ w.title }}</p>
             <div class="id-class">
               <span class="chip">{{ classFor(w)?.name }}</span>
-              <span class="chip">{{ weaponLabel(w.weapon) }}</span>
             </div>
           </div>
         } @else {
@@ -119,8 +117,6 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
                       <b class="fact-el" [style.--el]="elementColor(w.element)">{{ elementLabel(w.element) }}</b>
                     </div>
                     <div class="fact"><span>Classe</span><b>{{ classFor(w)?.name }}</b></div>
-                    <div class="fact"><span>Arma</span><b>{{ weaponLabel(w.weapon) }}</b></div>
-                    <div class="fact"><span>Raridade</span><rarity-stars [rarity]="w.rarity" [size]="13" /></div>
                     <div class="fact"><span>Ascensão</span><b class="gold">A{{ ascension(w.id) }} / 6</b></div>
                     <div class="fact"><span>Maestria de Eco</span><b>{{ masteryOf(w.id).points }} pt livres</b></div>
                   </div>
@@ -464,7 +460,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
           } @else {
             <!-- não recrutada -->
             <div class="not-owned">
-              <span class="eyebrow">Ainda não recrutada</span>
+              <span class="eyebrow">Ainda nao recrutada</span>
               <p class="muted">{{ selected()?.name }} aguarda no banner. Tente a sorte no recrutamento.</p>
               <div class="trait-card glass">
                 <span class="eyebrow trait-label">Trait</span>
@@ -520,6 +516,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .identity { position: absolute; left: clamp(16px, 4%, 32px); right: 16px; bottom: clamp(18px, 4vh, 32px); z-index: 2; }
     .id-tags { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
     .el-tag { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: var(--tracking-eyebrow); color: var(--el); padding: 4px 11px; border-radius: var(--r-full); border: 1px solid color-mix(in srgb, var(--el) 50%, transparent); background: color-mix(in srgb, var(--el) 14%, transparent); }
+    .kaeli-tag { font-size: var(--fs-xs); font-weight: 900; text-transform: uppercase; letter-spacing: var(--tracking-eyebrow); color: #2a1700; padding: 4px 11px; border-radius: var(--r-full); background: linear-gradient(180deg, var(--gold-bright), var(--gold-deep)); box-shadow: 0 6px 18px rgba(232,169,60,0.18); }
     .id-name { font-family: var(--font-display); font-weight: 900; font-size: clamp(1.9rem, 4vw, 2.9rem); line-height: 0.96; margin: 0; letter-spacing: -0.01em; text-shadow: 0 4px 30px rgba(0,0,0,0.7); }
     .id-title { font-family: var(--font-display); font-style: italic; color: var(--accent-bright); font-size: 1.1rem; margin: 4px 0 10px; }
     .id-class { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -733,7 +730,12 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
 export class KaelisPage implements OnDestroy {
   readonly allWaifus = computed(() => {
     const list = [...(this.api.catalog()?.waifus ?? [])];
-    return list.sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name));
+    const owned = new Set(this.api.account()?.ownedWaifus ?? []);
+    return list.sort((a, b) =>
+      Number(owned.has(b.id)) - Number(owned.has(a.id))
+      || b.rarity - a.rarity
+      || a.name.localeCompare(b.name),
+    );
   });
   readonly selected = signal<WaifuDef | null>(null);
   readonly tab = signal<KaeliTab>('perfil');
@@ -796,7 +798,6 @@ export class KaelisPage implements OnDestroy {
 
   rarityColor(r: number): string { return RARITY_COLORS[r] ?? '#fff'; }
   elementLabel(e: string): string { return ELEMENT_LABELS[e] ?? e; }
-  weaponLabel(w: string): string { return WEAPON_LABELS[w] ?? w; }
   elementColor(el: string): string { return ELEMENT_PALETTE.has(el) ? `var(--el-${el})` : 'var(--accent)'; }
 
   // ---- arte autoral ----

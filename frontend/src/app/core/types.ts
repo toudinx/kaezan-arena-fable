@@ -467,7 +467,10 @@ export interface Account {
 }
 
 export interface PullResult {
-  waifuId: string;
+  kind: 'waifu' | 'item';
+  waifuId: string | null;
+  itemId: number | null;
+  count: number;
   name: string;
   title: string;
   rarity: number;
@@ -582,6 +585,15 @@ export interface PlayerDto {
   potionCooldownRemainingMs: number;
   potionCooldownTotalMs: number;
   potionHealPct: number;
+  trait: TraitStateDto;
+}
+
+export interface TraitStateDto {
+  kind: string;
+  name: string;
+  value: number;
+  max: number;
+  text: string;
 }
 
 export interface MonsterDto {
@@ -600,6 +612,8 @@ export interface MonsterDto {
   isBoss: boolean;
   stunned: boolean;
   elementMark: string;
+  traitStacks: number;
+  traitTag: string;
 }
 
 export interface GroundItemDto {

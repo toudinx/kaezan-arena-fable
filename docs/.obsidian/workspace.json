@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "FRONTEND_REMAP.md",
+                "file": "roadmap_refactor_kaelis.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "FRONTEND_REMAP"
+              "title": "roadmap_refactor_kaelis"
             }
           }
         ]
@@ -185,11 +185,20 @@
   },
   "active": "217f5cb9e28e1151",
   "lastOpenFiles": [
-    "FRONTEND_REMAP.md.tmp.40424.9a412e680c01",
-    "FRONTEND_REMAP.md.tmp.40424.2cf7368b7d5f",
-    "FRONTEND_REMAP.md.tmp.40424.36fcb5be563a",
-    "prompts/velvet.md",
+    "roadmap_refactor_kaelis.md.tmp.36148.570128cd555f",
+    "roadmap_refactor_kaelis.md.tmp.34232.38a43bd063f9",
+    "roadmap_refactor_kaelis.md.tmp.34232.4160db3304d3",
+    "roadmap_refactor_kaelis.md.tmp.39608.1414d426f1f4",
+    "roadmap_refactor_kaelis.md.tmp.43128.6361aefeb3b7",
+    "roadmap_refactor_kaelis.md.tmp.18996.218fae2e853a",
+    "roadmap_refactor_kaelis.md.tmp.41100.afcfe5d4ee64",
+    "roadmap_refactor_kaelis.md.tmp.41100.f94bb2f587f1",
+    "roadmap_refactor_kaelis.md.tmp.41100.8372f00ccd8c",
+    "roadmap_refactor_kaelis.md.tmp.41100.007bc31a8f50",
+    "roadmap_refactor_kaelis.md.tmp.41100.ec0f039a4ada",
     "FRONTEND_REMAP.md",
+    "roadmap_refactor_kaelis.md",
+    "prompts/velvet.md",
     "prompts/roster-base.md",
     "FABLE_TRACK.md",
     "DESIGN_NOTES.md",

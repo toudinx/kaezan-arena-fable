@@ -42,7 +42,7 @@ npx ng serve
 ```
 
 Abra `http://localhost:4200`. Sem configuração de banco, a conta local é criada automaticamente
-em `backend/src/KaezanArenaFable.Api/.data/account.json` com a Mirai (4★) e 4000 Kaeros.
+em `backend/src/KaezanArenaFable.Api/.data/account.json` com uma Kaeli inicial e 4000 Kaeros.
 
 O painel `http://localhost:4200/admin` traz o editor de conteúdo Kaezan com abas **Monstros**,
 **Items**, **Dungeons** e **Skins**. Cada tier de dungeon pode receber mobs comuns, elites e um
@@ -200,9 +200,10 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
    bloqueiam o caminho.
 3. Durante a run: XP → level-ups oferecem **cards passivos** (escolha 1 de 3, max 3 stacks);
    loot clássico do Tibia dropa no chão e é coletado andando por cima.
-4. **Recrutar** — banners com pity (4★ a cada 10; 5★ hard 80 / soft 65; 50/50 com garantia).
-   Dupes viram Echo Shards → **Ascensão** (+8% stats por nível; os addons do outfit são definidos
-   por skin no Outfit Studio, não pela ascensão).
+4. **Recrutar** — banners com pity para Kaelis jogáveis. Quando um roll não acerta uma Kaeli, ele
+   entrega provisoriamente **1 item aleatório**; quando acerta uma Kaeli repetida, o dupe vira Echo
+   Shards → **Ascensão** (+8% stats por nível; os addons do outfit são definidos por skin no Outfit
+   Studio, não pela ascensão).
 5. **Kaelis (profundidade)** — cada Kaeli tem **trait de assinatura** (passiva única no engine),
    **afinidade** 1-10 (XP por runs com ela ativa + **presentes** — itens da Mochila, favoritos
    ×2, máx. 3/dia; níveis destravam **ecos de memória** (lore), Kaeros, skins e +1% ATK/HP por
@@ -217,50 +218,54 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
    ao iniciar a run e aparecem no HUD; montarias raras de boss dão HP/velocidade e também mudam
    o visual da Kaeli no mundo.
 
-## Kaelis: roster enxuto e profundo
+## Kaelis: personagens jogáveis 5★
 
-Refundação 2026-06-12: o roster foi cortado de 13 para **9 Kaelis** (3 por raridade), cada uma
-com trait de assinatura, personalidade, 4 ecos de memória (lore por afinidade), presentes
-favoritos e 2-3 skins. Tessa, Nyx, Lyra e Rosa saíram (contas antigas recebem 600 Kaeros por
-Kaeli removida via sanitização automática no boot). Kaela foi promovida a 5★.
+Nova direção: toda Kaeli jogável é personagem de topo (5★), com arte completa, trait de
+assinatura, personalidade, 4 ecos de memória (lore por afinidade), presentes favoritos e skins.
+Não há mais Kaeli jogável de preenchimento; o espaço de roll comum do gacha entrega provisoriamente
+**1 item aleatório** até existir uma curadoria própria de equipamentos, presentes, shards, skins ou
+materiais.
 
-Cada Kaeli usa o kit completo de uma das nove classes canônicas do Kaezan World:
+O roster alvo da refundação reúne 7 Kaelis autorais:
 
-| Classe | Elemento | Kaelis | Traits |
-|---|---|---|---|
-| Warrior | Physical | Mirai 4★, Kaela 5★ | Instinto de Matilha (+dano cercada) · Última Muralha (-12% dano) |
-| Sentinel | Physical | Wren 3★ | Olho de Águia (+crit à distância) |
-| Oracle | Holy | Aurora 5★ | Luz Purificadora (+dano em undead) |
-| Pyromancer | Fire | Ember 4★ | Combustão (gauge +30%) |
-| Stormcaller | Energy | — (sem Kaeli ainda) | — |
-| Cryomancer | Ice | Neva 4★ | Precisão Glacial (gelo aplica slow 25%/2s) |
-| Shaman | Earth | Sage 3★ | Seiva Vital (skills curam 6% do dano) |
-| Barbarian | Physical | Mira 3★ | Coração Valente (DR com HP baixo) |
-| Necromancer | Death | Velvet 5★ | Fome do Abismo (+dano em alvos <30% HP) |
+| Kaeli | Elemento | Alcance | Fantasia |
+|---|---|---:|---|
+| Eloa | Holy | ranged | anjo/serafim de luz, julgamento e absolvição |
+| Seren | Physical | melee | cavaleira astral, duelo e disciplina |
+| Velvet | Death | ranged | pesadelo, maldição, DoT e execução |
+| Rin | Fire | ranged | súcubus, pacto, charme e burn |
+| Rynna | Energy | melee | dragoa guerreira de raio, engage e stun |
+| Lunara | Ice | melee | lebre lunar, mobilidade e slow |
+| Gaia | Earth | ranged | arqueira da terra, raízes, caça e monólitos |
 
-Todas as classes são **single-stance** (sem alternância de postura). Cada kit usa um **shape
-diferente por slot** para que nenhuma habilidade seja "a mesma área com elemento trocado":
+Cada kit usa um **shape diferente por slot** para que nenhuma habilidade seja "a mesma área com
+elemento trocado":
 `single`, `area`, `cone`, `beam`, `nova`, `chain`, `ring`, `field`, `barrage`, `summon` e `buff`
 podem todos aparecer no mesmo kit.
 
-**Warrior** é tanque de controle: stun melee (Shield Bash), taunt (Challenge), 1 AoE (Front Sweep)
-e escudo defensivo (Shield Wall). **Sentinel** é atiradora física: projétil que desacelera, chain
-ricocheteia, slam que atordoa e zona de vento (field). **Oracle** é invocadora sagrada: barrage de
-lanças, feixe divino e halo sagrado (ring). **Barbarian** é combo/mobilidade: chain (Rampage),
-shockwave (Palm Shockwave) e War Cry (haste). **Cryomancer** desacelera a cada hit, congela o
-terreno (Glacial Prison field) e lança avalanches. **Shaman** atordoa com espinhos, chuva de
-pedras em sequência (barrage) e armadilha de areia (ring). **Pyromancer** encadeia e incendeia
-(Combustion chain+DoT), poça de fogo (field) e meteoros (barrage). **Stormcaller** paralisa,
-estoura anel elétrico (ring) e termina com Rage of the Skies (nova r3). **Necromancer** corrói com
-DoT, ergue construto (summon) e dispara feixe de morte. Geometrias seguem o Tibia,
+Os kits autorais seguem a fantasia de cada Kaeli: Eloa julga e absolve com luz, Seren duela com
+disciplina astral, Velvet corrói e executa, Rin queima por pacto, Rynna engaja com raio, Lunara
+dança entre slows lunares e Gaia prende alvos com raízes e monólitos. Geometrias seguem o Tibia,
 **reescaladas para o mapa da arena** (sem círculos de ~37 tiles em slots básicos).
 
-Os cooldowns pertencem aos slots 1-4 e continuam correndo ao trocar de postura; alternar com
-`Tab` não reseta habilidades. A página Kaelis (abas Perfil / Skins / Maestria / Equipamento /
-Informação) permite visualizar os dois kits elementais, presentear, trocar skins e gastar pontos
-de maestria. Visualmente é um "ateliê": rail de roster à esquerda, alcova de arte central com a
-Kaeli em idle rotativo (`<app-kaeli-idle>`, 3 poses/7s) sobre seu `bg-portrait` quando há arte
-autoral — senão o sprite da skin selecionada — e o dossiê de abas em vidro à direita.
+Cada Kaeli também tem uma **passiva assinatura** de arquétipo distinto — um mini-game dentro da run,
+com decisão de gameplay e **estado vivo visível no HUD** (chip da passiva + marcas sobre os alvos):
+
+| Kaeli | Passiva | O que faz | Decisão |
+|---|---|---|---|
+| Eloa | **Selo de Julgamento** | acertos marcam Pecado; ao chegar a 3 o alvo é Julgado e o próximo acerto detona um estouro sacro em área que cura | espalhar marcas (sustain) vs focar pra detonar |
+| Seren | **Disciplina** | acertos consecutivos no mesmo alvo escalam o dano (+8%/acerto até +40%); cada 3º é crit garantido | comprometer-se num duelo vs limpar adds |
+| Velvet | **Maldição Acumulada** | cada acerto empilha Decadência (DoT) e eleva o limiar de execução (de <15% até <25%) | empilhar maldição e então executar |
+| Rin | **Contágio** | acertos de fogo incendeiam; o burn salta entre inimigos e cada tick cura Rin | posicionar pra encadear o incêndio |
+| Rynna | **Carga Estática** | acertos enchem a Carga; cheia, descarrega numa corrente que paralisa e acelera a ultimate | ritmar os golpes pra soltar no pico |
+| Lunara | **Estilhaçar** | bater num alvo lento dá dano bônus e haste; o 3º acerto estilhaça e consome o slow | hit-and-run: slow, mergulho, estilhaço |
+| Gaia | **Presa** | marca um alvo; o dano contra a Presa cresce com o tempo de caça; ao morrer, a marca salta e dá cadência | escolher a prioridade e perseguir |
+
+Os cooldowns pertencem aos slots 1-4. A página Kaelis (abas Perfil / Skins / Maestria /
+Equipamento / Informação) permite visualizar o kit, presentear, trocar skins e gastar pontos de
+maestria. Visualmente é um "ateliê": rail de roster à esquerda, alcova de arte central com a Kaeli
+em idle rotativo (`<app-kaeli-idle>`, 3 poses/7s) sobre seu `bg-portrait` quando há arte autoral —
+senão o sprite da skin selecionada — e o dossiê de abas em vidro à direita.
 
 ## Estrutura
 

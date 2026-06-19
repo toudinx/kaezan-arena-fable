@@ -449,13 +449,11 @@ public static class GameConfig
     public const int FiveStarSoftPityStart = 65;
     public const double FiveStarBaseRate = 0.008;
     public const double FiveStarSoftPityRamp = 0.06;
-    public const int FourStarPity = 10;
-    public const double FourStarBaseRate = 0.06;
     // MVP/teste: economia generosa pra testar conteúdo. Produção: StartingKaeros 4000, Gold 500.
     public const int StartingKaeros = 20000;
     public const int StartingGold = 3000;
     public const int ItemFallbackSalePrice = 5;
-    public static readonly Dictionary<int, int> DupeShards = new() { [3] = 5, [4] = 20, [5] = 50 };
+    public static readonly Dictionary<int, int> DupeShards = new() { [5] = 50 };
     public static readonly int[] AscensionShardCost = [10, 15, 25, 40, 60, 80]; // A1..A6
     public const int AddonOneAscension = 2;
     public const int AddonTwoAscension = 4;
@@ -527,6 +525,63 @@ public static class GameConfig
     // ---- F-E: elemental reactions ----
     /// <summary>How long an element "mark" lingers on a target waiting for a second element.</summary>
     public const int ElementMarkDurationMs = 4000;
+
+    // ---- K-04: traits assinatura (uma por Kaeli, estado vivo no tick) ----
+    // Uma família mecânica distinta por Kaeli. Os tunáveis principais ficam na TraitDef
+    // (Value/Param, amplificados pela maestria via _traitMult); todo o resto (limiares, stacks,
+    // durações, raios) mora aqui. Seleção de alvo é sempre determinística (menor distância,
+    // desempate por menor id).
+
+    // Eloa — Selo de Julgamento (marca + detonar). Acertos aplicam Pecado; ao chegar a N o alvo
+    // fica Julgado e o próximo acerto detona um burst sacro em área pequena e cura a Serafim.
+    public const int EloaSinStacksToJudge = 3;
+    public const int EloaJudgmentRadius = 1;
+    public const int EloaSinDurationMs = 4000;
+
+    // Seren — Disciplina (combo cadence). Acertos consecutivos no MESMO alvo escalam o dano;
+    // trocar de alvo ou ficar parada zera. Cada N-ésimo acerto é um Corte Perfeito (crit garantido).
+    public const int SerenDisciplineResetMs = 3000;
+    public const int SerenPerfectCutEvery = 3;
+
+    // Velvet — Maldição Acumulada (stacks + execução). Cada acerto empilha Decadência (DoT) e
+    // sobe o limiar de execução; quanto mais investiu, mais cedo o alvo estoura.
+    public const double VelvetThresholdPerStack = 0.02; // +2% de limiar por stack
+    public const double VelvetThresholdCap = 0.25;      // limiar máximo (executa < 25% de HP)
+    public const int VelvetDecayMaxStacks = 5;
+    public const int VelvetDecayTicks = 3;              // duração (em ticks) de cada DoT de decadência
+    public const int VelvetDecayTickMs = 2000;
+    public const double VelvetDecayDamagePerStack = 0.10; // dano/tick por stack = fração do ataque
+    public const int VelvetDecayDurationMs = 5000;      // janela de expiração dos stacks sem refresh
+
+    // Rin — Contágio (incêndio que se propaga). Acertos de fogo incendeiam; o burn salta entre
+    // inimigos e cada tick de queimadura cura Rin um pouco (pacto). Value=cura, Param=raio do salto.
+    public const int RinContagionIntervalMs = 2000;
+    public const double RinContagionBurnPower = 0.30;   // dano/tick do burn = fração do ataque
+    public const int RinContagionBurnTicks = 4;
+    public const int RinContagionBurnTickMs = 1000;
+
+    // Rynna — Carga Estática (barra de carga). Acertos enchem a carga; cheia, o acerto que a
+    // completa vira Descarga (chain curto + paralyze) e o paralyze acelera a ultimate.
+    public const double RynnaChargeMax = 100;
+    public const double RynnaChargePerHit = 20;         // 5 acertos enchem
+    public const double RynnaDischargeDamageMult = 1.5; // ~150% do ataque por alvo
+    public const int RynnaDischargeChainJumps = 3;
+    public const int RynnaDischargeChainRange = 3;
+    public const int RynnaParalyzeMs = 800;
+    public const double RynnaParalyzeGaugeBonus = 8;
+
+    // Lunara — Estilhaçar (hit-and-run). Bater em alvo lento dá dano bônus + haste breve; o
+    // N-ésimo acerto no lento estilhaça (burst e consome o slow). Value=bônus, Param=dur. do slow.
+    public const double LunaraSlowFactor = 0.65;        // 35% de lentidão aplicado pelo gelo
+    public const double LunaraHasteFactor = 1.2;
+    public const int LunaraHasteMs = 2000;
+    public const int LunaraShatterHits = 3;
+    public const double LunaraShatterDamageMult = 1.5;
+
+    // Gaia — Presa (perseguir e executar). Marca um alvo; o dano contra a Presa cresce quanto mais
+    // a caça dura; quando a Presa morre a marca salta e Gaia ganha cadência. Value=ramp/s, Param=cap.
+    public const double GaiaHuntAtkSpeedBonus = 0.20;
+    public const int GaiaHuntBonusMs = 3000;
 }
 
 public sealed record DungeonTier(

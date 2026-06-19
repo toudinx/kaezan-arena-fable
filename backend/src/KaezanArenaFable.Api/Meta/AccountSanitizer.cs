@@ -3,10 +3,12 @@ using KaezanArenaFable.Api.Domain;
 namespace KaezanArenaFable.Api.Meta;
 
 /// <summary>
-/// Repara contas após mudanças de roster (refundação 2026-06-12: Tessa, Nyx, Lyra e Rosa
-/// saíram do jogo). Kaelis desconhecidas são removidas com refund em Kaeros; equipamento
-/// delas volta para a Mochila; referências órfãs (skins, maestria, afinidade) são limpas.
-/// Roda uma vez no boot, fora do tick.
+/// Repara contas após mudanças de roster (refundação Kaelis / K-02: roster passa a ser as 7
+/// Kaelis 5★ — Eloa, Seren, Velvet, Rin, Rynna, Lunara, Gaia — e os IDs antigos saem do jogo).
+/// Como adotamos IDs finais novos, qualquer Kaeli que não exista mais em <see cref="Waifus.All"/>
+/// cai no caminho genérico abaixo: é removida com refund em Kaeros, o equipamento dela volta
+/// para a Mochila e as referências órfãs (skins, maestria, afinidade) são limpas. Conta que
+/// ficar sem nenhuma Kaeli recebe o starter. Roda uma vez no boot, fora do tick.
 /// </summary>
 public static class AccountSanitizer
 {

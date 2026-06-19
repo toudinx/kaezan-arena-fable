@@ -1,15 +1,15 @@
 import { Component, OnDestroy, computed, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
+import { ItemIcon } from '../../core/item-icon';
 import { KaeliArtService } from '../../core/kaeli-art.service';
 import { OutfitPreview } from '../../core/outfit-preview';
-import { RarityStars } from '../../core/ui/rarity-stars';
 import { UiButton } from '../../core/ui/ui-button';
 import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core/types';
 
 @Component({
   selector: 'app-recruit',
   standalone: true,
-  imports: [OutfitPreview, RarityStars, UiButton],
+  imports: [ItemIcon, OutfitPreview, UiButton],
   template: `
     <div class="summon">
       <div class="backdrop">
@@ -65,19 +65,19 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
 
           <section class="pity-strip" aria-label="Progresso de garantia">
             <div class="pity-title">
-              <span>Garantia 5★ em</span>
+              <span>Kaeli em</span>
               <strong>{{ pullsUntilFiveStar(b.id) }}</strong>
               <span>convocacoes</span>
               @if (pity(b.id).featuredGuaranteed) {
-                <span class="guaranteed">Destaque garantida</span>
+                <span class="guaranteed">Kaeli destaque garantida</span>
               }
             </div>
             <div class="guarantee-bar">
               <div class="fill" [style.width.%]="fiveStarPercent(b.id)"></div>
             </div>
             <div class="pity-meta">
-              <span>{{ pity(b.id).pullsSinceFiveStar }}/80 para 5★</span>
-              <span>4★ em {{ pullsUntilFourStar(b.id) }}</span>
+              <span>{{ pity(b.id).pullsSinceFiveStar }}/80 para Kaeli</span>
+              <span>Demais convocacoes: item comum aleatorio</span>
             </div>
           </section>
         </main>
@@ -97,11 +97,11 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
       }
 
       @if (activeFeatured(); as fw) {
-        <aside class="featured-callout" [style.--el]="elementColor(fw.element)" aria-label="Personagem em destaque">
+        <aside class="featured-callout" [style.--el]="elementColor(fw.element)" aria-label="Kaeli em destaque">
           <span class="featured-element">{{ elementLabel(fw.element) }}</span>
           <div class="featured-name">
             <strong>{{ fw.name }}</strong>
-            <rarity-stars [rarity]="fw.rarity" [size]="16" />
+            <span class="kaeli-mini">Kaeli</span>
           </div>
           <span class="featured-up">UP!</span>
         </aside>
@@ -118,17 +118,17 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
             <button class="close-btn" type="button" (click)="ratesOpen.set(false)" aria-label="Fechar">x</button>
           </header>
           <div class="rate-block">
-            <span class="eyebrow">Raridade</span>
-            <p><b class="five">5★</b> 0.8% · soft pity a partir de 65 · garantido em 80</p>
-            <p><b class="four">4★</b> 6% · garantido a cada 10</p>
+            <span class="eyebrow">Resultados</span>
+            <p><b class="five">Kaeli</b> 0.8% · soft pity a partir de 65 · garantida em 80</p>
+            <p><b class="item-rate">Item comum</b> em todos os resultados sem Kaeli</p>
           </div>
           <div class="rate-block">
             <span class="eyebrow">Destaque</span>
-            <p>Banner promocional: 50% de chance da 5★ ser a personagem em destaque. Se perder, a proxima 5★ promocional fica garantida.</p>
+            <p>Banner promocional: 50% de chance da Kaeli ser a destaque. Se perder, a proxima Kaeli promocional fica garantida.</p>
           </div>
           <div class="rate-block">
             <span class="eyebrow">Duplicatas</span>
-            <p>Duplicatas viram <b>Echo Shards</b> da personagem para Ascensao.</p>
+            <p>Duplicatas de Kaeli viram <b>Echo Shards</b> para Ascensao.</p>
           </div>
         </aside>
       }
@@ -173,27 +173,41 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
             @for (r of res; track $index) {
               <div class="card" [class.revealed]="$index < revealed()"
                    [class.top]="$index === topCardIndex()"
+                   [class.item-result]="r.kind === 'item'"
+                   [class.kaeli-result]="r.kind === 'waifu'"
                    [style.--rc]="rarityColor(r.rarity)"
                    [style.--d]="($index * 70) + 'ms'">
                 <span class="burst" aria-hidden="true"></span>
                 <div class="inner">
                   <div class="art">
-                    @if (thumb(r.waifuId); as t) {
-                      <img class="portrait" [src]="t" alt="" decoding="async" />
-                    } @else if (waifu(r.waifuId); as w) {
-                      <app-outfit-preview [lookType]="w.lookType" [head]="w.head" [body]="w.body"
-                        [legs]="w.legs" [feet]="w.feet" [addons]="w.skins[0].addons ?? 0"
-                        [mountLookType]="w.skins[0].mountLookType ?? 0" [size]="spriteSize()" [animate]="false" />
+                    @if (r.kind === 'item') {
+                      <app-item-icon class="item-art" [itemId]="r.itemId ?? 0" [size]="itemIconSize()" />
+                    } @else {
+                      @if (thumb(r.waifuId); as t) {
+                        <img class="portrait" [src]="t" alt="" decoding="async" />
+                      } @else if (waifu(r.waifuId); as w) {
+                        <app-outfit-preview [lookType]="w.lookType" [head]="w.head" [body]="w.body"
+                          [legs]="w.legs" [feet]="w.feet" [addons]="w.skins[0].addons ?? 0"
+                          [mountLookType]="w.skins[0].mountLookType ?? 0" [size]="spriteSize()" [animate]="false" />
+                      }
                     }
                   </div>
                   <span class="sweep" aria-hidden="true"></span>
                   <div class="plate">
-                    <div class="stars" [style.color]="rarityColor(r.rarity)">{{ '★'.repeat(r.rarity) }}</div>
+                    @if (r.kind === 'item') {
+                      <div class="stars item-label">Item comum</div>
+                    } @else {
+                      <div class="stars kaeli-label" [style.color]="rarityColor(r.rarity)">Kaeli</div>
+                    }
                     <div class="name">{{ r.name }}</div>
                     <div class="tags">
-                      @if (r.isNew) { <span class="tag new">NOVA!</span> }
-                      @else { <span class="tag shards">+{{ r.shardsGained }} shards</span> }
-                      @if (r.wasFeatured && !isBatch()) { <span class="tag feat">DESTAQUE</span> }
+                      @if (r.kind === 'item') {
+                        <span class="tag item">+{{ r.count }} na Mochila</span>
+                      } @else {
+                        @if (r.isNew) { <span class="tag new">NOVA!</span> }
+                        @else { <span class="tag shards">+{{ r.shardsGained }} shards</span> }
+                        @if (r.wasFeatured && !isBatch()) { <span class="tag feat">DESTAQUE</span> }
+                      }
                     </div>
                   </div>
                 </div>
@@ -423,6 +437,17 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
       font-size: 1.55rem;
       font-weight: 900;
     }
+    .kaeli-mini {
+      width: fit-content;
+      color: #2a1700;
+      background: linear-gradient(180deg, var(--gold-bright), var(--gold-deep));
+      border-radius: 3px;
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
     .featured-up {
       align-self: flex-start;
       color: var(--gold-bright);
@@ -459,7 +484,7 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
     .rate-block { padding: 14px 0; border-top: 1px solid var(--line); }
     .rate-block p { margin: 6px 0 0; line-height: 1.5; }
     .five { color: var(--rarity-5); }
-    .four { color: var(--rarity-4); }
+    .item-rate { color: var(--accent); }
 
     .overlay {
       position: fixed; inset: 0; z-index: 100;
@@ -470,7 +495,7 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
     }
     @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
 
-    /* ---- charge: círculo arcano + coluna que antecipam a raridade ---- */
+    /* ---- charge: circulo arcano + coluna que antecipam o melhor resultado ---- */
     .charge { display: flex; flex-direction: column; align-items: center; gap: 26px; animation: chargeIn var(--dur) var(--ease-out); }
     @keyframes chargeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
     .rune-stage {
@@ -514,7 +539,7 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes spinRev { to { transform: rotate(-360deg); } }
 
-    /* burst de luz no instante da revelação (cor = maior raridade do lote) */
+    /* burst de luz no instante da revelacao (cor = melhor resultado do lote) */
     .flash {
       position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
       background: radial-gradient(circle at 50% 48%, #fff 0%,
@@ -546,7 +571,7 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
       box-shadow: 0 0 18px color-mix(in srgb, var(--rc) 38%, transparent), var(--sh-2);
       overflow: hidden;
     }
-    /* hairline interno (crystal edge) na cor da raridade */
+    /* hairline interno (crystal edge) na cor do resultado */
     .inner::after {
       content: ''; position: absolute; inset: 5px; z-index: 2; pointer-events: none;
       border: 1px solid color-mix(in srgb, var(--rc) 45%, transparent);
@@ -557,7 +582,13 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
     }
     .art { position: absolute; inset: 0; display: grid; place-items: center; }
     .portrait { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
-    /* light sweep dourado/raridade cruzando o retrato ao revelar */
+    .item-art {
+      padding: 18px;
+      border-radius: 8px;
+      background: radial-gradient(circle, rgba(255,255,255,0.14), rgba(255,255,255,0.03) 62%, transparent 72%);
+      filter: drop-shadow(0 12px 22px rgba(0,0,0,0.45));
+    }
+    /* light sweep dourado cruzando o retrato/item ao revelar */
     .sweep {
       position: absolute; top: 0; bottom: 0; left: -45%; width: 38%; z-index: 1; pointer-events: none;
       transform: skewX(-16deg); opacity: 0; mix-blend-mode: screen;
@@ -576,6 +607,8 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
       background: linear-gradient(to top, rgba(7,7,13,0.96) 28%, rgba(7,7,13,0.6) 62%, transparent);
     }
     .stars { font-size: 14px; letter-spacing: 1px; text-shadow: 0 0 10px color-mix(in srgb, var(--rc) 60%, transparent); }
+    .item-label { color: var(--accent); font-weight: 900; text-transform: uppercase; }
+    .kaeli-label { font-weight: 900; text-transform: uppercase; }
     .name { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; line-height: 1.1; }
     .reveal.single .name { font-size: 1.85rem; }
     .reveal.single .stars { font-size: 22px; }
@@ -583,6 +616,7 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
     .tags { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 2px; }
     .tag { font-size: 10px; font-weight: 800; letter-spacing: 0.04em; padding: 2px 7px; border-radius: var(--r-full); }
     .tag.new { color: var(--bg-0); background: var(--el-energy); }
+    .tag.item { color: var(--bg-0); background: var(--accent); }
     .tag.shards { color: var(--text-mute); }
     .tag.feat { color: #2a1700; background: linear-gradient(180deg, var(--gold-bright), var(--gold-deep)); }
 
@@ -668,15 +702,16 @@ export class RecruitPage implements OnDestroy {
   readonly ratesOpen = signal(false);
   readonly results = signal<PullResult[] | null>(null);
   readonly revealed = signal(0);
-  /** 'charge' = círculo de antecipação; 'reveal' = cartas reveladas. */
+  /** 'charge' = circulo de antecipação; 'reveal' = cartas reveladas. */
   readonly phase = signal<'charge' | 'reveal'>('charge');
 
   readonly isBatch = computed(() => (this.results()?.length ?? 0) > 1);
   readonly allRevealed = computed(() => this.revealed() >= (this.results()?.length ?? 0));
   readonly spriteSize = computed(() => (this.isBatch() ? 80 : 150));
-  /** Maior raridade do lote — colore o círculo (dourado = 5★) antes de revelar. */
+  readonly itemIconSize = computed(() => (this.isBatch() ? 76 : 132));
+  /** Melhor resultado do lote: colore o circulo antes de revelar. */
   readonly topRarity = computed(() => (this.results() ?? []).reduce((m, r) => Math.max(m, r.rarity), 3));
-  /** Primeira carta com a maior raridade — ganha o destaque do lote. */
+  /** Primeira carta com o melhor resultado ganha o destaque do lote. */
   readonly topCardIndex = computed(() => {
     const res = this.results();
     return res ? res.findIndex((r) => r.rarity === this.topRarity()) : -1;
@@ -705,15 +740,18 @@ export class RecruitPage implements OnDestroy {
     return this.api.catalog()?.waifus.find((w) => w.id === id) ?? null;
   }
 
-  waifu(id: string) {
+  waifu(id: string | null) {
+    if (!id) return null;
     return this.api.catalog()?.waifus.find((w) => w.id === id) ?? null;
   }
 
-  bannerArt(waifuId: string): string | null {
+  bannerArt(waifuId: string | null): string | null {
+    if (!waifuId) return null;
     return this.art.banner(waifuId);
   }
 
-  thumb(waifuId: string): string | null {
+  thumb(waifuId: string | null): string | null {
+    if (!waifuId) return null;
     return this.art.thumb(waifuId);
   }
 
@@ -747,9 +785,6 @@ export class RecruitPage implements OnDestroy {
     return Math.max(1, 80 - this.pity(bannerId).pullsSinceFiveStar);
   }
 
-  pullsUntilFourStar(bannerId: string): number {
-    return Math.max(1, 10 - this.pity(bannerId).pullsSinceFourStar);
-  }
 
   async pull(bannerId: string, count: number): Promise<void> {
     if (this.busy()) return;
@@ -764,7 +799,7 @@ export class RecruitPage implements OnDestroy {
     }
   }
 
-  /** Abre o overlay na fase de carga; o círculo antecipa a raridade antes da revelação. */
+  /** Abre o overlay na fase de carga; o circulo antecipa o melhor resultado antes da revelacao. */
   private openReveal(results: PullResult[]): void {
     this.clearTimers();
     this.results.set(results);
@@ -774,7 +809,7 @@ export class RecruitPage implements OnDestroy {
       this.startReveal();
       return;
     }
-    // build-up arcano completo (círculo + coluna) antes do burst
+    // build-up arcano completo (circulo + coluna) antes do burst
     const chargeMs = results.length > 1 ? 2200 : 1900;
     this.timers.push(setTimeout(() => this.startReveal(), chargeMs));
   }

@@ -1,12 +1,9 @@
 {
-  "waifu:velvet": [
-    "idle-1",
-    "idle-2",
-    "idle-3",
-    "wallpaper",
-    "bg-landscape",
-    "bg-portrait",
-    "banner",
-    "thumb"
-  ]
+  "waifu:eloa": ["idle-1", "idle-2", "idle-3", "wallpaper", "bg-landscape", "bg-portrait", "banner", "thumb"],
+  "waifu:seren": ["idle-1", "idle-2", "idle-3", "wallpaper", "bg-landscape", "bg-portrait", "banner", "thumb"],
+  "waifu:velvet": ["idle-1", "idle-2", "idle-3", "wallpaper", "bg-landscape", "bg-portrait", "banner", "thumb"],
+  "waifu:rin": ["idle-1", "idle-2", "idle-3", "wallpaper", "bg-landscape", "bg-portrait", "banner", "thumb"],
+  "waifu:rynna": ["idle-1", "idle-2", "idle-3", "wallpaper", "bg-landscape", "bg-portrait", "banner", "thumb"],
+  "waifu:lunara": ["idle-1", "idle-2", "idle-3", "wallpaper", "bg-landscape", "bg-portrait", "banner", "thumb"],
+  "waifu:gaia": ["idle-1", "idle-2", "idle-3", "wallpaper", "bg-landscape", "bg-portrait", "banner", "thumb"]
 }

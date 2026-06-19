@@ -444,6 +444,20 @@ export class GameRenderer {
           ctx.lineWidth = 1;
           ctx.stroke();
         }
+        // K-04: badge da passiva assinatura (marca/stacks por-alvo) acima do nome
+        let badge = '';
+        let badgeCol = '#c79bff';
+        if (m.traitTag === 'prey') { badge = '◎'; badgeCol = '#ff7a7a'; }
+        else if (m.traitTag === 'judged') { badge = '✦'; badgeCol = '#ffe07a'; }
+        if (m.traitStacks > 0) {
+          badgeCol = m.traitTag === 'frozen' ? '#7df0ff'
+            : m.traitTag === 'judged' ? '#ffe07a' : badgeCol;
+          badge = (badge ? badge + ' ' : '') + '◆'.repeat(Math.min(m.traitStacks, 5));
+        }
+        if (badge) {
+          ctx.fillStyle = badgeCol;
+          ctx.fillText(badge, px + TS / 2, py - 34);
+        }
       }
     }
 

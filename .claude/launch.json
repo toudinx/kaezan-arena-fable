@@ -4,7 +4,7 @@
     {
       "name": "kaezan-fable-frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start"],
+      "runtimeArgs": ["run", "start", "--prefix", "frontend"],
       "port": 4200
     }
   ]

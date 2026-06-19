@@ -1,159 +1,331 @@
 import { Component, computed, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
+import { KaeliArtService } from '../../core/kaeli-art.service';
 import { OutfitPreview } from '../../core/outfit-preview';
-import { RARITY_COLORS, SkinDef, WaifuDef } from '../../core/types';
+import { RarityStars } from '../../core/ui/rarity-stars';
+import { BannerDef, ELEMENT_LABELS, RARITY_COLORS, SkinDef, WaifuDef } from '../../core/types';
+
+interface NavItem { route: string; icon: string; title: string; sub: string; tone: 'gold' | 'iris'; }
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [RouterLink, OutfitPreview],
+  imports: [RouterLink, OutfitPreview, RarityStars],
   template: `
     <div class="hub">
-      <section class="showcase panel">
-        @if (pinnedWaifu(); as w) {
-          <div class="stage">
-            @if (pinnedSkin(); as skin) {
-              <app-outfit-preview
-                [lookType]="skin.lookType" [head]="skin.head" [body]="skin.body"
-                [legs]="skin.legs" [feet]="skin.feet" [addons]="pinnedAddons()"
-                [mountLookType]="pinnedMount()" [size]="180" />
-            }
+      <!-- vitrine: wallpaper da Kaeli fixada -->
+      <div class="bg">
+        @if (wallpaper(); as wp) {
+          <img class="wallpaper" [src]="wp" alt="" decoding="async" fetchpriority="high" />
+        } @else {
+          <img class="wallpaper gradient" [src]="bgGradient()" alt="" decoding="async" />
+        }
+      </div>
+      <div class="scrim"></div>
+
+      @if (pinnedWaifu(); as w) {
+        <!-- sem wallpaper dedicado: a Kaeli não está "dentro" do fundo, então mostramos o sprite -->
+        @if (!wallpaper() && pinnedSkin(); as skin) {
+          <div class="sprite-stage">
+            <app-outfit-preview
+              [lookType]="skin.lookType" [head]="skin.head" [body]="skin.body"
+              [legs]="skin.legs" [feet]="skin.feet" [addons]="pinnedAddons()"
+              [mountLookType]="pinnedMount()" [size]="260" />
           </div>
-          <div class="who">
-            <div class="stars" [style.color]="rarityColor(w.rarity)">{{ '★'.repeat(w.rarity) }}</div>
-            <h1>{{ w.name }}</h1>
-            <p class="title">{{ w.title }}</p>
-            <p class="desc">{{ w.description }}</p>
-            @if (owned().length > 1) {
-              <div class="pin-picker">
-                <span class="pin-label">★ Destaque</span>
-                <div class="pin-strip">
-                  @for (o of owned(); track o.id) {
-                    <button class="pin-thumb" [class.active]="o.id === w.id"
-                            [style.--rc]="rarityColor(o.rarity)" [title]="o.name"
-                            [disabled]="busy()" (click)="pick(o.id)">
+        }
+
+        <!-- identidade da Kaeli (canto inferior esquerdo) -->
+        <section class="identity">
+          <div class="tags">
+            <span class="el-tag" [style.--el]="elementColor(w.element)">{{ elementLabel(w.element) }}</span>
+            <rarity-stars [rarity]="w.rarity" [size]="18" />
+          </div>
+          <h1 class="name">{{ w.name }}</h1>
+          <p class="title">{{ w.title }}</p>
+          <p class="desc">{{ w.description }}</p>
+
+          @if (owned().length > 1) {
+            <div class="pin">
+              <span class="eyebrow">Destaque</span>
+              <div class="pin-strip">
+                @for (o of owned(); track o.id) {
+                  <button class="pin-thumb" [class.active]="o.id === w.id"
+                          [style.--rc]="rarityColor(o.rarity)" [title]="o.name"
+                          [disabled]="busy()" (click)="pick(o.id)">
+                    @if (thumb(o.id); as t) {
+                      <img [src]="t" alt="" />
+                    } @else {
                       <app-outfit-preview [lookType]="skinFor(o).lookType" [head]="skinFor(o).head"
                         [body]="skinFor(o).body" [legs]="skinFor(o).legs" [feet]="skinFor(o).feet"
-                        [addons]="skinFor(o).addons ?? 0" [size]="38" [animate]="false" />
-                    </button>
-                  }
-                </div>
+                        [addons]="skinFor(o).addons ?? 0" [size]="40" [animate]="false" />
+                    }
+                  </button>
+                }
               </div>
-            }
-          </div>
-        } @else {
-          <p>Recrute uma Kaeli no banner para vê-la aqui.</p>
+            </div>
+          }
+
+          <!-- CTA do banner ativo -->
+          @if (activeBanner(); as b) {
+            <a class="banner-cta glass" routerLink="/recruit">
+              <span class="flare">DROP RATE UP</span>
+              <div class="cta-body">
+                <span class="eyebrow">Banner ativo</span>
+                <strong>{{ b.name }}</strong>
+                @if (featuredName(b); as fn) { <span class="feat">Destaque · {{ fn }}</span> }
+              </div>
+              <span class="cta-go">Convocar →</span>
+            </a>
+          }
+        </section>
+      } @else {
+        <section class="identity empty">
+          <h1 class="name">Sua arena aguarda</h1>
+          <p class="desc">Recrute uma Kaeli no banner para fixá-la aqui como sua protagonista.</p>
+          <a class="btn gold" routerLink="/recruit">Ir ao Recrutamento</a>
+        </section>
+      }
+
+      <!-- rail de navegação vertical (direita) -->
+      <nav class="rail">
+        @for (it of navItems(); track it.route) {
+          <a class="rail-item glass" [class.gold]="it.tone === 'gold'" [routerLink]="it.route">
+            <span class="ri-icon">{{ it.icon }}</span>
+            <span class="ri-text">
+              <strong>{{ it.title }}</strong>
+              <small>{{ it.sub }}</small>
+            </span>
+          </a>
         }
-      </section>
+      </nav>
 
-      <section class="rail">
-        <a routerLink="/hunt" class="action hunt">
-          <h2>⚔ Caçada</h2>
-          <p>Dungeons procedurais com monstros de Tibia</p>
-        </a>
-        <a routerLink="/kaelis" class="action kaelis">
-          <h2>👥 Kaelis</h2>
-          <p>Sua coleção de caçadoras</p>
-        </a>
-        <a routerLink="/recruit" class="action recruit">
-          <h2>✦ Recrutar</h2>
-          <p>Convocação — novo banner ativo!</p>
-        </a>
-        <a routerLink="/backpack" class="action backpack">
-          <h2>🎒 Mochila</h2>
-          <p>Saque das suas expedições</p>
-        </a>
-      </section>
+      <!-- contratos diários: drawer no canto, fora da vitrine -->
+      <button class="dailies-fab glass" (click)="drawerOpen.set(!drawerOpen())"
+              [attr.aria-expanded]="drawerOpen()">
+        <span>📜 Contratos</span>
+        @if (claimable() > 0) { <span class="badge">{{ claimable() }}</span> }
+      </button>
 
-      <section class="dailies panel">
-        <h2>Contratos Diários <span class="reset">reseta 00:00 UTC</span></h2>
+      <aside class="drawer glass-strong" [class.open]="drawerOpen()" aria-label="Contratos diários">
+        <header class="drawer-hd">
+          <h2>Contratos Diários</h2>
+          <button class="x" (click)="drawerOpen.set(false)" aria-label="Fechar">✕</button>
+        </header>
+        <p class="reset eyebrow">Reseta 00:00 UTC</p>
         @for (d of dailies(); track d.id) {
           <div class="contract" [class.done]="d.progress >= d.target">
-            <div class="info">
-              <span class="desc">{{ d.description }}</span>
-              <div class="bar"><div class="fill" [style.width.%]="(100 * d.progress) / d.target"></div></div>
+            <span class="c-desc">{{ d.description }}</span>
+            <div class="bar"><div class="fill" [style.width.%]="(100 * d.progress) / d.target"></div></div>
+            <div class="c-foot">
               <span class="prog">{{ d.progress }} / {{ d.target }}</span>
+              @if (d.claimed) {
+                <span class="claimed">✓ Resgatado</span>
+              } @else if (d.progress >= d.target) {
+                <button class="btn gold" (click)="claim(d.id)">Resgatar</button>
+              } @else {
+                <span class="reward muted">+100 ✦ · +150 🪙</span>
+              }
             </div>
-            @if (d.claimed) {
-              <span class="claimed">✓ Resgatado</span>
-            } @else if (d.progress >= d.target) {
-              <button class="btn gold" (click)="claim(d.id)">Resgatar</button>
-            } @else {
-              <span class="reward">+100 ✦ · +150 🪙</span>
-            }
           </div>
         } @empty {
-          <p class="muted">Carregando contratos...</p>
+          <p class="muted">Carregando contratos…</p>
         }
         @if (account(); as acc) {
-          <div class="account-progress">
-            <span>Conta Lv. {{ acc.accountLevel }}</span>
+          <div class="acct">
+            <div class="acct-top">
+              <span>Conta · Nível {{ acc.accountLevel }}</span>
+              <span class="muted">{{ acc.runsWon }}/{{ acc.runsPlayed }} vitórias</span>
+            </div>
             <div class="bar"><div class="fill xp" [style.width.%]="(100 * acc.accountXp) / acc.accountXpNext"></div></div>
-            <span class="muted">{{ acc.accountXp }} / {{ acc.accountXpNext }} XP · {{ acc.runsWon }}/{{ acc.runsPlayed }} vitórias</span>
+            <span class="muted">{{ acc.accountXp }} / {{ acc.accountXpNext }} XP</span>
           </div>
         }
-      </section>
+      </aside>
+
+      @if (drawerOpen()) { <div class="drawer-scrim" (click)="drawerOpen.set(false)"></div> }
     </div>
   `,
   styles: [`
+    :host { display: block; }
     .hub {
-      display: grid; grid-template-columns: 1.2fr 0.9fr; gap: 20px;
-      max-width: 1200px; margin: 0 auto; padding: 24px;
+      position: relative;
+      min-height: calc(100dvh - 53px);
+      overflow: hidden;
+      isolation: isolate;
     }
-    .showcase { display: flex; align-items: center; gap: 24px; min-height: 280px;
-      background: radial-gradient(ellipse at 30% 20%, #1d1d33 0%, rgba(20,20,30,0.92) 70%); }
-    .stage { flex-shrink: 0; padding: 12px; background: radial-gradient(circle, #232338 0%, transparent 70%); border-radius: 50%; }
-    .who h1 { margin: 4px 0; font-size: 34px; }
-    .who .title { color: #2dd4bf; font-weight: 700; margin: 0 0 10px; }
-    .who .desc { color: #9c9ab0; line-height: 1.5; }
-    .pin-picker { margin-top: 16px; }
-    .pin-label { font-size: 10px; font-weight: 800; color: #707088; text-transform: uppercase; letter-spacing: 1px; }
-    .pin-strip { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+
+    /* ---- vitrine ---- */
+    .bg { position: absolute; inset: 0; z-index: -2; }
+    .wallpaper { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+    .wallpaper.gradient { object-position: center; }
+    .scrim {
+      position: absolute; inset: 0; z-index: -1; pointer-events: none;
+      background:
+        linear-gradient(105deg, rgba(7,7,13,0.92) 0%, rgba(7,7,13,0.55) 32%, rgba(7,7,13,0) 60%),
+        linear-gradient(0deg, rgba(7,7,13,0.85) 0%, rgba(7,7,13,0) 45%);
+    }
+    .sprite-stage {
+      position: absolute; inset: 0; z-index: -1;
+      display: flex; align-items: flex-end; justify-content: center;
+      padding-bottom: 6vh;
+      filter: drop-shadow(0 24px 48px rgba(0,0,0,0.6));
+    }
+
+    /* ---- identidade ---- */
+    .identity {
+      position: absolute; left: clamp(24px, 5vw, 72px); bottom: clamp(28px, 7vh, 72px);
+      max-width: min(560px, 56vw); z-index: 2;
+    }
+    .identity.empty { top: 50%; transform: translateY(-50%); bottom: auto; }
+    .tags { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+    .el-tag {
+      font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase;
+      letter-spacing: var(--tracking-eyebrow);
+      color: var(--el); padding: 4px 12px; border-radius: var(--r-full);
+      border: 1px solid color-mix(in srgb, var(--el) 50%, transparent);
+      background: color-mix(in srgb, var(--el) 14%, transparent);
+    }
+    .name {
+      font-family: var(--font-display); font-weight: 900;
+      font-size: var(--fs-display); line-height: 0.95; margin: 0;
+      letter-spacing: -0.01em; text-shadow: 0 4px 30px rgba(0,0,0,0.6);
+    }
+    .title {
+      font-family: var(--font-display); font-style: italic; font-weight: 400;
+      color: var(--accent-bright); font-size: 1.3rem; margin: 6px 0 14px;
+    }
+    .desc { color: var(--text-dim); line-height: var(--lh-body); margin: 0 0 18px; max-width: 46ch; }
+
+    .pin { margin-bottom: 18px; }
+    .pin-strip { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
     .pin-thumb {
-      width: 46px; height: 46px; padding: 0; border-radius: 9px; cursor: pointer;
-      background: #13131e; border: 2px solid #2a2a3e; overflow: hidden;
+      width: 50px; height: 50px; padding: 0; border-radius: var(--r-md); overflow: hidden;
+      background: var(--glass-bg); border: 2px solid var(--line-strong);
       display: flex; align-items: center; justify-content: center;
+      transition: border-color var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
     }
-    .pin-thumb:hover:not(:disabled) { border-color: var(--rc); }
-    .pin-thumb.active { border-color: #2dd4bf; box-shadow: 0 0 8px rgba(45,212,191,0.4); }
+    .pin-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .pin-thumb:hover:not(:disabled) { border-color: var(--rc); transform: translateY(-2px); }
+    .pin-thumb.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--sh-accent); }
     .pin-thumb:disabled { cursor: default; }
-    .stars { font-size: 18px; letter-spacing: 2px; }
-    .rail { display: flex; flex-direction: column; gap: 12px; }
-    .action {
-      display: block; text-decoration: none; color: inherit;
-      background: #15151f; border: 1px solid #2c2c3e; border-radius: 12px; padding: 16px 20px;
-      transition: transform 0.12s, border-color 0.12s;
+
+    .banner-cta {
+      display: flex; align-items: center; gap: 16px; padding: 14px 18px;
+      border-radius: var(--r-lg); text-decoration: none; color: var(--text);
+      max-width: 460px; position: relative; overflow: hidden;
+      transition: transform var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
     }
-    .action:hover { transform: translateX(-4px); border-color: #2dd4bf; }
-    .action h2 { margin: 0 0 4px; font-size: 19px; }
-    .action p { margin: 0; color: #9c9ab0; font-size: 13px; }
-    .action.recruit:hover { border-color: #e8a93c; }
-    .dailies { grid-column: 1 / -1; }
-    .dailies h2 { margin-top: 0; }
-    .reset { font-size: 12px; color: #707088; font-weight: 400; margin-left: 8px; }
+    .banner-cta:hover { transform: translateY(-2px); box-shadow: var(--glass-edge), var(--sh-gold); }
+    .flare {
+      position: absolute; top: 0; right: 0;
+      font-size: 9px; font-weight: 800; letter-spacing: 0.12em;
+      color: #2a1700; background: linear-gradient(180deg, var(--gold-bright), var(--gold-deep));
+      padding: 3px 10px; border-bottom-left-radius: var(--r-md);
+    }
+    .cta-body { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+    .cta-body strong { font-family: var(--font-display); font-size: 1.05rem; }
+    .cta-body .feat { font-size: var(--fs-sm); color: var(--gold-bright); }
+    .cta-go { font-weight: 700; color: var(--gold-bright); white-space: nowrap; }
+
+    /* ---- rail ---- */
+    .rail {
+      position: absolute; right: clamp(16px, 2.5vw, 32px); top: 50%; transform: translateY(-50%);
+      display: flex; flex-direction: column; gap: 10px; z-index: 2; width: 248px;
+    }
+    .rail-item {
+      display: flex; align-items: center; gap: 14px; padding: 12px 16px;
+      border-radius: var(--r-md); text-decoration: none; color: var(--text);
+      transition: transform var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+    }
+    .rail-item:hover { transform: translateX(-6px); border-color: var(--accent); box-shadow: var(--glass-edge), var(--sh-accent); }
+    .rail-item.gold:hover { border-color: var(--gold); box-shadow: var(--glass-edge), var(--sh-gold); }
+    .ri-icon {
+      font-size: 20px; width: 40px; height: 40px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.05); border-radius: var(--r-sm);
+    }
+    .rail-item.gold .ri-icon { color: var(--gold-bright); }
+    .ri-text { display: flex; flex-direction: column; line-height: 1.2; }
+    .ri-text strong { font-size: 1rem; }
+    .ri-text small { color: var(--text-mute); font-size: var(--fs-sm); }
+
+    /* ---- dailies drawer ---- */
+    .dailies-fab {
+      position: absolute; right: clamp(16px, 2.5vw, 32px); bottom: 24px; z-index: 3;
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 16px; border-radius: var(--r-full); color: var(--text);
+      font-weight: 600; font-size: var(--fs-sm); cursor: pointer;
+      transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+    }
+    .dailies-fab:hover { transform: translateY(-1px); box-shadow: var(--glass-edge), var(--sh-accent); }
+    .badge {
+      min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-full);
+      background: var(--gold); color: #2a1700; font-weight: 800; font-size: 12px;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .drawer-scrim { position: absolute; inset: 0; z-index: 4; background: rgba(7,7,13,0.5); }
+    .drawer {
+      position: absolute; top: 0; right: 0; bottom: 0; width: min(400px, 92vw); z-index: 5;
+      padding: var(--sp-5); overflow-y: auto;
+      transform: translateX(105%); transition: transform var(--dur-slow) var(--ease-out);
+      border-radius: 0;
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-hd { display: flex; align-items: center; justify-content: space-between; }
+    .drawer-hd h2 { margin: 0; }
+    .x { background: none; border: none; color: var(--text-mute); font-size: 18px; cursor: pointer; }
+    .x:hover { color: var(--text); }
+    .reset { display: block; margin: 4px 0 18px; }
     .contract {
-      display: flex; align-items: center; gap: 16px; padding: 10px 14px;
-      background: #15151f; border-radius: 10px; margin-bottom: 8px;
+      padding: 12px 14px; border-radius: var(--r-md); margin-bottom: 10px;
+      background: rgba(255,255,255,0.03); border: 1px solid var(--line);
     }
-    .contract.done { border-left: 3px solid #2dd4bf; }
-    .contract .info { flex: 1; }
-    .contract .desc { font-size: 14px; font-weight: 600; }
-    .bar { height: 6px; background: #23232f; border-radius: 3px; margin: 6px 0 2px; overflow: hidden; }
-    .fill { height: 100%; background: linear-gradient(90deg, #2dd4bf, #0d9488); border-radius: 3px; }
-    .fill.xp { background: linear-gradient(90deg, #7df0ff, #38bdf8); }
-    .prog { font-size: 12px; color: #9c9ab0; }
-    .claimed { color: #2dd4bf; font-weight: 700; }
-    .reward { color: #9c9ab0; font-size: 13px; }
-    .account-progress { margin-top: 16px; padding-top: 12px; border-top: 1px solid #26263a; }
-    .muted { color: #707088; font-size: 13px; }
-    @media (max-width: 900px) { .hub { grid-template-columns: 1fr; } }
+    .contract.done { border-color: color-mix(in srgb, var(--gold) 45%, transparent); }
+    .c-desc { font-weight: 600; font-size: var(--fs-sm); }
+    .bar { height: 6px; background: var(--bg-2); border-radius: var(--r-full); margin: 8px 0; overflow: hidden; }
+    .fill { height: 100%; background: linear-gradient(90deg, var(--accent-bright), var(--accent-dim)); border-radius: var(--r-full); }
+    .fill.xp { background: linear-gradient(90deg, var(--gold-bright), var(--gold-deep)); }
+    .c-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .c-foot .btn { padding: 6px 14px; }
+    .prog { font-size: var(--fs-sm); color: var(--text-dim); }
+    .claimed { color: var(--gold-bright); font-weight: 700; font-size: var(--fs-sm); }
+    .acct { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+    .acct-top { display: flex; justify-content: space-between; font-size: var(--fs-sm); margin-bottom: 6px; }
+
+    /* ---- responsivo ---- */
+    @media (max-width: 900px) {
+      .hub { min-height: calc(100dvh - 53px); padding-bottom: 80px; }
+      .identity { left: 20px; right: 20px; bottom: 84px; max-width: none; }
+      .identity.empty { top: 40%; bottom: auto; }
+      .name { font-size: clamp(2.2rem, 11vw, 3rem); }
+      .desc { max-width: none; }
+      .sprite-stage { padding-bottom: 14vh; }
+      .scrim { background:
+        linear-gradient(0deg, rgba(7,7,13,0.94) 0%, rgba(7,7,13,0.4) 38%, rgba(7,7,13,0) 62%); }
+      .rail {
+        position: fixed; right: 0; left: 0; bottom: 0; top: auto; transform: none;
+        flex-direction: row; width: auto; gap: 6px; padding: 8px;
+        background: var(--glass-bg-strong); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+        border-top: 1px solid var(--line-strong); overflow-x: auto; z-index: 40;
+      }
+      .rail-item { flex-direction: column; gap: 4px; padding: 8px 12px; border: none; box-shadow: none; min-width: 76px; text-align: center; }
+      .rail-item:hover { transform: none; box-shadow: none; }
+      .rail-item .ri-text small { display: none; }
+      .ri-icon { width: 28px; height: 28px; font-size: 16px; }
+      .dailies-fab { bottom: 88px; }
+    }
   `],
 })
 export class HomePage {
   readonly account = computed(() => this.api.account());
   readonly dailies = computed(() => this.api.account()?.dailies ?? []);
-  // Protagonista do Início = Kaeli fixada (favorita) pelo jogador; senão a primeira possuída.
+  readonly claimable = computed(
+    () => this.dailies().filter((d) => !d.claimed && d.progress >= d.target).length,
+  );
+  readonly drawerOpen = signal(false);
+
+  // Protagonista do Início = Kaeli fixada (favorita); senão a primeira possuída.
   readonly pinnedWaifu = computed(() => {
     const acc = this.api.account();
     const cat = this.api.catalog();
@@ -167,9 +339,20 @@ export class HomePage {
     const selectedId = this.api.account()?.selectedSkins?.[w.id];
     return w.skins.find((s) => s.id === selectedId) ?? w.skins[0] ?? null;
   });
-  // Os addons exibidos vêm exclusivamente da skin selecionada (0 = nenhum); a ascensão não os força.
   readonly pinnedAddons = computed(() => this.pinnedSkin()?.addons ?? 0);
   readonly pinnedMount = computed(() => this.pinnedSkin()?.mountLookType ?? 0);
+
+  // Fundo da vitrine: wallpaper dedicado da Kaeli; senão gradiente do elemento.
+  readonly wallpaper = computed(() => {
+    const w = this.pinnedWaifu();
+    return w ? this.art.wallpaper(w.id) : null;
+  });
+  readonly bgGradient = computed(() => {
+    const w = this.pinnedWaifu();
+    if (!w) return this.art.elementGradient('physical');
+    return this.art.bgLandscape(w.id) ?? this.art.elementGradient(w.element);
+  });
+
   readonly owned = computed(() => {
     const acc = this.api.account();
     const cat = this.api.catalog();
@@ -178,40 +361,63 @@ export class HomePage {
       .filter((w) => acc.ownedWaifus.includes(w.id))
       .sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name));
   });
+
+  readonly activeBanner = computed<BannerDef | null>(() => {
+    const banners = this.api.catalog()?.banners ?? [];
+    return banners.find((b) => b.featuredWaifuId) ?? banners[0] ?? null;
+  });
+
+  readonly navItems = computed<NavItem[]>(() => {
+    const cat = this.api.catalog();
+    const acc = this.api.account();
+    return [
+      { route: '/hunt', icon: '⚔', title: 'Caçada', sub: `${cat?.tiers.length ?? 0} masmorras`, tone: 'iris' },
+      { route: '/kaelis', icon: '👥', title: 'Kaelis', sub: `${this.owned().length} caçadoras`, tone: 'iris' },
+      { route: '/recruit', icon: '✦', title: 'Recrutar', sub: 'Banner ativo', tone: 'gold' },
+      { route: '/backpack', icon: '🎒', title: 'Mochila', sub: `${acc?.inventory.length ?? 0} tipos de item`, tone: 'iris' },
+      { route: '/bestiary', icon: '📖', title: 'Bestiário', sub: `${cat?.monsters.length ?? 0} criaturas`, tone: 'iris' },
+    ];
+  });
+
   readonly busy = signal(false);
 
-  constructor(private readonly api: ApiService) {}
+  constructor(
+    private readonly api: ApiService,
+    private readonly art: KaeliArtService,
+  ) {}
 
-  rarityColor(r: number): string {
-    return RARITY_COLORS[r] ?? '#fff';
+  rarityColor(r: number): string { return RARITY_COLORS[r] ?? 'var(--text)'; }
+  elementLabel(el: string): string { return ELEMENT_LABELS[el] ?? el; }
+  elementColor(el: string): string {
+    return ELEMENT_PALETTE.has(el) ? `var(--el-${el})` : 'var(--accent)';
   }
-
+  thumb(id: string): string | null { return this.art.thumb(id); }
   skinFor(w: WaifuDef): SkinDef {
     const selectedId = this.api.account()?.selectedSkins?.[w.id];
     return w.skins.find((s) => s.id === selectedId) ?? w.skins[0];
+  }
+  featuredName(b: BannerDef): string | null {
+    if (!b.featuredWaifuId) return null;
+    return this.api.catalog()?.waifus.find((w) => w.id === b.featuredWaifuId)?.name ?? null;
   }
 
   async pick(waifuId: string): Promise<void> {
     if (this.busy()) return;
     this.busy.set(true);
-    try {
-      await this.api.pinWaifu(waifuId);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      this.busy.set(false);
-    }
+    try { await this.api.pinWaifu(waifuId); }
+    catch (err) { console.error(err); }
+    finally { this.busy.set(false); }
   }
 
   async claim(id: string): Promise<void> {
     if (this.busy()) return;
     this.busy.set(true);
-    try {
-      await this.api.claimDaily(id);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      this.busy.set(false);
-    }
+    try { await this.api.claimDaily(id); }
+    catch (err) { console.error(err); }
+    finally { this.busy.set(false); }
   }
 }
+
+const ELEMENT_PALETTE = new Set([
+  'physical', 'fire', 'ice', 'energy', 'earth', 'death', 'holy',
+]);

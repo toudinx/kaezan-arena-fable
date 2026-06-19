@@ -238,8 +238,11 @@ DoT, ergue construto (summon) e dispara feixe de morte. Geometrias seguem o Tibi
 **reescaladas para o mapa da arena** (sem círculos de ~37 tiles em slots básicos).
 
 Os cooldowns pertencem aos slots 1-4 e continuam correndo ao trocar de postura; alternar com
-`Tab` não reseta habilidades. A página Kaelis (abas Perfil / Skins / Maestria / Equipamento)
-permite visualizar os dois kits elementais, presentear, trocar skins e gastar pontos de maestria.
+`Tab` não reseta habilidades. A página Kaelis (abas Perfil / Skins / Maestria / Equipamento /
+Informação) permite visualizar os dois kits elementais, presentear, trocar skins e gastar pontos
+de maestria. Visualmente é um "ateliê": rail de roster à esquerda, alcova de arte central com a
+Kaeli em idle rotativo (`<app-kaeli-idle>`, 3 poses/7s) sobre seu `bg-portrait` quando há arte
+autoral — senão o sprite da skin selecionada — e o dossiê de abas em vidro à direita.
 
 ## Estrutura
 

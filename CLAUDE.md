@@ -12,7 +12,9 @@ Instruções para assistentes de IA trabalhando neste repo.
    `docs/GDD.md` e `docs/DESIGN_NOTES.md` dão o contexto de design (este último é a base de
    ideias do Tibia/Canary + Kaezan World).
 3. Não leia arquivos especulativamente; só o que a tarefa pede.
-4. Ao concluir uma task/feature, marque-a `[x]` no ROADMAP.md / FABLE_TRACK.md com 1 linha de resumo.
+4. Ao consultar APIs de biblioteca (Angular, EF Core, SignalR, ASP.NET Core), use **context7**
+   para obter documentação versionada e precisa: adicione `use context7` ao prompt de busca.
+5. Ao concluir uma task/feature, marque-a `[x]` no ROADMAP.md / FABLE_TRACK.md com 1 linha de resumo.
 
 ## Invariantes inegociáveis
 

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="g" cx="66%" cy="38%" r="86%">
+      <stop offset="0%" stop-color="#ffca7a"/>
+      <stop offset="34%" stop-color="#e45a2f"/>
+      <stop offset="68%" stop-color="#4d1720"/>
+      <stop offset="100%" stop-color="#09060a"/>
+    </radialGradient>
+    <radialGradient id="ember" cx="24%" cy="74%" r="54%">
+      <stop offset="0%" stop-color="#ff7a33" stop-opacity=".36"/>
+      <stop offset="100%" stop-color="#ff7a33" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#g)"/>
+  <rect width="1600" height="900" fill="url(#ember)"/>
+  <path d="M0 690 C210 610 390 730 610 640 C870 530 1140 595 1600 470 V900 H0 Z" fill="#0b0405" opacity=".5"/>
+</svg>

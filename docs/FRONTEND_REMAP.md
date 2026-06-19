@@ -281,17 +281,17 @@ lógica real além do necessário) + console limpo.
 # PROMPT 5 — Reveal de convocação (juice)
 
 - **Modelo:** Claude Code Opus 4.8 · **Effort:** high · **Skill:** `frontend-design` · **Depende de:** 4
-- **[x] Concluído** — overlay de reveal reescrito em 2 fases: `charge` (orbe + raios girando cuja cor
+- **[x] Concluído** — overlay de reveal reescrito em 2 fases: `charge` (círculo + raios girando cuja cor
   antecipa a maior raridade do lote — dourado p/ 5★, classe `.intense`) → `reveal` (cartas). x1 = carta
   grande única (nome em Fraunces, thumb da Kaeli ou sprite fallback); x10 = grid em cascata (1 carta/200ms)
   com a maior raridade ganhando aura/borda dourada (`.top`). Tags NOVA!/+shards/DESTAQUE. Botões "Pular
   animacao"/"Fechar" + clique no fundo (pula enquanto revela, fecha quando concluído). `prefers-reduced-motion`
   reforçado no JS (vai direto pro reveal completo) e no CSS. Timers limpos no `ngOnDestroy`. Validado no
-  preview (orbe 5★ dourado, reveal x1 da Velvet, cascata x10 com Velvet em destaque); build limpo (CSS no
+  preview (charge 5★ dourado, reveal x1 da Velvet, cascata x10 com Velvet em destaque); build limpo (CSS no
   budget após enxugar).
 - **[x] Upgrade "card cinematográfico" (pós-Prompt 10)** — o look do card do cutscene Remotion foi
   portado pro reveal **ao vivo** (variável por raridade + por personagem, sem vídeo): `charge` ganhou
-  o **círculo arcano** (anéis girando + hexagrama + nodes), coluna de energia e orbe, tudo na cor da
+  o **círculo arcano** (anéis girando + hexagrama + nodes) e coluna de energia, tudo na cor da
   maior raridade (`--rc`); na transição entra um **burst flash** (`.flash`) e cada carta vira um card
   com **moldura na cor da raridade + glow + hairline interno + light sweep + placa** (retrato `thumb`
   ou sprite). x1 = card grande; x10 = parede 5×2 com a maior raridade em destaque dourado (`.top`).
@@ -309,7 +309,7 @@ suspense e recompensa visual sem virar vídeo — animação CSS/Angular determi
   senão sprite.
 
 **Tarefas:**
-1. Sequência: tela escurece → feixe/orbe de luz com cor que **antecipa a raridade** (dourado = 5★)
+1. Sequência: tela escurece → círculo/feixe de luz com cor que **antecipa a raridade** (dourado = 5★)
    antes de revelar a carta → flip/burst da carta → tag NOVA!/shards/DESTAQUE.
 2. ×10: revelar em cascata, com a maior raridade do lote ganhando destaque (skip com clique).
 3. Respeitar `prefers-reduced-motion` (revelar direto, sem flashes).
@@ -447,17 +447,17 @@ hardcoded legadas retornando vazio nas telas migradas.
 
 - **Modelo:** Claude Code Opus 4.8 · **Effort:** high · **Skill:** `remotion-best-practices` · **Depende de:** 5
 - **[x] Concluído** — projeto Remotion isolado em `tools/cinematics/` (não entra no bundle Angular):
-  composição `VelvetSummon` de 15s @30fps 1920×1080 em 5 atos (catedral escura → círculo arcano
+  composição `GachaSummon` de 15s @30fps 1920×1080 em 5 atos (catedral escura → círculo arcano
   carregando em íris → burst dourado do 5★ → **card de invocação** sobe com a `thumb` da Kaeli numa
   moldura aurum + glow + light sweep → placa preenche `★★★★★ · VELVET`), cores espelhando os tokens
   `Cathedral Ink + Aurum`. O reveal usa a **thumb** (já tem fundo próprio), não o idle de corpo
   inteiro — as idles são `rgb24` com fundo branco achatado e ficariam recortadas sobre a catedral.
-  Render → `out/velvet-5star.webm` (VP8, ~0.95 MB, 15.0s) copiado p/
-  `frontend/public/assets/cinematics/velvet-5star.webm`; frame extraído do webm confirma reprodução.
+  Render → `out/gacha-5star.webm` (VP8, ~0.95 MB, 15.0s) copiado p/
+  `frontend/public/assets/cinematics/gacha-5star.webm`; frame extraído do webm confirma reprodução.
   README do projeto documenta workflow (`npm run deploy`) e o seam de integração no `recruit.ts`
   (sub-prompt à parte, fora do escopo).
 
-**Objetivo.** Produzir um clipe cinematográfico (webm) de invocação 5★ da Velvet, tocado quando o
+**Objetivo.** Produzir um clipe cinematográfico (webm) de invocação 5★ parametrizado, tocado quando o
 jogador puxa um 5★ destaque. **Só fazer depois que o reveal CSS (Prompt 5) estiver bom** — isto é
 um upgrade de produção, não bloqueante.
 
@@ -465,7 +465,7 @@ um upgrade de produção, não bloqueante.
 - Requer **FFmpeg** instalado (`ffmpeg -version`). Remotion = vídeo programático em React, **não**
   IA de vídeo. Matéria-prima: assets da Velvet (`idle-*`, `bg-*`, `thumb`).
 - Projeto isolado em `tools/cinematics/` (Node/React) — **não** entra no bundle do Angular; a saída
-  é um `.webm` copiado pra `frontend/public/assets/cinematics/velvet-5star.webm`.
+  é um `.webm` copiado pra `frontend/public/assets/cinematics/gacha-5star.webm`.
 
 **Tarefas:**
 1. Scaffold do projeto Remotion em `tools/cinematics/`.
@@ -474,7 +474,7 @@ um upgrade de produção, não bloqueante.
 3. Render → `.webm` → copiar pra `public/assets/cinematics/`.
 4. (Integração no `recruit.ts` para tocar o clipe em 5★ destaque pode ser um sub-prompt à parte.)
 
-**Critério de aceite:** `velvet-5star.webm` renderizado e reproduzível.
+**Critério de aceite:** `gacha-5star.webm` renderizado e reproduzível.
 **Verificação:** abrir o webm; tamanho/duração razoáveis; estilo coerente com o jogo.
 
 ---

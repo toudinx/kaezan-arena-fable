@@ -164,7 +164,6 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
                 </g>
               </svg>
               <span class="column"></span>
-              <span class="orb"></span>
             </div>
             <span class="charge-label eyebrow">Convocando</span>
           </div>
@@ -471,7 +470,7 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
     }
     @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
 
-    /* ---- charge: círculo arcano + coluna + orbe que antecipam a raridade ---- */
+    /* ---- charge: círculo arcano + coluna que antecipam a raridade ---- */
     .charge { display: flex; flex-direction: column; align-items: center; gap: 26px; animation: chargeIn var(--dur) var(--ease-out); }
     @keyframes chargeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
     .rune-stage {
@@ -510,18 +509,10 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
       animation: column 1.6s var(--ease-in-out) infinite;
     }
     @keyframes column { 0%,100% { opacity: 0.16; transform: scaleX(0.6); } 50% { opacity: 0.7; transform: scaleX(1.1); } }
-    .orb {
-      width: 30%; height: 30%; border-radius: 50%;
-      background: radial-gradient(circle at 50% 40%, #fff 0%, color-mix(in srgb, var(--rc) 80%, #fff) 26%, var(--rc) 58%, transparent 76%);
-      box-shadow: 0 0 50px 12px color-mix(in srgb, var(--rc) 60%, transparent), 0 0 140px 44px color-mix(in srgb, var(--rc) 30%, transparent);
-      animation: orbPulse 1.2s var(--ease-in-out) infinite;
-    }
-    .charge.intense .orb { animation-duration: 0.85s; }
     .charge.intense .rays { opacity: 0.8; animation-duration: 6s; }
     .charge.intense .cw { animation-duration: 7s; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes spinRev { to { transform: rotate(-360deg); } }
-    @keyframes orbPulse { 0%,100% { transform: scale(0.9); } 50% { transform: scale(1.08); } }
 
     /* burst de luz no instante da revelação (cor = maior raridade do lote) */
     .flash {
@@ -653,7 +644,6 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
       .featured-callout { min-width: 0; }
       .utility-row { justify-content: flex-start; }
       .action-row { grid-template-columns: 1fr; }
-      .orb-stage { width: 72vmin; height: 72vmin; }
       .reveal.batch { max-height: 70dvh; overflow-y: auto; padding: 0 10px; }
       .reveal.batch .card { width: 132px; height: 178px; }
       .reveal.single .card { width: min(80vw, 280px); height: min(64vh, 380px); }
@@ -678,13 +668,13 @@ export class RecruitPage implements OnDestroy {
   readonly ratesOpen = signal(false);
   readonly results = signal<PullResult[] | null>(null);
   readonly revealed = signal(0);
-  /** 'charge' = orbe de antecipação; 'reveal' = cartas reveladas. */
+  /** 'charge' = círculo de antecipação; 'reveal' = cartas reveladas. */
   readonly phase = signal<'charge' | 'reveal'>('charge');
 
   readonly isBatch = computed(() => (this.results()?.length ?? 0) > 1);
   readonly allRevealed = computed(() => this.revealed() >= (this.results()?.length ?? 0));
   readonly spriteSize = computed(() => (this.isBatch() ? 80 : 150));
-  /** Maior raridade do lote — colore o orbe (dourado = 5★) antes de revelar. */
+  /** Maior raridade do lote — colore o círculo (dourado = 5★) antes de revelar. */
   readonly topRarity = computed(() => (this.results() ?? []).reduce((m, r) => Math.max(m, r.rarity), 3));
   /** Primeira carta com a maior raridade — ganha o destaque do lote. */
   readonly topCardIndex = computed(() => {
@@ -774,7 +764,7 @@ export class RecruitPage implements OnDestroy {
     }
   }
 
-  /** Abre o overlay na fase de carga; o orbe antecipa a raridade antes da revelação. */
+  /** Abre o overlay na fase de carga; o círculo antecipa a raridade antes da revelação. */
   private openReveal(results: PullResult[]): void {
     this.clearTimers();
     this.results.set(results);
@@ -784,7 +774,7 @@ export class RecruitPage implements OnDestroy {
       this.startReveal();
       return;
     }
-    // build-up arcano completo (círculo + coluna + orbe) antes do burst
+    // build-up arcano completo (círculo + coluna) antes do burst
     const chargeMs = results.length > 1 ? 2200 : 1900;
     this.timers.push(setTimeout(() => this.startReveal(), chargeMs));
   }

@@ -2,165 +2,316 @@ import { Component, computed, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { GAME_MODES } from '../../core/game-modes';
+import { ItemIcon } from '../../core/item-icon';
+import { OutfitPreview } from '../../core/outfit-preview';
+import { tierBiome } from '../../core/tier-biomes';
+import { MonsterCatalogEntry } from '../../core/types';
 
-/** Tela de seleção interna de um modo. Por enquanto só "dungeon" (lista de 5 tiers). */
+/** Tela de selecao interna de um modo. Por enquanto so "dungeon" (descida em 5 tiers). */
 @Component({
   selector: 'app-mode',
   standalone: true,
+  imports: [OutfitPreview, ItemIcon],
   template: `
-    <div class="page">
-      <button class="back" (click)="back()">‹ Modos de jogo</button>
+    @if (mode(); as m) {
+      <section class="page grain"
+               [style.--bc]="m.id === 'dungeon' ? biome(selectedNum()).accent : 'var(--accent)'"
+               [style.--bd]="m.id === 'dungeon' ? biome(selectedNum()).deep : 'var(--bg-2)'"
+               [style.--bg-img]="'url(' + biome(selectedNum()).bg + ')'">
+        <div class="biome-bg" aria-hidden="true"></div>
+        <div class="wash" aria-hidden="true"></div>
 
-      @if (mode(); as m) {
-        <div class="head">
-          <span class="mode-eyebrow" [style.color]="m.theme">{{ m.icon }} {{ m.tagline }}</span>
-          <h1>{{ m.name }}</h1>
-        </div>
+        <button class="back" (click)="back()">‹ Modos de jogo</button>
 
         @if (m.id === 'dungeon') {
           <div class="layout">
-            <div class="tier-list">
+            <aside class="rail" aria-label="Tiers da caçada">
               @for (t of tiers(); track t.tier) {
-                <div class="tier-row"
-                     [class.active]="selectedNum() === t.tier"
-                     [class.locked]="locked(t.requiredAccountLevel)"
-                     (click)="select(t.tier)">
-                  <div class="row-left">
-                    <span class="badge">T{{ t.tier }}</span>
-                    <div class="row-info">
-                      <span class="row-name">{{ t.name }}</span>
-                      <span class="row-meta">×{{ t.statMultiplier }}</span>
-                    </div>
-                  </div>
-                  <div class="row-right">
-                    @if (clears(t.tier) > 0) { <span class="clears-badge">✓{{ clears(t.tier) }}</span> }
-                    @if (locked(t.requiredAccountLevel)) {
-                      <span class="lock-icon">🔒</span>
-                    } @else {
-                      <span class="arrow" [class.active]="selectedNum() === t.tier">›</span>
+                <button class="rail-item tier"
+                        [class.active]="selectedNum() === t.tier"
+                        [class.locked]="locked(t.requiredAccountLevel)"
+                        [style.--rail]="biome(t.tier).accent"
+                        (click)="select(t.tier)">
+                  <span class="tier-num">{{ roman(t.tier) }}</span>
+                  <span class="tier-copy">
+                    <b>{{ t.name }}</b>
+                    <small>{{ biome(t.tier).label }} · ×{{ t.statMultiplier }}</small>
+                  </span>
+                  <span class="tier-state">
+                    @if (clears(t.tier) > 0) { <i>✓{{ clears(t.tier) }}</i> }
+                    @if (locked(t.requiredAccountLevel)) { <i>🔒</i> }
+                  </span>
+                </button>
+              }
+            </aside>
+
+            @if (selectedTier(); as t) {
+              <main class="stage" [attr.aria-label]="t.boss">
+                <div class="stage-orbit" aria-hidden="true"></div>
+                @if (bossMonster(); as boss) {
+                  <app-outfit-preview
+                    [lookType]="boss.outfit.lookType" [head]="boss.outfit.head" [body]="boss.outfit.body"
+                    [legs]="boss.outfit.legs" [feet]="boss.outfit.feet" [addons]="boss.outfit.addons"
+                    [size]="360" />
+                } @else {
+                  <span class="boss-glyph">☠</span>
+                }
+              </main>
+
+              <aside class="intel">
+                <div>
+                  <span class="mode-eyebrow" [style.color]="biome(t.tier).accent">Tier {{ t.tier }} · {{ biome(t.tier).label }}</span>
+                  <h1>{{ t.boss }}</h1>
+                  <p class="tier-name">{{ t.name }}</p>
+                  <p class="desc">{{ t.description }}</p>
+                </div>
+
+                <div class="facts">
+                  <span><b>×{{ t.statMultiplier }}</b><small>Multiplicador</small></span>
+                  <span><b>{{ t.commonMobs.length }}</b><small>Mobs</small></span>
+                  <span><b>{{ t.eliteMobs.length }}</b><small>Elites</small></span>
+                  <span><b>{{ clears(t.tier) }}</b><small>Limpezas</small></span>
+                </div>
+
+                <div class="mob-lines">
+                  <span>Mobs comuns</span>
+                  <p>{{ t.commonMobs.join(' · ') }}</p>
+                  <span class="elite">Elites</span>
+                  <p>{{ t.eliteMobs.join(' · ') }}</p>
+                </div>
+
+                <div class="rewards">
+                  <span>Recompensas do boss</span>
+                  <div class="reward-strip">
+                    @for (loot of bossLoot(); track loot.itemId) {
+                      <div class="reward-cell" [title]="loot.name + ' · ' + loot.chance + '%'">
+                        <app-item-icon [itemId]="loot.itemId" [size]="34" />
+                      </div>
+                    } @empty {
+                      <small class="muted">Loot nao catalogado.</small>
                     }
                   </div>
                 </div>
-              }
-            </div>
 
-            @if (selectedTier(); as t) {
-              <div class="preview panel">
-                <div class="boss-banner" [attr.data-tier]="t.tier">
-                  <div class="boss-tier-label">Tier {{ t.tier }}</div>
-                  <div class="boss-name">{{ t.boss }}</div>
-                  <div class="boss-sub">Boss Final · ×{{ t.statMultiplier }}</div>
-                </div>
-                <div class="preview-body">
-                  <h2>{{ t.name }}</h2>
-                  <p class="preview-desc">{{ t.description }}</p>
-
-                  <div class="stats-row">
-                    <div class="stat"><span class="stat-lbl">Multiplicador</span><span class="stat-val">×{{ t.statMultiplier }}</span></div>
-                    <div class="stat"><span class="stat-lbl">Limpezas</span><span class="stat-val clears-val">{{ clears(t.tier) }}</span></div>
-                    <div class="stat"><span class="stat-lbl">Mobs comuns</span><span class="stat-val">{{ t.commonMobs.length }}</span></div>
-                    <div class="stat"><span class="stat-lbl">Elites</span><span class="stat-val">{{ t.eliteMobs.length }}</span></div>
-                  </div>
-
-                  <div class="mob-block">
-                    <span class="mob-lbl">Mobs</span>
-                    <p class="mob-list">{{ t.commonMobs.join(', ') }}</p>
-                  </div>
-                  <div class="mob-block">
-                    <span class="mob-lbl elite">Elites</span>
-                    <p class="mob-list elite">{{ t.eliteMobs.join(', ') }}</p>
-                  </div>
-
+                <div class="actions">
                   @if (locked(t.requiredAccountLevel)) {
-                    <div class="lock-msg">🔒 Desbloqueado no nível de conta {{ t.requiredAccountLevel }}</div>
+                    <span class="lock-msg">Desbloqueia no nivel de conta {{ t.requiredAccountLevel }}</span>
                   } @else {
-                    <button class="btn enter-btn" (click)="start(t.tier)">Escolher Kaeli — ×{{ t.statMultiplier }}</button>
+                    <button class="pill-btn" (click)="start(t.tier)">Escolher Kaeli</button>
                   }
                 </div>
-              </div>
+              </aside>
             }
           </div>
         } @else {
-          <div class="soon panel">
+          <div class="soon">
             <span class="soon-icon">{{ m.icon }}</span>
-            <p>Este modo ainda está em desenvolvimento.</p>
+            <p>Este modo ainda esta em desenvolvimento.</p>
           </div>
         }
-      } @else {
-        <p class="muted">Modo desconhecido.</p>
-      }
-    </div>
+      </section>
+    } @else {
+      <p class="muted">Modo desconhecido.</p>
+    }
   `,
   styles: [`
-    .page { max-width: 1100px; margin: 0 auto; padding: var(--sp-6) var(--sp-5); }
-    .back { background: none; border: none; color: var(--text-dim); font-size: var(--fs-sm); cursor: pointer; padding: 0 0 var(--sp-4); }
+    :host { display: block; }
+    .page {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      min-height: calc(100dvh - 53px);
+      padding: clamp(20px, 3vw, 34px) clamp(18px, 4vw, 64px) clamp(28px, 5vw, 56px);
+      background: var(--bg-0);
+    }
+    .biome-bg {
+      position: absolute;
+      inset: 0;
+      z-index: -4;
+      background-image: var(--bg-img);
+      background-size: cover;
+      background-position: center;
+      filter: saturate(0.96) contrast(1.04);
+      transform: scale(1.02);
+    }
+    .wash {
+      position: absolute;
+      inset: 0;
+      z-index: -3;
+      pointer-events: none;
+      background:
+        radial-gradient(38% 54% at 48% 62%, color-mix(in srgb, var(--bc) 24%, transparent), transparent 70%),
+        linear-gradient(90deg, rgba(7,7,13,0.78) 0%, rgba(7,7,13,0.18) 40%, rgba(7,7,13,0.78) 100%),
+        linear-gradient(180deg, rgba(7,7,13,0.54) 0%, rgba(7,7,13,0.18) 45%, rgba(7,7,13,0.9) 100%);
+    }
+    .back {
+      position: relative;
+      z-index: 2;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: var(--fs-sm);
+      padding: 0 0 var(--sp-4);
+    }
     .back:hover { color: var(--accent-bright); }
     .back:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; border-radius: var(--r-sm); }
-    .head { margin-bottom: var(--sp-5); }
-    .mode-eyebrow { font-size: var(--fs-xs); font-weight: 800; letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; }
-    .head h1 { margin: var(--sp-2) 0 0; font-size: var(--fs-h1); }
 
-    .layout { display: grid; grid-template-columns: 280px 1fr; gap: var(--sp-4); align-items: start; }
-    .tier-list { display: flex; flex-direction: column; gap: var(--sp-2); }
-    .tier-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: var(--sp-3) var(--sp-4); border-radius: var(--r-md);
-      background: var(--glass-bg); border: 1px solid var(--line);
-      box-shadow: var(--glass-edge);
-      cursor: pointer; transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+    .layout {
+      min-height: calc(100dvh - 125px);
+      display: grid;
+      grid-template-columns: minmax(210px, 260px) minmax(280px, 1fr) minmax(320px, 440px);
+      gap: clamp(22px, 3.6vw, 58px);
+      align-items: center;
     }
-    .tier-row:hover:not(.locked) { background: var(--bg-4); border-color: var(--accent); transform: translateX(2px); }
-    .tier-row.active { background: color-mix(in srgb, var(--accent) 16%, var(--glass-bg-strong)); border-color: var(--accent-bright); }
-    .tier-row.locked { opacity: 0.5; cursor: default; }
-    .row-left { display: flex; align-items: center; gap: var(--sp-3); }
-    .badge {
-      background: linear-gradient(180deg, var(--gold-bright), var(--gold)); color: var(--bg-0); font-weight: 800; font-size: 11px;
-      padding: 3px 8px; border-radius: var(--r-sm); min-width: 30px; text-align: center; flex-shrink: 0;
+    .rail { display: flex; flex-direction: column; gap: 12px; }
+    .tier.locked { opacity: 0.48; }
+    .tier-num {
+      width: 50px;
+      height: 50px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 1px solid color-mix(in srgb, var(--rail) 58%, var(--line-strong));
+      color: color-mix(in srgb, var(--rail) 72%, white);
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 650;
+      line-height: 1;
     }
-    .tier-row.active .badge { background: linear-gradient(180deg, var(--accent-bright), var(--accent)); color: var(--bg-0); }
-    .row-info { display: flex; flex-direction: column; }
-    .row-name { font-weight: 700; font-size: 14px; color: var(--text); }
-    .row-meta { font-size: 12px; color: var(--text-mute); }
-    .row-right { display: flex; align-items: center; gap: 6px; }
-    .clears-badge { color: var(--accent-bright); font-size: 11px; font-weight: 700; }
-    .lock-icon { font-size: 13px; }
-    .arrow { color: var(--text-mute); font-size: 20px; font-weight: 700; line-height: 1; }
-    .arrow.active { color: var(--accent-bright); }
+    .tier-copy { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+    .tier-copy b {
+      overflow: hidden;
+      color: var(--text);
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 620;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .tier-copy small { color: var(--text-mute); font-size: 11px; }
+    .tier-state { display: flex; gap: 4px; color: var(--rail); font-size: 11px; font-style: normal; font-weight: 800; }
+    .tier-state i { font-style: normal; }
 
-    .preview { overflow: hidden; padding: 0; }
-    .boss-banner { padding: var(--sp-6) var(--sp-5) var(--sp-5); background: linear-gradient(135deg, var(--bg-2) 0%, var(--bg-3) 100%); border-bottom: 1px solid var(--line); box-shadow: var(--glass-edge); }
-    .boss-banner[data-tier="1"] { background: linear-gradient(135deg, color-mix(in srgb, var(--el-earth) 22%, var(--bg-2)) 0%, var(--bg-1) 100%); }
-    .boss-banner[data-tier="2"] { background: linear-gradient(135deg, color-mix(in srgb, var(--gold) 18%, var(--bg-2)) 0%, var(--bg-1) 100%); }
-    .boss-banner[data-tier="3"] { background: linear-gradient(135deg, color-mix(in srgb, var(--el-death) 24%, var(--bg-2)) 0%, var(--bg-1) 100%); }
-    .boss-banner[data-tier="4"] { background: linear-gradient(135deg, color-mix(in srgb, var(--el-fire) 22%, var(--bg-2)) 0%, var(--bg-1) 100%); }
-    .boss-banner[data-tier="5"] { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 24%, var(--bg-2)) 0%, var(--bg-0) 100%); }
-    .boss-tier-label { color: var(--gold-bright); font-size: 11px; font-weight: 800; letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; margin-bottom: var(--sp-3); }
-    .boss-name { font-family: var(--font-display); font-size: 34px; font-weight: 650; color: var(--text); margin-bottom: var(--sp-1); line-height: 1.1; }
-    .boss-sub { color: var(--text-dim); font-size: var(--fs-sm); }
-    .preview-body { padding: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-4); }
-    h2 { margin: 0; font-size: var(--fs-h2); color: var(--text); }
-    .preview-desc { color: var(--text-dim); margin: 0; font-size: var(--fs-sm); }
-    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-3); }
-    .stat { display: flex; flex-direction: column; gap: 4px; }
-    .stat-lbl { color: var(--text-mute); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
-    .stat-val { color: var(--text); font-size: 18px; font-weight: 700; }
-    .clears-val { color: var(--accent-bright); }
-    .mob-lbl { font-size: 10px; font-weight: 700; color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.1em; }
-    .mob-lbl.elite { color: var(--rarity-4); }
-    .mob-list { margin: 4px 0 0; color: var(--text-dim); font-size: 13px; }
-    .mob-list.elite { color: var(--rarity-4); }
-    .lock-msg { color: var(--text-mute); font-weight: 600; font-size: 14px; padding: var(--sp-2) 0; }
-    .enter-btn { width: 100%; padding: 14px; font-size: 16px; }
+    .stage {
+      position: relative;
+      min-height: min(58vh, 520px);
+      display: grid;
+      place-items: end center;
+      padding-bottom: clamp(12px, 5vh, 60px);
+    }
+    .stage::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      bottom: 5%;
+      width: min(420px, 78%);
+      height: 70px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, color-mix(in srgb, var(--bc) 48%, transparent), transparent 70%);
+      filter: blur(16px);
+      opacity: 0.8;
+    }
+    .stage-orbit {
+      position: absolute;
+      inset: 18% 14% 12%;
+      border: 1px solid color-mix(in srgb, var(--bc) 30%, transparent);
+      border-radius: 50%;
+      opacity: 0.22;
+      transform: rotate(-8deg);
+    }
+    .stage app-outfit-preview {
+      position: relative;
+      z-index: 1;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 24px 32px rgba(0,0,0,0.76));
+    }
+    .boss-glyph {
+      position: relative;
+      z-index: 1;
+      color: var(--bc);
+      font-size: clamp(7rem, 18vw, 15rem);
+      opacity: 0.46;
+      filter: drop-shadow(0 0 28px color-mix(in srgb, var(--bc) 45%, transparent));
+    }
 
-    .soon { text-align: center; padding: var(--sp-7) var(--sp-5); display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); }
+    .intel {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-5);
+      align-self: stretch;
+      justify-content: center;
+      min-width: 0;
+    }
+    .mode-eyebrow {
+      font-size: var(--fs-xs);
+      font-weight: 800;
+      letter-spacing: var(--tracking-eyebrow);
+      text-transform: uppercase;
+    }
+    .intel h1 {
+      margin: var(--sp-2) 0 var(--sp-1);
+      color: var(--text);
+      font-family: var(--font-display);
+      font-size: clamp(2.6rem, 5.2vw, 4.8rem);
+      font-weight: 650;
+      line-height: 0.95;
+      text-shadow: 0 8px 36px rgba(0,0,0,0.72);
+    }
+    .tier-name { margin: 0; color: color-mix(in srgb, var(--bc) 72%, white); font-weight: 800; }
+    .desc { max-width: 52ch; margin: var(--sp-3) 0 0; color: var(--text-dim); line-height: var(--lh-body); }
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding: var(--sp-3) 0;
+    }
+    .facts span { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .facts b { color: var(--text); font-family: var(--font-display); font-size: 1.4rem; font-weight: 650; line-height: 1; }
+    .facts small { color: var(--text-mute); font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+    .mob-lines { display: flex; flex-direction: column; gap: 5px; }
+    .mob-lines span,
+    .rewards > span {
+      color: var(--text-mute);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .mob-lines span.elite { color: var(--rarity-4); margin-top: 4px; }
+    .mob-lines p { margin: 0; color: var(--text-dim); font-size: 0.92rem; line-height: 1.55; }
+    .rewards { display: flex; flex-direction: column; gap: 10px; }
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: var(--sp-3);
+      margin-top: auto;
+      padding-top: var(--sp-2);
+    }
+    .lock-msg { color: var(--text-dim); font-weight: 700; }
+    .soon { text-align: center; padding: var(--sp-7) var(--sp-5); }
     .soon-icon { font-size: 48px; }
-    .soon p { color: var(--text-dim); margin: 0; }
+    .soon p { color: var(--text-dim); margin: var(--sp-3) 0 0; }
     .muted { color: var(--text-mute); }
 
-    @media (max-width: 820px) {
-      .page { padding: var(--sp-5) var(--sp-4); }
-      .layout { grid-template-columns: 1fr; }
-      .stats-row { grid-template-columns: repeat(2, 1fr); }
+    @media (max-width: 1100px) {
+      .layout { grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); align-items: start; }
+      .stage { order: 3; grid-column: 1 / -1; min-height: 300px; }
+      .intel { align-self: start; }
+    }
+    @media (max-width: 760px) {
+      .page { padding: var(--sp-4); }
+      .layout { grid-template-columns: 1fr; min-height: auto; }
+      .rail { order: 2; }
+      .stage { order: 1; grid-column: auto; min-height: 260px; padding-bottom: var(--sp-3); }
+      .stage app-outfit-preview { transform: scale(0.78); }
+      .intel { order: 3; }
+      .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--sp-3); }
+      .actions { justify-content: stretch; }
+      .pill-btn { flex: 1 1 180px; }
     }
   `],
 })
@@ -175,6 +326,14 @@ export class ModeSelectPage {
     return tiers.find((t) => t.tier === this.selectedNum()) ?? tiers[0] ?? null;
   });
 
+  /** Boss do tier selecionado: sprite real do Tibia, casado pelo nome no catalogo de monstros. */
+  readonly bossMonster = computed<MonsterCatalogEntry | null>(() => {
+    const t = this.selectedTier();
+    if (!t) return null;
+    return this.api.catalog()?.monsters.find((m) => m.name === t.boss) ?? null;
+  });
+  readonly bossLoot = computed(() => this.bossMonster()?.loot.slice(0, 6) ?? []);
+
   constructor(
     private readonly api: ApiService,
     private readonly route: ActivatedRoute,
@@ -183,8 +342,10 @@ export class ModeSelectPage {
     this.modeId.set(this.route.snapshot.paramMap.get('modeId') ?? 'dungeon');
   }
 
+  biome(tier: number) { return tierBiome(tier); }
   locked(required: number): boolean { return (this.api.account()?.accountLevel ?? 1) < required; }
   clears(tier: number): number { return this.api.account()?.tierClears?.[String(tier)] ?? 0; }
+  roman(tier: number): string { return ['I', 'II', 'III', 'IV', 'V'][tier - 1] ?? String(tier); }
   select(tier: number): void { this.selectedNum.set(tier); }
   start(tier: number): void { void this.router.navigate(['/play', tier]); }
   back(): void { void this.router.navigate(['/hunt']); }

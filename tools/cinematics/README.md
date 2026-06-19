@@ -11,7 +11,7 @@ output that crosses the boundary is a `.webm` copied into
 
 | id | duration | output |
 |---|---|---|
-| `VelvetSummon` | 15s @ 30fps · 1920×1080 | `velvet-5star.webm` |
+| `GachaSummon` | 15s @ 30fps · 1920×1080 | `gacha-5star.webm` |
 
 The cutscene runs in five beats: dark cathedral → arcane circle charge (iris purple) →
 **gold 5★ burst** → the **summon card** rises (the Kaeli's `thumb` portrait in an aurum 5★
@@ -32,12 +32,12 @@ npm run studio   # live preview / scrub the timeline
 npm run deploy   # render webm AND copy it into frontend/public/assets/cinematics/
 ```
 
-`npm run render` renders to `out/velvet-5star.webm`; `npm run deploy` also copies it to the
+`npm run render` renders to `out/gacha-5star.webm`; `npm run deploy` also copies it to the
 frontend. `npm run still` renders a single frame for a quick layout check.
 
 ## Adding another Kaeli
 
-`VelvetSummon` is parametrized (`name`, `title`, `thumbSrc`, `bgSrc`). To make a new 5★ reveal,
+`GachaSummon` is parametrized (`name`, `title`, `thumbSrc`, `bgSrc`). To make a new 5★ reveal,
 drop that Kaeli's `thumb.png` + `bg-landscape.png` into `public/`, register another
 `<Composition>` in `src/Root.tsx` pointing at them, then `npm run deploy` with the matching
 output name.
@@ -47,5 +47,5 @@ output name.
 Playing the clip on a 5★ featured pull lives in `frontend/.../pages/recruit/recruit.ts` and is a
 separate task (Prompt 10 only produces the asset). Suggested seam: when a pull yields the featured
 5★, show a fullscreen `<video autoplay muted playsinline>` of
-`assets/cinematics/velvet-5star.webm` with a skip button, then fall through to the existing CSS
+`assets/cinematics/gacha-5star.webm` with a skip button, then fall through to the existing CSS
 reveal (Prompt 5).

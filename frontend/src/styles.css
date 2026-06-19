@@ -248,6 +248,110 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--text);
 }
 
+.pill-btn {
+  --pill-bg: rgba(236, 233, 245, 0.9);
+  --pill-fg: #0b0820;
+  --pill-edge: rgba(255, 255, 255, 0.55);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: 48px;
+  padding: 0 28px;
+  border: 1px solid var(--pill-edge);
+  border-radius: var(--r-full);
+  background: linear-gradient(180deg, var(--pill-bg), color-mix(in srgb, var(--pill-bg) 72%, var(--accent-dim)));
+  color: var(--pill-fg);
+  box-shadow: var(--glass-edge), 0 10px 30px rgba(0, 0, 0, 0.42);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  transition: transform var(--dur-fast) var(--ease-out), filter var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.pill-btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); box-shadow: var(--glass-edge), var(--sh-accent); }
+.pill-btn:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }
+.pill-btn:disabled { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.4); }
+.pill-btn.secondary {
+  --pill-bg: rgba(22, 22, 36, 0.58);
+  --pill-fg: var(--text);
+  --pill-edge: var(--line-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+}
+.pill-btn.gold {
+  --pill-bg: var(--gold-bright);
+  --pill-fg: #2a1700;
+  --pill-edge: color-mix(in srgb, var(--gold-bright) 65%, white);
+}
+
+.frame {
+  position: relative;
+}
+.frame::before,
+.frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid var(--line);
+  border-radius: inherit;
+}
+.frame::after {
+  inset: 8px;
+  border-color: color-mix(in srgb, var(--accent, #7b6bf2) 34%, transparent);
+  opacity: 0.55;
+}
+
+.rail-item {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  min-height: 74px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: rgba(12, 12, 21, 0.34);
+  color: inherit;
+  text-align: left;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--glass-edge);
+  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+}
+.rail-item:hover:not(:disabled) {
+  transform: translateX(3px);
+  border-color: color-mix(in srgb, var(--rail, var(--accent)) 60%, var(--line-strong));
+  background: color-mix(in srgb, var(--rail, var(--accent)) 10%, rgba(12, 12, 21, 0.42));
+}
+.rail-item:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }
+.rail-item.active {
+  border-color: color-mix(in srgb, var(--rail, var(--accent)) 78%, white 8%);
+  background: color-mix(in srgb, var(--rail, var(--accent)) 17%, rgba(236, 233, 245, 0.08));
+  box-shadow: var(--glass-edge), 0 0 30px color-mix(in srgb, var(--rail, var(--accent)) 20%, transparent);
+}
+.rail-item:disabled { opacity: 0.52; cursor: not-allowed; }
+
+.reward-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.reward-cell {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--reward, var(--gold)) 34%, var(--line));
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--reward, var(--gold)) 10%, rgba(12, 12, 21, 0.7));
+  box-shadow: var(--glass-edge);
+}
+
 .stars {
   display: inline-flex;
   letter-spacing: 0.12em;
@@ -274,6 +378,23 @@ button { font-family: inherit; cursor: pointer; }
 ::-webkit-scrollbar-track { background: transparent; }
 
 ::selection { background: var(--accent-glow); color: #fff; }
+
+/* ============================================================================
+   Atmosphere — full-bleed immersive pages (no card chrome; type + light carry it)
+   .grain adds a faint film of noise so dark backgrounds read as depth, not flat ink.
+   Requires the host to be position:relative; isolation:isolate.
+   ============================================================================ */
+.grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+}
 
 /* ============================================================================
    Reduced motion — global opt-out

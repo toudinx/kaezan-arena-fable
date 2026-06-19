@@ -1,4 +1,5 @@
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { KaeliArtService } from '../../core/kaeli-art.service';
 import { ItemIcon } from '../../core/item-icon';
@@ -19,23 +20,22 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
   template: `
     <div class="atelier">
 
-      <!-- ── ROSTER RAIL ── -->
+      <!-- ── ROSTER STRIP ── -->
       <nav class="roster" aria-label="Selecionar Kaeli">
         @for (w of allWaifus(); track w.id) {
           <button class="roster-item" [class.owned]="owned(w.id)" [class.active]="selected()?.id === w.id"
-                  [style.--rc]="rarityColor(w.rarity)" [title]="w.name" (click)="select(w)">
+                  [style.--rc]="rarityColor(w.rarity)" [title]="w.name + ' · ' + w.rarity + '★'"
+                  [attr.aria-label]="w.name" [attr.aria-pressed]="selected()?.id === w.id" (click)="select(w)">
             <span class="bust">
               @if (thumb(w.id); as t) {
                 <img [src]="t" alt="" decoding="async" />
               } @else {
                 <app-outfit-preview [lookType]="skinFor(w).lookType" [head]="skinFor(w).head"
                   [body]="skinFor(w).body" [legs]="skinFor(w).legs" [feet]="skinFor(w).feet"
-                  [addons]="skinFor(w).addons ?? 0" [size]="44" [animate]="false" />
+                  [addons]="skinFor(w).addons ?? 0" [size]="52" [animate]="false" />
               }
               @if (!owned(w.id)) { <span class="lock">🔒</span> }
             </span>
-            <span class="bust-name">{{ w.name }}</span>
-            <rarity-stars [rarity]="w.rarity" [size]="9" />
           </button>
         }
       </nav>
@@ -66,8 +66,6 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
             }
           </div>
 
-          <button class="skin-fab glass" title="Trocar skin" (click)="tab.set('skins')">👕</button>
-
           <div class="identity">
             <div class="id-tags">
               <span class="el-tag" [style.--el]="elementColor(w.element)">{{ elementLabel(w.element) }}</span>
@@ -91,14 +89,6 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
       <div class="dossier">
         @if (selected(); as w) {
           @if (owned(w.id)) {
-            <!-- stat ribbon -->
-            <div class="ribbon">
-              <div class="rib-stat"><span>ATK</span><b>{{ w.baseAtk }}</b></div>
-              <div class="rib-stat"><span>HP</span><b>{{ w.baseHp }}</b></div>
-              <div class="rib-stat"><span>Afinidade</span><b>{{ affinityLevel(w.id) }}</b></div>
-              <div class="rib-stat gold"><span>Ascensão</span><b>A{{ ascension(w.id) }}</b></div>
-            </div>
-
             <div class="tabs">
               @for (t of tabs; track t.id) {
                 <button class="tab" [class.active]="tab() === t.id" (click)="tab.set(t.id)">{{ t.label }}</button>
@@ -108,46 +98,76 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
             <!-- ═══ PERFIL ═══ -->
             @if (tab() === 'perfil') {
               <div class="tab-content">
-                <div class="trait-card glass">
-                  <span class="eyebrow trait-label">Trait</span>
-                  <b>{{ w.trait.name }}</b>
+                <!-- atributos -->
+                <section class="sheet glass">
+                  <div class="sheet-stats">
+                    <div class="big-stat">
+                      <span class="bs-label">ATK</span>
+                      <b class="bs-val">{{ w.baseAtk }}</b>
+                    </div>
+                    <div class="big-stat">
+                      <span class="bs-label">HP</span>
+                      <b class="bs-val">{{ w.baseHp }}</b>
+                    </div>
+                    <div class="big-stat">
+                      <span class="bs-label">Bônus afinidade</span>
+                      <b class="bs-val accent">+{{ affinityLevel(w.id) - 1 }}%</b>
+                    </div>
+                  </div>
+                  <div class="sheet-facts">
+                    <div class="fact"><span>Elemento</span>
+                      <b class="fact-el" [style.--el]="elementColor(w.element)">{{ elementLabel(w.element) }}</b>
+                    </div>
+                    <div class="fact"><span>Classe</span><b>{{ classFor(w)?.name }}</b></div>
+                    <div class="fact"><span>Arma</span><b>{{ weaponLabel(w.weapon) }}</b></div>
+                    <div class="fact"><span>Raridade</span><rarity-stars [rarity]="w.rarity" [size]="13" /></div>
+                    <div class="fact"><span>Ascensão</span><b class="gold">A{{ ascension(w.id) }} / 6</b></div>
+                    <div class="fact"><span>Maestria de Eco</span><b>{{ masteryOf(w.id).points }} pt livres</b></div>
+                  </div>
+                </section>
+
+                <!-- trait + voz -->
+                <section class="trait-card glass">
+                  <span class="eyebrow trait-label">Trait · {{ w.trait.name }}</span>
                   <p>{{ w.trait.description }}</p>
-                </div>
-                <p class="personality">「 {{ w.personality }} 」</p>
+                  <p class="personality">「 {{ w.personality }} 」</p>
+                </section>
 
-                <div class="overview-stats">
-                  <div class="ov-stat">
-                    <span class="ov-label">Afinidade</span>
-                    <span class="ov-val">{{ affinityLevel(w.id) }} / {{ affinityMax() }}</span>
+                <!-- afinidade -->
+                <section class="aff-card glass">
+                  <div class="aff-head">
+                    <span class="eyebrow">Afinidade</span>
+                    <span class="aff-lvl">{{ affinityLevel(w.id) }}<i> / {{ affinityMax() }}</i></span>
                   </div>
-                  <div class="ov-stat">
-                    <span class="ov-label">Ascensão</span>
-                    <span class="ov-val">A{{ ascension(w.id) }} / 6</span>
-                  </div>
-                  <div class="ov-stat">
-                    <span class="ov-label">Pts Maestria</span>
-                    <span class="ov-val">{{ masteryOf(w.id).points }} livres</span>
-                  </div>
-                  <div class="ov-stat">
-                    <span class="ov-label">Shards</span>
-                    <span class="ov-val">{{ shards(w.id) }}</span>
-                  </div>
-                </div>
+                  <div class="aff-bar"><div class="aff-fill" [style.width.%]="affinityPercent(w.id)"></div></div>
+                  @if (affinityToNext(w.id) > 0) {
+                    <span class="muted small">{{ affinityInto(w.id) }} / {{ affinityToNext(w.id) }} XP — jogue runs com ela ou dê presentes</span>
+                  } @else {
+                    <span class="maxed small">Afinidade máxima · +{{ affinityLevel(w.id) - 1 }}% ATK/HP na run</span>
+                  }
+                </section>
 
-                <div class="asc-row">
-                  <div class="asc-dots">
-                    @for (i of [1,2,3,4,5,6]; track i) {
-                      <span class="dot" [class.on]="ascension(w.id) >= i">●</span>
+                <!-- ascensão -->
+                <section class="asc-card glass">
+                  <div class="asc-head">
+                    <span class="eyebrow">Ascensão</span>
+                    <div class="asc-dots">
+                      @for (i of [1,2,3,4,5,6]; track i) {
+                        <span class="dot" [class.on]="ascension(w.id) >= i">◆</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="asc-foot">
+                    <span class="muted small">Shards desta Kaeli: <b class="gold">{{ shards(w.id) }}</b></span>
+                    @if (ascension(w.id) < 6) {
+                      <button class="btn gold compact" [disabled]="busy() || shards(w.id) < ascCost(w.id)" (click)="ascend(w.id)">
+                        Ascender — {{ ascCost(w.id) }} shards
+                      </button>
+                    } @else {
+                      <span class="maxed">Ascensão máxima!</span>
                     }
                   </div>
-                  @if (ascension(w.id) < 6) {
-                    <button class="btn gold compact" [disabled]="busy() || shards(w.id) < ascCost(w.id)" (click)="ascend(w.id)">
-                      Ascender — {{ ascCost(w.id) }} shards
-                    </button>
-                  } @else {
-                    <span class="maxed">Ascensão máxima!</span>
-                  }
-                </div>
+                </section>
               </div>
             }
 
@@ -211,36 +231,37 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
             <!-- ═══ EQUIPAMENTO ═══ -->
             @if (tab() === 'equipamento') {
               <div class="tab-content">
-                <div class="tier-tabs">
-                  <span class="tier-tabs-lbl">Set por tier</span>
-                  @for (t of setTiers; track t) {
-                    <button class="tier-tab" [class.active]="selectedTier() === t" (click)="selectTier(t)">T{{ t }}</button>
-                  }
-                  <span class="muted small tier-hint">A dungeon usa o set do seu tier. Itens são travados por tier.</span>
+                <div class="tier-bar">
+                  <span class="eyebrow">Set por tier</span>
+                  <div class="tier-seg">
+                    @for (t of setTiers; track t) {
+                      <button class="tier-tab" [class.active]="selectedTier() === t" (click)="selectTier(t)">T{{ t }}</button>
+                    }
+                  </div>
+                  <span class="muted small tier-hint">A dungeon usa o set do tier selecionado.</span>
                 </div>
                 @if (equipmentTotals(w.id).length > 0) {
-                  <div class="equip-summary glass">
-                    <h4>Atributos do Equipamento</h4>
-                    <div class="summary-row">
-                      @for (stat of equipmentTotals(w.id); track stat.label) {
-                        <div class="summary-stat">
-                          <span>{{ stat.label }}</span>
-                          <b>{{ stat.value }}</b>
-                        </div>
-                      }
-                    </div>
+                  <div class="equip-summary">
+                    @for (stat of equipmentTotals(w.id); track stat.label) {
+                      <div class="summary-stat">
+                        <span>{{ stat.label }}</span>
+                        <b>{{ stat.value }}</b>
+                      </div>
+                    }
                   </div>
                 }
                 <div class="paperdoll">
                   @for (slot of equipmentSlots; track slot.id) {
                     <button class="gear-slot" [class.active]="selectedEquipmentSlot() === slot.id"
+                            [class.filled]="!!equippedItem(w.id, slot.id)"
                             (click)="selectedEquipmentSlot.set(slot.id)">
                       <span class="slot-name">{{ slot.label }}</span>
                       @if (equippedItem(w.id, slot.id); as item) {
-                        <app-item-icon [itemId]="item.itemId" [size]="42" />
+                        <span class="slot-icon"><app-item-icon [itemId]="item.itemId" [size]="40" /></span>
                         <b>{{ item.name }}</b>
                         <small>{{ itemStats(item) }}</small>
                       } @else {
+                        <span class="slot-icon empty">+</span>
                         <span class="empty-slot">vazio</span>
                       }
                     </button>
@@ -280,126 +301,163 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
             <!-- ═══ INFORMAÇÃO ═══ -->
             @if (tab() === 'informacao') {
               <div class="tab-content">
-                <!-- Afinidade -->
-                <div class="info-section glass">
-                  <h3 class="section-title">Afinidade <span class="aff-level-badge">{{ affinityLevel(w.id) }}</span>
-                    <span class="muted small"> / {{ affinityMax() }} · +{{ affinityLevel(w.id) - 1 }}% ATK/HP na run</span>
-                  </h3>
-                  <div class="aff-bar"><div class="aff-fill" [style.width.%]="affinityPercent(w.id)"></div></div>
-                  @if (affinityToNext(w.id) > 0) {
-                    <span class="muted small">{{ affinityInto(w.id) }} / {{ affinityToNext(w.id) }} XP — jogue runs com ela ou dê presentes</span>
-                  } @else {
-                    <span class="maxed">Afinidade máxima!</span>
-                  }
-                </div>
+                <div class="info-layout">
+                  <nav class="info-nav" aria-label="Seções de informação">
+                    <button class="info-navitem" [class.active]="infoSection() === 'classe'" (click)="infoSection.set('classe')">
+                      <span class="ina-label">Classe</span>
+                      <span class="ina-sub">{{ classFor(w)?.name }}</span>
+                    </button>
+                    <button class="info-navitem" [class.active]="infoSection() === 'ecos'" (click)="infoSection.set('ecos')">
+                      <span class="ina-label">Ecos de Memória</span>
+                      <span class="ina-sub">{{ unlockedLoreCount(w) }} / {{ w.lore.length }} revelados</span>
+                    </button>
+                    <button class="info-navitem" [class.active]="infoSection() === 'presentes'" (click)="infoSection.set('presentes')">
+                      <span class="ina-label">Presentes</span>
+                      <span class="ina-sub">{{ giftsLeft(w.id) }} restante(s) hoje</span>
+                    </button>
+                  </nav>
 
-                <!-- Presentes -->
-                <div class="info-section glass">
-                  <h3 class="section-title">Presentes <span class="muted small">· {{ giftsLeft(w.id) }} restante(s) hoje</span></h3>
-                  <div class="fav-row">
-                    <span class="muted small">Favoritos (XP ×{{ favoriteMultiplier() }}):</span>
-                    @for (itemId of w.favoriteGiftItemIds; track itemId) {
-                      <span class="fav-item" [title]="itemName(itemId)">
-                        <app-item-icon [itemId]="itemId" [size]="28" />❤
-                      </span>
-                    }
-                  </div>
-                  @if (giftsLeft(w.id) > 0) {
-                    <div class="gift-options">
-                      @for (item of giftCandidates(); track item.itemId) {
-                        <button class="gift-option" [class.fav]="isFavorite(w, item.itemId)"
-                                [disabled]="busy()" (click)="gift(w.id, item.itemId)">
-                          <app-item-icon [itemId]="item.itemId" [size]="32" />
-                          <span>
-                            <b>{{ item.name }}</b>
-                            <small>+{{ giftXpFor(w, item) }} XP{{ isFavorite(w, item.itemId) ? ' ❤' : '' }}</small>
-                          </span>
-                        </button>
-                      } @empty {
-                        <span class="muted">Nenhum item na Mochila para presentear. Traga loot das runs!</span>
+                  <div class="info-panel glass">
+                    @switch (infoSection()) {
+
+                      @case ('classe') {
+                        @if (classFor(w); as cls) {
+                          <div class="class-head">
+                            <span class="eyebrow">Classe · {{ cls.name }}</span>
+                            <div class="stances">
+                              @for (stance of cls.stances; track stance.id) {
+                                <button class="stance-tab" [class.active]="previewStanceId() === stance.id"
+                                        (click)="previewStanceId.set(stance.id)">
+                                  {{ elementLabel(stance.element) }}
+                                </button>
+                              }
+                            </div>
+                          </div>
+                          <p class="muted small class-desc">{{ cls.description }}</p>
+                          @for (s of kit(w); track s.id; let i = $index) {
+                            <div class="skill">
+                              <span class="key" [class.ult]="i === 4">{{ ['1','2','3','4','R'][i] }}</span>
+                              <div class="skill-body">
+                                <div class="skill-top">
+                                  <b>{{ s.name }}</b>
+                                  <span class="element-name">{{ elementLabel(s.element) }}</span>
+                                  <span class="muted small skill-cd">{{ i === 4 ? 'Ultimate · gauge' : s.cooldownMs / 1000 + 's' }}</span>
+                                </div>
+                                <p>{{ s.description }}</p>
+                              </div>
+                            </div>
+                          }
+                        }
                       }
-                    </div>
-                  } @else {
-                    <span class="muted">{{ w.name }} já ganhou presentes demais hoje. Volte amanhã!</span>
-                  }
-                </div>
 
-                <!-- Ecos de Memória -->
-                <div class="info-section glass">
-                  <h3 class="section-title">Ecos de Memória</h3>
-                  @for (fragment of w.lore; track $index) {
-                    @if (loreUnlocked(w.id, $index)) {
-                      <div class="lore-entry">
-                        <span class="lore-num">Eco {{ $index + 1 }}</span>
-                        <p>{{ fragment }}</p>
-                      </div>
-                    } @else {
-                      <div class="lore-entry locked">
-                        <span class="lore-num">Eco {{ $index + 1 }}</span>
-                        <p>🔒 Desbloqueia na afinidade {{ loreLevelFor($index) }}.</p>
-                      </div>
-                    }
-                  }
-                </div>
-
-                <!-- Kit de Classe -->
-                @if (classFor(w); as cls) {
-                  <div class="info-section glass">
-                    <h3 class="section-title">{{ cls.name }} <span class="muted small">· kit de classe</span></h3>
-                    <p class="muted small" style="margin:0 0 12px">{{ cls.description }}</p>
-                    <div class="stances">
-                      @for (stance of cls.stances; track stance.id) {
-                        <button class="stance-tab" [class.active]="previewStanceId() === stance.id"
-                                (click)="previewStanceId.set(stance.id)">
-                          {{ elementLabel(stance.element) }}
-                        </button>
+                      @case ('ecos') {
+                        <span class="eyebrow">Ecos de Memória</span>
+                        <ol class="lore-list">
+                          @for (fragment of w.lore; track $index) {
+                            <li class="lore-entry" [class.locked]="!loreUnlocked(w.id, $index)">
+                              <span class="lore-num">{{ $index + 1 }}</span>
+                              @if (loreUnlocked(w.id, $index)) {
+                                <p>{{ fragment }}</p>
+                              } @else {
+                                <p>🔒 Desbloqueia na afinidade {{ loreLevelFor($index) }}.</p>
+                              }
+                            </li>
+                          }
+                        </ol>
                       }
-                    </div>
-                    @for (s of kit(w); track s.id; let i = $index) {
-                      <div class="skill">
-                        <span class="key">{{ ['1','2','3','4','R'][i] }}</span>
-                        <div>
-                          <b>{{ s.name }}</b>
-                          <span class="element-name">{{ elementLabel(s.element) }}</span>
-                          <span class="muted small">{{ i === 4 ? '(Ultimate · gauge)' : s.cooldownMs / 1000 + 's' }}</span>
-                          <p>{{ s.description }}</p>
+
+                      @case ('presentes') {
+                        <div class="gift-head">
+                          <div>
+                            <span class="eyebrow">Presentes</span>
+                            <p class="gift-sub muted small">Sobe afinidade. Favoritos rendem XP ×{{ favoriteMultiplier() }}.</p>
+                          </div>
+                          <span class="gift-left" [class.spent]="giftsLeft(w.id) === 0">{{ giftsLeft(w.id) }}<i>/ dia</i></span>
                         </div>
-                      </div>
+
+                        @if (w.favoriteGiftItemIds.length) {
+                          <div class="fav-row">
+                            @for (itemId of w.favoriteGiftItemIds; track itemId) {
+                              <span class="fav-item" [title]="itemName(itemId) + ' (favorito)'">
+                                <app-item-icon [itemId]="itemId" [size]="26" />
+                                <span class="fav-heart">❤</span>
+                              </span>
+                            }
+                          </div>
+                        }
+
+                        @if (giftsLeft(w.id) > 0) {
+                          <div class="gift-options">
+                            @for (item of giftCandidates(); track item.itemId) {
+                              <button class="gift-option" [class.fav]="isFavorite(w, item.itemId)"
+                                      [disabled]="busy()" (click)="gift(w.id, item.itemId)"
+                                      [title]="'Presentear ' + item.name">
+                                <app-item-icon [itemId]="item.itemId" [size]="30" />
+                                <span class="gift-meta">
+                                  <b>{{ item.name }}</b>
+                                  <small class="gift-xp">+{{ giftXpFor(w, item) }} XP @if (isFavorite(w, item.itemId)) {<i>❤</i>}</small>
+                                </span>
+                              </button>
+                            } @empty {
+                              <p class="empty-note muted">A Mochila está vazia. Traga loot das runs para presentear {{ w.name }}.</p>
+                            }
+                          </div>
+                        } @else {
+                          <p class="empty-note muted">{{ w.name }} já recebeu presentes demais hoje. Volte amanhã.</p>
+                        }
+                      }
                     }
                   </div>
-                }
+                </div>
               </div>
             }
 
             <!-- ═══ SKINS ═══ -->
             @if (tab() === 'skins') {
-              <div class="tab-content">
-                <div class="skins-grid">
-                  @for (skin of w.skins; track skin.id) {
-                    <div class="skin-card glass" [class.selected]="isSelectedSkin(w, skin)"
-                         [class.locked]="!skinUnlocked(w, skin)">
-                      <app-outfit-preview [lookType]="skin.lookType" [head]="skin.head" [body]="skin.body"
-                        [legs]="skin.legs" [feet]="skin.feet" [addons]="skin.addons ?? 0"
-                        [mountLookType]="skin.mountLookType ?? 0" [size]="96" />
-                      <b>{{ skin.name }}</b>
-                      <p class="skin-desc">{{ skin.description }}</p>
-                      <span class="skin-badge">{{ skinBadge(skin) }}</span>
-                      @if (isSelectedSkin(w, skin)) {
-                        <span class="skin-active">EM USO</span>
-                      } @else if (skinUnlocked(w, skin)) {
-                        <button class="btn compact" [disabled]="busy()" (click)="selectSkin(w.id, skin.id)">Usar</button>
-                      } @else if (skin.unlock === 'gold' || skin.unlock === 'kaeros') {
-                        <button class="btn gold compact" [disabled]="busy() || !canAfford(skin)"
-                                (click)="buySkin(w.id, skin.id)">
-                          Comprar — {{ skin.unlockValue }} {{ skin.unlock === 'gold' ? 'ouro' : 'Kaeros' }}
-                        </button>
-                      } @else {
-                        <span class="muted small">Afinidade {{ skin.unlockValue }} desbloqueia</span>
-                      }
-                    </div>
+              <div class="tab-content skins-tab">
+                <div class="skins-carousel-wrap">
+                  @if (w.skins.length > 3) {
+                    <button class="carousel-arrow left" type="button" aria-label="Skins anteriores"
+                            (click)="sc.scrollBy({ left: -340, behavior: 'smooth' })">‹</button>
+                    <button class="carousel-arrow right" type="button" aria-label="Próximas skins"
+                            (click)="sc.scrollBy({ left: 340, behavior: 'smooth' })">›</button>
                   }
+                  <div class="skins-carousel" #sc>
+                    @for (skin of w.skins; track skin.id) {
+                      <div class="skin-card glass" [class.selected]="isSelectedSkin(w, skin)"
+                           [class.locked]="!skinUnlocked(w, skin)">
+                        @if (isSelectedSkin(w, skin)) { <span class="skin-pin">✓ Em uso</span> }
+                        <div class="skin-art">
+                          <app-outfit-preview [lookType]="skin.lookType" [head]="skin.head" [body]="skin.body"
+                            [legs]="skin.legs" [feet]="skin.feet" [addons]="skin.addons ?? 0"
+                            [mountLookType]="skin.mountLookType ?? 0" [size]="128" />
+                        </div>
+                        <div class="skin-body">
+                          <div class="skin-top">
+                            <b>{{ skin.name }}</b>
+                            <span class="skin-badge" [class.gold]="skin.unlock === 'gold' || skin.unlock === 'kaeros'">{{ skinBadge(skin) }}</span>
+                          </div>
+                          <p class="skin-desc">{{ skin.description }}</p>
+                          <div class="skin-cta">
+                            @if (isSelectedSkin(w, skin)) {
+                              <span class="skin-current">Equipada</span>
+                            } @else if (skinUnlocked(w, skin)) {
+                              <button class="btn secondary compact" [disabled]="busy()" (click)="selectSkin(w.id, skin.id)">Equipar</button>
+                            } @else if (skin.unlock === 'gold' || skin.unlock === 'kaeros') {
+                              <button class="btn gold compact" [disabled]="busy() || !canAfford(skin)"
+                                      (click)="buySkin(w.id, skin.id)">
+                                Comprar · {{ skin.unlockValue }} {{ skin.unlock === 'gold' ? 'ouro' : 'Kaeros' }}
+                              </button>
+                            } @else {
+                              <span class="skin-req muted small">🔒 Afinidade {{ skin.unlockValue }}</span>
+                            }
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
                 </div>
-                <p class="muted small" style="margin-top:12px">A skin em uso aparece no Hub, nas runs e nesta página. Os addons exibidos são os definidos na skin.</p>
+                <p class="muted small skins-note">A skin equipada aparece no Hub, nas runs e nesta página.</p>
               </div>
             }
 
@@ -425,27 +483,33 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     /* local accent mixes (deduped) */
     :host { display: block; }
     .atelier {
-      display: grid; grid-template-columns: 96px minmax(300px, 30%) 1fr;
+      display: grid;
+      grid-template-columns: minmax(320px, 36%) 1fr;
+      grid-template-rows: auto 1fr;
+      grid-template-areas: "roster roster" "stage dossier";
       height: calc(100dvh - 53px); background: var(--bg-1);
       --af: color-mix(in srgb, var(--accent) 12%, var(--bg-2));
       --ae: color-mix(in srgb, var(--accent) 38%, transparent);
     }
 
-    /* roster */
-    .roster { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3) var(--sp-2); overflow-y: auto; background: var(--bg-0); border-right: 1px solid var(--line); }
-    .roster::-webkit-scrollbar { width: 4px; }
-    .roster-item { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: var(--sp-2) 4px; color: var(--text); border-radius: var(--r-md); transition: all var(--dur) var(--ease-out); }
-    .roster-item.owned { border-color: color-mix(in srgb, var(--rc) 45%, transparent); }
+    /* roster — horizontal strip; only art + rarity frame */
+    .roster { grid-area: roster; display: flex; flex-direction: row; align-items: center; justify-content: safe center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); overflow-x: auto; overflow-y: hidden; background: var(--bg-0); border-bottom: 1px solid var(--line); }
+    .roster::-webkit-scrollbar { height: 5px; }
+    .roster-item { position: relative; flex: 0 0 auto; padding: 0; color: var(--text); border-radius: var(--r-md); transition: transform var(--dur) var(--ease-out); }
     .roster-item:not(.owned) { filter: grayscale(0.85) brightness(0.5); }
-    .roster-item:hover { transform: translateX(2px); border-color: var(--rc); }
-    .roster-item.active { background: var(--bg-3); border-color: var(--accent); box-shadow: var(--glass-edge), 0 0 0 1px var(--accent); }
-    .bust { position: relative; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; }
-    .bust img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--r-sm); }
-    .lock { position: absolute; top: -2px; right: -2px; font-size: 10px; }
-    .bust-name { font-size: 9.5px; font-weight: 700; text-align: center; line-height: 1.1; color: var(--text-dim); }
+    .roster-item:hover { transform: translateY(-2px); }
+    .roster-item:hover .bust { border-color: var(--rc); }
+    .roster-item.active { transform: translateY(-3px); }
+    .roster-item.active .bust { border-color: var(--rc); box-shadow: 0 0 0 2px var(--bg-0), 0 0 0 4px var(--rc), 0 6px 18px rgba(0,0,0,0.55); }
+    .roster-item:focus-visible { outline: none; }
+    .roster-item:focus-visible .bust { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+    .bust { position: relative; width: 58px; height: 58px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: var(--r-md); border: 2px solid color-mix(in srgb, var(--rc) 55%, transparent); background: var(--bg-2); box-shadow: var(--glass-edge); transition: border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out); }
+    .roster-item:not(.owned) .bust { border-color: var(--line-strong); }
+    .bust img { width: 100%; height: 100%; object-fit: cover; }
+    .lock { position: absolute; top: 2px; right: 2px; font-size: 11px; filter: drop-shadow(0 1px 2px #000); }
 
     /* stage / art alcove */
-    .stage { position: relative; overflow: hidden; isolation: isolate; }
+    .stage { grid-area: stage; position: relative; overflow: hidden; isolation: isolate; }
     .bg { position: absolute; inset: 0; z-index: -2; }
     .bg-img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
     .bg-img.gradient { object-position: center; }
@@ -453,8 +517,6 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .floor { position: absolute; left: 50%; bottom: 9%; z-index: -1; transform: translateX(-50%); width: 64%; height: 64px; border-radius: 50%; pointer-events: none; background: radial-gradient(ellipse at center, color-mix(in srgb, var(--el) 55%, transparent), transparent 70%); filter: blur(10px); opacity: 0.7; }
     .figure { position: absolute; inset: 0; padding-bottom: 4%; filter: drop-shadow(0 14px 34px rgba(0,0,0,0.55)); }
     .sprite-stand { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8%; filter: drop-shadow(0 18px 40px rgba(0,0,0,0.6)); }
-    .skin-fab { position: absolute; top: var(--sp-4); right: var(--sp-4); z-index: 3; width: 40px; height: 40px; border-radius: var(--r-md); font-size: 18px; display: flex; align-items: center; justify-content: center; color: var(--text); transition: all var(--dur) var(--ease-out); }
-    .skin-fab:hover { transform: translateY(-1px); border-color: var(--accent); }
     .identity { position: absolute; left: clamp(16px, 4%, 32px); right: 16px; bottom: clamp(18px, 4vh, 32px); z-index: 2; }
     .id-tags { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
     .el-tag { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: var(--tracking-eyebrow); color: var(--el); padding: 4px 11px; border-radius: var(--r-full); border: 1px solid color-mix(in srgb, var(--el) 50%, transparent); background: color-mix(in srgb, var(--el) 14%, transparent); }
@@ -465,36 +527,40 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .stage-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: var(--sp-5); }
 
     /* dossier */
-    .dossier { overflow-y: auto; padding: var(--sp-5) var(--sp-5) var(--sp-7); }
-    .ribbon { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); margin-bottom: var(--sp-4); }
-    .rib-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 8px; }
-    .rib-stat span { font-size: var(--fs-xs); color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.06em; }
-    .rib-stat b { font-family: var(--font-display); font-size: 1.25rem; }
-    .rib-stat.gold b { color: var(--gold-bright); }
+    .dossier { grid-area: dossier; display: flex; flex-direction: column; overflow-y: auto; padding: var(--sp-5) var(--sp-5) var(--sp-7); }
     .tabs { position: sticky; top: calc(-1 * var(--sp-5)); z-index: 4; display: flex; gap: 2px; flex-wrap: wrap; padding: var(--sp-2) 0; margin-bottom: var(--sp-4); border-bottom: 1px solid var(--line); background: linear-gradient(180deg, var(--bg-1) 70%, transparent); }
     .tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-mute); padding: 8px 14px; font-size: var(--fs-sm); font-weight: 700; transition: all var(--dur) var(--ease-out); }
     .tab.active { color: var(--accent-bright); border-bottom-color: var(--accent); }
     .tab:hover:not(.active) { color: var(--text-dim); }
     .tab-content { display: flex; flex-direction: column; gap: var(--sp-4); }
 
-    /* shared inset surfaces */
-    .roster-item, .rib-stat, .ov-stat, .node-info, .gear-slot, .gear-option, .gift-option { background: var(--bg-2); border: 1px solid var(--line); }
-    .rib-stat, .ov-stat { border-radius: var(--r-md); }
+    /* perfil — character sheet */
+    .sheet { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
+    .sheet-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); }
+    .big-stat { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 12px 8px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md); text-align: center; }
+    .bs-label { font-size: var(--fs-xs); color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.05em; line-height: 1.2; }
+    .bs-val { font-family: var(--font-display); font-size: 1.7rem; font-weight: 700; line-height: 1; }
+    .bs-val.accent { color: var(--accent-bright); }
+    .sheet-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
+    .fact { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 13px; background: var(--bg-2); }
+    .fact span { font-size: var(--fs-sm); color: var(--text-mute); }
+    .fact b { font-size: var(--fs-sm); font-weight: 700; }
+    .fact b.gold { color: var(--gold-bright); }
+    .fact-el { color: var(--el); }
 
-    /* perfil */
-    .trait-card { padding: 12px 14px; }
-    .trait-label { color: var(--accent-bright); display: block; margin-bottom: 4px; }
-    .trait-card b { color: var(--text); }
-    .trait-card p { margin: 4px 0 0; color: var(--text-dim); font-size: var(--fs-sm); }
-    .personality { color: var(--text-mute); font-style: italic; margin: 0; font-size: var(--fs-sm); }
-    .overview-stats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
-    .ov-stat { padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; }
-    .ov-label { font-size: var(--fs-sm); color: var(--text-mute); }
-    .ov-val { font-size: var(--fs-sm); font-weight: 700; }
-    .asc-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .asc-dots { display: flex; gap: 5px; }
-    .dot { color: var(--line-strong); font-size: 18px; }
-    .dot.on { color: var(--gold); }
+    .trait-card { padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+    .trait-label { color: var(--accent-bright); }
+    .trait-card p { margin: 0; color: var(--text-dim); font-size: var(--fs-sm); line-height: 1.5; }
+    .personality { color: var(--text-mute); font-style: italic; }
+
+    .aff-card, .asc-card { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+    .aff-head, .asc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .aff-lvl { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; color: var(--accent-bright); }
+    .aff-lvl i { font-style: normal; font-size: 0.85rem; color: var(--text-mute); }
+    .asc-dots { display: flex; gap: 6px; }
+    .dot { color: var(--line-strong); font-size: 14px; }
+    .dot.on { color: var(--gold); text-shadow: 0 0 8px var(--gold-glow); }
+    .asc-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
     .maxed { color: var(--gold-bright); font-weight: 700; }
 
     /* maestria */
@@ -511,7 +577,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .tree-node.available .node-dot { border-color: var(--ae); color: var(--accent-bright); }
     .tree-node.key-node .node-dot { width: 34px; height: 34px; border-radius: 6px; transform: rotate(45deg); }
     .tree-node.key-node .node-dot span { transform: rotate(-45deg); display: block; }
-    .node-info { flex: 1; border-radius: var(--r-sm); padding: 8px 10px; }
+    .node-info { flex: 1; border-radius: var(--r-sm); padding: 8px 10px; background: var(--bg-2); border: 1px solid var(--line); }
     .tree-node.unlocked .node-info { border-color: var(--ae); background: var(--af); }
     .tree-node.available .node-info { border-color: var(--ae); }
     .node-info b { font-size: 12px; display: block; margin-bottom: 3px; }
@@ -521,70 +587,123 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .node-cost { color: var(--gold-bright); font-size: 11px; font-weight: 800; }
 
     /* equipamento */
-    .tier-tabs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .tier-tabs-lbl { font-size: var(--fs-xs); font-weight: 800; color: var(--accent-bright); text-transform: uppercase; letter-spacing: var(--tracking-eyebrow); margin-right: 4px; }
-    .tier-tab, .stance-tab { border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--bg-2); color: var(--text-dim); padding: 5px 12px; font-size: 12px; font-weight: 800; }
-    .tier-tab.active { border-color: var(--gold); color: var(--gold-bright); background: color-mix(in srgb, var(--gold) 10%, var(--bg-2)); }
-    .tier-hint { flex-basis: 100%; margin-top: 2px; }
-    .equip-summary { padding: 12px 16px; }
-    .equip-summary h4 { margin: 0 0 10px; font-size: 13px; color: var(--accent-bright); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
-    .summary-row { display: flex; gap: var(--sp-4); flex-wrap: wrap; }
-    .summary-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 60px; }
+    .tier-bar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+    .tier-seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md); }
+    .tier-tab { border: none; background: none; color: var(--text-dim); padding: 5px 14px; font-size: 12px; font-weight: 800; border-radius: var(--r-sm); transition: all var(--dur) var(--ease-out); }
+    .tier-tab:hover:not(.active) { color: var(--text); }
+    .tier-tab.active { background: color-mix(in srgb, var(--gold) 16%, var(--bg-3)); color: var(--gold-bright); box-shadow: var(--glass-edge); }
+    .tier-hint { flex-basis: 100%; }
+    .equip-summary { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+    .summary-stat { flex: 1; min-width: 64px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 8px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md); }
     .summary-stat span { font-size: 10px; color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.05em; }
-    .summary-stat b { font-family: var(--font-display); font-size: 18px; color: var(--accent-bright); }
+    .summary-stat b { font-family: var(--font-display); font-size: 1.3rem; color: var(--accent-bright); }
     .paperdoll { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); }
-    .gear-slot, .gear-option, .gift-option { color: inherit; transition: all var(--dur) var(--ease-out); }
-    .gear-slot { min-height: 100px; border-radius: var(--r-md); padding: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
-    .gear-option, .gift-option { border-radius: var(--r-sm); padding: 6px 8px; display: flex; align-items: center; gap: 8px; text-align: left; }
-    .gear-slot:hover, .gear-slot.active, .gear-option:not([disabled]):hover, .gift-option:not([disabled]):hover { border-color: var(--accent); }
-    .gear-slot.active { background: var(--af); }
-    .gear-slot b { font-size: 11px; text-align: center; }
-    .gear-slot small { color: var(--text-dim); font-size: 10px; text-align: center; }
-    .slot-name { color: var(--accent-bright); font-size: 10px; font-weight: 800; text-transform: uppercase; }
-    .empty-slot { color: var(--text-faint); font-size: 12px; }
-    .gear-picker { padding: 12px; }
-    .picker-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-    .gear-options { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-    .gear-option span, .gift-option span { display: flex; flex-direction: column; }
+    .gear-slot { min-height: 124px; border-radius: var(--r-md); padding: 11px 8px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px; background: var(--bg-2); border: 1px solid var(--line); color: inherit; transition: all var(--dur) var(--ease-out); }
+    .gear-slot:hover { border-color: var(--line-strong); transform: translateY(-1px); }
+    .gear-slot.active { border-color: var(--accent); background: var(--af); box-shadow: var(--glass-edge), var(--sh-accent); }
+    .slot-name { color: var(--text-mute); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+    .gear-slot.filled .slot-name, .gear-slot.active .slot-name { color: var(--accent-bright); }
+    .slot-icon { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; margin: 2px 0; }
+    .slot-icon.empty { font-size: 22px; color: var(--text-faint); border: 1px dashed var(--line-strong); border-radius: var(--r-sm); }
+    .gear-slot b { font-size: 11px; text-align: center; line-height: 1.2; }
+    .gear-slot small { color: var(--text-dim); font-size: 10px; text-align: center; line-height: 1.3; }
+    .empty-slot { color: var(--text-faint); font-size: 11px; }
+    .gear-picker { padding: 14px 16px; }
+    .picker-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .picker-title b { font-family: var(--font-display); font-size: var(--fs-h3); }
+    .gear-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: var(--sp-2); max-height: 300px; overflow-y: auto; padding-right: 2px; }
+    .gear-option { border-radius: var(--r-sm); padding: 8px 10px; display: flex; align-items: center; gap: 10px; text-align: left; background: var(--bg-2); border: 1px solid var(--line); color: inherit; transition: all var(--dur) var(--ease-out); }
+    .gear-option:not([disabled]):hover { border-color: var(--accent); transform: translateY(-1px); }
+    .gear-option[disabled] { opacity: 0.5; cursor: not-allowed; }
+    .gear-option span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .gear-option b { font-size: 12px; }
     .gear-option small { color: var(--text-dim); font-size: 10px; }
     .req-locked { color: var(--danger) !important; }
 
-    /* informação */
-    .info-section { padding: 14px 16px; }
-    .section-title { margin: 0 0 10px; font-size: var(--fs-h3); }
-    .aff-level-badge { color: var(--accent-bright); font-size: 16px; font-weight: 800; margin-left: 6px; }
-    .aff-bar { height: 8px; background: var(--bg-3); border-radius: var(--r-full); overflow: hidden; margin: 8px 0 6px; }
-    .aff-fill { height: 100%; background: linear-gradient(90deg, var(--accent-bright), var(--accent-dim)); transition: width var(--dur-slow) var(--ease-out); }
-    .fav-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-    .fav-item { display: inline-flex; align-items: center; gap: 2px; background: var(--af); border-radius: var(--r-sm); padding: 2px 6px; font-size: 11px; }
-    .gift-options { display: flex; flex-wrap: wrap; gap: var(--sp-2); max-height: 220px; overflow-y: auto; }
-    .gift-option.fav { border-color: color-mix(in srgb, var(--gold) 55%, transparent); }
-    .gift-option small { color: var(--gold-bright); font-size: 10px; }
-    .lore-entry { display: flex; gap: 12px; margin-bottom: 10px; }
-    .lore-entry:last-child { margin-bottom: 0; }
-    .lore-entry p { margin: 0; color: var(--text-dim); font-size: var(--fs-sm); line-height: 1.55; }
-    .lore-entry.locked p { color: var(--text-faint); }
-    .lore-num { color: var(--accent-bright); font-size: 10px; font-weight: 800; white-space: nowrap; padding-top: 3px; }
-    .stances { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
-    .stance-tab { padding: 5px 10px; }
-    .stance-tab.active { border-color: var(--accent); color: var(--accent-bright); background: var(--af); }
-    .skill { display: flex; gap: 12px; margin-bottom: 10px; align-items: flex-start; }
-    .skill:last-child { margin-bottom: 0; }
-    .skill .key { background: var(--bg-3); border: 1px solid var(--line-strong); border-radius: var(--r-sm); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; font-size: 12px; }
-    .skill p { margin: 2px 0 0; color: var(--text-dim); font-size: 12px; }
-    .element-name { margin-left: 8px; color: var(--accent-bright); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+    /* informação — sub-nav vertical + painel único */
+    .info-layout { display: grid; grid-template-columns: 176px 1fr; gap: var(--sp-3); align-items: start; }
+    .info-nav { display: flex; flex-direction: column; gap: var(--sp-2); }
+    .info-navitem { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 10px 13px; border-radius: var(--r-md); background: var(--bg-2); border: 1px solid var(--line); border-left: 3px solid transparent; color: var(--text); transition: all var(--dur) var(--ease-out); }
+    .info-navitem:hover:not(.active) { border-color: var(--line-strong); }
+    .info-navitem.active { border-color: var(--ae); border-left-color: var(--accent); background: var(--af); }
+    .ina-label { font-size: 13px; font-weight: 700; }
+    .info-navitem.active .ina-label { color: var(--accent-bright); }
+    .ina-sub { font-size: 10px; color: var(--text-mute); }
+    .info-panel { padding: 16px 18px; display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+    .aff-bar { height: 8px; background: var(--bg-3); border-radius: var(--r-full); overflow: hidden; }
+    .aff-fill { height: 100%; background: linear-gradient(90deg, var(--accent-bright), var(--accent-dim)); border-radius: var(--r-full); transition: width var(--dur-slow) var(--ease-out); }
 
-    /* skins */
-    .skins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: var(--sp-3); }
-    .skin-card { padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; transition: all var(--dur) var(--ease-out); }
-    .skin-card:hover { transform: translateY(-2px); }
+    /* presentes */
+    .gift-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .gift-sub { margin: 4px 0 0; }
+    .gift-left { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--accent-bright); white-space: nowrap; line-height: 1; }
+    .gift-left i { font-style: normal; font-size: 0.7rem; color: var(--text-mute); margin-left: 3px; }
+    .gift-left.spent { color: var(--text-faint); }
+    .fav-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .fav-item { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: var(--r-sm); background: color-mix(in srgb, var(--gold) 10%, var(--bg-2)); border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent); }
+    .fav-heart { position: absolute; bottom: -4px; right: -4px; font-size: 10px; filter: drop-shadow(0 1px 1px #000); }
+    .gift-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(152px, 1fr)); gap: var(--sp-2); max-height: 268px; overflow-y: auto; padding-right: 2px; }
+    .gift-option { border-radius: var(--r-sm); padding: 7px 9px; display: flex; align-items: center; gap: 9px; text-align: left; background: var(--bg-2); border: 1px solid var(--line); color: inherit; transition: all var(--dur) var(--ease-out); }
+    .gift-option:not([disabled]):hover { border-color: var(--accent); transform: translateY(-1px); }
+    .gift-option.fav { border-color: color-mix(in srgb, var(--gold) 45%, transparent); background: color-mix(in srgb, var(--gold) 7%, var(--bg-2)); }
+    .gift-meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .gift-meta b { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .gift-xp { color: var(--gold-bright); font-size: 10px; font-weight: 700; }
+    .gift-xp i { font-style: normal; }
+    .empty-note { margin: 0; font-size: var(--fs-sm); line-height: 1.5; }
+
+    /* ecos de memória */
+    .lore-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+    .lore-entry { display: flex; gap: 12px; align-items: flex-start; }
+    .lore-num { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--af); border: 1px solid var(--ae); color: var(--accent-bright); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+    .lore-entry p { margin: 0; color: var(--text-dim); font-size: var(--fs-sm); line-height: 1.55; }
+    .lore-entry.locked .lore-num { background: var(--bg-3); border-color: var(--line); color: var(--text-faint); }
+    .lore-entry.locked p { color: var(--text-faint); }
+
+    /* kit de classe */
+    .class-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .class-desc { margin: 0; }
+    .stances { display: flex; gap: 6px; flex-wrap: wrap; }
+    .stance-tab { border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--bg-2); color: var(--text-dim); padding: 5px 11px; font-size: 12px; font-weight: 800; transition: all var(--dur) var(--ease-out); }
+    .stance-tab.active { border-color: var(--accent); color: var(--accent-bright); background: var(--af); }
+    .skill { display: flex; gap: 12px; align-items: flex-start; }
+    .skill .key { background: var(--bg-3); border: 1px solid var(--line-strong); border-radius: var(--r-sm); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; font-size: 12px; }
+    .skill .key.ult { border-color: var(--gold); color: var(--gold-bright); }
+    .skill-body { display: flex; flex-direction: column; gap: 2px; }
+    .skill-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .skill-top b { font-size: 13px; }
+    .skill p { margin: 0; color: var(--text-dim); font-size: 12px; line-height: 1.45; }
+    .element-name { color: var(--accent-bright); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+    .skill-cd { font-size: 11px; }
+
+    /* skins — carrossel horizontal que preenche a área */
+    .skins-tab { flex: 1; min-height: 0; }
+    .skins-carousel-wrap { position: relative; flex: 1; min-height: 0; }
+    .skins-carousel { display: flex; gap: var(--sp-3); height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; padding: 4px 2px 8px; scroll-padding: 0 44px; }
+    .skin-card { position: relative; flex: 1 1 260px; min-width: 240px; max-width: 460px; height: 100%; scroll-snap-align: center; padding: 0; display: flex; flex-direction: column; overflow: hidden; transition: transform var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out); }
+    .skin-card:hover { transform: translateY(-3px); }
     .skin-card.selected { border-color: var(--accent); box-shadow: var(--glass-edge), var(--sh-accent); }
-    .skin-card.locked { opacity: 0.7; }
-    .skin-desc { color: var(--text-dim); font-size: 11px; margin: 0; line-height: 1.4; }
-    .skin-badge { color: var(--gold-bright); font-size: 10px; font-weight: 800; text-transform: uppercase; }
-    .skin-active { color: var(--accent-bright); font-weight: 800; font-size: 12px; }
+    .skin-card.locked { opacity: 0.86; }
+    .skin-pin { position: absolute; top: 10px; right: 10px; z-index: 2; background: var(--accent); color: #0b0820; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: var(--r-full); box-shadow: var(--sh-1); }
+    .skin-art { flex: 1; min-height: 160px; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 58%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%), var(--bg-2); border-bottom: 1px solid var(--line); }
+    .skin-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 7px; }
+    .skin-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .skin-top b { font-size: 15px; font-family: var(--font-display); line-height: 1.15; }
+    .skin-badge { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-mute); white-space: nowrap; padding-top: 3px; }
+    .skin-badge.gold { color: var(--gold-bright); }
+    .skin-desc { color: var(--text-dim); font-size: 12px; margin: 0; line-height: 1.5; flex: 1; }
+    .skin-cta { margin-top: 2px; }
+    .skin-cta .btn { width: 100%; }
+    .skin-current { display: block; text-align: center; color: var(--accent-bright); font-weight: 800; font-size: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+    .skin-req { display: block; text-align: center; padding: 8px 0; }
+    .carousel-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 4; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; line-height: 1; color: var(--text); background: var(--glass-bg-strong); -webkit-backdrop-filter: blur(var(--glass-blur)); backdrop-filter: blur(var(--glass-blur)); border: 1px solid var(--line-strong); box-shadow: var(--glass-edge), var(--sh-2); transition: all var(--dur) var(--ease-out); }
+    .carousel-arrow:hover { border-color: var(--accent); transform: translateY(-50%) scale(1.06); }
+    .carousel-arrow.left { left: -6px; }
+    .carousel-arrow.right { right: -6px; }
+    .skins-note { margin: 8px 0 0; }
 
     .not-owned { display: flex; flex-direction: column; gap: var(--sp-3); max-width: 480px; }
+    .not-owned .trait-card { gap: 6px; }
     .btn.compact { padding: 7px 14px; font-size: 12px; }
     .btn.mini { padding: 4px 9px; font-size: 10px; border-radius: var(--r-sm); }
     .small { font-size: var(--fs-sm); }
@@ -592,18 +711,21 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     @media (max-width: 920px) {
       .atelier {
         grid-template-columns: 1fr;
-        grid-template-rows: auto 42vh 1fr;
+        grid-template-rows: auto 44vh 1fr;
+        grid-template-areas: "roster" "stage" "dossier";
         height: auto; min-height: calc(100dvh - 53px);
       }
-      .roster {
-        flex-direction: row; overflow-x: auto; overflow-y: hidden;
-        border-right: none; border-bottom: 1px solid var(--line);
-      }
-      .roster-item { flex: 0 0 64px; }
       .roster-item:hover { transform: none; }
-      .stage { min-height: 42vh; }
+      .stage { min-height: 44vh; }
       .id-name { font-size: clamp(1.8rem, 9vw, 2.6rem); }
-      .mastery-tree { grid-template-columns: 1fr; }
+      .mastery-tree, .sheet-facts { grid-template-columns: 1fr; }
+      .info-layout { grid-template-columns: 1fr; }
+      .info-nav { flex-direction: row; overflow-x: auto; padding-bottom: 2px; }
+      .info-navitem { flex: 0 0 auto; border-left: 1px solid var(--line); border-bottom: 3px solid transparent; }
+      .info-navitem.active { border-left-color: var(--ae); border-bottom-color: var(--accent); }
+      .skins-carousel { height: auto; }
+      .skin-card { flex: 0 0 78%; height: auto; }
+      .skin-art { min-height: 200px; }
       .tabs { top: 0; }
     }
   `],
@@ -615,6 +737,7 @@ export class KaelisPage implements OnDestroy {
   });
   readonly selected = signal<WaifuDef | null>(null);
   readonly tab = signal<KaeliTab>('perfil');
+  readonly infoSection = signal<'classe' | 'ecos' | 'presentes'>('classe');
   readonly previewStanceId = signal('');
   readonly selectedEquipmentSlot = signal<EquipmentSlot | null>(null);
   readonly selectedTier = signal(1);
@@ -645,13 +768,20 @@ export class KaelisPage implements OnDestroy {
 
   private initTimer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(private readonly api: ApiService) {
+  constructor(
+    private readonly api: ApiService,
+    private readonly route: ActivatedRoute,
+  ) {
     this.initTimer = setInterval(() => {
       if (this.selected()) { this.stopInit(); return; }
       const acc = this.api.account();
       const cat = this.api.catalog();
       if (acc && cat) {
-        const waifu = cat.waifus.find((w) => w.id === acc.activeWaifuId) ?? cat.waifus[0] ?? null;
+        const requested = this.route.snapshot.queryParamMap.get('waifu');
+        const waifu = cat.waifus.find((w) => w.id === requested)
+          ?? cat.waifus.find((w) => w.id === acc.activeWaifuId)
+          ?? cat.waifus[0]
+          ?? null;
         if (waifu) this.select(waifu);
         this.stopInit();
       }
@@ -678,8 +808,13 @@ export class KaelisPage implements OnDestroy {
   select(w: WaifuDef): void {
     this.selected.set(w);
     this.tab.set('perfil');
+    this.infoSection.set('classe');
     this.previewStanceId.set(this.initialStance(w)?.id ?? '');
     this.selectedEquipmentSlot.set(null);
+  }
+
+  unlockedLoreCount(w: WaifuDef): number {
+    return w.lore.filter((_, i) => this.loreUnlocked(w.id, i)).length;
   }
 
   owned(id: string): boolean { return this.api.account()?.ownedWaifus.includes(id) ?? false; }

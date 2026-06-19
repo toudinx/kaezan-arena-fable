@@ -27,7 +27,7 @@ const IRIS_DEEP = "#4a2a9e";
 const AURUM = "#e8a93c"; // 5★ reward — the climax color
 const AURUM_HOT = "#ffe6a8";
 
-export type VelvetSummonProps = {
+export type GachaSummonProps = {
   name: string;
   title: string;
   thumbSrc: string;
@@ -212,7 +212,7 @@ const Burst: React.FC = () => {
 };
 
 // ----------------------------------------------------------------------------
-// Layer 4 — the summon card: Velvet's portrait (thumb) in an aurum 5★ frame
+// Layer 4 — the summon card: the Kaeli portrait (thumb) in an aurum 5★ frame
 // that rises out of the burst with a glow + shimmer sweep. Self-contained
 // nameplate, so it reads as a gacha "result" card.
 // ----------------------------------------------------------------------------
@@ -454,7 +454,7 @@ const RarityStars: React.FC<{ progress: number }> = ({ progress }) => {
 // ----------------------------------------------------------------------------
 // Composition
 // ----------------------------------------------------------------------------
-export const VelvetSummon: React.FC<VelvetSummonProps> = ({ name, title, thumbSrc, bgSrc }) => {
+export const GachaSummon: React.FC<GachaSummonProps> = ({ name, title, thumbSrc, bgSrc }) => {
   const frame = useCurrentFrame();
 
   // final cinematic fade in/out

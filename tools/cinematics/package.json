@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "remotion studio",
     "studio": "remotion studio",
-    "render": "remotion render VelvetSummon out/velvet-5star.webm --codec=vp8",
-    "deploy": "npm run render && node -e \"require('fs').copyFileSync('out/velvet-5star.webm','../../frontend/public/assets/cinematics/velvet-5star.webm')\"",
-    "still": "remotion still VelvetSummon out/frame.png"
+    "render": "remotion render GachaSummon out/gacha-5star.webm --codec=vp8",
+    "deploy": "npm run render && node -e \"require('fs').copyFileSync('out/gacha-5star.webm','../../frontend/public/assets/cinematics/gacha-5star.webm')\"",
+    "still": "remotion still GachaSummon out/frame.png"
   },
   "dependencies": {
     "@remotion/cli": "4.0.481",

@@ -1,13 +1,13 @@
 import { Composition } from "remotion";
-import { VelvetSummon, SUMMON_FPS, SUMMON_DURATION } from "./VelvetSummon";
+import { GachaSummon, SUMMON_FPS, SUMMON_DURATION } from "./GachaSummon";
 
-// Single 5★ summon cutscene for now. New Kaelis can be added as parametrized
-// compositions (pass the waifu's thumb/bg/name as defaultProps) once they have art.
+// Single 5★ summon cutscene for now. The default props point at the active
+// featured Kaeli, but the composition itself is reusable for future banners.
 export const RemotionRoot: React.FC = () => {
   return (
     <Composition
-      id="VelvetSummon"
-      component={VelvetSummon}
+      id="GachaSummon"
+      component={GachaSummon}
       durationInFrames={SUMMON_DURATION}
       fps={SUMMON_FPS}
       width={1920}

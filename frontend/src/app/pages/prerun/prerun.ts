@@ -1,264 +1,331 @@
 import { Component, OnDestroy, computed, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../../core/api.service';
-import { ItemIcon } from '../../core/item-icon';
+import { KaeliArtService } from '../../core/kaeli-art.service';
 import { OutfitPreview } from '../../core/outfit-preview';
-import {
-  ClassDef, ELEMENT_LABELS, EquipmentSlot, ItemCatalogEntry, RARITY_COLORS,
-  SkinDef, WEAPON_LABELS, WaifuDef, equipKey,
-} from '../../core/types';
+import { tierBiome } from '../../core/tier-biomes';
+import { ELEMENT_LABELS, RARITY_COLORS, SkinDef, WaifuDef } from '../../core/types';
 
-const EQUIPMENT_SLOTS: { id: EquipmentSlot; label: string }[] = [
-  { id: 'helmet', label: 'Capacete' },
-  { id: 'armor', label: 'Armadura' },
-  { id: 'weapon', label: 'Arma' },
-  { id: 'necklace', label: 'Colar' },
-  { id: 'ring', label: 'Anel' },
-  { id: 'mount', label: 'Montaria' },
-];
-
-/** Tela de pré-run (3 colunas): stats | set do tier (troca inline) | roster. */
+/** Tela de deploy: escolher a Kaeli da hunt, sem editar build/equipamento. */
 @Component({
   selector: 'app-prerun',
   standalone: true,
-  imports: [OutfitPreview, ItemIcon],
+  imports: [OutfitPreview],
   template: `
-    <div class="page">
+    <section class="page grain"
+             [style.--bc]="biome(tierNum()).accent"
+             [style.--bd]="biome(tierNum()).deep"
+             [style.--bg-img]="'url(' + biome(tierNum()).bg + ')'">
+      <div class="scene" aria-hidden="true"></div>
+      <div class="wash" aria-hidden="true"></div>
+      <div class="tier-ghost" aria-hidden="true">{{ roman(tierNum()) }}</div>
+
       <button class="back" (click)="back()">‹ Voltar aos tiers</button>
 
       @if (tierDef(); as t) {
-        <div class="head">
-          <span class="tier-badge">Tier {{ t.tier }} · ×{{ t.statMultiplier }}</span>
-          <h1>{{ t.name }}</h1>
-          <p class="sub">Escolha a Kaeli que vai à caçada — boss: <b>{{ t.boss }}</b></p>
-        </div>
-      }
-
-      @if (selected(); as w) {
-        <div class="cols">
-          <!-- ── ESQUERDA: portrait + stats ── -->
-          <div class="col hero panel">
-            <app-outfit-preview
-              [lookType]="skinFor(w).lookType" [head]="skinFor(w).head" [body]="skinFor(w).body"
-              [legs]="skinFor(w).legs" [feet]="skinFor(w).feet" [addons]="skinFor(w).addons ?? 0"
-              [mountLookType]="mountLookType(w.id)" [size]="172" />
-            <div class="stars" [style.color]="rarityColor(w.rarity)">{{ '★'.repeat(w.rarity) }}</div>
-            <h2>{{ w.name }}</h2>
-            <p class="title">{{ w.title }}</p>
-            <div class="tags">
-              <span class="tag class-tag">{{ classFor(w)?.name }}</span>
-              <span class="tag">{{ elementLabel(w.element) }}</span>
-              <span class="tag">{{ weaponLabel(w.weapon) }}</span>
-            </div>
-            <div class="statgrid">
-              <div class="sg"><span>ATK</span><b>{{ w.baseAtk }}@if (bonus('atk'); as v) {<i class="plus">{{ v }}</i>}</b></div>
-              <div class="sg"><span>HP</span><b>{{ w.baseHp }}@if (bonus('hp'); as v) {<i class="plus">{{ v }}</i>}</b></div>
-              <div class="sg"><span>Afinidade</span><b>{{ affinityLevel(w.id) }}</b></div>
-              <div class="sg"><span>Ascensão</span><b>A{{ ascension(w.id) }}</b></div>
-            </div>
-            @if (equipmentTotals(w.id).length) {
-              <div class="equip-line">
-                <span class="el-lbl">Set T{{ tierNum() }}</span>
-                @for (s of equipmentTotals(w.id); track s.label) {
-                  <span class="el-stat">{{ s.label }} <b>{{ s.value }}</b></span>
-                }
-              </div>
-            }
-            <div class="trait">
-              <span class="trait-lbl">{{ w.trait.name }}</span>
-              <p>{{ w.trait.description }}</p>
-            </div>
-            <button class="btn enter" (click)="enter()">Entrar — {{ w.name }}</button>
-          </div>
-
-          <!-- ── MEIO: set do tier ── -->
-          <div class="col set panel">
-            <div class="set-head">
-              <span class="set-title">Set · Tier {{ tierNum() }}</span>
-              <span class="muted small">Itens travados no tier (0 = sem-tier)</span>
-            </div>
-            <div class="slots">
-              @for (slot of equipmentSlots; track slot.id) {
-                <button class="slot" [class.active]="selectedSlot() === slot.id"
-                        [class.filled]="equippedItem(w.id, slot.id)"
-                        (click)="toggleSlot(slot.id)">
-                  <span class="slot-name">{{ slot.label }}</span>
-                  @if (equippedItem(w.id, slot.id); as item) {
-                    <app-item-icon [itemId]="item.itemId" [size]="40" />
-                    <b>{{ item.name }}</b>
-                    <small>{{ itemStats(item) }}</small>
-                  } @else {
-                    <span class="empty">vazio</span>
-                  }
-                </button>
-              }
+        <main class="deploy">
+          <aside class="selector" aria-label="Selecionar Kaeli">
+            <div class="selector-head">
+              <span class="tier-badge">Tier {{ t.tier }} · {{ biome(t.tier).label }} · ×{{ t.statMultiplier }}</span>
+              <h1>{{ t.name }}</h1>
+              <p>Escolha quem vai encarar <b>{{ t.boss }}</b>.</p>
             </div>
 
-            @if (selectedSlot(); as slot) {
-              <div class="picker">
-                <div class="picker-head">
-                  <b>Trocar {{ slotLabel(slot) }}</b>
-                  @if (equippedItem(w.id, slot)) {
-                    <button class="btn secondary tiny" [disabled]="busy()" (click)="unequip(w.id, slot)">Desequipar</button>
-                  }
-                </div>
-                <div class="options">
-                  @for (item of candidates(w.id, slot); track item.itemId) {
-                    <button class="option" [disabled]="busy() || !canEquip(w, item)"
-                            [title]="itemRequirement(w, item)" (click)="equip(w.id, slot, item.itemId)">
-                      <app-item-icon [itemId]="item.itemId" [size]="34" />
-                      <span>
-                        <b>{{ item.name }}</b>
-                        <small>{{ itemStats(item) }}</small>
-                        @if (item.tier > 0) { <small class="t-tag">T{{ item.tier }}</small> }
-                        @if (itemRequirement(w, item)) { <small class="req">{{ itemRequirement(w, item) }}</small> }
-                      </span>
-                    </button>
-                  } @empty {
-                    <span class="muted small">Nenhum item deste slot para o tier {{ tierNum() }} na Mochila.</span>
-                  }
-                </div>
-              </div>
-            } @else {
-              <p class="muted small pick-hint">Clique num slot para trocar a peça sem sair desta tela.</p>
-            }
-          </div>
-
-          <!-- ── DIREITA: roster ── -->
-          <div class="col roster-col">
-            <span class="roster-title">Suas Kaelis</span>
             <div class="roster">
-              @for (o of ownedWaifus(); track o.id) {
-                <button class="card" [class.selected]="selected()?.id === o.id"
-                        [style.--rc]="rarityColor(o.rarity)" (click)="select(o)">
-                  <app-outfit-preview [lookType]="skinFor(o).lookType" [head]="skinFor(o).head"
-                    [body]="skinFor(o).body" [legs]="skinFor(o).legs" [feet]="skinFor(o).feet"
-                    [addons]="skinFor(o).addons ?? 0" [size]="56" [animate]="false" />
-                  <span class="card-name">{{ o.name }}</span>
-                  <span class="card-stars" [style.color]="rarityColor(o.rarity)">{{ '★'.repeat(o.rarity) }}</span>
+              @for (w of ownedWaifus(); track w.id) {
+                <button class="kaeli-row"
+                        [class.active]="selected()?.id === w.id"
+                        [style.--rc]="rarityColor(w.rarity)"
+                        (click)="select(w)">
+                  <span class="portrait">
+                    @if (thumb(w.id); as art) {
+                      <img class="thumb" [src]="art" [alt]="w.name" decoding="async" />
+                    } @else {
+                      <app-outfit-preview
+                        [lookType]="skinFor(w).lookType" [head]="skinFor(w).head" [body]="skinFor(w).body"
+                        [legs]="skinFor(w).legs" [feet]="skinFor(w).feet" [addons]="skinFor(w).addons ?? 0"
+                        [mountLookType]="skinFor(w).mountLookType ?? 0" [size]="50" [animate]="false" />
+                    }
+                  </span>
+                  <span class="row-copy">
+                    <b>{{ w.name }}</b>
+                    <small>{{ elementLabel(w.element) }}</small>
+                    <span class="stars" [style.color]="rarityColor(w.rarity)">{{ '★'.repeat(w.rarity) }}</span>
+                  </span>
                 </button>
               } @empty {
-                <p class="muted">Nenhuma Kaeli recrutada.</p>
+                <p class="muted">Você ainda não recrutou nenhuma Kaeli.</p>
               }
             </div>
-          </div>
-        </div>
+          </aside>
+
+          @if (selected(); as w) {
+            <section class="hero" [style.--rc]="rarityColor(w.rarity)">
+              <div class="hero-copy">
+                <span class="hero-eyebrow">{{ elementLabel(w.element) }}</span>
+                <h2>{{ w.name }}</h2>
+                <p>{{ w.title }}</p>
+              </div>
+
+              <div class="art-stage">
+                <app-outfit-preview
+                  [lookType]="skinFor(w).lookType" [head]="skinFor(w).head" [body]="skinFor(w).body"
+                  [legs]="skinFor(w).legs" [feet]="skinFor(w).feet" [addons]="skinFor(w).addons ?? 0"
+                  [mountLookType]="skinFor(w).mountLookType ?? 0" [size]="360" />
+                <div class="floor-glow" aria-hidden="true"></div>
+              </div>
+
+              <div class="actions">
+                <button class="pill-btn secondary" (click)="details(w)">Detalhes</button>
+                <button class="pill-btn" (click)="enter()">Continuar</button>
+              </div>
+            </section>
+          }
+        </main>
       } @else {
-        <p class="muted">Você ainda não recrutou nenhuma Kaeli. Vá ao banner!</p>
+        <p class="muted">Carregando tier...</p>
       }
-    </div>
+    </section>
   `,
   styles: [`
-    .page { max-width: 1220px; margin: 0 auto; padding: var(--sp-6) var(--sp-5); }
-    .back { background: none; border: none; color: var(--text-dim); font-size: var(--fs-sm); cursor: pointer; padding: 0 0 var(--sp-4); }
+    :host { display: block; }
+    .page {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      height: calc(100dvh - 64px);
+      min-height: 640px;
+      padding: clamp(12px, 2vw, 24px) clamp(20px, 5vw, 76px) clamp(16px, 3vw, 30px);
+      background: var(--bg-0);
+    }
+    .scene {
+      position: absolute;
+      inset: 0;
+      z-index: -4;
+      background-image: var(--bg-img);
+      background-size: cover;
+      background-position: center;
+      filter: saturate(0.72) brightness(0.62);
+      transform: scale(1.03);
+    }
+    .wash {
+      position: absolute;
+      inset: 0;
+      z-index: -3;
+      pointer-events: none;
+      background:
+        radial-gradient(50% 70% at 68% 48%, color-mix(in srgb, var(--bc) 22%, transparent), transparent 66%),
+        linear-gradient(90deg, rgba(7,7,13,0.9), rgba(7,7,13,0.52) 42%, rgba(7,7,13,0.86)),
+        linear-gradient(180deg, rgba(7,7,13,0.56), rgba(7,7,13,0.92));
+    }
+    .tier-ghost {
+      position: absolute;
+      right: clamp(80px, 14vw, 220px);
+      top: clamp(56px, 10vh, 118px);
+      z-index: -2;
+      color: color-mix(in srgb, var(--bc) 34%, white);
+      font-family: var(--font-display);
+      font-size: clamp(11rem, 30vw, 26rem);
+      font-weight: 650;
+      line-height: 0.8;
+      opacity: 0.14;
+      pointer-events: none;
+    }
+    .back {
+      position: relative;
+      z-index: 2;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: var(--fs-sm);
+      padding: 0 0 var(--sp-3);
+    }
     .back:hover { color: var(--accent-bright); }
     .back:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; border-radius: var(--r-sm); }
-    .head { margin-bottom: var(--sp-5); }
-    .tier-badge { color: var(--gold-bright); font-size: 11px; font-weight: 800; letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; }
-    .head h1 { margin: var(--sp-2) 0 var(--sp-1); font-size: var(--fs-h1); }
-    .sub { color: var(--text-dim); margin: 0; }
 
-    .cols { display: grid; grid-template-columns: 280px 1fr 300px; gap: var(--sp-4); align-items: start; }
-    .col { }
-    .panel {
-      background: var(--glass-bg);
-      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.25);
-      backdrop-filter: blur(var(--glass-blur)) saturate(1.25);
-      border: 1px solid var(--line-strong);
-      border-radius: var(--r-lg);
-      box-shadow: var(--glass-edge), var(--sh-2);
+    .deploy {
+      position: relative;
+      z-index: 1;
+      height: calc(100% - 34px);
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(430px, 540px) minmax(0, 1fr);
+      gap: clamp(28px, 5vw, 88px);
+      align-items: center;
+      max-width: 1320px;
+      margin: 0 auto;
     }
+    .selector {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-4);
+      min-width: 0;
+    }
+    .tier-badge {
+      color: var(--bc);
+      font-size: var(--fs-xs);
+      font-weight: 900;
+      letter-spacing: var(--tracking-eyebrow);
+      text-transform: uppercase;
+    }
+    .selector h1 {
+      margin: var(--sp-2) 0 var(--sp-2);
+      color: var(--text);
+      font-family: var(--font-display);
+      font-size: clamp(2.6rem, 4.7vw, 4.6rem);
+      font-weight: 650;
+      line-height: 0.94;
+      text-shadow: 0 10px 42px rgba(0,0,0,0.75);
+    }
+    .selector p { max-width: 34ch; margin: 0; color: var(--text-dim); }
+    .selector p b { color: color-mix(in srgb, var(--bc) 78%, white); }
 
-    /* ESQUERDA */
-    .hero { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-5) var(--sp-4);
-      background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 10%, var(--glass-bg)), var(--glass-bg-strong)); }
-    .hero h2 { margin: 2px 0 0; font-size: 21px; }
-    .hero .title { margin: 0; color: var(--accent-bright); font-size: 12px; text-align: center; }
-    .stars { letter-spacing: 2px; font-size: 14px; }
-    .tags { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }
-    .tag { background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 3px 8px; font-size: 11px; font-weight: 700; }
-    .class-tag { color: var(--accent-bright); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
-    .statgrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); width: 100%; margin-top: 4px; }
-    .sg { background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 7px 9px;
-      display: flex; flex-direction: column; gap: 2px; align-items: center; }
-    .sg span { font-size: 9px; color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.08em; }
-    .sg b { font-size: 16px; }
-    .plus { color: var(--accent-bright); font-size: 11px; font-style: normal; margin-left: 3px; }
-    .equip-line { width: 100%; background: color-mix(in srgb, var(--accent) 13%, var(--bg-2)); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); border-radius: var(--r-sm);
-      padding: 7px 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-    .el-lbl { font-size: 9px; font-weight: 800; color: var(--accent-bright); text-transform: uppercase; }
-    .el-stat { font-size: 11px; color: var(--text-dim); }
-    .el-stat b { color: var(--accent-bright); }
-    .trait { width: 100%; background: color-mix(in srgb, var(--rarity-4) 11%, var(--bg-2)); border: 1px solid color-mix(in srgb, var(--rarity-4) 35%, transparent); border-radius: var(--r-sm); padding: 8px 10px; }
-    .trait-lbl { color: var(--accent-bright); font-size: 11px; font-weight: 800; }
-    .trait p { margin: 3px 0 0; color: var(--text-dim); font-size: 11px; line-height: 1.4; }
-    .enter { width: 100%; padding: 13px; font-size: 15px; margin-top: 2px; }
+    .roster {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      overflow: visible;
+    }
+    .kaeli-row {
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      min-height: 68px;
+      padding: 7px 9px 7px 7px;
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      background: rgba(14, 14, 24, 0.48);
+      color: inherit;
+      text-align: left;
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--glass-edge);
+      transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out),
+        background var(--dur-fast) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+    }
+    .kaeli-row:hover {
+      transform: translateX(3px);
+      border-color: color-mix(in srgb, var(--rc) 64%, var(--line-strong));
+    }
+    .kaeli-row:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }
+    .kaeli-row.active {
+      border-color: color-mix(in srgb, var(--rc) 74%, white 10%);
+      background: color-mix(in srgb, var(--rc) 13%, rgba(14,14,24,0.62));
+      box-shadow: var(--glass-edge), 0 0 30px color-mix(in srgb, var(--rc) 18%, transparent);
+    }
+    .portrait {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--r-sm);
+      background: radial-gradient(circle, color-mix(in srgb, var(--rc) 24%, var(--bg-2)), rgba(7,7,13,0.72));
+      overflow: hidden;
+    }
+    .thumb {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+    }
+    .row-copy { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+    .row-copy b { overflow: hidden; color: var(--text); font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+    .row-copy small { color: var(--text-mute); font-size: 11px; }
+    .stars { font-size: 10px; letter-spacing: 1px; line-height: 1; white-space: nowrap; }
 
-    /* MEIO */
-    .set { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
-    .set-head { display: flex; flex-direction: column; gap: 2px; }
-    .set-title { font-size: 13px; font-weight: 800; color: var(--accent-bright); text-transform: uppercase; letter-spacing: 0.08em; }
-    .slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); }
-    .slot { min-height: 104px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg-2);
-      color: inherit; padding: 8px; display: flex; flex-direction: column; align-items: center;
-      justify-content: center; gap: 3px; cursor: pointer; box-shadow: var(--glass-edge);
-      transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out); }
-    .slot:hover { border-color: var(--line-strong); transform: translateY(-1px); }
-    .slot.active { border-color: var(--accent-bright); background: color-mix(in srgb, var(--accent) 14%, var(--bg-2)); }
-    .slot:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
-    .slot.filled .slot-name { color: var(--accent-bright); }
-    .slot-name { color: var(--text-mute); font-size: 10px; font-weight: 800; text-transform: uppercase; }
-    .slot b { font-size: 11px; text-align: center; }
-    .slot small { color: var(--text-dim); font-size: 9px; text-align: center; }
-    .slot .empty { color: var(--text-faint); font-size: 12px; }
-
-    .picker { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--glass-bg-strong); padding: var(--sp-3); box-shadow: var(--glass-edge); }
-    .picker-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-3); }
-    .options { display: flex; flex-direction: column; gap: var(--sp-2); max-height: 280px; overflow-y: auto; }
-    .option { display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer;
-      border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--bg-2); color: inherit; padding: 7px 9px; }
-    .option:not([disabled]):hover { border-color: var(--accent); }
-    .option:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
-    .option[disabled] { opacity: 0.5; cursor: not-allowed; }
-    .option span { display: flex; flex-direction: column; }
-    .option small { color: var(--text-dim); font-size: 10px; }
-    .t-tag { color: var(--gold-bright) !important; font-weight: 800; }
-    .req { color: var(--danger) !important; }
-    .pick-hint { margin: 0; }
-
-    /* DIREITA */
-    .roster-col { display: flex; flex-direction: column; gap: var(--sp-2); }
-    .roster-title { font-size: 13px; font-weight: 800; color: var(--accent-bright); text-transform: uppercase; letter-spacing: 0.08em; }
-    .roster { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-height: 560px; overflow-y: auto; padding-right: 2px; }
-    .roster::-webkit-scrollbar { width: 5px; }
-    .roster::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: var(--r-full); }
-    .card { background: var(--glass-bg); border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 10px 6px 8px;
-      display: flex; flex-direction: column; align-items: center; gap: 4px; color: inherit; cursor: pointer;
-      box-shadow: inset 0 1px 0 color-mix(in srgb, var(--rc) 40%, transparent); }
-    .card:hover { border-color: var(--rc); }
-    .card:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
-    .card.selected { outline: 2px solid var(--accent-bright); outline-offset: 2px; background: color-mix(in srgb, var(--accent) 12%, var(--glass-bg)); }
-    .card-name { font-size: 12px; font-weight: 700; text-align: center; }
-    .card-stars { font-size: 9px; }
-
-    .btn.tiny { padding: 4px 9px; font-size: 11px; }
+    .hero {
+      position: relative;
+      height: 100%;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      align-items: stretch;
+      min-width: 0;
+    }
+    .hero-copy {
+      position: relative;
+      z-index: 2;
+      align-self: start;
+      max-width: 48ch;
+      justify-self: end;
+      text-align: right;
+    }
+    .hero-eyebrow {
+      color: color-mix(in srgb, var(--rc) 72%, white);
+      font-size: var(--fs-xs);
+      font-weight: 900;
+      letter-spacing: var(--tracking-eyebrow);
+      text-transform: uppercase;
+    }
+    .hero h2 {
+      margin: var(--sp-2) 0 var(--sp-1);
+      color: var(--text);
+      font-family: var(--font-display);
+      font-size: clamp(3.8rem, 8vw, 7.4rem);
+      font-weight: 650;
+      line-height: 0.88;
+      text-shadow: 0 12px 46px rgba(0,0,0,0.78);
+    }
+    .hero p {
+      margin: 0;
+      color: var(--text-dim);
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 1rem;
+    }
+    .art-stage {
+      position: relative;
+      display: grid;
+      place-items: end center;
+      min-height: 0;
+      overflow: visible;
+    }
+    .art-stage app-outfit-preview {
+      position: relative;
+      z-index: 1;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 24px 32px rgba(0,0,0,0.72));
+    }
+    .floor-glow {
+      position: absolute;
+      left: 50%;
+      bottom: 3%;
+      width: min(540px, 78%);
+      height: 92px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: radial-gradient(ellipse at center, color-mix(in srgb, var(--rc) 42%, transparent), transparent 70%);
+      filter: blur(18px);
+      opacity: 0.82;
+    }
+    .actions {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--sp-3);
+      flex-wrap: wrap;
+      padding-top: var(--sp-3);
+    }
     .muted { color: var(--text-mute); }
-    .small { font-size: 11px; }
 
-    @media (max-width: 980px) {
-      .page { padding: var(--sp-5) var(--sp-4); }
-      .cols { grid-template-columns: 1fr; }
-      .slots { grid-template-columns: repeat(2, 1fr); }
-      .roster { max-height: none; }
+    @media (max-width: 940px) {
+      .page { height: auto; min-height: calc(100dvh - 64px); overflow: auto; }
+      .deploy { grid-template-columns: 1fr; align-items: start; gap: var(--sp-6); }
+      .selector { order: 2; }
+      .hero { order: 1; min-height: auto; }
+      .hero-copy { justify-self: start; text-align: left; }
+      .hero h2 { font-size: clamp(3.2rem, 16vw, 5.2rem); }
+      .actions { justify-content: stretch; }
+      .pill-btn { flex: 1 1 180px; }
+      .roster { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
   `],
 })
 export class PrerunPage implements OnDestroy {
-  readonly equipmentSlots = EQUIPMENT_SLOTS;
   readonly tierNum = signal(1);
   readonly selected = signal<WaifuDef | null>(null);
-  readonly selectedSlot = signal<EquipmentSlot | null>(null);
-  readonly busy = signal(false);
 
   readonly tierDef = computed(() =>
     this.api.catalog()?.tiers.find((t) => t.tier === this.tierNum()) ?? null);
@@ -272,10 +339,13 @@ export class PrerunPage implements OnDestroy {
       .sort((a, b) => b.rarity - a.rarity || a.name.localeCompare(b.name));
   });
 
+  private initTimer: ReturnType<typeof setInterval> | null = null;
+
   constructor(
     private readonly api: ApiService,
     private readonly route: ActivatedRoute,
     private readonly router: Router,
+    private readonly art: KaeliArtService,
   ) {
     this.tierNum.set(Number(this.route.snapshot.paramMap.get('tier') ?? '1'));
     this.initTimer = setInterval(() => {
@@ -289,8 +359,6 @@ export class PrerunPage implements OnDestroy {
     }, 150);
   }
 
-  private initTimer: ReturnType<typeof setInterval> | null = null;
-
   private stopInit(): void {
     if (this.initTimer !== null) { clearInterval(this.initTimer); this.initTimer = null; }
   }
@@ -299,119 +367,22 @@ export class PrerunPage implements OnDestroy {
 
   rarityColor(r: number): string { return RARITY_COLORS[r] ?? 'var(--text)'; }
   elementLabel(e: string): string { return ELEMENT_LABELS[e] ?? e; }
-  weaponLabel(w: string): string { return WEAPON_LABELS[w] ?? w; }
+  biome(tier: number) { return tierBiome(tier); }
+  roman(tier: number): string { return ['I', 'II', 'III', 'IV', 'V'][tier - 1] ?? String(tier); }
 
-  select(w: WaifuDef): void { this.selected.set(w); this.selectedSlot.set(null); }
-  toggleSlot(slot: EquipmentSlot): void { this.selectedSlot.set(this.selectedSlot() === slot ? null : slot); }
-
-  classFor(w: WaifuDef): ClassDef | undefined {
-    return this.api.catalog()?.classes.find((c) => c.id === w.classId);
-  }
-  affinityLevel(id: string): number { return this.api.account()?.affinity?.[id]?.level ?? 1; }
-  ascension(id: string): number { return this.api.account()?.ascension?.[id] ?? 0; }
+  thumb(id: string): string | null { return this.art.thumb(id); }
 
   skinFor(w: WaifuDef): SkinDef {
     const selectedId = this.api.account()?.selectedSkins?.[w.id];
     return w.skins.find((s) => s.id === selectedId) ?? w.skins[0];
   }
 
-  itemById(itemId: number): ItemCatalogEntry | undefined {
-    return this.api.catalog()?.items.find((i) => i.itemId === itemId);
+  select(w: WaifuDef): void {
+    this.selected.set(w);
   }
 
-  equippedItem(waifuId: string, slot: EquipmentSlot): ItemCatalogEntry | undefined {
-    const itemId = this.api.account()?.equipment?.[equipKey(waifuId, this.tierNum())]?.[slot];
-    return itemId === undefined ? undefined : this.itemById(itemId);
-  }
-
-  mountLookType(waifuId: string): number {
-    return this.equippedItem(waifuId, 'mount')?.mountLookType || this.skinFor(this.selected()!).mountLookType || 0;
-  }
-
-  candidates(waifuId: string, slot: EquipmentSlot): ItemCatalogEntry[] {
-    const inventory = this.api.account()?.inventory ?? [];
-    const tier = this.tierNum();
-    return inventory
-      .map((stack) => this.itemById(stack.itemId))
-      .filter((item): item is ItemCatalogEntry =>
-        item?.slot === slot && (item.tier === 0 || item.tier === tier))
-      .sort((a, b) =>
-        Number(this.canEquipById(waifuId, b)) - Number(this.canEquipById(waifuId, a))
-        || (b.attack + b.armor + b.defense + b.mountSpeed) - (a.attack + a.armor + a.defense + a.mountSpeed));
-  }
-
-  canEquip(waifu: WaifuDef, item: ItemCatalogEntry): boolean { return !this.itemRequirement(waifu, item); }
-
-  itemRequirement(waifu: WaifuDef, item: ItemCatalogEntry): string {
-    if (item.allowedClassIds.length && !item.allowedClassIds.includes(waifu.classId))
-      return `Restrito a ${item.allowedClassIds.join(', ')}`;
-    const mastery = this.api.account()?.mastery?.[waifu.id];
-    const total = (mastery?.points ?? 0) + (mastery?.spent ?? 0);
-    if (total < item.requiredMasteryPoints) return `Requer ${item.requiredMasteryPoints} maestria`;
-    return '';
-  }
-
-  private canEquipById(waifuId: string, item: ItemCatalogEntry): boolean {
-    const waifu = this.ownedWaifus().find((w) => w.id === waifuId);
-    return !!waifu && this.canEquip(waifu, item);
-  }
-
-  slotLabel(slot: EquipmentSlot): string {
-    return this.equipmentSlots.find((s) => s.id === slot)?.label ?? slot;
-  }
-
-  itemStats(item: ItemCatalogEntry): string {
-    return [
-      item.attack ? `ATK ${item.attack}` : '',
-      item.armor ? `ARM ${item.armor}` : '',
-      item.defense ? `DEF ${item.defense}` : '',
-      item.mountSpeed ? `VEL ${item.mountSpeed}` : '',
-      item.critChance ? `CRIT +${Math.round(item.critChance * 100)}%` : '',
-    ].filter(Boolean).join(' · ') || 'equipável';
-  }
-
-  equipmentTotals(waifuId: string): { label: string; value: string }[] {
-    let atk = 0, arm = 0, def = 0, crit = 0;
-    for (const slot of EQUIPMENT_SLOTS) {
-      const item = this.equippedItem(waifuId, slot.id);
-      if (!item) continue;
-      atk += item.attack ?? 0; arm += item.armor ?? 0; def += item.defense ?? 0; crit += item.critChance ?? 0;
-    }
-    const out: { label: string; value: string }[] = [];
-    if (atk) out.push({ label: 'ATK', value: `+${atk}` });
-    if (arm) out.push({ label: 'ARM', value: `+${arm}` });
-    if (def) out.push({ label: 'DEF', value: `+${def}` });
-    if (crit) out.push({ label: 'CRIT', value: `+${Math.round(crit * 100)}%` });
-    return out;
-  }
-
-  /** Bônus agregado do set (ATK/HP aprox.) para o resumo da coluna esquerda. */
-  bonus(kind: 'atk' | 'hp'): string {
-    const w = this.selected();
-    if (!w) return '';
-    let atk = 0, hp = 0;
-    for (const slot of EQUIPMENT_SLOTS) {
-      const item = this.equippedItem(w.id, slot.id);
-      if (!item) continue;
-      atk += item.attack ?? 0;
-      hp += (item.armor ?? 0) * 4 + (item.defense ?? 0) * 6;
-    }
-    if (kind === 'atk') return atk ? `+${atk}` : '';
-    return hp ? `+${hp}` : '';
-  }
-
-  async equip(waifuId: string, slot: EquipmentSlot, itemId: number): Promise<void> {
-    this.busy.set(true);
-    try { await this.api.equipItem(waifuId, slot, itemId, this.tierNum()); }
-    catch (e) { alert((e as Error).message); }
-    finally { this.busy.set(false); }
-  }
-
-  async unequip(waifuId: string, slot: EquipmentSlot): Promise<void> {
-    this.busy.set(true);
-    try { await this.api.unequipItem(waifuId, slot, this.tierNum()); }
-    catch (e) { alert((e as Error).message); }
-    finally { this.busy.set(false); }
+  details(w: WaifuDef): void {
+    void this.router.navigate(['/kaelis'], { queryParams: { waifu: w.id } });
   }
 
   enter(): void {

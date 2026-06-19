@@ -23,6 +23,11 @@ fixada; a página Kaelis traz idle rotativo (3 poses, crossfade a cada 7s); o re
 [`docs/FRONTEND_REMAP.md`](docs/FRONTEND_REMAP.md). Todas as animações de destaque respeitam
 `prefers-reduced-motion`.
 
+A Caçada usa telas full-bleed inspiradas em seleção de desafio/deploy: fundos panorâmicos por bioma,
+rails de escolha, boss/sprite sobre a cena, recompensas em faixa e CTAs em pílula.
+O pré-run (`/play/:tier`) é apenas o seletor cinematográfico de Kaeli; detalhes e equipamentos ficam
+na página Kaelis.
+
 ## Como rodar
 
 ```powershell

@@ -17,6 +17,7 @@ type ResistanceKind = 'neutral' | 'weak' | 'resist';
 type ResistanceGrade = 'low' | 'moderate' | 'high';
 
 const APPEARANCE_PAGE_SIZE = 60;
+const AUTHORED_PAGE_SIZE = 8;
 
 @Component({
   selector: 'app-monster-editor',
@@ -289,10 +290,10 @@ const APPEARANCE_PAGE_SIZE = 60;
           type="search"
           placeholder="Buscar monstro Kaezan"
           [value]="authoredSearch()"
-          (input)="authoredSearch.set($any($event.target).value)"
+          (input)="setAuthoredSearch($any($event.target).value)"
         />
         <label>Funcao
-          <select (change)="authoredRankFilter.set($any($event.target).value)">
+          <select (change)="setAuthoredRankFilter($any($event.target).value)">
             <option value="all" [selected]="authoredRankFilter() === 'all'">Todas</option>
             @for (rank of ranks; track rank.id) {
               <option [value]="rank.id" [selected]="authoredRankFilter() === rank.id">{{ rank.name }}</option>
@@ -326,6 +327,12 @@ const APPEARANCE_PAGE_SIZE = 60;
             </div>
           }
         </div>
+
+        <footer class="pagination">
+          <button type="button" [disabled]="authoredPage() <= 1" (click)="changeAuthoredPage(-1)">Anterior</button>
+          <span>{{ authoredPage() }} / {{ authoredPageCount() }} - {{ filteredAuthored().length }}</span>
+          <button type="button" [disabled]="authoredPage() >= authoredPageCount()" (click)="changeAuthoredPage(1)">Proxima</button>
+        </footer>
       </aside>
 
       @if (pendingDelete(); as monster) {
@@ -511,6 +518,7 @@ export class MonsterEditor implements OnInit {
   readonly appearancePage = signal(1);
   readonly authoredSearch = signal('');
   readonly authoredRankFilter = signal<AuthoredRankFilter>('all');
+  readonly authoredPage = signal(1);
 
   readonly saving = signal(false);
   readonly deleting = signal(false);
@@ -574,7 +582,16 @@ export class MonsterEditor implements OnInit {
       .sort((a, b) => rankOrder[a.rank] - rankOrder[b.rank] || a.name.localeCompare(b.name));
   });
 
-  readonly authoredCards = computed(() => this.filteredAuthored().map((monster) => ({
+  readonly authoredPageCount = computed(() =>
+    Math.max(1, Math.ceil(this.filteredAuthored().length / AUTHORED_PAGE_SIZE)));
+
+  readonly pagedAuthored = computed(() => {
+    const page = Math.min(this.authoredPage(), this.authoredPageCount());
+    const start = (page - 1) * AUTHORED_PAGE_SIZE;
+    return this.filteredAuthored().slice(start, start + AUTHORED_PAGE_SIZE);
+  });
+
+  readonly authoredCards = computed(() => this.pagedAuthored().map((monster) => ({
     monster,
     creature: this.fromDefinition(monster),
     usages: this.usageFor(monster),
@@ -653,6 +670,23 @@ export class MonsterEditor implements OnInit {
     this.appearancePage.set(Math.max(1, Math.min(
       this.appearancePageCount(),
       this.appearancePage() + delta,
+    )));
+  }
+
+  setAuthoredSearch(value: string): void {
+    this.authoredSearch.set(value);
+    this.authoredPage.set(1);
+  }
+
+  setAuthoredRankFilter(value: AuthoredRankFilter): void {
+    this.authoredRankFilter.set(value);
+    this.authoredPage.set(1);
+  }
+
+  changeAuthoredPage(delta: number): void {
+    this.authoredPage.set(Math.max(1, Math.min(
+      this.authoredPageCount(),
+      this.authoredPage() + delta,
     )));
   }
 

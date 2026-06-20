@@ -13,6 +13,14 @@ export class ItemIcon implements AfterViewInit, OnChanges {
   itemId = input.required<number>();
   size = input(48);
 
+  private readonly tierFrameColors: Record<number, string> = {
+    1: '#8cbf4d',
+    2: '#d99a3c',
+    3: '#a662ff',
+    4: '#ff6a3d',
+    5: '#7b6bf2',
+  };
+
   @ViewChild('cv') cv!: ElementRef<HTMLCanvasElement>;
 
   constructor(
@@ -48,9 +56,41 @@ export class ItemIcon implements AfterViewInit, OnChanges {
         } else {
           this.assets.drawObject(ctx, item?.appearanceItemId ?? this.itemId(), 0, 0, this.size() / 32);
         }
+        this.drawTierFrame(ctx, item?.tier ?? 0);
+        if (item?.tag === 'relic') this.drawRelicFrame(ctx);
         if (++tries < 10) setTimeout(tick, 200);
       };
       tick();
     });
+  }
+
+  private drawTierFrame(ctx: CanvasRenderingContext2D, tier: number): void {
+    const color = this.tierFrameColors[tier];
+    if (!color) return;
+
+    const size = this.size();
+    const inset = Math.max(1, Math.round(size * 0.06));
+    ctx.save();
+    ctx.lineWidth = Math.max(2, Math.round(size * 0.06));
+    ctx.strokeStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = Math.max(2, Math.round(size * 0.08));
+    ctx.strokeRect(inset, inset, size - inset * 2, size - inset * 2);
+    ctx.restore();
+  }
+
+  private drawRelicFrame(ctx: CanvasRenderingContext2D): void {
+    const size = this.size();
+    const inset = Math.max(3, Math.round(size * 0.12));
+    ctx.save();
+    ctx.lineWidth = Math.max(1, Math.round(size * 0.035));
+    ctx.strokeStyle = '#ffd36a';
+    ctx.shadowColor = '#ffd36a';
+    ctx.shadowBlur = Math.max(3, Math.round(size * 0.12));
+    ctx.strokeRect(inset, inset, size - inset * 2, size - inset * 2);
+    ctx.fillStyle = '#ffd36a';
+    const mark = Math.max(3, Math.round(size * 0.10));
+    ctx.fillRect(size - inset - mark, inset - 1, mark, Math.max(2, Math.round(mark * 0.35)));
+    ctx.restore();
   }
 }

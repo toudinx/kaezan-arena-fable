@@ -35,7 +35,9 @@ public sealed record AuthoredItemDefinition(
     int RequiredMasteryPoints,
     int Tier = 0,
     string? Slot = null,
-    string? WeaponType = null)
+    string? WeaponType = null,
+    string Tag = GameConfig.AuthoredItemTagNormal,
+    double StatMultiplier = 1)
 {
     public ItemType Apply(ItemType source)
     {
@@ -72,7 +74,9 @@ public sealed record AuthoredItemDefinition(
             DeathResistance = DeathResistance,
             HolyResistance = HolyResistance,
             AllowedClassIds = AllowedClassIds,
-            RequiredMasteryPoints = RequiredMasteryPoints
+            RequiredMasteryPoints = RequiredMasteryPoints,
+            Tag = Tag,
+            StatMultiplier = StatMultiplier
         };
     }
 }
@@ -112,7 +116,9 @@ public static class ItemAuthoring
         0,
         source.Tier,
         source.Slot,
-        source.WeaponType);
+        source.WeaponType,
+        source.Tag,
+        source.StatMultiplier);
 
     public static AuthoredItemDefinition Normalize(
         AuthoredItemDefinition definition, int? itemId = null)
@@ -133,12 +139,21 @@ public static class ItemAuthoring
         var weaponType = slot == EquipmentSlots.Weapon && !string.IsNullOrWhiteSpace(definition.WeaponType)
             ? definition.WeaponType.Trim().ToLowerInvariant()
             : null;
-        return definition with
+        var tag = definition.Tag.Equals(GameConfig.AuthoredItemTagRelic, StringComparison.OrdinalIgnoreCase)
+            ? GameConfig.AuthoredItemTagRelic
+            : GameConfig.AuthoredItemTagNormal;
+        var statMultiplier = tag == GameConfig.AuthoredItemTagRelic
+            ? Math.Clamp(
+                definition.StatMultiplier > 0 ? definition.StatMultiplier : GameConfig.AuthoredItemRelicMultiplierDefault,
+                GameConfig.AuthoredItemRelicMultiplierMin,
+                GameConfig.AuthoredItemRelicMultiplierMax)
+            : 1;
+        var normalized = definition with
         {
             ItemId = itemId ?? definition.ItemId,
             Name = definition.Name.Trim(),
             Description = definition.Description.Trim(),
-            SalePrice = Math.Clamp(definition.SalePrice, 0, GameConfig.ItemMaxSalePrice),
+            SalePrice = GameConfig.AuthoredItemSalePrice(definition.Tier),
             Attack = Math.Clamp(definition.Attack, 0, GameConfig.ItemMaxAttack),
             Armor = Math.Clamp(definition.Armor, 0, GameConfig.ItemMaxArmor),
             Defense = Math.Clamp(definition.Defense, 0, GameConfig.ItemMaxDefense),
@@ -163,8 +178,11 @@ public static class ItemAuthoring
             RequiredMasteryPoints = 0,
             Tier = Math.Clamp(definition.Tier, 0, 5),
             Slot = slot,
-            WeaponType = weaponType
+            WeaponType = weaponType,
+            Tag = tag,
+            StatMultiplier = statMultiplier
         };
+        return ApplyTierBalance(normalized);
     }
 
     public static string? Validate(
@@ -220,6 +238,107 @@ public static class ItemAuthoring
 
     private static double Clamp(double value, double max) => Math.Clamp(value, 0, max);
     private static bool HasElementResistance(AuthoredItemDefinition item) => ElementResistanceCount(item) > 0;
+
+    private static AuthoredItemDefinition ApplyTierBalance(AuthoredItemDefinition item)
+    {
+        var slot = item.Slot;
+        var hasCritDamage = item.CritDamage > 0;
+        var hasCritChance = item.CritChance > 0;
+        var hasVampiric = item.LifeStealChance > 0 || item.LifeStealAmount > 0;
+        var hasCooldown = item.CooldownReduction > 0;
+        var hasMoveSpeed = item.MoveSpeedPercent > 0;
+        var hasElementAffinity = item.ElementDamage > 0;
+        var hasPhysicalResistance = item.PhysicalResistance > 0;
+        var elementResistance = SelectedElementResistance(item);
+        var tier = Math.Clamp(item.Tier, 0, 5);
+        var multiplier = item.StatMultiplier;
+
+        var next = item with
+        {
+            Tier = tier,
+            SalePrice = ScaleInt(GameConfig.AuthoredItemSalePrice(tier), multiplier, GameConfig.ItemMaxSalePrice),
+            Attack = slot == EquipmentSlots.Weapon ? ScaleRecommendedInt(tier, "attack", multiplier, GameConfig.ItemMaxAttack) : 0,
+            Armor = slot is EquipmentSlots.Armor or EquipmentSlots.Helmet
+                ? ScaleRecommendedInt(tier, "armor", multiplier, GameConfig.ItemMaxArmor)
+                : 0,
+            Defense = slot is EquipmentSlots.Ring or EquipmentSlots.Necklace
+                ? ScaleRecommendedInt(tier, "defense", multiplier, GameConfig.ItemMaxDefense)
+                : 0,
+            MountSpeed = slot == EquipmentSlots.Mount
+                ? ScaleRecommendedInt(tier, "mountSpeed", multiplier, GameConfig.ItemMaxMountSpeed)
+                : 0,
+            ElementDamage = 0,
+            SkillPower = 0,
+            CritChance = 0,
+            CritDamage = 0,
+            LifeStealChance = 0,
+            LifeStealAmount = 0,
+            CooldownReduction = 0,
+            MoveSpeedPercent = 0,
+            PhysicalResistance = 0,
+            FireResistance = 0,
+            IceResistance = 0,
+            EarthResistance = 0,
+            EnergyResistance = 0,
+            DeathResistance = 0,
+            HolyResistance = 0
+        };
+
+        if (slot == EquipmentSlots.Weapon && hasCritDamage)
+            next = next with { CritDamage = ScaleRecommended(tier, "critDamage", multiplier, GameConfig.EquipmentCritDamageCap) };
+        if (slot == EquipmentSlots.Ring && hasCritChance)
+            next = next with { CritChance = ScaleRecommended(tier, "critChance", multiplier, GameConfig.EquipmentCritChanceCap) };
+        if (slot == EquipmentSlots.Helmet && hasVampiric)
+            next = next with
+            {
+                LifeStealChance = ScaleRecommended(tier, "lifeStealChance", multiplier, GameConfig.EquipmentLifeStealChanceCap),
+                LifeStealAmount = ScaleRecommended(tier, "lifeStealAmount", multiplier, GameConfig.EquipmentLifeStealAmountCap)
+            };
+        if (slot == EquipmentSlots.Helmet && hasCooldown)
+            next = next with { CooldownReduction = ScaleRecommended(tier, "cooldownReduction", multiplier, GameConfig.EquipmentCooldownReductionCap) };
+        if (slot == EquipmentSlots.Mount && hasMoveSpeed)
+            next = next with { MoveSpeedPercent = ScaleRecommended(tier, "moveSpeedPercent", multiplier, GameConfig.EquipmentMoveSpeedCap) };
+        if (slot == EquipmentSlots.Necklace && hasElementAffinity)
+            next = next with { ElementDamage = ScaleRecommendedInt(tier, "elementDamage", multiplier, GameConfig.ItemMaxElementDamage) };
+        if (slot == EquipmentSlots.Armor && hasPhysicalResistance)
+            next = next with { PhysicalResistance = ScaleRecommended(tier, "resistance", multiplier, GameConfig.EquipmentResistanceCap) };
+        if (slot == EquipmentSlots.Armor && elementResistance is { } element)
+            next = SetElementResistance(next, element, ScaleRecommended(tier, "resistance", multiplier, GameConfig.EquipmentResistanceCap));
+
+        return next;
+    }
+
+    private static int ScaleRecommendedInt(int tier, string stat, double multiplier, int max) =>
+        ScaleInt(GameConfig.AuthoredItemRecommendedInt(tier, stat), multiplier, max);
+
+    private static int ScaleInt(int value, double multiplier, int max) =>
+        Math.Clamp((int)Math.Round(value * multiplier, MidpointRounding.AwayFromZero), 0, max);
+
+    private static double ScaleRecommended(int tier, string stat, double multiplier, double max) =>
+        Math.Clamp(GameConfig.AuthoredItemRecommendedValue(tier, stat) * multiplier, 0, max);
+
+    private static string? SelectedElementResistance(AuthoredItemDefinition item)
+    {
+        if (item.FireResistance > 0) return "fire";
+        if (item.IceResistance > 0) return "ice";
+        if (item.EarthResistance > 0) return "earth";
+        if (item.EnergyResistance > 0) return "energy";
+        if (item.DeathResistance > 0) return "death";
+        return item.HolyResistance > 0 ? "holy" : null;
+    }
+
+    private static AuthoredItemDefinition SetElementResistance(
+        AuthoredItemDefinition item, string element, double value) =>
+        element switch
+        {
+            "fire" => item with { FireResistance = value },
+            "ice" => item with { IceResistance = value },
+            "earth" => item with { EarthResistance = value },
+            "energy" => item with { EnergyResistance = value },
+            "death" => item with { DeathResistance = value },
+            "holy" => item with { HolyResistance = value },
+            _ => item
+        };
 
     private static int ElementResistanceCount(AuthoredItemDefinition item) =>
         Count(item.FireResistance) + Count(item.IceResistance) + Count(item.EarthResistance)

@@ -4,8 +4,6 @@ import { AssetsService } from '../../core/assets.service';
 import { ItemIcon } from '../../core/item-icon';
 import { AdminItem, EquipmentSlot, ItemBalanceMetadata } from '../../core/types';
 
-type NumericField = keyof Pick<AdminItem,
-  'salePrice' | 'attack' | 'armor' | 'defense' | 'mountSpeed' | 'elementDamage' | 'tier'>;
 type PercentField = keyof Pick<AdminItem,
   'critChance' | 'critDamage' | 'lifeStealChance' | 'lifeStealAmount'
   | 'cooldownReduction' | 'moveSpeedPercent' | 'physicalResistance'
@@ -109,8 +107,7 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
                   <input [value]="item.name" (input)="patchText('name', $any($event.target).value)" />
                 </label>
                 <label>Preco de venda
-                  <input type="number" min="0" [value]="item.salePrice"
-                    (input)="patchNumber('salePrice', $any($event.target).value)" />
+                  <output class="stat-readout">{{ item.salePrice }}</output>
                 </label>
               </div>
               <div class="grid four">
@@ -138,6 +135,21 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
                   </select>
                 </label>
               </div>
+              <div class="grid two">
+                <label>Categoria
+                  <select [value]="item.tag || 'normal'" (change)="setTag($any($event.target).value)">
+                    @for (tag of itemTags(); track tag.id) { <option [value]="tag.id">{{ tag.name }}</option> }
+                  </select>
+                </label>
+                <label>Multiplicador relic
+                  <input type="number" step="0.05"
+                    [disabled]="item.tag !== 'relic'"
+                    [min]="balance()?.relicMultiplierMin ?? 1.05"
+                    [max]="balance()?.relicMultiplierMax ?? 1.6"
+                    [value]="item.statMultiplier"
+                    (input)="setRelicMultiplier($any($event.target).value)" />
+                </label>
+              </div>
               <label>Descricao
                 <textarea rows="2" [value]="item.description"
                   (input)="patchText('description', $any($event.target).value)"></textarea>
@@ -148,35 +160,31 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
           <section>
             <div class="section-head">
               <div>
-                <h3>Balanceamento</h3>
-                <p class="hint left">Trocar tier, tipo ou bonus recalcula defaults do tier. Edicoes manuais continuam livres.</p>
+                <h3>Valores do tier</h3>
+                <p class="hint left">Base e magnitude dos bonus sao calculadas pela curva do tier.</p>
               </div>
               <span class="tier-pill">{{ tierSummary() }}</span>
             </div>
 
             <div class="base-grid">
               @if (item.slot === 'weapon') {
-                <label>Ataque base<input type="number" min="0" [value]="item.attack"
-                  (input)="patchNumber('attack', $any($event.target).value)" />
-                  @if (fieldWarning('attack'); as warning) { <small class="warn">{{ warning }}</small> }
+                <label>Ataque base
+                  <output class="stat-readout">{{ item.attack }}</output>
                 </label>
               }
               @if (item.slot === 'armor' || item.slot === 'helmet') {
-                <label>Armadura base<input type="number" min="0" [value]="item.armor"
-                  (input)="patchNumber('armor', $any($event.target).value)" />
-                  @if (fieldWarning('armor'); as warning) { <small class="warn">{{ warning }}</small> }
+                <label>Armadura base
+                  <output class="stat-readout">{{ item.armor }}</output>
                 </label>
               }
               @if (item.slot === 'ring' || item.slot === 'necklace') {
-                <label>Defesa base<input type="number" min="0" [value]="item.defense"
-                  (input)="patchNumber('defense', $any($event.target).value)" />
-                  @if (fieldWarning('defense'); as warning) { <small class="warn">{{ warning }}</small> }
+                <label>Defesa base
+                  <output class="stat-readout">{{ item.defense }}</output>
                 </label>
               }
               @if (item.slot === 'mount') {
-                <label>Velocidade base<input type="number" min="0" [value]="item.mountSpeed"
-                  (input)="patchNumber('mountSpeed', $any($event.target).value)" />
-                  @if (fieldWarning('mountSpeed'); as warning) { <small class="warn">{{ warning }}</small> }
+                <label>Velocidade base
+                  <output class="stat-readout">{{ item.mountSpeed }}</output>
                 </label>
               }
             </div>
@@ -190,59 +198,43 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
                   </label>
                   @switch (bonus.id) {
                     @case ('critDamage') {
-                      <label>Dano critico extra (%)<input type="number" min="0" step="1"
-                        [disabled]="!bonusEnabled(bonus.id)" [value]="pct(item.critDamage)"
-                        (input)="patchPercent('critDamage', $any($event.target).value)" />
-                        @if (fieldWarning('critDamage'); as warning) { <small class="warn">{{ warning }}</small> }
+                      <label>Dano critico extra
+                        <output class="stat-readout">{{ pct(item.critDamage) }}%</output>
                       </label>
                     }
                     @case ('critChance') {
-                      <label>Chance critica (%)<input type="number" min="0" step="0.1"
-                        [disabled]="!bonusEnabled(bonus.id)" [value]="pct(item.critChance)"
-                        (input)="patchPercent('critChance', $any($event.target).value)" />
-                        @if (fieldWarning('critChance'); as warning) { <small class="warn">{{ warning }}</small> }
+                      <label>Chance critica
+                        <output class="stat-readout">{{ pct(item.critChance) }}%</output>
                       </label>
                     }
                     @case ('vampiric') {
                       <div class="grid two">
-                        <label>Chance (%)<input type="number" min="0" step="0.1"
-                          [disabled]="!bonusEnabled(bonus.id)" [value]="pct(item.lifeStealChance)"
-                          (input)="patchPercent('lifeStealChance', $any($event.target).value)" />
-                          @if (fieldWarning('lifeStealChance'); as warning) { <small class="warn">{{ warning }}</small> }
+                        <label>Chance
+                          <output class="stat-readout">{{ pct(item.lifeStealChance) }}%</output>
                         </label>
-                        <label>Vida roubada (%)<input type="number" min="0" step="0.1"
-                          [disabled]="!bonusEnabled(bonus.id)" [value]="pct(item.lifeStealAmount)"
-                          (input)="patchPercent('lifeStealAmount', $any($event.target).value)" />
-                          @if (fieldWarning('lifeStealAmount'); as warning) { <small class="warn">{{ warning }}</small> }
+                        <label>Vida roubada
+                          <output class="stat-readout">{{ pct(item.lifeStealAmount) }}%</output>
                         </label>
                       </div>
                     }
                     @case ('cooldownReduction') {
-                      <label>Reducao de recarga (%)<input type="number" min="0" step="0.1"
-                        [disabled]="!bonusEnabled(bonus.id)" [value]="pct(item.cooldownReduction)"
-                        (input)="patchPercent('cooldownReduction', $any($event.target).value)" />
-                        @if (fieldWarning('cooldownReduction'); as warning) { <small class="warn">{{ warning }}</small> }
+                      <label>Reducao de recarga
+                        <output class="stat-readout">{{ pct(item.cooldownReduction) }}%</output>
                       </label>
                     }
                     @case ('moveSpeedPercent') {
-                      <label>Movimento (%)<input type="number" min="0" step="0.1"
-                        [disabled]="!bonusEnabled(bonus.id)" [value]="pct(item.moveSpeedPercent)"
-                        (input)="patchPercent('moveSpeedPercent', $any($event.target).value)" />
-                        @if (fieldWarning('moveSpeedPercent'); as warning) { <small class="warn">{{ warning }}</small> }
+                      <label>Movimento
+                        <output class="stat-readout">{{ pct(item.moveSpeedPercent) }}%</output>
                       </label>
                     }
                     @case ('elementAffinity') {
-                      <label>Bonus elemental (%)<input type="number" min="0" step="1"
-                        [disabled]="!bonusEnabled(bonus.id)" [value]="item.elementDamage"
-                        (input)="patchNumber('elementDamage', $any($event.target).value)" />
-                        @if (fieldWarning('elementDamage'); as warning) { <small class="warn">{{ warning }}</small> }
+                      <label>Bonus elemental
+                        <output class="stat-readout">{{ item.elementDamage }}%</output>
                       </label>
                     }
                     @case ('physicalResistance') {
-                      <label>Resistencia fisica (%)<input type="number" min="0" step="1"
-                        [disabled]="!bonusEnabled(bonus.id)" [value]="pct(item.physicalResistance)"
-                        (input)="patchPercent('physicalResistance', $any($event.target).value)" />
-                        @if (fieldWarning('physicalResistance'); as warning) { <small class="warn">{{ warning }}</small> }
+                      <label>Resistencia fisica
+                        <output class="stat-readout">{{ pct(item.physicalResistance) }}%</output>
                       </label>
                     }
                     @case ('elementResistance') {
@@ -255,10 +247,8 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
                             }
                           </select>
                         </label>
-                        <label>Resistencia (%)<input type="number" min="0" step="1"
-                          [disabled]="!bonusEnabled(bonus.id)" [value]="pct(selectedResistanceValue(item))"
-                          (input)="patchSelectedResistance($any($event.target).value)" />
-                          @if (elementResistanceWarning(); as warning) { <small class="warn">{{ warning }}</small> }
+                        <label>Resistencia
+                          <output class="stat-readout">{{ pct(selectedResistanceValue(item)) }}%</output>
                         </label>
                       </div>
                     }
@@ -320,6 +310,7 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
     .eyebrow{font-size:8px;text-transform:uppercase;letter-spacing:1.1px;color:#35d3bf;font-weight:900}
     header b{font-size:9px;color:#61dfcf;background:#17342f;border:1px solid #2c756a;border-radius:4px;padding:4px 6px}
     input,select,textarea{box-sizing:border-box;width:100%;background:#0c0c15;border:1px solid #303043;border-radius:5px;color:#eeeaf5;font:inherit;padding:8px;outline:none}
+    .stat-readout{box-sizing:border-box;width:100%;background:#15151f;border:1px solid #2b2b3d;border-radius:5px;color:#eeeaf5;font-size:10px;font-weight:900;min-height:34px;padding:8px}
     input:focus,select:focus,textarea:focus{border-color:#31b9aa}textarea{resize:vertical}
     button{background:#171722;border:1px solid #303043;border-radius:5px;color:#e6e3ef;cursor:pointer;font:inherit}button:disabled{opacity:.5;cursor:default}
     .primary{background:#22b9aa;border-color:#22b9aa;color:#061b18;font-size:9px;font-weight:900;padding:8px 12px}
@@ -370,6 +361,10 @@ export class ItemEditor implements OnInit {
   readonly elementResistanceFields = ELEMENT_RESISTANCE_FIELDS;
   readonly busy = computed(() => this.saving() || this.deleting() || this.granting());
   readonly balanceTiers = computed(() => this.balance()?.tiers ?? [0, 1, 2, 3, 4, 5]);
+  readonly itemTags = computed(() => this.balance()?.tags ?? [
+    { id: 'normal' as const, name: 'Normal' },
+    { id: 'relic' as const, name: 'Reliquia' },
+  ]);
   readonly categories = computed(() => [...new Set(this.library().map((item) => item.category))].sort());
   readonly subcategories = computed(() => [...new Set(this.library()
     .filter((item) => !this.category() || item.category === this.category())
@@ -441,6 +436,8 @@ export class ItemEditor implements OnInit {
       description: '',
       slot,
       weaponType: slot === 'weapon' ? (source.weaponType || 'sword') : null,
+      tag: 'normal',
+      statMultiplier: 1,
       skillPower: 0,
       requiredMasteryPoints: 0,
       allowedClassIds: [],
@@ -458,9 +455,9 @@ export class ItemEditor implements OnInit {
 
   edit(item: AdminItem): void {
     const draft = this.withSanitizedType({ ...item, allowedClassIds: [...item.allowedClassIds] });
-    this.draft.set(draft);
     this.seedBonusState(draft);
     this.selectedElementResistance.set(this.selectedResistanceElement(draft));
+    this.draft.set(this.applyRecommended(draft));
     this.status.set(null);
   }
 
@@ -505,13 +502,29 @@ export class ItemEditor implements OnInit {
     this.patch(field, value);
   }
 
-  patchNumber(field: NumericField, value: string): void {
-    const parsed = Math.max(0, Math.floor(Number(value) || 0));
-    this.patch(field, field === 'tier' ? Math.min(5, parsed) : parsed);
+  setTag(value: string): void {
+    const item = this.draft();
+    if (!item) return;
+    const tag = value === 'relic' ? 'relic' : 'normal';
+    this.draft.set(this.applyRecommended({
+      ...item,
+      tag,
+      statMultiplier: tag === 'relic'
+        ? (this.balance()?.relicMultiplierDefault ?? 1.25)
+        : 1,
+    }));
+    this.status.set(null);
   }
 
-  patchPercent(field: PercentField, value: string): void {
-    this.patch(field, Math.max(0, Number(value) || 0) / 100);
+  setRelicMultiplier(value: string): void {
+    const item = this.draft();
+    if (!item || item.tag !== 'relic') return;
+    const config = this.balance();
+    const min = config?.relicMultiplierMin ?? 1.05;
+    const max = config?.relicMultiplierMax ?? 1.6;
+    const statMultiplier = Math.min(max, Math.max(min, Number(value) || config?.relicMultiplierDefault || 1.25));
+    this.draft.set(this.applyRecommended({ ...item, statMultiplier }));
+    this.status.set(null);
   }
 
   toggleClass(classId: string): void {
@@ -582,21 +595,6 @@ export class ItemEditor implements OnInit {
       : cleared);
   }
 
-  patchSelectedResistance(value: string): void {
-    const item = this.draft();
-    if (!item) return;
-    const field = this.fieldForElement(this.selectedResistanceElement(item));
-    if (!field) return;
-    this.draft.set({ ...this.clearElementResistances(item), [field.key]: Math.max(0, Number(value) || 0) / 100 });
-  }
-
-  elementResistanceWarning(): string {
-    const item = this.draft();
-    if (!item) return '';
-    const field = this.fieldForElement(this.selectedResistanceElement(item));
-    return field ? this.fieldWarning(field.key) : '';
-  }
-
   pct(value: number): number {
     return Math.round(value * 10000) / 100;
   }
@@ -609,22 +607,12 @@ export class ItemEditor implements OnInit {
   summary(item: AdminItem): string {
     const label = SLOT_OPTIONS.find((slot) => slot.id === item.slot)?.label ?? item.subcategory;
     const values = [`T${item.tier}`, label];
+    if (item.tag === 'relic') values.push(`Relic x${item.statMultiplier}`);
     if (item.attack) values.push(`Atk ${item.attack}`);
     if (item.armor) values.push(`Arm ${item.armor}`);
     if (item.defense) values.push(`Def ${item.defense}`);
     if (item.mountSpeed) values.push(`Mov ${item.mountSpeed}`);
     return values.join(' - ');
-  }
-
-  fieldWarning(field: NumericField | PercentField): string {
-    const item = this.draft();
-    if (!item) return '';
-    const range = this.rangeFor(field);
-    if (!range) return '';
-    const value = Number(item[field]) || 0;
-    if (value <= 0) return '';
-    if (value >= range.lowMin && value <= range.highMax) return '';
-    return `Fora da faixa T${item.tier}: ${this.formatRange(field, range.lowMin, range.highMax)}`;
   }
 
   async save(): Promise<void> {
@@ -633,7 +621,7 @@ export class ItemEditor implements OnInit {
     this.saving.set(true);
     this.status.set(null);
     try {
-      const payload = this.withSanitizedType(item);
+      const payload = this.applyRecommended(this.withSanitizedType(item));
       const saved = payload.itemId
         ? await this.api.updateAdminItem(payload)
         : await this.api.createAdminItem(payload);
@@ -703,7 +691,13 @@ export class ItemEditor implements OnInit {
   }
 
   private applyRecommended(item: AdminItem): AdminItem {
-    let next = this.applyBaseDefault(this.withSanitizedType(item));
+    let next = this.withSanitizedType(item);
+    next = {
+      ...next,
+      statMultiplier: this.normalizedMultiplier(next),
+      salePrice: this.salePriceFor(next),
+    };
+    next = this.applyBaseDefault(next);
     for (const bonus of this.bonusControls(next)) {
       if (this.bonusEnabled(bonus.id))
         next = this.applyBonusDefault(next, bonus.id);
@@ -774,6 +768,8 @@ export class ItemEditor implements OnInit {
       ...item,
       slot,
       weaponType: slot === 'weapon' ? (item.weaponType || 'sword') : null,
+      tag: item.tag === 'relic' ? 'relic' : 'normal',
+      statMultiplier: item.tag === 'relic' ? item.statMultiplier : 1,
       skillPower: 0,
       requiredMasteryPoints: 0,
     };
@@ -826,34 +822,22 @@ export class ItemEditor implements OnInit {
     const range = this.balance()?.ranges.find((entry) =>
       entry.stat === stat && entry.tier === item.tier);
     if (!range) return 0;
-    const value = (range.moderateMin + range.moderateMax) / 2;
+    const value = ((range.moderateMin + range.moderateMax) / 2) * this.normalizedMultiplier(item);
     return integer ? Math.round(value) : Math.round(value * 10000) / 10000;
   }
 
-  private rangeFor(field: NumericField | PercentField) {
-    const stat = ELEMENT_RESISTANCE_FIELDS.some((entry) => entry.key === field)
-      || field === 'physicalResistance'
-      ? 'resistance'
-      : field;
-    return this.balance()?.ranges.find((entry) =>
-      entry.stat === stat && entry.tier === (this.draft()?.tier ?? 0));
+  private normalizedMultiplier(item: AdminItem): number {
+    if (item.tag !== 'relic') return 1;
+    const config = this.balance();
+    const min = config?.relicMultiplierMin ?? 1.05;
+    const max = config?.relicMultiplierMax ?? 1.6;
+    return Math.min(max, Math.max(min, item.statMultiplier || config?.relicMultiplierDefault || 1.25));
   }
 
-  private formatRange(field: NumericField | PercentField, min: number, max: number): string {
-    return this.isPercentField(field)
-      ? `${this.pct(min)}-${this.pct(max)}%`
-      : `${Math.round(min)}-${Math.round(max)}`;
-  }
-
-  private isPercentField(field: NumericField | PercentField): field is PercentField {
-    return field === 'critChance'
-      || field === 'critDamage'
-      || field === 'lifeStealChance'
-      || field === 'lifeStealAmount'
-      || field === 'cooldownReduction'
-      || field === 'moveSpeedPercent'
-      || field === 'physicalResistance'
-      || ELEMENT_RESISTANCE_FIELDS.some((entry) => entry.key === field);
+  private salePriceFor(item: AdminItem): number {
+    const tier = Math.min(5, Math.max(0, Math.floor(item.tier || 0)));
+    const base = tier <= 0 ? 80 : 80 * tier * tier;
+    return Math.round(base * this.normalizedMultiplier(item));
   }
 
   private patch(field: keyof AdminItem, value: AdminItem[keyof AdminItem]): void {

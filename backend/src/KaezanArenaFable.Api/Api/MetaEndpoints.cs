@@ -83,7 +83,9 @@ public static class MetaEndpoints
                 i.HolyResistance,
                 allowedClassIds = i.AllowedClassIds ?? [],
                 i.RequiredMasteryPoints,
-                i.Tier
+                i.Tier,
+                i.Tag,
+                i.StatMultiplier
             }),
             monsters = registry.All.Select(m => new
             {
@@ -487,7 +489,15 @@ public static class MetaEndpoints
                 {
                     tiers = GameConfig.AuthoredItemSetTiers,
                     grades = GameConfig.AuthoredItemBalanceGrades,
-                    ranges = GameConfig.AuthoredItemBalanceRanges
+                    ranges = GameConfig.AuthoredItemBalanceRanges,
+                    tags = new[]
+                    {
+                        new { id = GameConfig.AuthoredItemTagNormal, name = "Normal" },
+                        new { id = GameConfig.AuthoredItemTagRelic, name = "Reliquia" }
+                    },
+                    relicMultiplierDefault = GameConfig.AuthoredItemRelicMultiplierDefault,
+                    relicMultiplierMin = GameConfig.AuthoredItemRelicMultiplierMin,
+                    relicMultiplierMax = GameConfig.AuthoredItemRelicMultiplierMax
                 }
             }));
 
@@ -612,6 +622,8 @@ public static class MetaEndpoints
             allowedClassIds = item.AllowedClassIds ?? [],
             item.RequiredMasteryPoints,
             item.Tier,
+            item.Tag,
+            item.StatMultiplier,
             category,
             subcategory,
             capabilities = ItemCapabilities.For(item)

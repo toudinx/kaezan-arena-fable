@@ -109,9 +109,19 @@ public sealed class GachaService(AccountStore store, ItemRegistry items)
     private PullResult PullItem(AccountState state, Random rng)
     {
         var pool = items.All.Values
-            .Where(item => item.ItemId > 0 && !string.IsNullOrWhiteSpace(item.Name))
+            .Where(item =>
+                item.IsAuthored
+                && item.ItemId >= GameConfig.AuthoredItemIdBase
+                && item.ItemId > 0
+                && item.Tag != GameConfig.AuthoredItemTagRelic
+                && !string.IsNullOrWhiteSpace(item.Name))
             .OrderBy(item => item.ItemId)
             .ToList();
+        if (pool.Count == 0)
+            pool = items.All.Values
+                .Where(item => item.ItemId > 0 && !string.IsNullOrWhiteSpace(item.Name))
+                .OrderBy(item => item.ItemId)
+                .ToList();
         if (pool.Count == 0)
             throw new InvalidOperationException("catalogo de itens vazio");
 

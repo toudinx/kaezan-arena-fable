@@ -329,6 +329,8 @@ export interface ItemCatalogEntry {
   requiredMasteryPoints: number;
   /** 0 = sem-tier (legado, equipável em qualquer loadout); 1..5 = peça de set travada no tier. */
   tier: number;
+  tag: 'normal' | 'relic';
+  statMultiplier: number;
 }
 
 export type EquipmentSlot = 'helmet' | 'armor' | 'weapon' | 'necklace' | 'ring' | 'mount';
@@ -387,6 +389,10 @@ export interface ItemBalanceMetadata {
   tiers: number[];
   grades: ItemBalanceGrade[];
   ranges: ItemBalanceRange[];
+  tags: { id: 'normal' | 'relic'; name: string }[];
+  relicMultiplierDefault: number;
+  relicMultiplierMin: number;
+  relicMultiplierMax: number;
 }
 
 export interface AdminItemsPayload {

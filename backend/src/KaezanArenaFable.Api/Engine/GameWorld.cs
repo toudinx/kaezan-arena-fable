@@ -2015,6 +2015,12 @@ public sealed class GameWorld
 
     private void DropLoot(Actor monster)
     {
+        if (monster.Species!.IsAuthored)
+        {
+            DropKaezanLoot(monster);
+            return;
+        }
+
         var junkGold = 0L;
         foreach (var entry in monster.Species!.Loot)
         {
@@ -2052,6 +2058,72 @@ public sealed class GameWorld
             if (_data.Items.TryGetValue(itemId, out var mount))
                 CollectLoot(mount.ItemId, mount.Name, 1, monster.X, monster.Y);
         }
+    }
+
+    private void DropKaezanLoot(Actor monster)
+    {
+        var rank = monster.IsBossActor ? "boss" : monster.Species!.Rank;
+        var (minGold, maxGold) = GameConfig.KaezanDropGoldRange(Tier.Tier, rank);
+        var gold = (long)(_rng.Range(minGold, maxGold) * (1 + CardValue("goldPercent")));
+        _gold += gold;
+        EmitLootFly(GameConfig.GoldCoinItemId, $"+{gold} gold", monster.X, monster.Y, isGold: true);
+
+        var itemChance = monster.IsBossActor
+            ? 1.0
+            : rank == "elite"
+                ? GameConfig.KaezanEliteItemDropChance
+                : GameConfig.KaezanCommonItemDropChance;
+        if (!_rng.Chance(itemChance)) return;
+
+        if (rank == "boss"
+            && _rng.Chance(GameConfig.KaezanBossRelicDropChance)
+            && TryPickKaezanDropItem(rank, relicOnly: true, out var relic))
+        {
+            CollectLoot(relic.ItemId, relic.Name, 1, monster.X, monster.Y);
+            return;
+        }
+
+        if (TryPickKaezanDropItem(rank, relicOnly: false, out var item))
+            CollectLoot(item.ItemId, item.Name, 1, monster.X, monster.Y);
+    }
+
+    private bool TryPickKaezanDropItem(string rank, bool relicOnly, out ItemType item)
+    {
+        item = default!;
+        if (_items is null) return false;
+
+        var pool = _items.All.Values
+            .Where(candidate =>
+                candidate.IsAuthored
+                && candidate.Tier == Tier.Tier
+                && candidate.ItemId >= GameConfig.AuthoredItemIdBase
+                && candidate.Slot is not null
+                && (relicOnly
+                    ? candidate.Tag == GameConfig.AuthoredItemTagRelic
+                    : candidate.Tag != GameConfig.AuthoredItemTagRelic))
+            .OrderBy(candidate => candidate.ItemId)
+            .ToList();
+        if (pool.Count == 0) return false;
+
+        var classItems = pool
+            .Where(candidate => candidate.AllowedClassIds?.Contains(Waifu.ClassId, StringComparer.OrdinalIgnoreCase) == true)
+            .ToList();
+        var genericItems = pool
+            .Where(candidate => candidate.AllowedClassIds is null || candidate.AllowedClassIds.Count == 0)
+            .ToList();
+
+        var classWeight = rank switch
+        {
+            "boss" => GameConfig.KaezanBossClassDropWeight,
+            "elite" => GameConfig.KaezanEliteClassDropWeight,
+            "chest" => GameConfig.KaezanChestClassDropWeight,
+            _ => GameConfig.KaezanCommonClassDropWeight
+        };
+        var preferred = _rng.Chance(classWeight) ? classItems : genericItems;
+        var fallback = ReferenceEquals(preferred, classItems) ? genericItems : classItems;
+        var source = preferred.Count > 0 ? preferred : fallback.Count > 0 ? fallback : pool;
+        item = _rng.Pick(source);
+        return true;
     }
 
     /// <summary>
@@ -2722,14 +2794,23 @@ public sealed class GameWorld
         EmitLootFly(GameConfig.GoldCoinItemId, $"+{gold} gold", x, y, isGold: true);
         Emit("effect", x, y, 0, 0, 29); // fireworks
 
-        var lootPool = Tier.CommonMobs.Concat(Tier.EliteMobs)
-            .SelectMany(name => _monsterRegistry.Get(name).Loot)
-            .Where(l => _data.IsEquippableLoot(l.ItemId))
-            .ToList();
-        for (var i = 0; i < 2 && lootPool.Count > 0; i++)
+        if (Tier.CommonMobs.Concat(Tier.EliteMobs).All(name => _monsterRegistry.Get(name).IsAuthored))
         {
-            var entry = _rng.Pick(lootPool);
-            CollectLoot(entry.ItemId, entry.Name, 1, x, y);
+            for (var i = 0; i < GameConfig.KaezanChestItemDrops; i++)
+                if (TryPickKaezanDropItem("chest", relicOnly: false, out var item))
+                    CollectLoot(item.ItemId, item.Name, 1, x, y);
+        }
+        else
+        {
+            var lootPool = Tier.CommonMobs.Concat(Tier.EliteMobs)
+                .SelectMany(name => _monsterRegistry.Get(name).Loot)
+                .Where(l => _data.IsEquippableLoot(l.ItemId))
+                .ToList();
+            for (var i = 0; i < 2 && lootPool.Count > 0; i++)
+            {
+                var entry = _rng.Pick(lootPool);
+                CollectLoot(entry.ItemId, entry.Name, 1, x, y);
+            }
         }
     }
 

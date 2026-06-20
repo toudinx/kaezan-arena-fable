@@ -1,8 +1,8 @@
 # Kaezan Arena Fable
 
 Jogo browser **gacha + roguelike de dungeon**, recriação do kaezan-arena com a alma do Tibia:
-movimentação livre em grid, mapas gerados proceduralmente, monstros/outfits/itens/FX **reais do Tibia**
-(extraídos dos assets do Canary/OTClient do repo `kaezan`), e um lado gacha completo
+movimentação livre em grid, mapas gerados proceduralmente, conteúdo de combate/equipamento **Kaezan**
+com sprites/FX reaproveitados dos assets do Canary/OTClient do repo `kaezan`, e um lado gacha completo
 (banners com pity, coleção de Kaelis, missões diárias, bestiário).
 
 | Camada | Stack |
@@ -48,6 +48,10 @@ O painel `http://localhost:4200/admin` traz o editor de conteúdo Kaezan com aba
 **Items**, **Dungeons** e **Skins**. Cada tier de dungeon pode receber mobs comuns, elites e um
 boss autorais; salvar persiste a composição em `.data/content/tiers.json` e afeta somente as
 próximas runs.
+Quando `.data/content` ainda está vazio ou contém só o conteúdo legado/de teste, o backend faz seed
+do catálogo Kaezan versionado: **50 monstros autorais** (6 comuns, 3 elites e 1 boss por tier),
+**135 equipamentos/armas autorais** (130 normais + 5 relíquias de boss) e 5 dungeons que
+referenciam apenas IDs `monster:*`.
 Na navegação principal, o Admin fica fora do fluxo de jogo: use a engrenagem discreta no shell ou
 acesse `/admin` diretamente.
 
@@ -56,8 +60,8 @@ uma aparência, power tier, função (`common|elite|boss`), comportamento curado
 Os presets de HP/dano/velocidade/cadência são pontos de partida e continuam editáveis; fraquezas
 e resistências são independentes por elemento, sem relação automática de pedra-papel-tesoura.
 Monstros novos usam IDs imutáveis `monster:*` e são persistidos em
-`.data/content/monsters.json`. As espécies de `monsters.json` permanecem somente como placeholders
-legados durante a substituição gradual.
+`.data/content/monsters.json`. As espécies de `monsters.json` permanecem somente como biblioteca
+visual/legado; a composição seedada das dungeons usa apenas monstros Kaezan.
 
 O editor separa as três responsabilidades em colunas: a biblioteca visual Canary (somente leitura),
 a configuração Kaezan e os monstros autorais salvos. O catálogo visual contém 1.542 definições Lua
@@ -94,21 +98,29 @@ A aba **Items** segue o mesmo fluxo do Outfit Studio: biblioteca Canary à esque
 centro e itens Kaezan à direita. O catálogo base tem 2.488 objetos, incluindo armas/equipamentos
 descobertos por `clothes.slot` **ou** pelos metadados do `items.xml`; o admin cria uma cópia autoral
 com ID estável próprio e reutiliza o sprite da fonte como referência visual. Slot, tipo de arma,
-elemento, tier e números de gameplay pertencem ao item Kaezan criado, não ao item Canary original.
-Itens criados ficam em `.data/content/authored-items.json` e recebem um atributo base por tipo:
-armas usam ataque, armaduras/capacetes usam armadura, anéis/amuletos usam defesa e montarias usam
-velocidade. O Item Studio aplica automaticamente o valor recomendado do tier quando tier, tipo ou
-bônus habilitado muda; depois cada campo continua editável e valores fora da faixa aparecem com
-aviso, mas continuam salváveis para testes. Bônus extras são curados por tipo: arma pode ter dano
-crítico, armadura pode ter resistência física e uma elemental, capacete pode ter recarga e
-vampirismo, montaria pode ter movimento, anel pode ter chance crítica e amuleto pode ter afinidade
-elemental. A afinidade elemental não cria dano misto: ela aumenta dano apenas quando o elemento ativo
-combina com o elemento do item; armas também ganham uma passiva fixa de +10% quando elemento da arma
-e postura/Kaeli combinam. T0 é sem-tier/legado e pode entrar em qualquer loadout; T1-T5 ficam
-travados ao set daquele tier. Classes permitidas começam vazias; vazio significa sem restrição, e
+elemento, tier, bônus especial e classes permitidas pertencem ao item Kaezan criado, não ao item
+Canary original. Os números de gameplay não são editados manualmente: o tier define preço, atributo
+base e magnitude dos bônus por uma curva única de balanceamento; a tag `relic` aplica um
+multiplicador percentual em cima dessa curva. Itens criados ficam em
+`.data/content/authored-items.json` e recebem um atributo base por tipo: armas usam ataque,
+armaduras/capacetes usam armadura, anéis/amuletos usam defesa e montarias usam velocidade.
+Bônus extras são curados por tipo: arma pode ter dano crítico, armadura pode ter resistência física
+e uma elemental, capacete pode ter recarga e vampirismo, montaria pode ter movimento, anel pode ter
+chance crítica e amuleto pode ter afinidade elemental. A afinidade elemental não cria dano misto:
+ela aumenta dano apenas quando o elemento ativo combina com o elemento do item; armas também ganham
+uma passiva fixa de +10% quando elemento da arma e postura/Kaeli combinam. T0 é sem-tier/legado e
+pode entrar em qualquer loadout; T1-T5 ficam
+travados ao set daquele tier. Relíquias são itens de boss: só entram no pool de boss do próprio tier,
+não aparecem em mobs comuns, elites, baús ou gacha. Classes permitidas começam vazias; vazio
+significa sem restrição, e
 marcar classes transforma o item em equipamento restrito por classe. Depois de salvar, **Adicionar 1
 à Mochila** concede uma cópia para testes sem depender de drop; os bônus são congelados no início da
 run pelo `EquipmentStatAggregator`.
+O seed inicial usa uma estratégia híbrida: cada família de item reaproveita a mesma sprite nos 5
+tiers, mas cada peça tem `ItemId`, nome, tier e moldura próprios; os status vêm da curva do tier.
+Armas, capacetes e armaduras são restritos às 7 classes jogáveis atuais; anéis, amuletos e montarias
+são genéricos. O frontend desenha uma moldura por `item.tier`, e relíquias recebem uma marca dourada
+extra, então a progressão visual não depende de sprite nova.
 
 ### Persistência MySQL opcional
 
@@ -159,14 +171,11 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
   manter 2 SQM do alvo. A escolha manual continua prevalecendo até o alvo morrer/sair da zona.
   Skills e ultimate só são usadas quando a área/linha alcançaria algum mob; movimento continua
   manual salvo quando um modo automático está ativo.
-- **Kit real do Canary** (T-53): cada espécie executa o kit do seu `.lua` — condições viram DoT
-  no player (veneno/fogo/energia, com chip no HUD, FX e cor de dano por tipo), ataques `speed`
-  aplicam lentidão, invocadores summonam de verdade (Necromancer → Ghoul/Ghost/Mummy, Demon →
-  Fire Elemental, respeitando `maxSummons` + orçamento global; summons dão XP mas não loot),
-  curandeiros se curam (capado a 10% do HP máx por proc), `defenses` de haste aceleram o monstro
-  e espécies com `runHealth` fogem com vida baixa. O card `Antídoto` reduz dano de condições.
-- O catálogo tem 62 espécies do Tibia distribuídas pelos cinco tiers, com pelo menos 5 comuns e
-  3 elites por dungeon; os sprites, corpses, loot e kits vêm do pipeline Canary.
+- **Kits Kaezan autorais:** monstros seedados combinam power tier, função (`common|elite|boss`),
+  comportamento curado e elemento ofensivo. Condições, slows, cura própria e ataques em área vêm dos
+  perfis data-driven do engine; sprites/corpses ainda podem reaproveitar a biblioteca Canary.
+- O catálogo seedado tem 50 monstros Kaezan nos cinco tiers, com 6 comuns, 3 elites e 1 boss por
+  dungeon. Loot de equipamentos vem de tabelas curadas por tier/classe, não das loot tables Tibia.
 - Ofertas de card pausam o relógio da simulação; após 20s sem escolha, a primeira opção é aplicada.
 - Atualizar a página preserva a run por até 60s e retoma o mesmo mapa, HP e estado do mundo.
 
@@ -192,16 +201,16 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
 1. **Home Hub** — vitrine da Kaeli ativa, contratos diários, progresso de conta.
 2. **Caçada** — 5 tiers de dungeon (gate por nível de conta). Cada run: 2 andares procedurais
    (salas de mobs com spawn por *budget* estilo Echo Spots, baús com chance de emboscada,
-   escada para o covil) e um **boss do Tibia** no fundo (Rotworm Queen → Orc Warlord →
-   Black Knight → Dragon Lord → Demon). Cada tier tem um **bioma visual próprio**
+   escada para o covil) e um **boss Kaezan** no fundo. Cada tier tem um **bioma visual próprio**
    (`Domain/Biomes.cs`): caverna de terra (1), forte gramado (2), cripta de pedra com ossos (3),
    covil escuro com poças de lava (4) e abismo (5). As paredes escolhem a peça por vizinhança
    (horizontal/vertical/canto), e os acentos de lava ficam na camada de decoração — nunca
    bloqueiam o caminho.
 3. Durante a run: XP → level-ups oferecem **cards passivos** (escolha 1 de 3, max 3 stacks);
-   loot clássico do Tibia dropa no chão e é coletado andando por cima.
+   monstros e baús entregam ouro e equipamentos Kaezan do tier atual. Drops priorizam a classe ativa
+   e alternam com acessórios genéricos; bosses também têm chance de relíquia do próprio tier.
 4. **Recrutar** — banners com pity para Kaelis jogáveis. Quando um roll não acerta uma Kaeli, ele
-   entrega provisoriamente **1 item aleatório**; quando acerta uma Kaeli repetida, o dupe vira Echo
+   entrega **1 item Kaezan aleatório**; quando acerta uma Kaeli repetida, o dupe vira Echo
    Shards → **Ascensão** (+8% stats por nível; os addons do outfit são definidos por skin no Outfit
    Studio, não pela ascensão).
 5. **Kaelis (profundidade)** — cada Kaeli tem **trait de assinatura** (passiva única no engine),
@@ -210,21 +219,20 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
    nível), **skins por outfit** (padrão / afinidade / compradas com ouro ou Kaeros — a skin em
    uso aparece no Hub e dentro das runs) e a **Maestria de Eco**: árvore de 3 ramos
    (Ofensiva/Defensiva/Eco) com pontos por run (vitória +3 / derrota +1) e respec por ouro.
-6. **Mochila** — inventário com sprites reais + bestiário (ranks por abates = dano permanente).
-   Itens são vendidos pelos preços reais dos NPCs do Tibia; itens sem comprador valem 5 ouro.
-   Loot equipável exibe os atributos do Tibia e pode ser colocado, por Kaeli, nos slots
+6. **Mochila** — inventário com sprites reaproveitados + bestiário (ranks por abates = dano permanente).
+   Itens Kaezan usam preço autoral; itens legados sem comprador valem 5 ouro.
+   Loot equipável exibe atributos Kaezan e pode ser colocado, por Kaeli e por tier, nos slots
    `helmet`, `armor`, `weapon`, `necklace`, `ring` e `mount`.
 7. **Equipamento** — o paperdoll da página Kaelis troca itens por clique. Os bônus são congelados
-   ao iniciar a run e aparecem no HUD; montarias raras de boss dão HP/velocidade e também mudam
-   o visual da Kaeli no mundo.
+   ao iniciar a run e aparecem no HUD; montarias Kaezan dão HP/velocidade e também mudam o visual
+   da Kaeli no mundo.
 
 ## Kaelis: personagens jogáveis 5★
 
 Nova direção: toda Kaeli jogável é personagem de topo (5★), com arte completa, trait de
 assinatura, personalidade, 4 ecos de memória (lore por afinidade), presentes favoritos e skins.
-Não há mais Kaeli jogável de preenchimento; o espaço de roll comum do gacha entrega provisoriamente
-**1 item aleatório** até existir uma curadoria própria de equipamentos, presentes, shards, skins ou
-materiais.
+Não há mais Kaeli jogável de preenchimento; o espaço de roll comum do gacha entrega
+**1 item Kaezan aleatório** da curadoria autoral de equipamentos.
 
 O roster alvo da refundação reúne 7 Kaelis autorais:
 

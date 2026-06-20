@@ -50,7 +50,7 @@ public sealed class ContentStore
             {
                 var loaded = JsonSerializer.Deserialize<List<DungeonTier>>(
                     File.ReadAllText(_tiersPath), JsonOpts);
-                if (loaded is { Count: > 0 }) return loaded;
+                if (loaded is { Count: > 0 } && !ShouldSeedTiers(loaded)) return loaded;
             }
             catch (JsonException)
             {
@@ -58,7 +58,7 @@ public sealed class ContentStore
             }
         }
 
-        var seed = GameConfig.Tiers.ToList();
+        var seed = KaezanContentSeed.Tiers.ToList();
         WriteTiers(seed);
         return seed;
     }
@@ -70,19 +70,26 @@ public sealed class ContentStore
     {
         if (!File.Exists(_monstersPath))
         {
-            WriteMonsters([]);
-            return [];
+            var seed = KaezanContentSeed.Monsters.ToList();
+            WriteMonsters(seed);
+            return seed;
         }
 
         try
         {
-            return JsonSerializer.Deserialize<List<MonsterDefinition>>(
+            var loaded = JsonSerializer.Deserialize<List<MonsterDefinition>>(
                        File.ReadAllText(_monstersPath), JsonOpts)
                    ?? [];
+            if (!ShouldSeedMonsters(loaded)) return loaded;
+            var seed = KaezanContentSeed.Monsters.ToList();
+            WriteMonsters(seed);
+            return seed;
         }
         catch (JsonException)
         {
-            return [];
+            var seed = KaezanContentSeed.Monsters.ToList();
+            WriteMonsters(seed);
+            return seed;
         }
     }
 
@@ -116,25 +123,65 @@ public sealed class ContentStore
     {
         if (!File.Exists(_authoredItemsPath))
         {
-            WriteAuthoredItems([]);
-            return [];
+            var seed = NormalizeAuthoredItems(KaezanContentSeed.AuthoredItems);
+            WriteAuthoredItems(seed);
+            return seed;
         }
 
         try
         {
-            return JsonSerializer.Deserialize<List<AuthoredItemDefinition>>(
-                       File.ReadAllText(_authoredItemsPath), JsonOpts)
+            var loaded = JsonSerializer.Deserialize<List<AuthoredItemDefinition>>(
+                   File.ReadAllText(_authoredItemsPath), JsonOpts)
                    ?? [];
+            if (ShouldSeedItems(loaded))
+            {
+                var seed = NormalizeAuthoredItems(KaezanContentSeed.AuthoredItems);
+                WriteAuthoredItems(seed);
+                return seed;
+            }
+
+            var normalized = MergeMissingSeedRelics(NormalizeAuthoredItems(loaded));
+            WriteAuthoredItems(normalized);
+            return normalized;
         }
         catch (JsonException)
         {
-            return [];
+            var seed = NormalizeAuthoredItems(KaezanContentSeed.AuthoredItems);
+            WriteAuthoredItems(seed);
+            return seed;
         }
+    }
+
+    private static List<AuthoredItemDefinition> NormalizeAuthoredItems(IEnumerable<AuthoredItemDefinition> items) =>
+        items.Select(item => ItemAuthoring.Normalize(item, item.ItemId)).ToList();
+
+    private static List<AuthoredItemDefinition> MergeMissingSeedRelics(List<AuthoredItemDefinition> items)
+    {
+        var existingIds = items.Select(item => item.ItemId).ToHashSet();
+        var missingRelics = KaezanContentSeed.AuthoredItems
+            .Where(item => item.Tag == GameConfig.AuthoredItemTagRelic && !existingIds.Contains(item.ItemId));
+        items.AddRange(missingRelics);
+        return items;
     }
 
     private void WriteAuthoredItems(IEnumerable<AuthoredItemDefinition> items) =>
         File.WriteAllText(_authoredItemsPath,
             JsonSerializer.Serialize(items.OrderBy(item => item.ItemId).ToList(), JsonOpts));
+
+    private static bool ShouldSeedTiers(IReadOnlyList<DungeonTier> tiers) =>
+        tiers.Count != KaezanContentSeed.Tiers.Length
+        || tiers.Any(tier =>
+            tier.CommonMobs.Concat(tier.EliteMobs).Append(tier.Boss)
+                .Any(reference => !reference.StartsWith("monster:", StringComparison.OrdinalIgnoreCase)));
+
+    private static bool ShouldSeedMonsters(IReadOnlyList<MonsterDefinition> monsters) =>
+        monsters.Count == 0
+        || monsters.All(monster =>
+            monster.Id.Equals("monster:achad-echo", StringComparison.OrdinalIgnoreCase));
+
+    private static bool ShouldSeedItems(IReadOnlyList<AuthoredItemDefinition> items) =>
+        items.Count == 0
+        || items.All(item => item.ItemId is 900000 or 900001 or 900002);
 
     public IReadOnlyList<DungeonTier> Tiers
     {
@@ -290,7 +337,7 @@ public sealed class ContentStore
             var nextId = _authoredItems.Count == 0
                 ? GameConfig.AuthoredItemIdBase
                 : Math.Max(GameConfig.AuthoredItemIdBase, _authoredItems.Max(item => item.ItemId) + 1);
-            var created = definition with { ItemId = nextId };
+            var created = ItemAuthoring.Normalize(definition with { ItemId = nextId }, nextId);
             _authoredItems.Add(created);
             WriteAuthoredItems(_authoredItems);
             return created;
@@ -303,7 +350,7 @@ public sealed class ContentStore
         {
             var index = _authoredItems.FindIndex(item => item.ItemId == itemId);
             if (index < 0) throw new KeyNotFoundException($"item autoral desconhecido: {itemId}");
-            var updated = definition with { ItemId = itemId };
+            var updated = ItemAuthoring.Normalize(definition with { ItemId = itemId }, itemId);
             _authoredItems[index] = updated;
             WriteAuthoredItems(_authoredItems);
             return updated;

@@ -237,6 +237,11 @@ public static class GameConfig
     public const int ItemMaxMountSpeed = 100;
     public const int ItemMaxSalePrice = 1_000_000_000;
     public const int AdminItemGrantMax = 99;
+    public const string AuthoredItemTagNormal = "normal";
+    public const string AuthoredItemTagRelic = "relic";
+    public const double AuthoredItemRelicMultiplierDefault = 1.25;
+    public const double AuthoredItemRelicMultiplierMin = 1.05;
+    public const double AuthoredItemRelicMultiplierMax = 1.60;
     public static readonly int[] AuthoredItemSetTiers = [0, 1, 2, 3, 4, 5];
     public static readonly ItemBalanceGrade[] AuthoredItemBalanceGrades =
     [
@@ -337,6 +342,24 @@ public static class GameConfig
         new("resistance", 4, 0.10, 0.14, 0.15, 0.20, 0.21, 0.27),
         new("resistance", 5, 0.12, 0.16, 0.17, 0.22, 0.23, 0.30),
     ];
+
+    public static double AuthoredItemRecommendedValue(int tier, string stat)
+    {
+        var t = Math.Clamp(tier, 0, 5);
+        var range = AuthoredItemBalanceRanges.FirstOrDefault(entry =>
+            entry.Tier == t && entry.Stat.Equals(stat, StringComparison.OrdinalIgnoreCase));
+        return range is null ? 0 : (range.ModerateMin + range.ModerateMax) / 2;
+    }
+
+    public static int AuthoredItemRecommendedInt(int tier, string stat) =>
+        (int)Math.Round(AuthoredItemRecommendedValue(tier, stat), MidpointRounding.AwayFromZero);
+
+    public static int AuthoredItemSalePrice(int tier)
+    {
+        var t = Math.Clamp(tier, 0, 5);
+        return t <= 0 ? 80 : 80 * t * t;
+    }
+
     public static int MountItemId(int lookType) => -lookType;
     public static readonly IReadOnlyDictionary<int, int> TierMountLookTypes = new Dictionary<int, int>
     {
@@ -364,6 +387,27 @@ public static class GameConfig
     public const double PotionHealGreat = 0.40;
     /// <summary>Sprite da moeda de ouro (Tibia) usado na animação de loot voando até o player.</summary>
     public const int GoldCoinItemId = 3031;
+
+    // ---- Kaezan authored loot ----
+    public const double KaezanCommonItemDropChance = 0.08;
+    public const double KaezanEliteItemDropChance = 0.24;
+    public const double KaezanCommonClassDropWeight = 0.65;
+    public const double KaezanEliteClassDropWeight = 0.70;
+    public const double KaezanBossClassDropWeight = 0.80;
+    public const double KaezanChestClassDropWeight = 0.60;
+    public const double KaezanBossRelicDropChance = 0.30;
+    public const int KaezanChestItemDrops = 2;
+
+    public static (int Min, int Max) KaezanDropGoldRange(int tier, string rank)
+    {
+        var t = Math.Clamp(tier, 1, 5);
+        return rank switch
+        {
+            "boss" => (75 * t, 130 * t),
+            "elite" => (14 * t, 28 * t),
+            _ => (4 * t, 10 * t)
+        };
+    }
 
     // ---- poção de slot (recurso da run, independente do loot dos mobs) ----
     /// <summary>Cargas de poção com que o jogador começa cada run (slot 5).</summary>

@@ -68,7 +68,9 @@ public sealed record EventDto(
     string Kind, int X, int Y, int ToX, int ToY, int Value,
     string Text, int ActorId, bool Crit);
 
-public sealed record CardOfferDto(string Id, string Name, string Description, int CurrentStacks);
+public sealed record CardOfferDto(
+    string Id, string Name, string Description, int CurrentStacks,
+    string Rarity, IReadOnlyList<string> Tags, int MaxStacks);
 
 public sealed record RunStateDto(
     int Tier, string TierName, long Seed,
@@ -82,7 +84,9 @@ public sealed record RunStateDto(
     RunEndDto? Ended,
     List<RewardItemDto> Items);
 
-public sealed record CardStackDto(string Id, string Name, int Stacks);
+public sealed record CardStackDto(
+    string Id, string Name, int Stacks,
+    string Rarity, IReadOnlyList<string> Tags);
 
 public sealed record RunEndDto(
     bool Victory, string Reason,

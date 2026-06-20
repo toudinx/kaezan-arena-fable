@@ -178,6 +178,37 @@ public static class GameConfig
     public const int CardChoicesPerOffer = 3;
     public const int MaxCardStacks = 3;
     public const int CardOfferTimeoutMs = 20000;
+
+    // ---- G-04: framework de cartas (raridade + mecânica) ----
+    /// <summary>Eco define a run; não empilha como os status.</summary>
+    public const int EchoMaxStacks = 1;
+    public static int MaxStacksForRarity(string rarity) =>
+        rarity == Cards.Echo ? EchoMaxStacks : MaxCardStacks;
+
+    /// <summary>Peso de amostragem da oferta por raridade (G-06 escala isso por progresso da run).</summary>
+    public static double CardRarityWeight(string rarity) => rarity switch
+    {
+        Cards.Common => 100,
+        Cards.Rare => 35,
+        Cards.Echo => 14,
+        _ => 100,
+    };
+
+    // Eco Sobrecarregado (echo_surge): carga de ult por acerto direto, por stack.
+    public const double CardEchoSurgeGaugePerHit = 4;
+    // Golpe Duplo (double_strike): a cada N acertos, um golpe extra (fração do ataque, por stack).
+    public const int CardDoubleStrikeEvery = 3;
+    public const double CardDoubleStrikeDamageMult = 0.60;
+    // Detonação (detonate): condição expira → estouro em área (fração do ataque, por stack).
+    public const int CardDetonateRadius = 1;
+    public const double CardDetonateDamageMult = 0.80;
+    // Colheita do Pesadelo (harvest, Velvet): espectro que pulsa dano ao matar sob Decadência.
+    public const int CardHarvestMaxSpectres = 5;
+    public const double CardHarvestSpectreDamageMult = 0.50;
+    public const int CardHarvestSpectreRadius = 1;
+    public const int CardHarvestSpectrePulseMs = 1000;
+    public const int CardHarvestSpectreDurationMs = 6000;
+    public const int CardHarvestSpectreFx = 18; // mort area fx
     public const int UltimateGaugeMax = 100;
     public const int GaugeFillPerKill = 8;
     public const double GaugeFillPerDamageTaken = 0.5;
@@ -626,6 +657,68 @@ public static class GameConfig
     // a caça dura; quando a Presa morre a marca salta e Gaia ganha cadência. Value=ramp/s, Param=cap.
     public const double GaiaHuntAtkSpeedBonus = 0.20;
     public const int GaiaHuntBonusMs = 3000;
+
+    // ================= G-04B: Ecos por Kaeli (3 × 7) =================
+    // Cada Eco (cap de 1 stack) ramifica nos hooks de trait/carta do GameWorld — sem dispatch novo.
+    // Win-conditions ancoradas no campo/constante real do trait (SinStacks, _comboHits, DecayStacks,
+    // burn DoTs, _staticCharge, SlowUntilMs, _preyId). Determinístico: só _rng/NowMs + desempate por id.
+
+    /// <summary>Escudo de Eco (Eloa Mártir / Velvet Pacto): teto da sobre-vida absorvida, fração da vida máx.</summary>
+    public const double EchoShieldCapFraction = 0.60;
+
+    // Eloa — chain-judgment: o estouro semeia Pecado nos atingidos. sentence: Julga mais cedo e
+    // cada Julgamento amplia o próximo estouro (acumula até um teto).
+    public const int EchoEloaChainSinSeed = 1;
+    public const int EchoSentenceStacksToJudge = 2;
+    public const double EchoSentenceBurstPerStack = 0.15; // +15% no estouro por Julgamento acumulado
+    public const int EchoSentenceMaxStacks = 6;
+
+    // Seren — endless-cadence: ramp sem teto, reset mais severo. perfect-execution: Corte a cada 2º,
+    // crit garantido executa alvos fracos. immortal-stance: redução de dano com combo alto.
+    public const int EchoEndlessCadenceResetMs = 1200;
+    public const int EchoPerfectCutEvery = 2;
+    public const double EchoPerfectExecuteHpFraction = 0.15;
+    public const int EchoImmortalComboThreshold = 4;
+    public const double EchoImmortalDamageReduction = 0.40;
+
+    // Velvet — blood-pact: cada carga de Decadência aplicada vira escudo (fração do dano de Maldição).
+    // viral-plague: ao morrer, a Decadência salta com os stacks ao vivo mais próximo (reusa o DoT base).
+    public const double EchoBloodPactShieldFraction = 0.50;
+
+    // Rin — pyre: dano cresce com nº de alvos queimando. holocaust: morte em chamas explode em área.
+    // wildfire reusa o Contágio (incêndio de qualquer elemento + refresh) sem constante nova.
+    public const double EchoPyreDamagePerBurning = 0.08;
+    public const double EchoPyreMaxBonus = 0.60;
+    public const double EchoHolocaustDamageMult = 1.2;
+    public const int EchoHolocaustRadius = 1;
+
+    // Rynna — perpetual-storm: Descarga retém metade da Carga e a Carga enche o dobro. overload:
+    // paralyze vira DoT de eletrocussão. thunder-core: gauge da Descarga turbinado + ult devolve Carga.
+    public const double EchoPerpetualDischargeRetain = 0.50;
+    public const double EchoPerpetualChargeMult = 2.0;
+    public const double EchoOverloadDotPower = 0.20;
+    public const int EchoOverloadDotTicks = 3;
+    public const int EchoOverloadDotTickMs = 400;
+    public const double EchoThunderCoreGaugeMult = 3.0;
+
+    // Lunara — eternal-winter: inimigos entram lentos ao ver Lunara, slow mais forte (sem piso).
+    // chain-shatter: o Estilhaço salta para lentos próximos. moon-dance: estilhaça já no 2º acerto.
+    public const double EchoEternalWinterSlowFactor = 0.45;
+    public const int EchoEternalWinterAggroSlowMs = 1500;
+    public const int EchoChainShatterRange = 3;
+    public const double EchoChainShatterDamageMult = 0.70;
+    public const int EchoMoonDanceShatterHits = 2;
+
+    // Gaia — eternal-hunt: ramp e teto da Presa dobrados. pack: 2 Presas + bônus de caça maior.
+    // deep-roots: cada acerto na Presa enraíza (slow pesado) e crava um veneno de terra.
+    public const double EchoEternalHuntRampMult = 2.0;
+    public const double EchoEternalHuntCapMult = 2.0;
+    public const int EchoPackHuntBonusMs = 5000;
+    public const double EchoDeepRootsSlowFactor = 0.40;
+    public const int EchoDeepRootsSlowMs = 1200;
+    public const double EchoDeepRootsDotPower = 0.15;
+    public const int EchoDeepRootsDotTicks = 3;
+    public const int EchoDeepRootsDotTickMs = 1000;
 }
 
 public sealed record DungeonTier(

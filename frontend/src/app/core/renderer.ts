@@ -21,13 +21,87 @@ const DAMAGE_TYPE_COLORS: Record<string, string> = {
 const LOOT_FLY_MS = 460;
 const LOOT_ARC_TILES = 0.9;
 
+// ---- G-02 combat juice tuning (all cosmetic, client-side; engine untouched) ----
+const HIT_FLASH_MS = 150;          // additive white bloom on a struck sprite
+const HIT_PUNCH_MS = 170;          // scale-pop "hit-stop" on the struck sprite
+const HIT_PUNCH_AMP = 0.17;        // base pop magnitude (scaled by hit intensity)
+const SHAKE_DUR_MS = 240;
+const SHAKE_MAX_PX = 7;
+const SHAKE_MIN_INTENSITY = 0.42;  // below this a hit does not shake (avoid constant rattle)
+const DISSOLVE_MS = 640;           // pixel dissolve on death
+const DISSOLVE_EDGE = 0.18;        // softness of the dissolving wavefront
+const DISSOLVE_RISE_PX = 9;        // upward drift of the dissipating sprite
+const TEXT_LIFE_MS = 1100;
+const PROC_LIFE_MS = 1350;
+
+// ---- G-03 helper legibility + Echo Break climax (client-side reads of the snapshot only) ----
+const RETICLE_SPAN = 0.92;         // target-reticle bracket span (tiles)
+const INTENT_DASH = 14;            // intention-line dash period (px)
+const TELE_DEFAULT_RANGE = 4;      // fallback skill range (tiles) when the shape lookup is missing
+const TELE_DEFAULT_RADIUS = 1.4;   // fallback skill radius (tiles)
+const ECHO_FLASH_MS = 540;         // full-screen flash + banner on the break instant
+const ECHO_WARP_MS = 240;          // slow-mo window (visual time-dilation only)
+const ECHO_WARP_SCALE = 0.28;      // interpolation playback speed during the slow-mo
+const ECHO_WARP_RECOVER = 0.6;     // catch-up rate (ms repaid per real ms) after the window
+const ECHO_WARP_MAX = 420;         // cap on how far visuals may lag the authoritative clock
+const SHOCKWAVE_MS = 620;          // expanding ring bursting from the boss on break
+
+/** Punchy colours for proc/callout texts routed through the `text` event kind. */
+const PROC_COLORS: { match: string; color: string }[] = [
+  { match: 'QUEBR', color: '#ff5d5d' },   // Echo Break
+  { match: 'EXECU', color: '#ff3b3b' },
+  { match: 'JULGAD', color: '#ffe07a' },
+  { match: 'PRESA', color: '#ff7a7a' },
+  { match: 'DESCARGA', color: '#c47dff' },
+  { match: 'ESTILHA', color: '#7df0ff' },
+  { match: 'IMUNE', color: '#9aa6b2' },
+  { match: 'LENTID', color: '#7df0ff' },
+  { match: 'STANCE', color: '#7df0ff' },
+];
+
+function procColor(text: string): string {
+  const up = text.toUpperCase();
+  for (const p of PROC_COLORS) if (up.includes(p.match)) return p.color;
+  return '#9dffe0';
+}
+
+function clamp(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
+/** Slight-overshoot ease used for the damage-number "pop-in". */
+function easeOutBack(x: number): number {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+}
+
 interface ActiveEffect { x: number; y: number; id: number; start: number; }
 interface ActiveProjectile { fromX: number; fromY: number; toX: number; toY: number; id: number; start: number; dur: number; }
 /** A coin/item that bursts from a kill and homes in on the player along an arc. */
 interface ActiveLoot { fromX: number; fromY: number; id: number; text: string; color: string; start: number; }
-interface FloatText { x: number; y: number; text: string; color: string; start: number; }
+type FloatKind = 'dmg' | 'proc' | 'heal' | 'info';
+interface FloatText {
+  x: number; y: number; text: string; color: string; start: number;
+  kind: FloatKind; crit?: boolean; mag?: number; vx?: number; life?: number;
+}
+/** Transient impact state per-actor: drives the flash + scale-pop on the struck sprite. */
+interface HitFx { start: number; intensity: number; crit: boolean; }
+/** A dying creature dissolving away pixel-by-pixel (captured from its last outfit). */
+interface Dissolve {
+  x: number; y: number; dir: number; start: number;
+  lookType: number; head: number; body: number; legs: number; feet: number;
+  addons: number; mount: number;
+  built?: boolean; failed?: boolean;
+  sprite?: HTMLCanvasElement; base?: ImageData; noise?: Float32Array;
+  cellW?: number; cellH?: number;
+}
 interface Bubble { x: number; y: number; text: string; start: number; }
 interface Corpse { x: number; y: number; itemId: number; start: number; }
+/** Skill footprint used to telegraph what the helper is about to land (from the catalog). */
+interface SkillShape { shape: string; range: number; radius: number; }
+/** Expanding ring spawned at the boss tile when an Echo Break fires. */
+interface Shockwave { x: number; y: number; start: number; }
 interface MotionSample {
   fromX: number;
   fromY: number;
@@ -47,6 +121,28 @@ export class GameRenderer {
   private bubbles: Bubble[] = [];
   private corpses: Corpse[] = [];
 
+  // G-02 juice state
+  private hits = new Map<number, HitFx>();
+  private dissolves: Dissolve[] = [];
+  private shakeStart = -1;
+  private shakeMag = 0;
+  private textJitter = 0;
+  private dissolveWork: HTMLCanvasElement | null = null;
+  /** Snapshot of the previous frame's monsters, so a death event can capture the dying outfit. */
+  private deathLookup = new Map<number, MonsterDto>();
+
+  // G-03 helper legibility + Echo Break climax
+  private skillShapes = new Map<string, SkillShape>();
+  private shockwaves: Shockwave[] = [];
+  private echoFlashStart = -1;
+  private echoBreakCount = 0;
+  // Visual slow-mo: `warpAccum` is how many ms the interpolation clock currently lags the live one.
+  // It is banked while slowed then repaid, so interpolation always resyncs to the authoritative
+  // clock — we never simulate, we only vary the playback rate of interpolation.
+  private warpAccum = 0;
+  private warpUntil = 0;
+  private lastFrame = -1;
+
   private snapArrival = 0;
   private serverClockOffsetMs: number | null = null;
   private readonly motionHistory = new Map<number, MotionSample[]>();
@@ -58,8 +154,14 @@ export class GameRenderer {
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly assets: AssetsService,
-    private readonly sound?: { coinChing(chainIndex: number): void },
+    private readonly sound?: { coinChing(chainIndex: number): void; echoBreak?(): void },
   ) {}
+
+  /** Feed the catalog's skill footprints so the helper telegraph previews the right shape. */
+  setSkillShapes(skills: { id: string; shape: string; range: number; radius: number }[]): void {
+    this.skillShapes.clear();
+    for (const s of skills) this.skillShapes.set(s.id, { shape: s.shape, range: s.range, radius: s.radius });
+  }
 
   setMap(map: MapDto): void {
     this.map = map;
@@ -67,7 +169,16 @@ export class GameRenderer {
     this.projectiles = [];
     this.loot = [];
     this.corpses = [];
+    this.hits.clear();
+    this.dissolves = [];
+    this.shakeMag = 0;
+    this.deathLookup.clear();
     this.motionHistory.clear();
+    this.shockwaves = [];
+    this.echoFlashStart = -1;
+    this.warpAccum = 0;
+    this.warpUntil = 0;
+    this.lastFrame = -1;
   }
 
   setSnapshot(snap: SnapshotDto, nowPerf: number): void {
@@ -90,9 +201,27 @@ export class GameRenderer {
     }
     this.recordMotion(snap.player, snap.simulationMs);
     for (const monster of snap.monsters) this.recordMotion(monster, snap.simulationMs);
+    // Keep a lookup of who was alive last frame so a `death` event can capture the dying outfit
+    // (the killed monster is already gone from the new snapshot's monster list).
+    this.deathLookup.clear();
+    if (previous) for (const m of previous.monsters) this.deathLookup.set(m.id, m);
     this.snapshot = snap;
     this.snapArrival = nowPerf;
+    // G-03: rising edge of the (engine-authoritative) Echo Break → fire the run-climax FX.
+    if (snap.run.bossStaggered && !previous?.run.bossStaggered) this.triggerEchoBreak(snap, nowPerf);
     for (const ev of snap.events) this.ingest(ev, nowPerf);
+  }
+
+  /** The Echo Break already exists in the engine (effect 35 + "QUEBRADO!"); here we elevate it to a
+   *  run climax purely client-side: a brief slow-mo, a gold flash + banner, a shockwave and a shake. */
+  private triggerEchoBreak(snap: SnapshotDto, now: number): void {
+    this.echoFlashStart = now;
+    this.echoBreakCount = snap.run.bossPostureCycle;
+    this.warpUntil = now + ECHO_WARP_MS;
+    this.triggerShake(now, 1.4);
+    const boss = snap.monsters.find((m) => m.isBoss);
+    if (boss) this.shockwaves.push({ x: boss.x, y: boss.y, start: now });
+    this.sound?.echoBreak?.();
   }
 
   private recordMotion(actor: PlayerDto | MonsterDto, simulationMs: number): void {
@@ -131,26 +260,40 @@ export class GameRenderer {
         });
         break;
       }
-      case 'damage':
+      case 'damage': {
+        const playerVictim = ev.actorId === this.snapshot?.player.id;
+        // Impact weight is the hit as a fraction of the victim's max HP (engine value, not RNG),
+        // so a chip and a haymaker feel different. The killing blow's victim is already gone, so
+        // fall back to an absolute scale for that frame.
+        const maxHp = this.actorMaxHp(ev.actorId);
+        const frac = maxHp > 0 ? ev.value / maxHp : Math.min(ev.value / 360, 0.9);
+        const intensity = clamp((ev.crit ? 0.55 : 0.28) + frac * 1.1, 0.2, 1.4);
+        this.registerHit(ev.actorId, now, intensity, ev.crit);
+        if (ev.crit || intensity >= SHAKE_MIN_INTENSITY || playerVictim) {
+          this.triggerShake(now, intensity * (ev.crit ? 1.15 : 1) + (playerVictim ? 0.2 : 0));
+        }
         this.texts.push({
           x: ev.x, y: ev.y, text: String(ev.value),
-          color: ev.actorId === this.snapshot?.player.id
+          color: playerVictim
             ? DAMAGE_TYPE_COLORS[ev.text] ?? '#ff5d5d'
             : ev.crit ? '#ffd35d' : '#ffffff',
-          start: now,
+          start: now, kind: 'dmg', crit: ev.crit, mag: intensity,
+          vx: ((this.textJitter++ % 3) - 1) * 0.16,
         });
         break;
+      }
       case 'heal':
-        this.texts.push({ x: ev.x, y: ev.y, text: `+${ev.value}`, color: '#6ee76e', start: now });
+        this.texts.push({ x: ev.x, y: ev.y, text: `+${ev.value}`, color: '#6ee76e', start: now, kind: 'heal' });
         break;
       case 'text':
-        this.texts.push({ x: ev.x, y: ev.y, text: ev.text, color: '#7df0ff', start: now });
+        // Engine `text` events are proc/callouts (QUEBRADO!, JULGADO, IMUNE, STANCE…): make them pop.
+        this.texts.push({ x: ev.x, y: ev.y, text: ev.text, color: procColor(ev.text), start: now, kind: 'proc' });
         break;
       case 'gold':
-        this.texts.push({ x: ev.x, y: ev.y, text: `+${ev.value} gold`, color: '#ffd35d', start: now });
+        this.texts.push({ x: ev.x, y: ev.y, text: `+${ev.value} gold`, color: '#ffd35d', start: now, kind: 'info' });
         break;
       case 'pickup':
-        this.texts.push({ x: ev.x, y: ev.y, text: ev.text, color: '#9dff9d', start: now });
+        this.texts.push({ x: ev.x, y: ev.y, text: ev.text, color: '#9dff9d', start: now, kind: 'info' });
         break;
       case 'loot':
         // value = sprite que voa, text = rótulo na chegada, crit = é ouro (cor dourada)
@@ -160,15 +303,198 @@ export class GameRenderer {
         });
         break;
       case 'levelup':
-        this.texts.push({ x: ev.x, y: ev.y, text: `LEVEL ${ev.value}!`, color: '#7dff7d', start: now });
+        this.texts.push({ x: ev.x, y: ev.y, text: `LEVEL ${ev.value}!`, color: '#7dff7d', start: now, kind: 'proc' });
         break;
       case 'voice':
         this.bubbles.push({ x: ev.x, y: ev.y, text: ev.text, start: now });
         break;
       case 'death':
         this.corpses.push({ x: ev.x, y: ev.y, itemId: ev.value, start: now });
+        this.spawnDissolve(ev.actorId, ev.x, ev.y, now);
         break;
     }
+  }
+
+  /** Look up a victim's max HP for impact weighting (player or a still-living monster). */
+  private actorMaxHp(id: number): number {
+    if (!this.snapshot) return 0;
+    if (this.snapshot.player.id === id) return this.snapshot.player.maxHp;
+    const m = this.snapshot.monsters.find((mm) => mm.id === id) ?? this.deathLookup.get(id);
+    return m?.maxHp ?? 0;
+  }
+
+  private registerHit(id: number, now: number, intensity: number, crit: boolean): void {
+    const prev = this.hits.get(id);
+    // Keep the strongest recent impact so rapid multi-hits don't weaken the pop (a crit always wins).
+    if (prev && now - prev.start < HIT_PUNCH_MS && prev.intensity >= intensity && (prev.crit || !crit)) return;
+    this.hits.set(id, { start: now, intensity, crit });
+  }
+
+  private triggerShake(now: number, intensity: number): void {
+    const mag = clamp(intensity, 0, 1.4) / 1.4 * SHAKE_MAX_PX;
+    const remaining = this.shakeStart >= 0
+      ? this.shakeMag * Math.max(0, 1 - (now - this.shakeStart) / SHAKE_DUR_MS)
+      : 0;
+    if (mag <= remaining) return; // don't let a small hit cut short a big rumble
+    this.shakeMag = mag;
+    this.shakeStart = now;
+  }
+
+  /** Decaying sinusoidal camera offset (deterministic trig — purely cosmetic). */
+  private shakeOffset(now: number): { x: number; y: number } {
+    if (this.shakeStart < 0) return { x: 0, y: 0 };
+    const t = (now - this.shakeStart) / SHAKE_DUR_MS;
+    if (t >= 1) return { x: 0, y: 0 };
+    const decay = (1 - t) * (1 - t);
+    const a = this.shakeMag * decay;
+    return { x: Math.cos(now * 0.085) * a, y: Math.sin(now * 0.127) * a };
+  }
+
+  /** Capture the dying creature's outfit so it can dissolve away pixel by pixel. */
+  private spawnDissolve(id: number, x: number, y: number, now: number): void {
+    const m = this.snapshot?.monsters.find((mm) => mm.id === id) ?? this.deathLookup.get(id);
+    if (!m) return; // no outfit to dissolve (e.g. corpse-only event) — corpse fade handles it
+    this.dissolves.push({
+      x: m.x, y: m.y, dir: m.dir, start: now,
+      lookType: m.outfit.lookType, head: m.outfit.head, body: m.outfit.body,
+      legs: m.outfit.legs, feet: m.outfit.feet, addons: m.outfit.addons,
+      mount: m.outfit.mountLookType,
+    });
+  }
+
+  /**
+   * Draws one creature sprite with the G-02 impact "juice": a brief scale-pop (hit-stop) around the
+   * tile centre and an additive flash bloom, both eased from the last hit on that actor. The actual
+   * sprite draw is delegated so this works for both monsters and the player.
+   */
+  private drawActorSprite(
+    ctx: CanvasRenderingContext2D, id: number, screenX: number, screenY: number,
+    now: number, drawSprite: () => void,
+  ): void {
+    const hit = this.hits.get(id);
+    const cx = screenX + TS / 2;
+    const cy = screenY + TS / 2;
+    let punch = 1;
+    if (hit) {
+      const age = now - hit.start;
+      if (age < HIT_PUNCH_MS) punch = 1 + HIT_PUNCH_AMP * hit.intensity * Math.sin(Math.PI * (age / HIT_PUNCH_MS));
+    }
+    if (punch !== 1) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(punch, punch);
+      ctx.translate(-cx, -cy);
+      drawSprite();
+      ctx.restore();
+    } else {
+      drawSprite();
+    }
+    if (hit) {
+      const fage = now - hit.start;
+      if (fage < HIT_FLASH_MS) {
+        const a = clamp(hit.intensity, 0.2, 1.4) * 0.58 * (1 - fage / HIT_FLASH_MS);
+        const r = TS * 0.72;
+        const tint = hit.crit ? '255,224,150' : '255,255,255';
+        const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        grd.addColorStop(0, `rgba(${tint},${a})`);
+        grd.addColorStop(1, `rgba(${tint},0)`);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
+
+  /**
+   * Renders one dissolving corpse. The captured outfit is rasterised once into an offscreen buffer
+   * with a per-pixel noise threshold; each frame the wavefront (driven by `progress`) erases pixels
+   * below the threshold with a soft, glowing edge, while the whole sprite drifts up and fades.
+   */
+  private drawDissolve(ctx: CanvasRenderingContext2D, d: Dissolve, now: number, cam: { x: number; y: number }): boolean {
+    const age = now - d.start;
+    if (age >= DISSOLVE_MS || d.failed) return false;
+    if (!d.built) this.buildDissolve(d);
+    if (d.failed || !d.sprite || !d.base || !d.noise) return !d.failed; // keep until built or failed
+
+    const progress = age / DISSOLVE_MS;
+    const base = d.base;
+    const noise = d.noise;
+    const w = base.width;
+    const h = base.height;
+
+    const work = this.dissolveWork ??= document.createElement('canvas');
+    if (work.width < w || work.height < h) { work.width = w; work.height = h; }
+    const wctx = work.getContext('2d', { willReadFrequently: true });
+    if (!wctx) return false;
+    const out = wctx.createImageData(w, h);
+    const sd = base.data;
+    const od = out.data;
+    for (let i = 0, p = 0; i < noise.length; i++, p += 4) {
+      const a0 = sd[p + 3];
+      if (a0 === 0) continue;
+      const k = (progress - noise[i]) / DISSOLVE_EDGE; // <0 intact, >1 gone
+      if (k >= 1) continue;
+      if (k <= 0) {
+        od[p] = sd[p]; od[p + 1] = sd[p + 1]; od[p + 2] = sd[p + 2]; od[p + 3] = a0;
+      } else {
+        // dissolving wavefront: glowing ember edge fading out
+        const f = 1 - k;
+        od[p] = Math.min(255, sd[p] + (255 - sd[p]) * k * 0.9);
+        od[p + 1] = Math.min(255, sd[p + 1] + (180 - sd[p + 1]) * k * 0.6);
+        od[p + 2] = sd[p + 2] * (1 - k);
+        od[p + 3] = a0 * f;
+      }
+    }
+    wctx.putImageData(out, 0, 0);
+
+    const offX = (d.cellW! - 32) * SCALE;
+    const offY = (d.cellH! - 32) * SCALE;
+    const destX = Math.round(d.x * TS - cam.x) - offX;
+    const destY = Math.round(d.y * TS - cam.y) - offY - progress * DISSOLVE_RISE_PX;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (1 - progress) * 1.3);
+    ctx.drawImage(work, 0, 0, w, h, destX, destY, w, h);
+    ctx.restore();
+    return true;
+  }
+
+  /** Rasterise the dying outfit once + build its dissolve noise map. */
+  private buildDissolve(d: Dissolve): void {
+    d.built = true;
+    const entry = this.assets.entry('outfits', d.lookType);
+    if (!entry) { d.failed = true; return; }
+    const w = Math.ceil(entry.cellW * SCALE);
+    const h = Math.ceil(entry.cellH * SCALE);
+    const sprite = document.createElement('canvas');
+    sprite.width = w;
+    sprite.height = h;
+    const sctx = sprite.getContext('2d', { willReadFrequently: true });
+    if (!sctx) { d.failed = true; return; }
+    sctx.imageSmoothingEnabled = false;
+    // Pass dx/dy so the sprite's bottom-right tile anchor lands at the offscreen origin.
+    this.assets.drawOutfit(
+      sctx, d.lookType, (entry.cellW - 32) * SCALE, (entry.cellH - 32) * SCALE, SCALE,
+      d.dir, false, 0, d.head, d.body, d.legs, d.feet, d.addons, d.mount,
+    );
+    const base = sctx.getImageData(0, 0, w, h);
+    let anyOpaque = false;
+    for (let p = 3; p < base.data.length; p += 4) { if (base.data[p] !== 0) { anyOpaque = true; break; } }
+    if (!anyOpaque) { d.built = false; return; } // atlas not decoded yet — retry next frame
+    // Per-pixel threshold biased so the sprite dissipates roughly top-first (spirit rising).
+    const noise = new Float32Array(w * h);
+    for (let y = 0, i = 0; y < h; y++) {
+      const bias = (y / h) * 0.25; // lower threshold near the top → erased earlier
+      for (let x = 0; x < w; x++, i++) noise[i] = Math.min(1, Math.random() * 0.8 + bias);
+    }
+    d.sprite = sprite;
+    d.base = base;
+    d.noise = noise;
+    d.cellW = entry.cellW;
+    d.cellH = entry.cellH;
   }
 
   // ---- coordinate helpers ----
@@ -176,9 +502,24 @@ export class GameRenderer {
   private serverNow(nowPerf: number): number {
     if (!this.snapshot) return 0;
     if (this.snapshot.run.offer) return this.snapshot.simulationMs;
-    if (this.serverClockOffsetMs === null)
-      return this.snapshot.simulationMs + (nowPerf - this.snapArrival) - RENDER_DELAY_MS;
-    return nowPerf + this.serverClockOffsetMs - RENDER_DELAY_MS;
+    const live = this.serverClockOffsetMs === null
+      ? this.snapshot.simulationMs + (nowPerf - this.snapArrival) - RENDER_DELAY_MS
+      : nowPerf + this.serverClockOffsetMs - RENDER_DELAY_MS;
+    // Echo Break slow-mo: replay interpolation a touch behind the live clock, then resync.
+    return live - this.warpAccum;
+  }
+
+  /** Advance the Echo Break time-warp: bank a lag while slowed, repay it after so the visual clock
+   *  smoothly converges back to the authoritative one. Cosmetic only — never gates a command. */
+  private updateWarp(now: number): void {
+    if (this.lastFrame < 0) { this.lastFrame = now; return; }
+    const dt = Math.min(now - this.lastFrame, 80);
+    this.lastFrame = now;
+    if (now < this.warpUntil) {
+      this.warpAccum = Math.min(ECHO_WARP_MAX, this.warpAccum + dt * (1 - ECHO_WARP_SCALE));
+    } else if (this.warpAccum > 0) {
+      this.warpAccum = Math.max(0, this.warpAccum - dt * ECHO_WARP_RECOVER);
+    }
   }
 
   private actorMotionAt(actor: PlayerDto | MonsterDto, serverNow: number): MotionSample {
@@ -229,9 +570,11 @@ export class GameRenderer {
     const camY = pos.y * TS + TS / 2 - this.canvas.height / 2;
     const maxX = this.map!.w * TS - this.canvas.width;
     const maxY = this.map!.h * TS - this.canvas.height;
+    // Apply screen-shake after clamping so the rumble is visible even at map edges.
+    const shake = this.shakeOffset(nowPerf);
     return {
-      x: Math.max(0, Math.min(camX, Math.max(maxX, 0))),
-      y: Math.max(0, Math.min(camY, Math.max(maxY, 0))),
+      x: Math.max(0, Math.min(camX, Math.max(maxX, 0))) + shake.x,
+      y: Math.max(0, Math.min(camY, Math.max(maxY, 0))) + shake.y,
     };
   }
 
@@ -244,6 +587,7 @@ export class GameRenderer {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     if (!this.snapshot || !this.map || !this.assets.ready) return;
+    this.updateWarp(nowPerf);
     const map = this.map;
     const snap = this.snapshot;
     const serverNow = this.serverNow(nowPerf);
@@ -319,11 +663,15 @@ export class GameRenderer {
       creatures.push({
         ry: pos.y, pos, ref: m,
         draw: () => {
-          this.assets.drawOutfit(
-            ctx, m.outfit.lookType, Math.round(pos.x * TS - cam.x), Math.round(pos.y * TS - cam.y), SCALE,
-            m.dir, pos.moving, pos.moving ? serverNow : nowPerf,
-            m.outfit.head, m.outfit.body, m.outfit.legs, m.outfit.feet, m.outfit.addons,
-          );
+          const px = Math.round(pos.x * TS - cam.x);
+          const py = Math.round(pos.y * TS - cam.y);
+          this.drawActorSprite(ctx, m.id, px, py, nowPerf, () => {
+            this.assets.drawOutfit(
+              ctx, m.outfit.lookType, px, py, SCALE,
+              m.dir, pos.moving, pos.moving ? serverNow : nowPerf,
+              m.outfit.head, m.outfit.body, m.outfit.legs, m.outfit.feet, m.outfit.addons,
+            );
+          });
         },
       });
     }
@@ -333,12 +681,16 @@ export class GameRenderer {
       creatures.push({
         ry: pos.y, pos, ref: p,
         draw: () => {
-          this.assets.drawOutfit(
-            ctx, p.outfit.lookType, Math.round(pos.x * TS - cam.x), Math.round(pos.y * TS - cam.y), SCALE,
-            p.dir, pos.moving, pos.moving ? serverNow : nowPerf,
-            p.outfit.head, p.outfit.body, p.outfit.legs, p.outfit.feet, p.outfit.addons,
-            p.outfit.mountLookType,
-          );
+          const px = Math.round(pos.x * TS - cam.x);
+          const py = Math.round(pos.y * TS - cam.y);
+          this.drawActorSprite(ctx, p.id, px, py, nowPerf, () => {
+            this.assets.drawOutfit(
+              ctx, p.outfit.lookType, px, py, SCALE,
+              p.dir, pos.moving, pos.moving ? serverNow : nowPerf,
+              p.outfit.head, p.outfit.body, p.outfit.legs, p.outfit.feet, p.outfit.addons,
+              p.outfit.mountLookType,
+            );
+          });
         },
       });
     }
@@ -357,16 +709,10 @@ export class GameRenderer {
     }
     while (ci < creatures.length) creatures[ci++].draw();
 
-    // 5. target highlight
-    if (snap.player.targetId) {
-      const target = snap.monsters.find((m) => m.id === snap.player.targetId);
-      if (target) {
-        const pos = this.actorRenderState(target, serverNow);
-        ctx.strokeStyle = '#ff4d4d';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(pos.x * TS - cam.x + 2, pos.y * TS - cam.y + 2, TS - 4, TS - 4);
-      }
-    }
+    // 5. helper legibility (G-03): intention line + animated reticle + skill telegraph, then the
+    //    Echo Break "damage window" aura while the boss is staggered.
+    this.drawHelperIntent(ctx, snap, serverNow, cam, nowPerf);
+    this.drawBreakWindow(ctx, snap, serverNow, cam, nowPerf);
     if (this.hoverTile) {
       ctx.strokeStyle = 'rgba(255,255,255,0.35)';
       ctx.lineWidth = 1;
@@ -378,6 +724,15 @@ export class GameRenderer {
       const alive = this.assets.drawEffect(ctx, e.id, sx(e.x), sy(e.y), SCALE, nowPerf - e.start);
       return alive;
     });
+
+    // 6.5 death dissolves (pixel disintegration of the dying creature)
+    this.dissolves = this.dissolves.filter((d) => this.drawDissolve(ctx, d, nowPerf, cam));
+    // 6.6 Echo Break shockwaves bursting from the boss tile
+    this.drawShockwaves(ctx, cam, nowPerf);
+    // prune expired impact state so the map can't grow unbounded
+    for (const [id, hit] of this.hits) {
+      if (nowPerf - hit.start > Math.max(HIT_PUNCH_MS, HIT_FLASH_MS)) this.hits.delete(id);
+    }
 
     // 7. projectiles
     this.projectiles = this.projectiles.filter((p) => {
@@ -395,7 +750,7 @@ export class GameRenderer {
       const t = (nowPerf - l.start) / LOOT_FLY_MS;
       if (t >= 1) {
         // arrived: pop the label at the player and play the chained "cha-ching"
-        this.texts.push({ x: lootTarget.x, y: lootTarget.y, text: l.text, color: l.color, start: nowPerf });
+        this.texts.push({ x: lootTarget.x, y: lootTarget.y, text: l.text, color: l.color, start: nowPerf, kind: 'info' });
         this.sound?.coinChing(this.lootChain++);
         return false;
       }
@@ -461,16 +816,45 @@ export class GameRenderer {
       }
     }
 
-    // 9. floating texts
-    const textLife = 1100;
-    this.texts = this.texts.filter((t) => nowPerf - t.start < textLife);
-    ctx.font = 'bold 13px Verdana, sans-serif';
+    // 9. floating texts — weighted: outline, pop-in, crit/proc emphasis, magnitude scaling
+    this.texts = this.texts.filter((t) => nowPerf - t.start < (t.life ?? (t.kind === 'proc' ? PROC_LIFE_MS : TEXT_LIFE_MS)));
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.lineJoin = 'round';
     for (const t of this.texts) {
-      const age = (nowPerf - t.start) / textLife;
-      ctx.globalAlpha = 1 - age * age;
+      const life = t.life ?? (t.kind === 'proc' ? PROC_LIFE_MS : TEXT_LIFE_MS);
+      const age = nowPerf - t.start;
+      const a01 = age / life;
+      const popMs = 150;
+      const popIn = age < popMs ? Math.max(easeOutBack(age / popMs), 0.1) : 1;
+      const alpha = a01 < 0.62 ? 1 : Math.max(0, 1 - (a01 - 0.62) / 0.38);
+
+      let size: number;
+      if (t.kind === 'dmg') size = (t.crit ? 21 : 13) + (t.mag ?? 0.4) * 5;
+      else if (t.kind === 'proc') size = 18;
+      else if (t.kind === 'heal') size = 14;
+      else size = 13;
+
+      const rise = (t.kind === 'proc' ? 16 : 30) * a01;
+      const drawX = t.x * TS - cam.x + TS / 2 + (t.vx ?? 0) * TS;
+      const drawY = t.y * TS - cam.y - 14 - rise;
+
+      ctx.save();
+      ctx.globalAlpha = clamp(alpha, 0, 1);
+      ctx.translate(drawX, drawY);
+      ctx.scale(popIn, popIn);
+      ctx.font = `bold ${size}px Verdana, sans-serif`;
+      if (t.crit || t.kind === 'proc') {
+        ctx.shadowColor = t.color;
+        ctx.shadowBlur = t.crit ? 10 : 6;
+      }
+      ctx.lineWidth = Math.max(2.2, size * 0.2);
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.strokeText(t.text, 0, 0);
+      ctx.shadowBlur = 0;
       ctx.fillStyle = t.color;
-      ctx.fillText(t.text, t.x * TS - cam.x + TS / 2, t.y * TS - cam.y - 14 - age * 26);
+      ctx.fillText(t.text, 0, 0);
+      ctx.restore();
     }
     ctx.globalAlpha = 1;
 
@@ -484,6 +868,267 @@ export class GameRenderer {
       ctx.fillStyle = '#ffff66';
       ctx.fillText(b.text, bx, by);
     }
+
+    // 11. Echo Break flash + banner (screen-space, drawn on top of everything)
+    this.drawEchoFlash(ctx, nowPerf);
+  }
+
+  // ---- G-03 helper legibility ----
+
+  /**
+   * "Read the build's intent": an intention line from the Kaeli to the helper's current target, an
+   * animated reticle on that target, and a pulsing telegraph of the footprint the next ready skill
+   * will stamp. Pure snapshot reads — the engine still owns targeting and casting.
+   */
+  private drawHelperIntent(
+    ctx: CanvasRenderingContext2D, snap: SnapshotDto, serverNow: number,
+    cam: { x: number; y: number }, now: number,
+  ): void {
+    if (!snap.player.targetId) return;
+    const target = snap.monsters.find((m) => m.id === snap.player.targetId);
+    if (!target) return;
+    const tp = this.actorRenderState(target, serverNow);
+    const pp = this.actorRenderState(snap.player, serverNow);
+    const tcx = tp.x * TS - cam.x + TS / 2;
+    const tcy = tp.y * TS - cam.y + TS / 2;
+    const pcx = pp.x * TS - cam.x + TS / 2;
+    const pcy = pp.y * TS - cam.y + TS / 2;
+
+    const tele = this.pickTelegraph(snap.player);
+    const hot = tele !== null; // a skill is loaded and ready to land — go gold
+    const accent = hot ? '#ffd35d' : '#7df0ff';
+
+    this.drawIntentLine(ctx, pcx, pcy, tcx, tcy, now, accent);
+    if (tele) this.drawTelegraph(ctx, tele, pcx, pcy, tcx, tcy, now);
+    this.drawReticle(ctx, tcx, tcy, now, accent, hot);
+  }
+
+  /** The footprint to telegraph: the first ready, offensive skill the helper could land right now
+   *  (the ult joins once its gauge is full). Honest legibility, not a tick-exact prediction. */
+  private pickTelegraph(player: PlayerDto): SkillShape | null {
+    if (!player.autoHelper.skills) return null;
+    const skills = player.skills;
+    for (let i = 0; i < skills.length; i++) {
+      const sk = skills[i];
+      const isUlt = i === 4;
+      if (isUlt) {
+        if (!player.autoHelper.ultimate || player.gauge < 100 || !sk.ready) continue;
+      } else if (!sk.ready) continue;
+      const shape = this.skillShapes.get(sk.id);
+      if (!shape || shape.shape === 'buff' || shape.shape === 'summon') continue;
+      return shape;
+    }
+    return null;
+  }
+
+  /** Dashed line Kaeli → target with a bright bead racing along it. */
+  private drawIntentLine(
+    ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number,
+    now: number, color: string,
+  ): void {
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const len = Math.hypot(dx, dy) || 1;
+    // start a little off the Kaeli so the line doesn't cover her sprite
+    const t0 = Math.min(TS * 0.4, len * 0.3) / len;
+    const sx0 = x0 + dx * t0;
+    const sy0 = y0 + dy * t0;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.4 + 0.2 * Math.sin(now / 160);
+    ctx.setLineDash([6, 8]);
+    ctx.lineDashOffset = -(now / 28) % INTENT_DASH;
+    ctx.beginPath();
+    ctx.moveTo(sx0, sy0);
+    ctx.lineTo(x1, y1);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const bt = (now % 700) / 700;
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(sx0 + (x1 - sx0) * bt, sy0 + (y1 - sy0) * bt, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /** Four corner brackets breathing (and spinning when a skill is hot) around the target. */
+  private drawReticle(
+    ctx: CanvasRenderingContext2D, cx: number, cy: number, now: number, color: string, hot: boolean,
+  ): void {
+    const r = (TS * RETICLE_SPAN / 2) * (1 + 0.06 * Math.sin(now / 180));
+    const arm = TS * 0.22;
+    ctx.save();
+    ctx.translate(cx, cy);
+    if (hot) ctx.rotate((now / 2600) % (Math.PI / 2));
+    ctx.strokeStyle = color;
+    ctx.lineWidth = hot ? 2.6 : 2;
+    ctx.globalAlpha = hot ? 0.85 + 0.15 * Math.sin(now / 90) : 0.7;
+    if (hot) { ctx.shadowColor = color; ctx.shadowBlur = 8; }
+    for (const [qx, qy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+      const cxn = qx * r;
+      const cyn = qy * r;
+      ctx.beginPath();
+      ctx.moveTo(cxn - qx * arm, cyn);
+      ctx.lineTo(cxn, cyn);
+      ctx.lineTo(cxn, cyn - qy * arm);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** Pulsing preview of the skill footprint (cone/beam from the Kaeli, ring/area around her or the
+   *  target) so the watcher can see the shape before it fires. */
+  private drawTelegraph(
+    ctx: CanvasRenderingContext2D, tele: SkillShape,
+    pcx: number, pcy: number, tcx: number, tcy: number, now: number,
+  ): void {
+    const dx = tcx - pcx;
+    const dy = tcy - pcy;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = dx / len;
+    const ny = dy / len;
+    const range = (tele.range || TELE_DEFAULT_RANGE) * TS;
+    const radius = (tele.radius || TELE_DEFAULT_RADIUS) * TS;
+    const pulse = 0.16 + 0.12 * Math.abs(Math.sin(now / 130));
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = `rgba(255, 211, 93, ${pulse})`;
+    ctx.strokeStyle = `rgba(255, 211, 93, ${pulse + 0.35})`;
+    ctx.lineWidth = 1.6;
+    switch (tele.shape) {
+      case 'nova': case 'ring': case 'field':
+        ctx.beginPath(); ctx.arc(pcx, pcy, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        break;
+      case 'area': case 'barrage':
+        ctx.beginPath(); ctx.arc(tcx, tcy, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        break;
+      case 'cone': {
+        const ang = Math.atan2(ny, nx);
+        const half = Math.PI / 6;
+        ctx.beginPath();
+        ctx.moveTo(pcx, pcy);
+        ctx.arc(pcx, pcy, range, ang - half, ang + half);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        break;
+      }
+      case 'beam': {
+        const w = TS * 0.45;
+        const ox = -ny * w;
+        const oy = nx * w;
+        const ex = pcx + nx * range;
+        const ey = pcy + ny * range;
+        ctx.beginPath();
+        ctx.moveTo(pcx + ox, pcy + oy);
+        ctx.lineTo(ex + ox, ey + oy);
+        ctx.lineTo(ex - ox, ey - oy);
+        ctx.lineTo(pcx - ox, pcy - oy);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        break;
+      }
+      default: // single / chain — punch a tight ring on the target
+        ctx.beginPath(); ctx.arc(tcx, tcy, TS * 0.42, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // ---- G-03 Echo Break climax ----
+
+  /** Golden "damage window" aura under the boss while it is staggered (the engine flag drives it). */
+  private drawBreakWindow(
+    ctx: CanvasRenderingContext2D, snap: SnapshotDto, serverNow: number,
+    cam: { x: number; y: number }, now: number,
+  ): void {
+    if (!snap.run.bossStaggered) return;
+    const boss = snap.monsters.find((m) => m.isBoss);
+    if (!boss) return;
+    const bp = this.actorRenderState(boss, serverNow);
+    const cx = bp.x * TS - cam.x + TS / 2;
+    const cy = bp.y * TS - cam.y + TS / 2;
+    const pulse = 0.5 + 0.5 * Math.sin(now / 110);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const r = TS * (0.75 + 0.08 * Math.sin(now / 110));
+    const grd = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r);
+    grd.addColorStop(0, `rgba(255, 211, 93, ${0.05 + 0.12 * pulse})`);
+    grd.addColorStop(0.7, `rgba(255, 170, 60, ${0.12 + 0.18 * pulse})`);
+    grd.addColorStop(1, 'rgba(255, 170, 60, 0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = `rgba(255, 224, 150, ${0.5 + 0.4 * pulse})`;
+    ctx.lineWidth = 2.4;
+    ctx.shadowColor = '#ffd35d';
+    ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(cx, cy, TS * 0.62, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    ctx.save();
+    ctx.font = 'bold 12px Verdana, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = 0.7 + 0.3 * pulse;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+    ctx.strokeText('⚡ JANELA DE DANO', cx, cy - TS * 0.9);
+    ctx.fillStyle = '#ffe07a';
+    ctx.fillText('⚡ JANELA DE DANO', cx, cy - TS * 0.9);
+    ctx.restore();
+  }
+
+  /** Expanding concentric rings bursting from the boss on the break instant. */
+  private drawShockwaves(ctx: CanvasRenderingContext2D, cam: { x: number; y: number }, now: number): void {
+    this.shockwaves = this.shockwaves.filter((s) => {
+      const age = now - s.start;
+      if (age >= SHOCKWAVE_MS) return false;
+      const t = age / SHOCKWAVE_MS;
+      const cx = s.x * TS - cam.x + TS / 2;
+      const cy = s.y * TS - cam.y + TS / 2;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = `rgba(255, 224, 150, ${(1 - t) * 0.8})`;
+      ctx.lineWidth = (1 - t) * 6 + 1;
+      ctx.beginPath(); ctx.arc(cx, cy, t * TS * 3.2, 0, Math.PI * 2); ctx.stroke();
+      const t2 = Math.min(1, t * 1.6);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - t2) * 0.7})`;
+      ctx.lineWidth = (1 - t) * 3 + 1;
+      ctx.beginPath(); ctx.arc(cx, cy, t2 * TS * 2.4, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+      return true;
+    });
+  }
+
+  /** Full-screen gold flash + punchy "ECHO BREAK ×N" banner on the break instant. */
+  private drawEchoFlash(ctx: CanvasRenderingContext2D, now: number): void {
+    if (this.echoFlashStart < 0) return;
+    const age = now - this.echoFlashStart;
+    if (age >= ECHO_FLASH_MS) { this.echoFlashStart = -1; return; }
+    const t = age / ECHO_FLASH_MS;
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = `rgba(255, 220, 150, ${(1 - t) * 0.45})`;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+    const pop = age < 160 ? Math.max(easeOutBack(age / 160), 0.1) : 1;
+    const alpha = t < 0.7 ? 1 : Math.max(0, 1 - (t - 0.7) / 0.3);
+    const label = `⚡ ECHO BREAK${this.echoBreakCount > 1 ? ' ×' + this.echoBreakCount : ''}`;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(w / 2, h * 0.32);
+    ctx.scale(pop, pop);
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 46px Verdana, sans-serif';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+    ctx.shadowColor = '#ffd35d';
+    ctx.shadowBlur = 24;
+    ctx.strokeText(label, 0, 0);
+    ctx.fillStyle = '#ffe6a0';
+    ctx.fillText(label, 0, 0);
+    ctx.restore();
   }
 
   /** Tiny minimap in the given canvas: blocked grid + player + boss. */

@@ -642,17 +642,24 @@ export interface EventDto {
   crit: boolean;
 }
 
+export type CardRarity = 'common' | 'rare' | 'echo';
+
 export interface CardOfferDto {
   id: string;
   name: string;
   description: string;
   currentStacks: number;
+  rarity: CardRarity;
+  tags: string[];
+  maxStacks: number;
 }
 
 export interface CardStackDto {
   id: string;
   name: string;
   stacks: number;
+  rarity: CardRarity;
+  tags: string[];
 }
 
 export interface RewardItemDto {

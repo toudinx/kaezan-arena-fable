@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "roadmap_refactor_kaelis.md",
+                "file": "roadmap_refactor_gameplay.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "roadmap_refactor_kaelis"
+              "title": "roadmap_refactor_gameplay"
             }
           }
         ]
@@ -185,26 +185,29 @@
   },
   "active": "217f5cb9e28e1151",
   "lastOpenFiles": [
+    "STYLE_GUIDE.md",
+    "prompts/hunt-redesign/hunt-dungeon-anchor.png",
+    "prompts/hunt-redesign/hunt-menu-anchor.png",
+    "prompts/hunt-redesign/prerun-anchor.png",
+    "ROADMAP.md",
+    "roadmap_refactor_gameplay.md",
+    "roadmap_refactor_gameplay.md.tmp.24384.5aab0708e756",
+    "roadmap_refactor_gameplay.md.tmp.24384.2cdd0506a41e",
+    "roadmap_refactor_gameplay.md.tmp.24384.3ac375b58212",
+    "roadmap_refactor_gameplay.md.tmp.23576.9e41f0776b84",
+    "roadmap_refactor_kaelis.md",
     "roadmap_refactor_kaelis.md.tmp.36148.570128cd555f",
     "roadmap_refactor_kaelis.md.tmp.34232.38a43bd063f9",
     "roadmap_refactor_kaelis.md.tmp.34232.4160db3304d3",
     "roadmap_refactor_kaelis.md.tmp.39608.1414d426f1f4",
     "roadmap_refactor_kaelis.md.tmp.43128.6361aefeb3b7",
     "roadmap_refactor_kaelis.md.tmp.18996.218fae2e853a",
-    "roadmap_refactor_kaelis.md.tmp.41100.afcfe5d4ee64",
-    "roadmap_refactor_kaelis.md.tmp.41100.f94bb2f587f1",
-    "roadmap_refactor_kaelis.md.tmp.41100.8372f00ccd8c",
-    "roadmap_refactor_kaelis.md.tmp.41100.007bc31a8f50",
-    "roadmap_refactor_kaelis.md.tmp.41100.ec0f039a4ada",
     "FRONTEND_REMAP.md",
-    "roadmap_refactor_kaelis.md",
     "prompts/velvet.md",
     "prompts/roster-base.md",
     "FABLE_TRACK.md",
     "DESIGN_NOTES.md",
     "GAMEPLAY_ROADMAP.md",
-    "GDD.md",
-    "ROADMAP.md",
-    "STYLE_GUIDE.md"
+    "GDD.md"
   ]
 }

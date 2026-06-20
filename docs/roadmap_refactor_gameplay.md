@@ -137,24 +137,25 @@ O feedback assumiu "do zero" em vários pontos onde **já há seam pronto**. Sab
 
 ## Mapa de prompts (escopo)
 
-| Prompt | Tema | Modelo | Effort | Depende de | Onda |
-|---|---|---|---|---|---|
-| G-01 | Congelar a tese (README + DESIGN_NOTES) | GPT-5.5 (Codex) | low | — | 1 |
-| G-02 | Juice do combate (hit-stop, shake, números c/ peso, proc text, flash, dissolve) | Opus 4.8 | high | — | 1 |
-| G-03 | Legibilidade do helper + Echo Break como clímax | Opus 4.8 | medium | G-02 | 2 |
-| G-04 | Tiers de carta + keywords/sinergia + pool de Eco por Kaeli ⭐ fundação | Opus 4.8 | high | — | 2 |
-| G-05 | Reroll + banir (Hades-style) | GPT-5.5 (Codex) | medium | G-04 | 3 |
-| G-06 | Cadência: beats fixos, level-up = status auto, ~6-9 escolhas/run | Opus 4.8 | high | G-04 | 4 |
-| G-07 | Grafo de salas + tipos + minimapa + bifurcação + color-grade por bioma | Opus 4.8 | high | G-06 (⚠ DungeonGenerator) | 5 |
-| G-08 | Arquétipos novos de mob + criaturas autorais Kaezan | Opus 4.8 | high | G-04* | 3 |
-| G-09 | Baú = altar de Eco / loja da run + amaldiçoados + mimics + material de gear | Opus 4.8 | high | G-04, G-05, G-07 | 6 |
-| G-10 | Painel HELPER → editor de táticas gambit (FF12), presets por Kaeli | Opus 4.8 | high | — | 4 |
-| G-11 | Farm/auto-repeat de tier + progressão offline | GPT-5.5 (Codex) | medium | — | 5 |
-| G-12 | Balance e verificação ponta-a-ponta | Opus 4.8 | medium | G-02–G-11 | 7 |
+| Prompt | Tema                                                                            | Modelo          | Effort | Depende de                | Onda |
+| ------ | ------------------------------------------------------------------------------- | --------------- | ------ | ------------------------- | ---- |
+| G-01   | Congelar a tese (README + DESIGN_NOTES)                                         | GPT-5.5 (Codex) | low    | —                         | 1    |
+| G-02   | Juice do combate (hit-stop, shake, números c/ peso, proc text, flash, dissolve) | Opus 4.8        | high   | —                         | 1    |
+| G-03   | Legibilidade do helper + Echo Break como clímax                                 | Opus 4.8        | medium | G-02                      | 2    |
+| G-04   | Framework de cartas: rarity + keywords + seam de mecânica ⭐ fundação            | Opus 4.8        | high   | —                         | 2    |
+| G-04B  | Conteúdo dos Ecos por Kaeli (3 × 7 ≈ 21, ancorados nos traits reais)            | Opus 4.8        | high   | G-04                      | 3    |
+| G-05   | Reroll + banir (Hades-style)                                                    | GPT-5.5 (Codex) | medium | G-04                      | 3    |
+| G-06   | Cadência: beats fixos, level-up = status auto, ~6-9 escolhas/run                | Opus 4.8        | high   | G-04                      | 4    |
+| G-07   | Grafo de salas + tipos + minimapa + bifurcação + color-grade por bioma          | Opus 4.8        | high   | G-06 (⚠ DungeonGenerator) | 5    |
+| G-08   | Arquétipos novos de mob + criaturas autorais Kaezan                             | Opus 4.8        | high   | G-04*                     | 4    |
+| G-09   | Baú = altar de Eco / loja da run + amaldiçoados + mimics + material de gear     | Opus 4.8        | high   | G-04, G-05, G-07          | 6    |
+| G-10   | Painel HELPER → editor de táticas gambit (FF12), presets por Kaeli              | Opus 4.8        | high   | —                         | 5    |
+| G-11   | Farm/auto-repeat de tier + progressão offline                                   | GPT-5.5 (Codex) | medium | —                         | 6    |
+| G-12   | Balance e verificação ponta-a-ponta                                             | Opus 4.8        | medium | G-02–G-11                 | 7    |
 
-> Pratos cheios (G-02, G-04, G-06, G-07, G-08, G-09, G-10) no **Opus 4.8 high** — feel do combate +
-> design de cartas/mobs/mapas + invariantes de engine. Conversões bounded (G-01, G-05, G-11) no
-> **GPT-5.5**. `*` G-08 *soft-depende* de G-04: pode rodar antes referenciando as tags planejadas.
+> Pratos cheios (G-02, G-04, G-04B, G-06, G-07, G-08, G-09, G-10) no **Opus 4.8 high** — feel do
+> combate + design de cartas/mobs/mapas + invariantes de engine. Conversões bounded (G-01, G-05, G-11)
+> no **GPT-5.5**. `*` G-08 *soft-depende* de G-04: pode rodar antes referenciando as tags planejadas.
 
 ---
 
@@ -162,28 +163,30 @@ O feedback assumiu "do zero" em vários pontos onde **já há seam pronto**. Sab
 
 **Regra de ouro** (igual à trilha das Kaelis): dois prompts só rodam em paralelo se (a) as
 dependências dos dois já fecharam **e** (b) eles **não editam o mesmo arquivo**. O gargalo real desta
-trilha são três arquivos: `Engine/GameWorld.cs` (G-02/03/04/05/06/09/10), `Engine/DungeonGenerator.cs`
-(G-06/07/09) e `pages/game/game.ts` (G-02/03/05/07/10) — boa parte do backend **serializa**.
-Casamento natural: **1 Opus + 1 Codex por onda**, em regiões disjuntas.
+trilha são três arquivos: `Engine/GameWorld.cs` (G-02/03/04/04B/05/06/09/10),
+`Engine/DungeonGenerator.cs` (G-06/07/09) e `pages/game/game.ts` (G-02/03/05/07/10) — boa parte do
+backend **serializa**. Casamento natural: **1 Opus + 1 Codex por onda**, em regiões disjuntas.
 
 ```
-Onda 1  G-02 (Opus · juice: renderer.ts + Emit)         ‖  G-01 (Codex · docs)
-Onda 2  G-04 (Opus · cards backend: Cards.cs/GameWorld) ‖  G-03 (Opus · frontend: renderer/game.ts)
-Onda 3  G-08 (Opus · mobs: config/MonsterAuthoring)     ‖  G-05 (Codex · reroll/ban: GameWorld cmd + overlay)
-Onda 4  G-06 (Opus · cadência: GainXp/DungeonGenerator) ‖  G-10 (Opus · gambit: TickAutoHelper/types)
-Onda 5  G-07 (Opus · mapas: DungeonGenerator/Biomes)    ‖  G-11 (Codex · farm/offline: RunManager/Meta)
-Onda 6  G-09 (Opus · baú-altar; precisa G-04/05/07)     — solo
-Onda 7  G-12 (verificação final)                        — solo
+Onda 1  G-02 (Opus · juice: renderer.ts + Emit)          ‖  G-01 (Codex · docs)
+Onda 2  G-04 (Opus · framework cartas: Cards.cs/GameWorld)‖  G-03 (Opus · frontend: renderer/game.ts)
+Onda 3  G-04B (Opus · Ecos por Kaeli: Cards/hooks)        ‖  G-05 (Codex · reroll/ban: GameWorld cmd + overlay)
+Onda 4  G-06 (Opus · cadência: GainXp/DungeonGenerator)   ‖  G-08 (Opus · mobs: config/MonsterAuthoring)
+Onda 5  G-07 (Opus · mapas: DungeonGenerator/Biomes)      ‖  G-10 (Opus · gambit: TickAutoHelper/types)
+Onda 6  G-09 (Opus · baú-altar; precisa G-04/05/07)       ‖  G-11 (Codex · farm/offline: RunManager/Meta)
+Onda 7  G-12 (verificação final)                          — solo
 ```
 
 **Pares que forçam sequencial (não paralelize estes):**
 - **G-02 × G-03** — ambos em `core/renderer.ts`. G-03 assenta sobre a camada de juice.
 - **G-06 × G-07 × G-09** — todos em `DungeonGenerator.cs`. Ordem: **G-06 → G-07 → G-09**.
-- **G-04 × G-05 × G-09** — cadeia de cartas: tiers → reroll → o altar reusa as duas.
-- **G-06 / G-10 em `game.ts`** — regiões diferentes (overlay de carta vs painel helper); se rodarem
-  juntos, atenção ao merge no template.
+- **G-04 × G-04B × G-05 × G-09** — cadeia de cartas: framework → Ecos/reroll → o altar reusa tudo.
+- **G-04B / G-05 em `GameWorld.cs`** — regiões diferentes (hooks de mecânica de carta vs comando de
+  reroll); se rodarem juntos na Onda 3, atenção ao merge.
+- **G-06 / G-10 em `game.ts`** — regiões diferentes (overlay de carta vs painel helper); atenção ao
+  merge no template.
 
-**Ganho:** 12 passos sequenciais → **7 ondas**. Caminho crítico: G-04 → (G-05/G-06) → G-07 → G-09 →
+**Ganho:** 13 passos sequenciais → **7 ondas**. Caminho crítico: G-04 → G-04B → G-06 → G-07 → G-09 →
 G-12.
 
 ---
@@ -216,7 +219,12 @@ de carta e o automode como padrão. Tarefa só de texto/documentação — **nã
 
 # G-02 — Juice do Combate  ⭐ maior ROI imediato
 
-Resumo: _(preencher ao concluir)_
+Resumo: ✅ Camada de "juice" 100% client-side em `core/renderer.ts` (engine intocado, determinismo
+preservado): hit-stop (scale-pop por alvo), screen-shake decaído na câmera, números de dano com peso
+(outline, pop-in, crítico dourado/maior, escala por magnitude), proc text punchy (kind `text` → estilo
+proc), flash aditivo no sprite atingido e dissolve por pixels na morte (sprite capturado + máscara de
+ruído). Intensidade derivada do `EventDto damage` (value/maxHp/crit) — nenhum kind novo, nenhuma regra
+nova, `npx ng build` limpo.
 
 - **Modelo:** Claude Code Opus 4.8 · **Effort:** high · **Skill:** nenhuma · **Depende de:** — · **Paraleliza com:** G-01 (Onda 1)
 
@@ -258,7 +266,15 @@ crit, proc text e dissolve. Console limpo.
 
 # G-03 — Legibilidade do Helper + Echo Break como Clímax
 
-Resumo: _(preencher ao concluir)_
+Resumo: ✅ Camada 100% client-side em `core/renderer.ts` (engine intocado, determinismo preservado).
+**Legibilidade:** retículo animado no alvo do helper (substitui o red box estático), linha de intenção
+Kaeli→alvo com bead correndo (dourada quando há skill pronta), e *telegraph* pulsante do shape que vai
+disparar — cone/beam saindo da Kaeli, anel (nova/ring/field) em volta dela, área (area/barrage) no alvo
+— com range/radius lidos do catálogo de skills (`setSkillShapes`, alimentado por `game.ts`).
+**Echo Break = clímax:** borda de subida de `bossStaggered` dispara slow-mo breve (warp da
+interpolação que ressincroniza sozinho com o relógio autoritativo, sem tocar a simulação), flash
+dourado + banner `⚡ ECHO BREAK ×N`, shockwave do boss, shake e boom sintetizado (`SoundService.echoBreak`);
+durante o stagger, aura dourada + rótulo `JANELA DE DANO` no boss. `npx ng build` limpo.
 
 - **Modelo:** Claude Code Opus 4.8 · **Effort:** medium · **Skill:** nenhuma · **Depende de:** G-02 · **Paraleliza com:** G-04 (Onda 2) — ⚠ **não** com G-02 (conflito em `renderer.ts`)
 
@@ -290,59 +306,150 @@ break com slow-mo/flash. Console limpo.
 
 ---
 
-# G-04 — Tiers de Carta + Keywords + Eco por Kaeli  ⭐ fundação de build
+# G-04 — Framework de Cartas: Rarity + Keywords + Seam de Mecânica  ⭐ fundação de build
 
-Resumo: _(preencher ao concluir)_
+Resumo: ✅ `CardDef` ganhou `Rarity` (common|rare|echo) + `Tags` + `Kind` (efeito-mecânica) + `WaifuId`;
+13 comuns retrocompatíveis (Stat/Value intactos), 3 raros de prova (Eco Sobrecarregado `echo_surge`,
+Golpe Duplo `double_strike`, Detonação `detonate`) e 1 eco-prova `echo:velvet:harvest` (espectro ao
+matar sob Decadência, máx 5). Seam de carta como hooks-irmãos das passivas (`ApplyCardPostDamage`/
+`OnMonsterKilledCard`/`OnConditionExpiredCard`), guardados por `!fromTrait`, lendo `_cards` — sem
+dispatch novo, determinístico (só `_rng`/`NowMs`, soma de stacks). `OfferCards` virou amostragem
+ponderada por raridade (pesos em `GameConfig`), eco filtrado pela Kaeli ativa, cap de stacks por
+raridade (eco=1). `TraitDef.Tag` populado nas 7 Kaelis (sin/combo/curse/burn/charge/frost/prey).
+DTOs (`CardOfferDto`/`CardStackDto`) e `core/types.ts` ganharam `rarity`+`tags`; overlay colore por
+raridade + chips de tag. `dotnet build` + `npx ng build` limpos.
 
 - **Modelo:** Claude Code Opus 4.8 · **Effort:** high · **Skill:** nenhuma (`use context7` p/ APIs) · **Depende de:** — · **Paraleliza com:** G-03 (Onda 2)
 
-**Objetivo:** formalizar a intuição dos 3 tiers e fazer a build parecer **autoral** via keywords. Esta
-é a fundação — G-05 (reroll), G-06 (cadência) e G-09 (baú-altar) assentam sobre a forma que esta
-define.
+**Objetivo:** construir o **framework** das cartas — não o conteúdo dos Ecos (isso é G-04B). Entrega:
+raridade, keywords/tags, oferta ponderada por raridade, DTO/UI, e o **seam novo de efeito-por-carta**
+que os tiers Raro e Eco exigem (hoje não existe — toda carta é só multiplicador de stat). É a fundação
+sobre a qual G-04B (Ecos), G-05 (reroll), G-06 (cadência) e G-09 (baú-altar) assentam.
 
-**Arquivos prováveis:** `backend/src/KaezanArenaFable.Api/Domain/Cards.cs`
-(`CardDef` ganha `Rarity` + `Tags[]` + efeito mais rico que um único `Stat`),
-`backend/src/KaezanArenaFable.Api/Engine/GameWorld.cs` (`CardValue()` ~`:684`, aplicação dos efeitos,
-`OfferCards()`), `backend/src/KaezanArenaFable.Api/Domain/GameConfig.cs` (constantes),
-`frontend/src/app/pages/game/game.ts` + `core/types.ts` (exibir tier/cor/tag no overlay de carta).
+**Estado atual (mapeado):** `CardDef(Id, Name, Description, Stat, Value)` em `Domain/Cards.cs`, 13
+cartas; `CardValue(stat)` casa por `def.Stat == stat` (`GameWorld.cs:684`); **nenhuma carta tem
+mecânica** — o único gatilho especial é `if (cardId == "card:maxhp")` em `ChooseCard()`. O campo
+`TraitDef.Tag` (em `Domain/Waifus.cs`) **existe mas está vazio `""`** em todas as Kaelis → seam pronto
+para ancorar keywords.
 
-**Seam existente (REUTILIZE):** `CardDef(Id, Name, Description, Stat, Value)` e a aplicação
-multiplicativa via `CardValue(stat)` já existem; as 13 cartas atuais viram o tier **Comum**. Estenda
-o record (rarity + tags + efeito), não troque o pipeline.
+**Arquivos prováveis:** `Domain/Cards.cs` (record + tags + raros + 1 eco-prova),
+`Engine/GameWorld.cs` (`CardValue`/`OfferCards`/`ChooseCard` ~`:684`/`:2176`/`:2190` + hooks de
+mecânica de carta), `Domain/GameConfig.cs` (pesos de raridade, constantes), `Domain/Waifus.cs`
+(popular `TraitDef.Tag` das 7 Kaelis), `Engine/GameDtos.cs` (`CardOfferDto`/`CardStackDto` ganham
+Rarity+Tags), `core/types.ts`, `pages/game/game.ts` (cor por raridade + chips de tag no overlay
+`:172-187`).
 
-**Modelo de tiers (mapeado de Hades/Slay the Spire/ARAM):**
-- **Comum (status):** os atuais (CDR, dano, life steal, atk speed). Stackáveis, suavizam a curva.
-- **Raro (mecânica/skill):** alteram uma skill ou o auto. Ex.: "a cada 3 hits, golpe extra",
-  "Maldição vira em área", "Pesadelo reduz postura".
-- **Eco / Lendária (define a run), por Kaeli:** mudam a win-condition. Ex. perfil Necromante/Morte da
-  Velvet: "cada inimigo morto invoca um espectro (máx 5)", "você não cura — ganha escudo igual ao dano
-  da Maldição", "skills sem cooldown, mas custam vida".
+**Data model:**
+- Estender `CardDef`: `Rarity` (`common|rare|echo`), `string[] Tags`, `string? WaifuId` (Eco filtra
+  por Kaeli; null = universal) e um `Kind` opcional (efeito-mecânica). **Manter** `Stat`/`Value` para
+  as comuns (retrocompat com `CardValue`).
+- **Popular `TraitDef.Tag`** das 7 Kaelis com a tag canônica da tabela abaixo (wire trait↔carta).
 
-**Princípios obrigatórios:**
-- **Keywords/sinergia, não cartas isoladas.** Cartas referenciam **tags** (Maldição, Postura, Eco,
-  Espectro…). Uma lendária "duplique todos os efeitos de Maldição" só importa se você vinha
-  empilhando Maldição. Tags são a cola entre cartas, traits (K-04 das Kaelis) e mobs (G-08).
-- **Eco por Kaeli.** Os Ecos lendários são temáticos da Kaeli ativa; o pool de Eco é filtrado pela
-  Kaeli da run. IDs `echo:<kaeli>:*` estáveis. Curar ~3-5 Ecos por Kaeli (7 Kaelis).
-- **Determinístico.** Seleção/oferta de carta só via `Rng` da run; desempate por id estável.
-- **Constantes em `GameConfig.cs`** (pesos por raridade, máx de stacks por tier, etc.).
+**Taxonomia de tags (ancorada em mecânica real do engine):**
 
-**Tarefas:**
-- Estender `CardDef` com `Rarity` (`common|rare|echo`) e `Tags[]`; suportar efeito além de um único
-  `Stat` (mecânica/gatilho), mantendo retrocompatível com as comuns atuais.
-- Implementar o pool de Eco por Kaeli e a filtragem na oferta.
-- Wire das tags no engine para que cartas/traits/mobs possam referenciá-las.
-- Exibir tier (cor/badge) e tags no overlay de carta no front.
+| Tag | Mecânica/estado que lê | Kaeli dona |
+|---|---|---|
+| `sin` (Pecado/Julgamento) | `SinStacks`, kind `judgment` | Eloa |
+| `combo` (Disciplina) | `_comboHits`, kind `discipline` | Seren |
+| `curse` (Maldição/Decadência) | `DecayStacks` + condição `curse`, kind `decay` | Velvet |
+| `burn` (Queimadura/Contágio) | condição `fire`, kind `contagion` | Rin |
+| `charge` (Carga/Trovão) | `_staticCharge` + condição `energy`, kind `static_charge` | Rynna |
+| `frost` (Gelo/Estilhaço) | `SlowUntilMs`/`FrostHits` + condição `freeze`, kind `shatter` | Lunara |
+| `prey` (Presa) | `_preyId`, kind `prey` | Gaia |
+| `posture` (Postura/Echo Break) | `Posture`/Stagger, `TriggerEchoBreak` | universal (boss) |
+| `echo` (Eco/Ultimate) | `_gauge` / `gaugePercent` | universal |
+| `spectre` (Espectro) | shape `summon` (Sombra da Velvet) | Velvet |
+
+**Seam de mecânica (RECOMENDADO — não criar dispatch paralelo):** reutilizar o pipeline de hooks de
+trait que **já existe** (`ApplyTraitPreDamage` / `ApplyTraitPostDamage` / `OnMonsterKilledTrait` /
+`TickTraitTimers`). Adicionar hooks-irmãos de carta chamados **ao lado** deles (`ApplyCardPreDamage` /
+`ApplyCardPostDamage` / `OnMonsterKilledCard` / `TickCardTimers`) **ou** ramos por `Kind` dentro dos
+métodos existentes. O efeito lê `_cards` (stacks) + tags; **determinístico** (só `Rng`, desempate por
+id estável); constantes em `GameConfig`. É o mesmo padrão das passivas das Kaelis — um único pipeline
+de efeito, sem dispatch novo no engine.
+
+**Oferta por raridade:** trocar o shuffle simples de `OfferCards()` por amostragem **ponderada por
+raridade** (pesos em `GameConfig`), com o pool de Eco filtrado por `Waifu.Id`. (A cadência por beats
+fixos é G-06; aqui entra só a amostragem ciente de raridade.)
+
+**DTO/UI:** `CardOfferDto(Id, Name, Description, CurrentStacks)` e `CardStackDto(Id, Name, Stacks)`
+ganham `Rarity` + `Tags`; espelhar em `core/types.ts`; overlay colore por raridade e mostra chips de
+tag.
+
+**Conteúdo de prova (shipa COM G-04, para validar o seam ponta-a-ponta):**
+- As 13 comuns recebem `Rarity=common` + tags relevantes (efeito intacto).
+- **~3 raros universais** provando o seam de mecânica: ex. "Eco Sobrecarregado" (`rare`,`echo`: ult
+  enche +X ao causar dano), "Golpe Duplo" (`rare`: a cada 3 acertos, 1 acerto extra), "Detonação"
+  (`rare`: condição causa dano em área ao expirar).
+- **1 Eco-prova:** `echo:velvet:harvest` (tags `curse`,`spectre`) — inimigo morto sob Decadência
+  invoca espectro (máx 5). Exercita o caminho inteiro: filtro por Kaeli, tag, hook on-kill, reuso do
+  shape `summon`. (O pool completo de Ecos é G-04B.)
 
 **Aceite:**
-- 3 tiers funcionais; comuns preservadas.
-- Tags referenciáveis e com sinergia real (ao menos um par carta-comum × eco que só vale junto).
-- Eco filtra pela Kaeli ativa.
-- Determinístico; constantes em `GameConfig.cs`.
-- `dotnet build` + `npx ng build` limpos.
+- 3 tiers no modelo; comuns retrocompatíveis (efeito inalterado).
+- Raros e o eco-prova **disparam mecânica determinística** pelo seam novo.
+- Eco filtra pela Kaeli ativa; oferta ponderada por raridade.
+- UI mostra raridade (cor) + tags (chips); `TraitDef.Tag` populado nas 7 Kaelis.
+- Determinístico; constantes em `GameConfig.cs`. `dotnet build` + `npx ng build` limpos.
 
-**Verificação:** builds + run montando uma build de tag (ex. empilhar Maldição com a Velvet e pegar o
-Eco que a duplica), confirmando o efeito e a oferta filtrada por Kaeli.
+**Verificação:** builds + run com Velvet confirmando `echo:velvet:harvest` (espectro ao matar sob
+Decadência), um raro disparando, e overlay com cor de raridade + chips de tag. Console limpo.
+
+---
+
+# G-04B — Conteúdo dos Ecos por Kaeli (3 × 7)
+
+Resumo: ✅ 21 Ecos (3 × 7) sobre o seam de G-04 — sem dispatch novo, cada `Kind` ramifica nos hooks
+de trait/carta existentes (`ApplyTraitPreDamage`/`ApplyTraitPostDamage`/`OnMonsterKilledTrait`/
+`OnMonsterKilledCard` + os bursts `EloaDetonate`/`RynnaDischarge`/`ApplyShatter`). Cada Eco muda a
+win-condition, ancorado em campo real (`SinStacks`/`_comboHits`/`DecayStacks`/burn DoTs/`_staticCharge`/
+`SlowUntilMs`/`_preyId`). **Eloa:** chain-judgment (semeia Pecado no estouro), martyr (cura→escudo de
+Eco), sentence (Julga com 2, estouro acumula). **Seren:** endless-cadence (ramp sem teto, reset duro),
+perfect-execution (Corte a cada 2º + execução <15%), immortal-stance (redução de dano com combo alto).
+**Velvet:** harvest (migrado de G-04), blood-pact (Maldição→escudo, não cura), viral-plague (Decadência
+salta com stacks na morte). **Rin:** wildfire (qualquer elemento incendeia + burn não expira), pyre
+(dano escala com nº queimando), holocaust (morte em chamas explode). **Rynna:** perpetual-storm (Carga
+2× + retém metade), overload (paralyze vira DoT), thunder-core (gauge ×3 + ult devolve Carga).
+**Lunara:** eternal-winter (lento ao ver Lunara, sem piso), chain-shatter (Estilhaço salta nos lentos),
+moon-dance (estilhaça no 2º + haste sustentada). **Gaia:** eternal-hunt (ramp/teto 2×), pack (2 Presas
+via `_preyId2`), deep-roots (enraíza + veneno de terra). Novo: escudo de Eco (`_echoShield`, absorve em
+`DamagePlayer`, teto = fração da vida máx). Constantes em `GameConfig` (bloco G-04B); IDs `echo:<kaeli>:*`
+estáveis. Determinístico (só `_rng`/`NowMs` + desempate por id). `dotnet build` + `npx ng build` limpos.
+
+- **Modelo:** Claude Code Opus 4.8 · **Effort:** high · **Skill:** nenhuma · **Depende de:** G-04 · **Paraleliza com:** G-05 (Onda 3) — ⚠ ambos tocam `GameWorld.cs` (hooks de carta vs comando de reroll — métodos diferentes)
+
+**Objetivo:** preencher o pool de Eco **por Kaeli** sobre o seam de G-04 — **3 Ecos por Kaeli (~21)**,
+cada um uma *win-condition distinta* ancorada no trait/kit real da Kaeli. É conteúdo + tuning; **nenhum
+dispatch novo** (usa os hooks de carta criados em G-04).
+
+**Arquivos prováveis:** `Domain/Cards.cs` (definições `echo:<kaeli>:*`), `Engine/GameWorld.cs` (ramos
+de mecânica nos hooks de carta de G-04), `Domain/GameConfig.cs` (constantes por Eco).
+
+**Pool alvo (3 por Kaeli, ancorado em mecânica real):**
+
+| Kaeli | Trait/tags | 3 Ecos (win-conditions distintas) |
+|---|---|---|
+| **Eloa** | `judgment`/`sin`, holy, cura | `chain-judgment` (Julgar espalha 1 Pecado a vizinhos) · `martyr` (cura do Julgamento vira escudo acima da vida) · `sentence` (Julga com 2 stacks; cada Julgamento amplia o próximo burst) |
+| **Seren** | `discipline`/`combo`, aegis | `endless-cadence` (Disciplina sem cap, reset mais severo) · `perfect-execution` (Corte Perfeito a cada 2º; crit garantido executa <X% HP) · `immortal-stance` (Postura do Zênite ativa enquanto combo ≥ N) |
+| **Velvet** | `decay`/`curse`/`spectre` | `harvest` (espectro ao matar sob Decadência, máx 5 — migrado da prova de G-04) · `blood-pact` (não cura; escudo = fração do dano de Maldição) · `viral-plague` (na morte, a Decadência salta com stacks ao alvo mais próximo) |
+| **Rin** | `contagion`/`burn`, cura | `wildfire` (toda skill aplica queimadura; burn não expira enquanto houver alvo em chamas) · `pyre` (dano escala com nº de alvos queimando) · `holocaust` (alvo que morre queimando explode em área) |
+| **Rynna** | `static_charge`/`charge`, gauge | `perpetual-storm` (Descarga consome só metade da Carga; carga enche 2×) · `overload` (paralyze causa dano %/s e pode saltar) · `thunder-core` (ult enche muito mais rápido na Descarga; ult devolve Carga cheia) |
+| **Lunara** | `shatter`/`frost`, haste | `eternal-winter` (inimigo entra lento ao ver Lunara; slow sem floor) · `chain-shatter` (Estilhaço salta para lentos próximos) · `moon-dance` (Estilhaço no 2º acerto; haste do trait não expira em combate) |
+| **Gaia** | `prey`/earth, roots | `eternal-hunt` (cap da Presa maior + ramp mais rápido; Presa nas Raízes rampa 2×) · `pack` (2 Presas simultâneas; bônus de caça na morte maior) · `deep-roots` (Raízes prendem a Presa e dobram o DoT contra ela) |
+
+**Princípios obrigatórios:**
+- Cada Eco **muda a win-condition** (não é "+X% de Y").
+- **Ancorado em campo/constante real** (SinStacks, DecayStacks, _staticCharge, _preyId, SlowUntilMs…).
+- **Determinístico:** salto de marca, spread e seleção de alvo com desempate por id estável.
+- Tunáveis em `GameConfig.cs`; IDs `echo:<kaeli>:*` estáveis.
+
+**Aceite:**
+- 3 Ecos por Kaeli, win-conditions distintas, filtrados pela Kaeli ativa.
+- Cada um usa o seam de G-04 **sem dispatch novo**.
+- Determinístico; constantes em `GameConfig.cs`. `dotnet build` + `npx ng build` limpos.
+
+**Verificação:** builds + 1 run por Kaeli (ou amostra) confirmando que o Eco oferecido é da Kaeli e
+muda o jeito de jogar (ex. Gaia `pack` marcando 2 Presas; Rin `wildfire` com tudo queimando).
 
 ---
 

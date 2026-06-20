@@ -76,7 +76,7 @@ public static class Waifus
             "Anjo de luz que não reza pela salvação alheia: ela a aplica. Onde Eloa abre as " +
             "asas, a noite encolhe e o que se escondia nela perde o direito de continuar escondido.",
             "Solene, gentil sem ser mole, paciente como quem já viu o fim e voltou. Julga sem ódio.",
-            new TraitDef("trait:eloa", "Selo de Julgamento", "judgment", 1.2, 0.25, "",
+            new TraitDef("trait:eloa", "Selo de Julgamento", "judgment", 1.2, 0.25, "sin",
                 "Cada acerto marca o alvo com Pecado. Ao chegar a 3 stacks ele é Julgado: o próximo " +
                 "acerto consome a marca num estouro sacro em área e cura a Serafim. Espalhe marcas " +
                 "para sustentar, ou foque um alvo para detonar rápido."),
@@ -113,7 +113,7 @@ public static class Waifus
             "Aprendeu a esgrima sob um céu que ela jura que respondia aos golpes. Cada duelo, " +
             "para Seren, é uma conversa de uma frase só — e ela sempre tem a última palavra.",
             "Disciplinada ao ponto da teimosia, formal no trato, calorosa só quando baixa a guarda.",
-            new TraitDef("trait:seren", "Disciplina", "discipline", 0.08, 0.40, "",
+            new TraitDef("trait:seren", "Disciplina", "discipline", 0.08, 0.40, "combo",
                 "Acertos consecutivos no mesmo alvo escalam o dano (+8% por acerto, até +40%). " +
                 "Trocar de alvo ou parar de bater zera o ramp. Cada 3º acerto é um Corte Perfeito: " +
                 "crítico garantido. Comprometa-se com um duelo — ou perca o embalo limpando adds."),
@@ -150,7 +150,7 @@ public static class Waifus
             "Dizem que ela voltou do abismo. O abismo discorda: nunca a deixou ir. Velvet " +
             "caminha com um pé em cada mundo — e os dois mundos fingem que não é com eles.",
             "Voz baixa, cortesia antiga, humor de lápide. Sabe o seu nome antes de você dizer.",
-            new TraitDef("trait:velvet", "Maldição Acumulada", "decay", 0.25, 0.15, "",
+            new TraitDef("trait:velvet", "Maldição Acumulada", "decay", 0.25, 0.15, "curse",
                 "Cada habilidade empilha Decadência (DoT) no alvo e eleva seu limiar de execução " +
                 "(executa <15%, +2% por stack até <25%). Quanto mais maldição você investe, mais " +
                 "cedo o alvo estoura — paciência e então execução."),
@@ -188,7 +188,7 @@ public static class Waifus
             "Não seduz para enganar: seduz porque é a forma mais honesta que conhece de fazer " +
             "um trato. Rin oferece fogo, calor e companhia — e cobra exatamente o combinado.",
             "Provocadora, espirituosa, leal de um jeito que ninguém espera de um demônio. Cumpre a palavra.",
-            new TraitDef("trait:rin", "Contágio", "contagion", 0.06, 3, "",
+            new TraitDef("trait:rin", "Contágio", "contagion", 0.06, 3, "burn",
                 "Os acertos de fogo de Rin incendeiam o alvo, e o incêndio se propaga: o burn salta " +
                 "para o inimigo não-queimando mais próximo (ao morrer um alvo em chamas ou a cada 2s). " +
                 "Cada tick de queimadura cura Rin um pouco (pacto). Posicione para encadear o fogo."),
@@ -226,7 +226,7 @@ public static class Waifus
             "Metade dragoa, metade tempestade, inteira impaciente. Rynna não espera o raio cair " +
             "do céu: ela é o ponto onde o céu decide descer e bater primeiro.",
             "Impetuosa, barulhenta, generosa com a lealdade e mesquinha com a paciência. Engaja primeiro, pensa no caminho.",
-            new TraitDef("trait:rynna", "Carga Estática", "static_charge", 0.30, 0, "",
+            new TraitDef("trait:rynna", "Carga Estática", "static_charge", 0.30, 0, "charge",
                 "Os acertos enchem uma barra de Carga; cheia, o golpe que a completa vira Descarga — " +
                 "uma corrente curta que paralisa os alvos próximos. Cada paralyze acelera a ultimate, " +
                 "e a tempestade já enche o gauge 30% mais rápido. Ritme os golpes pra soltar no pico."),
@@ -264,7 +264,7 @@ public static class Waifus
             "Rápida como uma decisão e fria como a noite que a fez. Lunara dança pelo gelo que " +
             "ela mesma cria, e quando você percebe que ela passou, já está mais lento que ela.",
             "Brincalhona, esquiva, melancólica nas horas quietas. Foge da pergunta e volta com a resposta.",
-            new TraitDef("trait:lunara", "Estilhaçar", "shatter", 0.25, 2000, "",
+            new TraitDef("trait:lunara", "Estilhaçar", "shatter", 0.25, 2000, "frost",
                 "O gelo de Lunara desacelera. Bater num alvo já lento dá dano bônus e concede haste " +
                 "breve; o 3º acerto no lento o estilhaça num estouro e consome a lentidão. Aplique " +
                 "slow, mergulhe com haste, estilhace e reposicione: hit-and-run premia mobilidade."),
@@ -302,7 +302,7 @@ public static class Waifus
             "A terra não floresce para Gaia: ela se ergue. Onde outros veem pedra parada, ela vê " +
             "uma flecha esperando, uma raiz pronta, um monólito que ainda não decidiu cair.",
             "Paciente como rocha, econômica nas palavras, certeira como sentença. Espera o tiro certo a vida toda se preciso.",
-            new TraitDef("trait:gaia", "Presa", "prey", 0.05, 0.30, "",
+            new TraitDef("trait:gaia", "Presa", "prey", 0.05, 0.30, "prey",
                 "Gaia marca um alvo como Presa; seu dano contra a Presa cresce quanto mais a caça " +
                 "dura (+5% por segundo, até +30%). Quando a Presa morre, a marca salta para o próximo " +
                 "alvo e Gaia ganha cadência por alguns segundos. Escolha a prioridade e persiga."),

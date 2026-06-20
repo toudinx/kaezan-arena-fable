@@ -175,10 +175,18 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
           <h2>Level up! Escolha um eco:</h2>
           <div class="choices">
             @for (c of offer; track c.id; let i = $index) {
-              <button class="choice" (click)="chooseCard(c.id)">
+              <button class="choice" [attr.data-rarity]="c.rarity" (click)="chooseCard(c.id)">
+                <span class="rarity">{{ rarityLabel(c.rarity) }}</span>
                 <b>{{ c.name }}</b>
                 <p>{{ c.description }}</p>
-                <span class="stacks">{{ c.currentStacks }}/3</span>
+                @if (c.tags.length) {
+                  <div class="tags">
+                    @for (t of c.tags; track t) {
+                      <span class="tag">{{ t }}</span>
+                    }
+                  </div>
+                }
+                <span class="stacks">{{ c.currentStacks }}/{{ c.maxStacks }}</span>
                 <small class="card-key">[{{ i + 1 }}]</small>
               </button>
             }
@@ -336,8 +344,24 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
       display: flex; flex-direction: column; gap: 6px; text-align: left;
       transition: transform 0.1s;
     }
+    /* G-04: cor da borda/realce por raridade (comum azul-petróleo, raro azul, eco dourado). */
+    .choice[data-rarity="common"] { border-color: #2dd4bf; }
+    .choice[data-rarity="rare"] { border-color: #5b9bff; box-shadow: 0 0 14px rgba(91,155,255,0.25); }
+    .choice[data-rarity="echo"] {
+      border-color: #ffd35d; box-shadow: 0 0 20px rgba(255,211,93,0.35);
+      background: linear-gradient(180deg, #2a2410, #14110a);
+    }
     .choice:hover { transform: translateY(-4px); }
     .choice p { margin: 0; color: #9c9ab0; font-size: 13px; }
+    .choice .rarity { font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; }
+    .choice[data-rarity="common"] .rarity { color: #2dd4bf; }
+    .choice[data-rarity="rare"] .rarity { color: #5b9bff; }
+    .choice[data-rarity="echo"] .rarity { color: #ffd35d; }
+    .choice .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+    .choice .tag {
+      font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+      background: rgba(125,240,255,0.10); border: 1px solid rgba(125,240,255,0.25); color: #aee9ff;
+    }
     .choice .stacks { color: #707088; font-size: 11px; }
     .choice .card-key { color: rgba(125, 240, 255, 0.55); font-size: 11px; font-weight: 700; font-family: monospace; align-self: flex-end; }
     .overlay.end h1 { font-size: 52px; margin: 0; color: #ff5d5d; letter-spacing: 4px; }
@@ -412,6 +436,8 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     void this.assets.preload(['outfits', 'objects', 'effects', 'missiles']).catch(() => undefined);
     this.renderer = new GameRenderer(canvas, this.assets, this.sound);
     (window as unknown as Record<string, unknown>)['__kaezanRenderer'] = this.renderer; // debug/e2e hook
+    // G-03: feed skill footprints so the helper telegraph can preview the right shape.
+    void this.api.loadCatalog().then((cat) => this.renderer?.setSkillShapes(cat.skills)).catch(() => undefined);
     const map = this.client.map();
     if (map) this.renderer.setMap(map);
 
@@ -605,6 +631,10 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
 
   targetPreferenceLabel(preference: string): string {
     return preference === 'nearest' ? 'Perto' : 'HP';
+  }
+
+  rarityLabel(rarity: string): string {
+    return rarity === 'echo' ? 'Eco' : rarity === 'rare' ? 'Raro' : 'Comum';
   }
 
   chooseCard(cardId: string): void {

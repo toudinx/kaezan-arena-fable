@@ -44,6 +44,27 @@ export class SoundService {
     this.blip(ctx, base * 1.5, ctx.currentTime + 0.055, 0.09);
   }
 
+  /** Echo Break climax: a descending sub-boom with a bright shimmer on top. */
+  echoBreak(): void {
+    if (this.muted()) return;
+    const ctx = this.ac();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(180, t);
+    osc.frequency.exponentialRampToValueAtTime(46, t + 0.5);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.28, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.64);
+    this.blip(ctx, 1320, t + 0.02, 0.12);
+    this.blip(ctx, 1760, t + 0.09, 0.16);
+  }
+
   private blip(ctx: AudioContext, freq: number, at: number, dur: number): void {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();

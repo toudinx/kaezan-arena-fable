@@ -108,6 +108,7 @@ public sealed class PlayerSummon
     public int PulseMs;
     public long NextPulseAtMs;
     public long ExpireAtMs;
+    public bool IsEchoSpectre; // G-04: espectro da Colheita (Velvet), contado p/ o cap de 5.
 }
 
 /// <summary>A hazard tile painted by a player skill (shape "field"): damages/slows the monster
@@ -260,6 +261,12 @@ public sealed class GameWorld
     private long _traitHasteUntilMs;     // Lunara — haste do Estilhaçar (move speed)
     private double _traitHasteFactor = 1.0;
     private long _contagionNextJumpMs;   // Rin — Contágio: próximo salto periódico do burn
+    private int _cardDoubleStrikeHits;   // G-04 — Golpe Duplo: contador de acertos diretos
+
+    // G-04B: estado vivo dos Ecos por Kaeli (cap de 1 stack; presença = HasEcho).
+    private double _echoShield;          // Eloa Mártir / Velvet Pacto: sobre-vida que absorve dano
+    private int _eloaSentenceStacks;     // Eloa Sentença: amplificação acumulada do próximo estouro
+    private int _preyId2;                // Gaia Matilha: segunda Presa simultânea
 
     public RunEndDto? Ended { get; private set; }
     public bool MapDirty { get; private set; } = true;
@@ -1133,7 +1140,12 @@ public sealed class GameWorld
             if (aimX == Player.X && aimY == Player.Y) return; // parede colada: nem sai (não gasta CD)
         }
 
-        if (isUlt) _gauge = 0;
+        if (isUlt)
+        {
+            _gauge = 0;
+            // Eco Núcleo de Trovão: usar a ultimate devolve a Carga cheia.
+            if (HasEcho("thunder_core")) _staticCharge = GameConfig.RynnaChargeMax;
+        }
         else _skillReadyAtMs[slot] = NowMs + (long)(
             skill.CooldownMs
             * Loadout.Mastery.CooldownMult
@@ -1398,7 +1410,12 @@ public sealed class GameWorld
             DealDamageToMonster(monster, dot.DamagePerTick, dot.Element, dot.Fx,
                 fromSkill: false, canCrit: false, canLifeSteal: false);
             if (monster.Hp <= 0) { monster.Dots.Clear(); return; }
-            if (dot.TicksLeft <= 0) monster.Dots.RemoveAt(i);
+            if (dot.TicksLeft <= 0)
+            {
+                monster.Dots.RemoveAt(i);
+                OnConditionExpiredCard(monster, dot); // G-04 Detonação: expira → estouro em área
+                if (monster.Hp <= 0) return;
+            }
         }
     }
 
@@ -1596,6 +1613,9 @@ public sealed class GameWorld
         // K-04: pós-dano das passivas assinatura (marcas, stacks, carga, estilhaço, contágio)
         if (!fromTrait)
             ApplyTraitPostDamage(monster, final, element, directHit);
+        // G-04: pós-dano das cartas de mecânica (enche ult, golpe extra) — mesmo seam, sem dispatch novo.
+        if (!fromTrait)
+            ApplyCardPostDamage(monster, directHit);
 
         // F-E: posture build (boss only) and elemental reactions (any target)
         if (monster.Hp > 0 && monster.PostureMax > 0 && !staggered)
@@ -1621,6 +1641,7 @@ public sealed class GameWorld
         switch (_trait.Kind)
         {
             case "discipline": // Seren — combo no mesmo alvo, 3º acerto = Corte Perfeito
+            {
                 if (!directHit) break;
                 if (_comboTargetId != monster.Id || NowMs > _comboExpireMs)
                 {
@@ -1628,10 +1649,28 @@ public sealed class GameWorld
                     _comboHits = 0;
                 }
                 _comboHits++;
-                _comboExpireMs = NowMs + GameConfig.SerenDisciplineResetMs;
-                roll *= 1 + Math.Min(_comboHits * _trait.Value, _trait.Param) * _traitMult;
-                if (_comboHits % GameConfig.SerenPerfectCutEvery == 0) forceCrit = true;
+                // Eco Cadência Sem Fim: reset mais severo, ramp sem teto.
+                _comboExpireMs = NowMs + (HasEcho("endless_cadence")
+                    ? GameConfig.EchoEndlessCadenceResetMs : GameConfig.SerenDisciplineResetMs);
+                var ramp = HasEcho("endless_cadence")
+                    ? _comboHits * _trait.Value
+                    : Math.Min(_comboHits * _trait.Value, _trait.Param);
+                roll *= 1 + ramp * _traitMult;
+                // Eco Execução Perfeita: Corte a cada 2º e o crit garantido executa alvos fracos.
+                var cutEvery = HasEcho("perfect_execution")
+                    ? GameConfig.EchoPerfectCutEvery : GameConfig.SerenPerfectCutEvery;
+                if (_comboHits % cutEvery == 0)
+                {
+                    forceCrit = true;
+                    if (HasEcho("perfect_execution")
+                        && monster.Hp < monster.MaxHp * GameConfig.EchoPerfectExecuteHpFraction)
+                    {
+                        Emit("text", monster.X, monster.Y, 0, 0, 0, "EXECUÇÃO");
+                        roll = Math.Max(roll, monster.MaxHp * 10); // estouro letal através da armadura
+                    }
+                }
                 break;
+            }
 
             case "decay": // Velvet — limiar de execução sobe com os stacks de Decadência
             {
@@ -1648,15 +1687,40 @@ public sealed class GameWorld
                     roll *= 1 + _trait.Value * _traitMult;
                 break;
 
-            case "prey": // Gaia — ramp por tempo de caça contra a Presa
-                if (!directHit) break;
-                if (_preyId == 0 || !IsMonsterAlive(_preyId)) SetPrey(monster);
-                if (monster.Id == _preyId)
+            case "contagion": // Rin — Eco Pira: o dano cresce com o nº de inimigos queimando
+                if (HasEcho("pyre"))
                 {
-                    var huntSec = (NowMs - _preyStartMs) / 1000.0;
-                    roll *= 1 + Math.Min(huntSec * _trait.Value, _trait.Param) * _traitMult;
+                    var burning = _monsters.Count(m => m.Hp > 0 && m.Floor == _currentFloor && IsBurning(m));
+                    roll *= 1 + Math.Min(burning * GameConfig.EchoPyreDamagePerBurning, GameConfig.EchoPyreMaxBonus);
                 }
                 break;
+
+            case "prey": // Gaia — ramp por tempo de caça contra a Presa
+            {
+                if (!directHit) break;
+                if (_preyId == 0 || !IsMonsterAlive(_preyId)) SetPrey(monster);
+                // Eco Matilha: marca uma segunda Presa quando há mais alvos.
+                if (HasEcho("pack") && (_preyId2 == 0 || !IsMonsterAlive(_preyId2)))
+                    SetSecondPrey(monster);
+                if (monster.Id == _preyId || monster.Id == _preyId2)
+                {
+                    // Eco Caça Eterna: ramp e teto dobrados.
+                    var rampPerSec = _trait.Value * (HasEcho("eternal_hunt") ? GameConfig.EchoEternalHuntRampMult : 1);
+                    var cap = _trait.Param * (HasEcho("eternal_hunt") ? GameConfig.EchoEternalHuntCapMult : 1);
+                    var huntSec = (NowMs - _preyStartMs) / 1000.0;
+                    roll *= 1 + Math.Min(huntSec * rampPerSec, cap) * _traitMult;
+                    // Eco Raízes Profundas: cada acerto na Presa a enraíza e crava veneno de terra.
+                    if (HasEcho("deep_roots") && monster.Hp > 0)
+                    {
+                        monster.SlowUntilMs = NowMs + GameConfig.EchoDeepRootsSlowMs;
+                        monster.SlowFactor = GameConfig.EchoDeepRootsSlowFactor;
+                        ApplyDotToMonster(monster, "earth", GameConfig.ConditionTickFx["poison"],
+                            PlayerAttack() * GameConfig.EchoDeepRootsDotPower,
+                            GameConfig.EchoDeepRootsDotTicks, GameConfig.EchoDeepRootsDotTickMs);
+                    }
+                }
+                break;
+            }
         }
     }
 
@@ -1667,7 +1731,10 @@ public sealed class GameWorld
         {
             case "judgment": // Eloa — Pecado acumula; ao Julgar, o próximo acerto detona
                 if (!directHit || monster.Hp <= 0) break;
-                if (ActiveSinStacks(monster) >= GameConfig.EloaSinStacksToJudge)
+                // Eco Sentença: Julga com menos Pecados.
+                var sinToJudge = HasEcho("sentence")
+                    ? GameConfig.EchoSentenceStacksToJudge : GameConfig.EloaSinStacksToJudge;
+                if (ActiveSinStacks(monster) >= sinToJudge)
                 {
                     monster.SinStacks = 0;
                     monster.SinUntilMs = 0;
@@ -1684,23 +1751,32 @@ public sealed class GameWorld
                 if (!directHit || monster.Hp <= 0) break;
                 monster.DecayStacks = Math.Min(ActiveDecayStacks(monster) + 1, GameConfig.VelvetDecayMaxStacks);
                 monster.DecayUntilMs = NowMs + GameConfig.VelvetDecayDurationMs;
+                var decayPower = PlayerAttack() * GameConfig.VelvetDecayDamagePerStack * monster.DecayStacks;
                 ApplyDotToMonster(monster, "death", GameConfig.ConditionTickFx["curse"],
-                    PlayerAttack() * GameConfig.VelvetDecayDamagePerStack * monster.DecayStacks,
-                    GameConfig.VelvetDecayTicks, GameConfig.VelvetDecayTickMs);
+                    decayPower, GameConfig.VelvetDecayTicks, GameConfig.VelvetDecayTickMs);
+                // Eco Pacto de Sangue: a carga de Maldição ergue escudo em vez de Velvet curar.
+                if (HasEcho("blood_pact"))
+                    GainEchoShield(decayPower * GameConfig.VelvetDecayTicks * GameConfig.EchoBloodPactShieldFraction);
                 break;
 
-            case "contagion": // Rin — acerto de fogo incendeia; tick de burn cura (pacto)
-                if (element != "fire") break;
-                if (directHit && monster.Hp > 0) ApplyContagionBurn(monster);
-                else if (!directHit) HealPlayer((int)Math.Max(final * _trait.Value * _traitMult, 0));
+            case "contagion": // Rin — acerto incendeia; tick de burn cura (pacto)
+                // Eco Fogo Selvagem: qualquer elemento incendeia, não só fogo.
+                if (directHit && monster.Hp > 0 && (element == "fire" || HasEcho("wildfire")))
+                    ApplyContagionBurn(monster);
+                else if (!directHit && element == "fire")
+                    HealPlayer((int)Math.Max(final * _trait.Value * _traitMult, 0));
                 break;
 
             case "static_charge": // Rynna — acertos enchem a carga; cheia, descarrega
                 if (!directHit || monster.Hp <= 0) break;
-                _staticCharge += GameConfig.RynnaChargePerHit;
+                // Eco Tempestade Perpétua: a Carga enche o dobro de rápido.
+                _staticCharge += GameConfig.RynnaChargePerHit
+                    * (HasEcho("perpetual_storm") ? GameConfig.EchoPerpetualChargeMult : 1);
                 if (_staticCharge >= GameConfig.RynnaChargeMax)
                 {
-                    _staticCharge = 0;
+                    // Eco Tempestade Perpétua: a Descarga retém metade da Carga.
+                    _staticCharge = HasEcho("perpetual_storm")
+                        ? GameConfig.RynnaChargeMax * GameConfig.EchoPerpetualDischargeRetain : 0;
                     RynnaDischarge(monster, final);
                 }
                 break;
@@ -1714,13 +1790,19 @@ public sealed class GameWorld
     /// <summary>Gaia/Rin: ao matar um alvo, a caça salta de presa e o incêndio se propaga.</summary>
     private void OnMonsterKilledTrait(Actor monster)
     {
-        if (_trait.Kind == "prey" && monster.Id == _preyId)
+        if (_trait.Kind == "prey" && (monster.Id == _preyId || monster.Id == _preyId2))
         {
             monster.IsPrey = false;
-            _preyId = 0;
-            var next = NearestLivingMonster(monster.X, monster.Y, m => m.Id != monster.Id);
-            if (next is not null) SetPrey(next);
-            _preyHuntBonusUntilMs = NowMs + GameConfig.GaiaHuntBonusMs;
+            // Eco Matilha: bônus de caça maior ao executar.
+            _preyHuntBonusUntilMs = NowMs + (HasEcho("pack")
+                ? GameConfig.EchoPackHuntBonusMs : GameConfig.GaiaHuntBonusMs);
+            if (monster.Id == _preyId2) _preyId2 = 0; // a Matilha re-marca a 2ª no próximo acerto
+            if (monster.Id == _preyId)
+            {
+                _preyId = 0;
+                var next = NearestLivingMonster(monster.X, monster.Y, m => m.Id != monster.Id && m.Id != _preyId2);
+                if (next is not null) SetPrey(next);
+            }
         }
         else if (_trait.Kind == "contagion" && IsBurning(monster))
         {
@@ -1734,23 +1816,196 @@ public sealed class GameWorld
         if (_trait.Kind != "contagion" || NowMs < _contagionNextJumpMs) return;
         _contagionNextJumpMs = NowMs + GameConfig.RinContagionIntervalMs;
         var src = FirstBurningMonster();
-        if (src is not null) SpreadBurnFrom(src);
+        if (src is null) return;
+        SpreadBurnFrom(src);
+        // Eco Fogo Selvagem: a queimadura não expira enquanto houver alvo em chamas.
+        if (HasEcho("wildfire")) RefreshAllBurns();
+    }
+
+    /// <summary>Rin — Fogo Selvagem: renova a duração dos incêndios ativos (não acumula potência).</summary>
+    private void RefreshAllBurns()
+    {
+        foreach (var m in _monsters)
+        {
+            if (m.Hp <= 0 || m.Floor != _currentFloor) continue;
+            foreach (var d in m.Dots)
+                if (d.Element == "fire")
+                {
+                    d.TicksLeft = GameConfig.RinContagionBurnTicks;
+                    d.NextTickAtMs = Math.Min(d.NextTickAtMs, NowMs + GameConfig.RinContagionBurnTickMs);
+                }
+        }
+    }
+
+    // ================= G-04: mecânica de cartas (raro/eco) =================
+    // Hooks-irmãos das passivas de Kaeli: leem _cards (stacks) + tags, sem dispatch novo no engine.
+    // Determinístico (só NowMs/_rng da run, contadores estáveis, desempate por id, soma de stacks
+    // independe da ordem do dicionário). Bursts chamam DealDamageToMonster com fromTrait:true para
+    // não re-disparar os próprios hooks (a guarda !fromTrait fecha trait e carta de uma vez).
+
+    /// <summary>Stacks somados das cartas com um Kind de mecânica (0 se nenhuma equipada).</summary>
+    private int CardKindStacks(string kind)
+    {
+        var total = 0;
+        foreach (var (cardId, stacks) in _cards)
+            if (Cards.ById[cardId].Kind == kind) total += stacks;
+        return total;
+    }
+
+    private int CountEchoSpectres() => _summons.Count(s => s.IsEchoSpectre);
+
+    /// <summary>G-04B: um Eco está equipado (cap de 1 stack → presença do Kind entre as cartas).</summary>
+    private bool HasEcho(string kind) => CardKindStacks(kind) > 0;
+
+    /// <summary>Ergue escudo de Eco (sobre-vida), limitado a uma fração da vida máxima.</summary>
+    private void GainEchoShield(double amount)
+    {
+        if (amount <= 0) return;
+        var cap = Player.MaxHp * GameConfig.EchoShieldCapFraction;
+        _echoShield = Math.Min(_echoShield + amount, cap);
+    }
+
+    /// <summary>Absorve dano do escudo de Eco antes da vida; devolve o que sobrou para a vida levar.</summary>
+    private int AbsorbWithEchoShield(int damage)
+    {
+        if (_echoShield <= 0 || damage <= 0) return damage;
+        var absorbed = Math.Min(_echoShield, damage);
+        _echoShield -= absorbed;
+        return damage - (int)absorbed;
+    }
+
+    /// <summary>Pós-dano das cartas: enche a ultimate (Eco Sobrecarregado) e golpe extra (Golpe Duplo).
+    /// Só conta acerto direto (auto/skill), igual às passivas.</summary>
+    private void ApplyCardPostDamage(Actor monster, bool directHit)
+    {
+        if (!directHit) return;
+
+        var surge = CardKindStacks("echo_surge");
+        if (surge > 0)
+            _gauge = Math.Min(
+                _gauge + GameConfig.CardEchoSurgeGaugePerHit * surge * _gaugeRate,
+                GameConfig.UltimateGaugeMax);
+
+        var doubleStrike = CardKindStacks("double_strike");
+        if (doubleStrike > 0 && monster.Hp > 0)
+        {
+            _cardDoubleStrikeHits++;
+            if (_cardDoubleStrikeHits >= GameConfig.CardDoubleStrikeEvery)
+            {
+                _cardDoubleStrikeHits = 0;
+                Emit("text", monster.X, monster.Y, 0, 0, 0, "GOLPE DUPLO");
+                DealDamageToMonster(monster,
+                    PlayerAttack() * GameConfig.CardDoubleStrikeDamageMult * doubleStrike,
+                    CurrentStance.Element, 0,
+                    fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
+            }
+        }
+    }
+
+    /// <summary>Hooks de carta no on-kill (Velvet Colheita/Praga, Rin Holocausto). Cada Eco é
+    /// checado de forma independente; lê o estado do alvo (Decadência/queimadura) antes da limpeza.</summary>
+    private void OnMonsterKilledCard(Actor monster)
+    {
+        // Velvet — Colheita: morto sob Decadência ergue um espectro que pulsa dano (máx N).
+        if (HasEcho("harvest") && ActiveDecayStacks(monster) > 0
+            && CountEchoSpectres() < GameConfig.CardHarvestMaxSpectres)
+        {
+            var pulseMs = GameConfig.CardHarvestSpectrePulseMs;
+            _summons.Add(new PlayerSummon
+            {
+                Floor = monster.Floor, X = monster.X, Y = monster.Y,
+                Element = "death", Fx = GameConfig.CardHarvestSpectreFx,
+                Radius = GameConfig.CardHarvestSpectreRadius,
+                DamagePerPulse = PlayerAttack() * GameConfig.CardHarvestSpectreDamageMult,
+                PulseMs = pulseMs, NextPulseAtMs = NowMs + pulseMs,
+                ExpireAtMs = NowMs + GameConfig.CardHarvestSpectreDurationMs,
+                IsEchoSpectre = true,
+            });
+            Emit("text", monster.X, monster.Y, 0, 0, 0, "COLHEITA");
+            Emit("effect", monster.X, monster.Y, 0, 0, GameConfig.CardHarvestSpectreFx);
+        }
+
+        // Velvet — Praga Viral: ao morrer, a Decadência salta com seus stacks ao vivo mais próximo.
+        if (HasEcho("viral_plague"))
+        {
+            var stacks = ActiveDecayStacks(monster);
+            var next = stacks > 0 ? NearestLivingMonster(monster.X, monster.Y, m => m.Id != monster.Id) : null;
+            if (next is not null)
+            {
+                next.DecayStacks = Math.Min(stacks, GameConfig.VelvetDecayMaxStacks);
+                next.DecayUntilMs = NowMs + GameConfig.VelvetDecayDurationMs;
+                ApplyDotToMonster(next, "death", GameConfig.ConditionTickFx["curse"],
+                    PlayerAttack() * GameConfig.VelvetDecayDamagePerStack * next.DecayStacks,
+                    GameConfig.VelvetDecayTicks, GameConfig.VelvetDecayTickMs);
+                Emit("projectile", monster.X, monster.Y, next.X, next.Y, 11); // death missile
+                Emit("text", next.X, next.Y, 0, 0, 0, "PRAGA");
+            }
+        }
+
+        // Rin — Holocausto: alvo que morre em chamas explode num estouro de fogo em área.
+        if (HasEcho("holocaust") && IsBurning(monster))
+        {
+            var burst = PlayerAttack() * GameConfig.EchoHolocaustDamageMult;
+            Emit("text", monster.X, monster.Y, 0, 0, 0, "HOLOCAUSTO");
+            foreach (var (tx, ty) in CircleTiles(monster.X, monster.Y, GameConfig.EchoHolocaustRadius))
+            {
+                Emit("effect", tx, ty, 0, 0, GameConfig.ConditionTickFx["fire"]);
+                var victim = MonsterAt(tx, ty);
+                if (victim is not null && victim.Id != monster.Id)
+                    DealDamageToMonster(victim, burst, "fire", 0,
+                        fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
+            }
+        }
+    }
+
+    /// <summary>Detonação: uma condição que expira naturalmente (não por morte) explode em área.</summary>
+    private void OnConditionExpiredCard(Actor monster, MonsterDot dot)
+    {
+        if (monster.Hp <= 0) return;
+        var stacks = CardKindStacks("detonate");
+        if (stacks <= 0) return;
+        var burst = PlayerAttack() * GameConfig.CardDetonateDamageMult * stacks;
+        Emit("text", monster.X, monster.Y, 0, 0, 0, "DETONAÇÃO");
+        foreach (var (tx, ty) in CircleTiles(monster.X, monster.Y, GameConfig.CardDetonateRadius))
+        {
+            Emit("effect", tx, ty, 0, 0, dot.Fx);
+            var victim = MonsterAt(tx, ty);
+            if (victim is not null)
+                DealDamageToMonster(victim, burst, dot.Element, 0,
+                    fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
+        }
     }
 
     // Eloa — detona o Selo numa pequena área e cura a Serafim por fração do estouro.
     private void EloaDetonate(Actor center, int triggerDamage)
     {
         var burst = triggerDamage * _trait.Value * _traitMult;
+        // Eco Sentença: cada Julgamento amplia o próximo estouro (acumula até um teto).
+        if (HasEcho("sentence"))
+        {
+            burst *= 1 + _eloaSentenceStacks * GameConfig.EchoSentenceBurstPerStack;
+            _eloaSentenceStacks = Math.Min(_eloaSentenceStacks + 1, GameConfig.EchoSentenceMaxStacks);
+        }
+        var chain = HasEcho("chain_judgment"); // espalha Pecado nos atingidos
         Emit("text", center.X, center.Y, 0, 0, 0, "JULGADO");
         foreach (var (tx, ty) in CircleTiles(center.X, center.Y, GameConfig.EloaJudgmentRadius))
         {
             Emit("effect", tx, ty, 0, 0, 40); // holy area fx
             var victim = MonsterAt(tx, ty);
-            if (victim is not null)
-                DealDamageToMonster(victim, burst, "holy", 0,
-                    fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
+            if (victim is null) continue;
+            DealDamageToMonster(victim, burst, "holy", 0,
+                fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
+            if (chain && victim.Id != center.Id && victim.Hp > 0)
+            {
+                victim.SinStacks = Math.Min(
+                    ActiveSinStacks(victim) + GameConfig.EchoEloaChainSinSeed, GameConfig.EloaSinStacksToJudge);
+                victim.SinUntilMs = NowMs + GameConfig.EloaSinDurationMs;
+            }
         }
-        HealPlayer((int)Math.Max(burst * _trait.Param, 0));
+        // Eco Mártir: a cura do Julgamento vira escudo acima da vida, em vez de curar.
+        var grace = Math.Max(burst * _trait.Param, 0);
+        if (HasEcho("martyr")) GainEchoShield(grace);
+        else HealPlayer((int)grace);
     }
 
     // Rynna — corrente curta que paralisa os alvos próximos e acelera a ultimate.
@@ -1758,6 +2013,10 @@ public sealed class GameWorld
     {
         Emit("text", origin.X, origin.Y, 0, 0, 0, "DESCARGA");
         var dmg = PlayerAttack() * GameConfig.RynnaDischargeDamageMult;
+        // Eco Núcleo de Trovão: a Descarga enche a ultimate muito mais rápido.
+        var gaugeBonus = GameConfig.RynnaParalyzeGaugeBonus
+            * (HasEcho("thunder_core") ? GameConfig.EchoThunderCoreGaugeMult : 1);
+        var overload = HasEcho("overload"); // paralyze vira DoT de eletrocussão
         var hit = new HashSet<int>();
         var current = origin;
         int fromX = Player.X, fromY = Player.Y;
@@ -1767,7 +2026,11 @@ public sealed class GameWorld
             Emit("projectile", fromX, fromY, current.X, current.Y, 5); // energy
             current.StunUntilMs = Math.Max(current.StunUntilMs, NowMs + GameConfig.RynnaParalyzeMs);
             Emit("effect", current.X, current.Y, 0, 0, 32); // stun stars
-            _gauge = Math.Min(_gauge + GameConfig.RynnaParalyzeGaugeBonus, GameConfig.UltimateGaugeMax);
+            _gauge = Math.Min(_gauge + gaugeBonus, GameConfig.UltimateGaugeMax);
+            if (overload)
+                ApplyDotToMonster(current, "energy", GameConfig.ConditionTickFx["energy"],
+                    PlayerAttack() * GameConfig.EchoOverloadDotPower,
+                    GameConfig.EchoOverloadDotTicks, GameConfig.EchoOverloadDotTickMs);
             fromX = current.X; fromY = current.Y;
             DealDamageToMonster(current, dmg, "energy", 12,
                 fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
@@ -1778,18 +2041,22 @@ public sealed class GameWorld
     // Lunara — haste breve ao bater no lento; o 3º acerto estilhaça e consome o slow.
     private void ApplyShatter(Actor monster)
     {
+        // Eco Dança da Lua: estilhaça já no 2º acerto; a haste do trait quase não expira em combate.
+        var shatterHits = HasEcho("moon_dance") ? GameConfig.EchoMoonDanceShatterHits : GameConfig.LunaraShatterHits;
         if (NowMs < monster.SlowUntilMs)
         {
-            _traitHasteUntilMs = NowMs + GameConfig.LunaraHasteMs;
+            _traitHasteUntilMs = NowMs + (HasEcho("moon_dance") ? GameConfig.LunaraHasteMs * 15 : GameConfig.LunaraHasteMs);
             _traitHasteFactor = GameConfig.LunaraHasteFactor;
             monster.FrostHits++;
-            if (monster.FrostHits >= GameConfig.LunaraShatterHits)
+            if (monster.FrostHits >= shatterHits)
             {
                 monster.FrostHits = 0;
                 Emit("text", monster.X, monster.Y, 0, 0, 0, "ESTILHAÇO");
                 Emit("effect", monster.X, monster.Y, 0, 0, 44); // ice fx
                 DealDamageToMonster(monster, PlayerAttack() * GameConfig.LunaraShatterDamageMult, "ice", 0,
                     fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
+                // Eco Estilhaço em Cadeia: repassa o estouro aos lentos próximos.
+                if (HasEcho("chain_shatter")) ChainShatterFrom(monster);
                 monster.SlowUntilMs = NowMs; // consome o slow
                 return;
             }
@@ -1799,7 +2066,25 @@ public sealed class GameWorld
             monster.FrostHits = 1;
         }
         monster.SlowUntilMs = NowMs + (long)_trait.Param;
-        monster.SlowFactor = GameConfig.LunaraSlowFactor;
+        // Eco Inverno Eterno: lentidão mais forte (sem piso).
+        monster.SlowFactor = HasEcho("eternal_winter")
+            ? GameConfig.EchoEternalWinterSlowFactor : GameConfig.LunaraSlowFactor;
+    }
+
+    /// <summary>Lunara — Estilhaço em Cadeia: o estouro salta para os lentos próximos (fração do dano).</summary>
+    private void ChainShatterFrom(Actor source)
+    {
+        var burst = PlayerAttack() * GameConfig.LunaraShatterDamageMult * GameConfig.EchoChainShatterDamageMult;
+        foreach (var m in _monsters)
+        {
+            if (m.Hp <= 0 || m.Floor != _currentFloor || m.Id == source.Id) continue;
+            if (NowMs >= m.SlowUntilMs) continue; // só lentos
+            if (Chebyshev(source.X, source.Y, m.X, m.Y) > GameConfig.EchoChainShatterRange) continue;
+            Emit("projectile", source.X, source.Y, m.X, m.Y, 29); // ice missile
+            Emit("effect", m.X, m.Y, 0, 0, 44);
+            DealDamageToMonster(m, burst, "ice", 0,
+                fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
+        }
     }
 
     private void ApplyContagionBurn(Actor monster) =>
@@ -1820,11 +2105,21 @@ public sealed class GameWorld
     private void SetPrey(Actor m)
     {
         foreach (var mon in _monsters)
-            if (mon.IsPrey && mon.Id != m.Id) mon.IsPrey = false;
+            if (mon.IsPrey && mon.Id != m.Id && mon.Id != _preyId2) mon.IsPrey = false; // Matilha preserva a 2ª
         _preyId = m.Id;
         _preyStartMs = NowMs;
         m.IsPrey = true;
         Emit("text", m.X, m.Y, 0, 0, 0, "PRESA");
+    }
+
+    /// <summary>Gaia — Matilha: marca uma segunda Presa simultânea (compartilha o ramp da caça).</summary>
+    private void SetSecondPrey(Actor primary)
+    {
+        var second = NearestLivingMonster(primary.X, primary.Y, m => m.Id != _preyId && m.Id != primary.Id);
+        if (second is null) return;
+        _preyId2 = second.Id;
+        second.IsPrey = true;
+        Emit("text", second.X, second.Y, 0, 0, 0, "PRESA");
     }
 
     private int ActiveSinStacks(Actor m)
@@ -1998,6 +2293,8 @@ public sealed class GameWorld
 
         // K-04: caça da Gaia salta de presa; incêndio da Rin se propaga ao morrer um alvo em chamas
         OnMonsterKilledTrait(monster);
+        // G-04: Colheita da Velvet — espectro ao matar sob Decadência (lê o estado antes de limpar).
+        OnMonsterKilledCard(monster);
 
         Emit("death", monster.X, monster.Y, 0, 0, monster.Species.Corpse, monster.Species.Name, monster.Id);
 
@@ -2175,17 +2472,42 @@ public sealed class GameWorld
 
     private void OfferCards()
     {
-        var available = Cards.All
-            .Where(c => _cards.GetValueOrDefault(c.Id) < GameConfig.MaxCardStacks)
+        // G-04: pool ciente de raridade. Eco filtra pela Kaeli ativa; cada raridade tem seu cap de
+        // stacks. A amostragem é ponderada por raridade (sem repor), determinística via _rng da run.
+        var pool = Cards.All
+            .Where(c => _cards.GetValueOrDefault(c.Id) < GameConfig.MaxStacksForRarity(c.Rarity))
+            .Where(c => c.WaifuId is null || c.WaifuId == Waifu.Id)
             .ToList();
-        if (available.Count == 0) return;
-        _rng.Shuffle(available);
-        _pendingOffer = available
-            .Take(GameConfig.CardChoicesPerOffer)
-            .Select(c => new CardOfferDto(c.Id, c.Name, c.Description, _cards.GetValueOrDefault(c.Id)))
-            .ToList();
+        if (pool.Count == 0) return;
+
+        var offer = new List<CardOfferDto>();
+        for (var n = 0; n < GameConfig.CardChoicesPerOffer && pool.Count > 0; n++)
+        {
+            var pick = WeightedPickByRarity(pool);
+            pool.Remove(pick);
+            offer.Add(ToOfferDto(pick));
+        }
+        _pendingOffer = offer;
         _cardOfferStartedTick = TickCount;
     }
+
+    /// <summary>Amostra uma carta do pool com peso por raridade. Ordem estável do pool + _rng → determinístico.</summary>
+    private CardDef WeightedPickByRarity(List<CardDef> pool)
+    {
+        var total = 0.0;
+        foreach (var c in pool) total += GameConfig.CardRarityWeight(c.Rarity);
+        var roll = _rng.NextDouble() * total;
+        foreach (var c in pool)
+        {
+            roll -= GameConfig.CardRarityWeight(c.Rarity);
+            if (roll <= 0) return c;
+        }
+        return pool[^1]; // guarda contra erro de ponto flutuante
+    }
+
+    private CardOfferDto ToOfferDto(CardDef c) => new(
+        c.Id, c.Name, c.Description, _cards.GetValueOrDefault(c.Id),
+        c.Rarity, c.TagList, GameConfig.MaxStacksForRarity(c.Rarity));
 
     private void ChooseCard(string cardId)
     {
@@ -2398,6 +2720,12 @@ public sealed class GameWorld
         monster.TargetId = Player.Id;
         monster.LastSawPlayerAtMs = NowMs;
         monster.AggroOutOfRangeSinceMs = 0;
+        // Lunara — Inverno Eterno: o inimigo já entra lento ao ver Lunara.
+        if (HasEcho("eternal_winter") && monster.Hp > 0 && NowMs >= monster.SlowUntilMs)
+        {
+            monster.SlowUntilMs = NowMs + GameConfig.EchoEternalWinterAggroSlowMs;
+            monster.SlowFactor = GameConfig.EchoEternalWinterSlowFactor;
+        }
     }
 
     private static void DropAggro(Actor monster)
@@ -2644,9 +2972,13 @@ public sealed class GameWorld
             "bulwark" when Player.Hp < Player.MaxHp * _trait.Param => _trait.Value * _traitMult,
             _ => 0
         };
+        // Seren — Postura Imortal: com o combo alto, a Postura do Zênite corta o dano recebido.
+        var immortal = HasEcho("immortal_stance") && NowMs <= _comboExpireMs
+                       && _comboHits >= GameConfig.EchoImmortalComboThreshold
+            ? GameConfig.EchoImmortalDamageReduction : 0;
         var reduction = Math.Min(
             CardValue("damageReduction") + EquipmentStats.DamageReduction
-            + Loadout.Mastery.DamageReductionBonus + traitReduction,
+            + Loadout.Mastery.DamageReductionBonus + traitReduction + immortal,
             GameConfig.PlayerDamageReductionCap);
         var resistance = EquipmentStats.Resistance(damageType);
         var final = damage * (1 - reduction) * (1 - resistance);
@@ -2654,6 +2986,14 @@ public sealed class GameWorld
             final *= GameConfig.SappedStrengthDamageMultiplier;
         if (IsBuffActive("shield")) final *= 0.5;
         var value = Math.Max((int)final, 1);
+
+        // Eloa Mártir / Velvet Pacto: o escudo de Eco absorve antes da vida.
+        value = AbsorbWithEchoShield(value);
+        if (value <= 0)
+        {
+            Emit("text", Player.X, Player.Y, 0, 0, 0, "ESCUDO");
+            return;
+        }
 
         Player.Hp -= value;
         _gauge = Math.Min(_gauge + value * GameConfig.GaugeFillPerDamageTaken * (1 + CardValue("gaugePercent")) * _gaugeRate, GameConfig.UltimateGaugeMax);
@@ -3133,7 +3473,11 @@ public sealed class GameWorld
             Tier.Tier, Tier.Name, Seed,
             _runLevel, _runXp, GameConfig.XpForRunLevel(_runLevel),
             _gold, _kills,
-            _cards.Select(c => new CardStackDto(c.Key, Cards.ById[c.Key].Name, c.Value)).ToList(),
+            _cards.Select(c =>
+            {
+                var def = Cards.ById[c.Key];
+                return new CardStackDto(c.Key, def.Name, c.Value, def.Rarity, def.TagList);
+            }).ToList(),
             _pendingOffer,
             boss?.Hp, boss?.MaxHp, boss?.Species!.Name,
             boss is { PostureMax: > 0 } ? boss.Posture : null,

@@ -163,6 +163,11 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
   enquanto uma tecla de movimento estiver pressionada.
 - O renderer mantém um tick de histórico e suaviza a deriva do relógio do servidor, preservando
   a animação de caminhada durante todo o deslocamento entre tiles mesmo com jitter de snapshots.
+- **Peso de combate (juice).** O impacto é feedback puramente client-side reagindo aos `EventDto`
+  (engine intocado, determinismo preservado): hit-stop (pop de escala no alvo), screen-shake decaído
+  proporcional à magnitude, números de dano com outline/pop-in — crítico maior e dourado, escala por
+  fração do HP do alvo —, proc text destacado (QUEBRADO!/JULGADO/…), flash aditivo no sprite atingido
+  e dissolve por pixels na morte. A intensidade vem sempre do dado do servidor, nunca de RNG no front.
 - Monstros desviam de bloqueios e aglomerações, perdem aggro após distância/LOS prolongados e
   respeitam `staticAttackChance` para sustentar posições de ataque.
 - O helper vem ligado por padrão e pode ser modularizado no HUD: alvo automático, preferência de
@@ -171,6 +176,11 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
   manter 2 SQM do alvo. A escolha manual continua prevalecendo até o alvo morrer/sair da zona.
   Skills e ultimate só são usadas quando a área/linha alcançaria algum mob; movimento continua
   manual salvo quando um modo automático está ativo.
+- **Legibilidade do helper (client-side).** Dá pra "ler" o que a build vai fazer: um retículo animado
+  marca o alvo atual do helper, uma linha de intenção liga a Kaeli ao alvo (dourada quando há skill
+  pronta para cair) e um *telegraph* pulsante prevê o shape que vai disparar (cone/beam saindo da
+  Kaeli, anel/área em volta dela ou do alvo). Os shapes vêm do catálogo de skills; nada é simulado no
+  front, só leitura do snapshot.
 - **Kits Kaezan autorais:** monstros seedados combinam power tier, função (`common|elite|boss`),
   comportamento curado e elemento ofensivo. Condições, slows, cura própria e ataques em área vêm dos
   perfis data-driven do engine; sprites/corpses ainda podem reaproveitar a biblioteca Canary.
@@ -188,6 +198,12 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
   (com cooldown interno anti multi-hit). Ao fim do stagger o ciclo sobe e a postura volta maior;
   parar de bater faz a postura **decair**, então é preciso pressão sustentada. A janela de break é
   o momento de despejar o burst (guardar a ultimate vale a pena).
+- **Echo Break como clímax (FX client-side).** Quando o boss entra em stagger, o instante vira um
+  momento da run: um *slow-mo* breve (replay da interpolação atrás do relógio autoritativo, que
+  ressincroniza sozinho — não toca a simulação), flash dourado em tela cheia com banner
+  `⚡ ECHO BREAK ×N`, shockwave saindo do boss, screen-shake e um boom sintetizado. Durante o stagger,
+  uma aura dourada pulsante + rótulo `JANELA DE DANO` marcam a janela. Tudo reage ao flag
+  `bossStaggered`/`bossPostureCycle` do snapshot; o engine continua dono da regra.
 - **Reações elementais.** Aplicar um elemento **marca** o alvo (ícone colorido sobre o mob); um
   segundo elemento diferente dispara uma **reação** com FX e dano (uma fração do hit, nunca um
   multiplicador explosivo). A matriz é data-driven em `Domain/ElementReactions.cs`: Gelo+Fogo =

@@ -1064,11 +1064,20 @@ public sealed class GameWorld
         {
             var followDistance = Chebyshev(Player, target);
             if (followDistance > GameConfig.AutoHelperFollowDistance)
-                TryAutoHelperCardinalStep(
+            {
+                var stepped = TryAutoHelperCardinalStep(
                     target,
                     speed,
                     moveAway: false,
                     (_, nextDist) => nextDist >= GameConfig.AutoHelperFollowDistance && nextDist < followDistance);
+                // O passo cardinal guloso não desvia de obstáculo: se os dois passos em direção
+                // ao alvo estão bloqueados (pedregulho/parede entre a Kaeli e o inimigo), a perseguição
+                // travava de vez e a run nunca terminava. Cai no mesmo pather BFS do auto-loot
+                // (NextNavStep para na adjacência, AutoHelperFollowDistance=1) para contornar o bloqueio.
+                // Determinístico: NextNavStep não usa _rng/DateTime.
+                if (!stepped && NextNavStep(target.X, target.Y) is { } nav)
+                    TryStep(Player, nav.Dx, nav.Dy, speed);
+            }
             return;
         }
 

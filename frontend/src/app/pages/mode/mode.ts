@@ -47,7 +47,7 @@ import { MonsterCatalogEntry } from '../../core/types';
             </aside>
 
             @if (selectedTier(); as t) {
-              <main class="stage" [attr.aria-label]="t.boss">
+              <main class="stage" [attr.aria-label]="bossName()">
                 <div class="stage-orbit" aria-hidden="true"></div>
                 @if (bossMonster(); as boss) {
                   <app-outfit-preview
@@ -62,7 +62,7 @@ import { MonsterCatalogEntry } from '../../core/types';
               <aside class="intel">
                 <div>
                   <span class="mode-eyebrow" [style.color]="biome(t.tier).accent">Tier {{ t.tier }} · {{ biome(t.tier).label }}</span>
-                  <h1>{{ t.boss }}</h1>
+                  <h1>{{ bossName() }}</h1>
                   <p class="tier-name">{{ t.name }}</p>
                   <p class="desc">{{ t.description }}</p>
                 </div>
@@ -76,9 +76,9 @@ import { MonsterCatalogEntry } from '../../core/types';
 
                 <div class="mob-lines">
                   <span>Mobs comuns</span>
-                  <p>{{ t.commonMobs.join(' · ') }}</p>
+                  <p>{{ nameList(t.commonMobs) }}</p>
                   <span class="elite">Elites</span>
-                  <p>{{ t.eliteMobs.join(' · ') }}</p>
+                  <p>{{ nameList(t.eliteMobs) }}</p>
                 </div>
 
                 <div class="rewards">
@@ -400,13 +400,23 @@ export class ModeSelectPage {
     return tiers.find((t) => t.tier === this.selectedNum()) ?? tiers[0] ?? null;
   });
 
-  /** Boss do tier selecionado: sprite real do Tibia, casado pelo nome no catalogo de monstros. */
+  /** id→entrada do catálogo: os tiers referenciam monstros por id (monster:*) desde as criaturas
+   *  autorais Kaezan (G-08), então resolvemos o id no nome de exibição em vez de mostrar o id cru. */
+  private readonly monsterById = computed(() => {
+    const map = new Map<string, MonsterCatalogEntry>();
+    for (const m of this.api.catalog()?.monsters ?? []) map.set(m.id, m);
+    return map;
+  });
+
+  /** Boss do tier selecionado: sprite real do Tibia, casado por id (ou nome legado) no catálogo. */
   readonly bossMonster = computed<MonsterCatalogEntry | null>(() => {
     const t = this.selectedTier();
     if (!t) return null;
-    return this.api.catalog()?.monsters.find((m) => m.name === t.boss) ?? null;
+    const monsters = this.api.catalog()?.monsters ?? [];
+    return monsters.find((m) => m.id === t.boss) ?? monsters.find((m) => m.name === t.boss) ?? null;
   });
   readonly bossLoot = computed(() => this.bossMonster()?.loot.slice(0, 6) ?? []);
+  readonly bossName = computed(() => this.monsterName(this.selectedTier()?.boss ?? ''));
   readonly runCount = signal(readFarmRunCount());
 
   constructor(
@@ -417,6 +427,10 @@ export class ModeSelectPage {
     this.modeId.set(this.route.snapshot.paramMap.get('modeId') ?? 'dungeon');
   }
 
+  /** Nome de exibição de um id/nome de monstro do tier (cai no valor cru se não estiver no catálogo). */
+  monsterName(idOrName: string): string { return this.monsterById().get(idOrName)?.name ?? idOrName; }
+  /** Lista de ids de monstro do tier resolvida em nomes legíveis, já formatada pra exibição. */
+  nameList(ids: readonly string[]): string { return ids.map((id) => this.monsterName(id)).join(' · '); }
   biome(tier: number) { return tierBiome(tier); }
   locked(required: number): boolean { return (this.api.account()?.accountLevel ?? 1) < required; }
   clears(tier: number): number { return this.api.account()?.tierClears?.[String(tier)] ?? 0; }

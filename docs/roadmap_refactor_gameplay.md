@@ -839,7 +839,36 @@ conferir o crédito.
 
 # G-12 — Balance e Verificação Ponta-a-Ponta
 
-Resumo: _(preencher ao concluir)_
+Resumo: ✅ Verificação ponta-a-ponta com runs reais (preview do stack completo). `dotnet build` +
+`npx ng build` limpos. **Run melee (Seren) completada até o boss com VITÓRIA**; runs ranged (Velvet,
+Eloa) alcançam e enfrentam o boss "Heart of the Den" com a mecânica de Postura/Echo Break, e o
+auto-repeat (G-11) encadeia novas runs. Confirmado em jogo: juice + minimapa + color-grade de bioma
+(G-02/G-07), painel gambit (G-10), level-up = status automático sem tela (G-06), baú/altar e contratos
+diários, sprites sem placeholder e console limpo em run normal. Balance auditado: tabela central
+`MonsterStatLines` + multiplicadores clampados (0.65–1.5), stacks limitados (3 comum / 1 eco), pesos de
+raridade rampando 7→46 e todos os caps de player/equip — sem dominador por construção; os ecos "sem
+teto" (ex. `endless_cadence`) são win-conditions intencionais com tradeoff.
+**2 bugs bloqueantes corrigidos durante a verificação:**
+1. _Softlock do autopilot_ (`GameWorld.TickAutoHelperMovement`, modo Follow): o passo cardinal guloso
+   não desviava de obstáculo — a Kaeli encravava num pedregulho/parede e a run nunca terminava. Cai
+   agora no mesmo pather BFS do auto-loot (`NextNavStep`). Verificado: a run melee passou a completar.
+2. _Nomes como id_ (`pages/mode/mode.ts`): os tiers referenciam monstros por id (`monster:*`) desde as
+   criaturas autorais Kaezan (G-08), e a tela mostrava o id cru + caía no glifo ☠. Resolvido via
+   catálogo (id→nome); o boss e os mobs agora exibem o nome e o sprite real.
+
+**Observações menores (não-bloqueantes, para acompanhamento):**
+- _Reconexão do WebSocket:_ o backend já tem suporte a retomada (`RunManager` guarda a run órfã por
+  `RunReconnectGraceMs` e `JoinRun(resume:true)` a reivindica; a tela de jogo já chama resume no load).
+  Falta só o cliente religar isso num reconnect transparente: `game-client.service.ts` usa
+  `withAutomaticReconnect()` mas não tem handler `onreconnected` que reinvoque `joinRun(resume:true)`.
+  Correção pequena (~10-20 linhas), de baixo risco.
+- _Cosmético:_ string "Loot nao catalogado" sem acento; boss autoral sem loot catalogado (mostra o
+  fallback).
+
+> Nota: a suspeita inicial de "auto-repeat volta o movimento para Stand" foi **falso positivo** —
+> `HelperProfiles` estava vazio e o default por Kaeli (melee→Follow, ranged→Avoid) é aplicado em toda
+> run nova, inclusive no auto-repeat. A leitura errada veio de inspecionar o 1º rótulo de botão do HUD
+> em vez do modo selecionado.
 
 - **Modelo:** Claude Code Opus 4.8 · **Effort:** medium · **Skill:** nenhuma · **Depende de:** G-02–G-11 · **Paraleliza com:** — (solo, Onda 7)
 

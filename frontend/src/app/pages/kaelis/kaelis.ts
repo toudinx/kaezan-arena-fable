@@ -235,6 +235,9 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
                       <button class="tier-tab" [class.active]="selectedTier() === t" (click)="selectTier(t)">T{{ t }}</button>
                     }
                   </div>
+                  <button class="btn secondary compact auto-equip-btn" [disabled]="busy()" (click)="autoEquip(w.id)" title="Equipa o melhor item disponível em cada slot vazio ou inferior">
+                    Auto Equip
+                  </button>
                   <span class="muted small tier-hint">A dungeon usa o set do tier selecionado.</span>
                 </div>
                 <!-- G-09: material de Eco que os baús da caçada dropam (crescimento de conta) -->
@@ -602,6 +605,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .tier-tab { border: none; background: none; color: var(--text-dim); padding: 5px 14px; font-size: 12px; font-weight: 800; border-radius: var(--r-sm); transition: all var(--dur) var(--ease-out); }
     .tier-tab:hover:not(.active) { color: var(--text); }
     .tier-tab.active { background: color-mix(in srgb, var(--gold) 16%, var(--bg-3)); color: var(--gold-bright); box-shadow: var(--glass-edge); }
+    .auto-equip-btn { margin-left: auto; }
     .tier-hint { flex-basis: 100%; }
     /* G-09: materiais de Eco (saque dos baús) */
     .materials { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin: var(--sp-1) 0 var(--sp-2); }
@@ -1119,6 +1123,23 @@ export class KaelisPage implements OnDestroy {
     this.busy.set(true);
     try { await this.api.respecMastery(waifuId); }
     catch (e) { alert((e as Error).message); }
+    finally { this.busy.set(false); }
+  }
+
+  async autoEquip(waifuId: string): Promise<void> {
+    const w = this.allWaifus().find((entry) => entry.id === waifuId);
+    if (!w) return;
+    this.busy.set(true);
+    try {
+      for (const slot of this.equipmentSlots) {
+        const candidates = this.equipmentCandidates(waifuId, slot.id);
+        const best = candidates.find((item) => this.canEquip(w, item));
+        if (!best) continue;
+        const current = this.equippedItem(waifuId, slot.id);
+        if (current?.itemId === best.itemId) continue;
+        await this.api.equipItem(waifuId, slot.id, best.itemId, this.selectedTier());
+      }
+    } catch (e) { alert((e as Error).message); }
     finally { this.busy.set(false); }
   }
 

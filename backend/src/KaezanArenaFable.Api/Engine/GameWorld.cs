@@ -292,6 +292,17 @@ public sealed class GameWorld
     public RunEndDto? Ended { get; private set; }
     public bool MapDirty { get; private set; } = true;
 
+    /// <summary>
+    /// MG-01 (tools/BalanceSim): rank de um monstro por id — "common" | "elite" | "boss" — para o
+    /// simulador classificar TTK sem ter de inferir do pool da dungeon. Leitura pura: não toca estado
+    /// nem o <c>_rng</c>, então não perturba o determinismo. Mortos não são removidos da lista
+    /// (ficam com <c>Killed=true</c>), então o rank continua consultável no tick da morte.
+    /// </summary>
+    public string? MonsterRank(int monsterId) =>
+        _monsters.FirstOrDefault(m => m.Id == monsterId) is { } m
+            ? m.IsBossActor ? "boss" : m.IsElite ? "elite" : "common"
+            : null;
+
     public GameWorld(long seed, DungeonTier tier, WaifuDef waifu, int ascension,
         GameData data, MonsterRegistry monsterRegistry, IReadOnlyDictionary<string, long> bestiaryKills,
         EquipmentStats? equipmentStats = null, KaeliLoadout? loadout = null, ItemRegistry? items = null,

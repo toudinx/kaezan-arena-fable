@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>BalanceSim</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <!-- Puxa Microsoft.AspNetCore.Hosting.IWebHostEnvironment (o engine resolve conteúdo via env). -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!-- Compila o engine junto: o simulador roda GameWorld direto, sem hub/DB/frontend. -->
+  <ItemGroup>
+    <ProjectReference Include="../../backend/src/KaezanArenaFable.Api/KaezanArenaFable.Api.csproj" />
+  </ItemGroup>
+
+</Project>

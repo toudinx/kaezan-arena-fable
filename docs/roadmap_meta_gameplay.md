@@ -151,6 +151,7 @@ Onda 6   MG-09 (verificação final, solo)
 # MG-01 — Simulador Headless (`tools/BalanceSim`)  ⭐ backbone de medição
 
 - **Modelo:** Opus 4.8 · **Effort:** high · **Skill:** nenhuma (`use context7` p/ IHostEnvironment) · **Depende de:** — · **Paraleliza com:** — (solo, Onda 1)
+- **[x] Concluído.** `tools/BalanceSim` (console net8 + `ProjectReference` ao Api) roda o sweep 7×5×N com piloto-automático, mede TTK (ciclos)/hunt/dano/one-shots do snapshot, imprime pivô + resumo, canário de determinismo PASS, e gerou `docs/balance/baseline.csv` (1750 runs). Único toque no engine: accessor read-only `GameWorld.MonsterRank`. Baseline confirma o problema atual (boss morre em <1–3 ciclos, milhares de one-shots).
 
 **Objetivo:** dar ao balanceamento um instrumento de medição. O engine é determinístico e já tem
 piloto-automático completo (`TickAutoHelper`: auto-target, auto-skill, auto-ult, auto-move, auto-nav

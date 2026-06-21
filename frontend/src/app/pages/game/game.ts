@@ -2,11 +2,12 @@ import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild, com
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { AssetsService } from '../../core/assets.service';
+import { normalizeFarmRunCount, readFarmRunCount } from '../../core/farm-settings';
 import { GameClientService } from '../../core/game-client.service';
 import { GameRenderer } from '../../core/renderer';
 import { ItemIcon } from '../../core/item-icon';
 import { SoundService } from '../../core/sound.service';
-import { SnapshotDto } from '../../core/types';
+import { AutoHelperSettingsDto, SnapshotDto } from '../../core/types';
 
 // G-01: alinhado abaixo do passo do player (~294ms a PlayerBaseSpeed=340) pra resend confiável.
 const MOVE_HEARTBEAT_MS = 200;
@@ -92,24 +93,75 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
             <b>{{ elementLabel(s.player.stanceElement) }}</b>
             @if (s.player.canToggleStance) { <small>TAB</small> }
           </button>
-          <div class="helper-panel" title="Controle do helper de combate">
-            <span>Helper</span>
-            <button [class.on]="s.player.autoHelper.targeting"
-                    (click)="setAutoHelper('targeting', !s.player.autoHelper.targeting)">Alvo</button>
-            <button [class.on]="s.player.autoHelper.skills"
-                    (click)="setAutoHelper('skills', !s.player.autoHelper.skills)">Skills</button>
-            <button [class.on]="s.player.autoHelper.ultimate"
-                    (click)="setAutoHelper('ultimate', !s.player.autoHelper.ultimate)">Ult</button>
-            <button class="wide" [class.on]="s.player.autoHelper.targetPreference === 'nearest'"
-                    (click)="toggleTargetPreference()">
-              Pref: {{ targetPreferenceLabel(s.player.autoHelper.targetPreference) }}
-            </button>
-            <button [class.on]="s.player.autoHelper.movementMode === 'none'"
-                    (click)="setAutoHelperMovement('none')">Stand</button>
-            <button [class.on]="s.player.autoHelper.movementMode === 'follow'"
-                    (click)="setAutoHelperMovement('follow')">Follow</button>
-            <button [class.on]="s.player.autoHelper.movementMode === 'avoid'"
-                    (click)="setAutoHelperMovement('avoid')">Avoid</button>
+          <div class="helper-panel" title="Combat helper — set it and watch">
+            <div class="hp-head">
+              <span class="hp-title">Helper</span>
+              <span class="hp-readout">{{ helperReadout(s.player.autoHelper) }}</span>
+            </div>
+
+            <div class="hp-group">
+              <span class="hp-label">Combat</span>
+              <div class="hp-pills">
+                <button class="pill" [class.on]="s.player.autoHelper.targeting"
+                        (click)="setAutoHelper('targeting', !s.player.autoHelper.targeting)">Target</button>
+                <button class="pill" [class.on]="s.player.autoHelper.skills"
+                        (click)="setAutoHelper('skills', !s.player.autoHelper.skills)">Skills</button>
+                <button class="pill" [class.on]="s.player.autoHelper.ultimate"
+                        (click)="setAutoHelper('ultimate', !s.player.autoHelper.ultimate)">Ultimate</button>
+              </div>
+              <div class="seg" [class.muted]="!s.player.autoHelper.targeting">
+                <button [class.on]="s.player.autoHelper.targetPreference === 'nearest'"
+                        (click)="setTargetPreference('nearest')">Nearest</button>
+                <button [class.on]="s.player.autoHelper.targetPreference === 'lowestHp'"
+                        (click)="setTargetPreference('lowestHp')">Lowest HP</button>
+              </div>
+            </div>
+
+            <div class="hp-group">
+              <span class="hp-label">Movement</span>
+              <div class="seg">
+                <button [class.on]="s.player.autoHelper.movementMode === 'none'"
+                        (click)="setAutoHelperMovement('none')">Stand</button>
+                <button [class.on]="s.player.autoHelper.movementMode === 'follow'"
+                        (click)="setAutoHelperMovement('follow')">Follow</button>
+                <button [class.on]="s.player.autoHelper.movementMode === 'avoid'"
+                        (click)="setAutoHelperMovement('avoid')">Avoid</button>
+              </div>
+            </div>
+
+            <div class="hp-group">
+              <span class="hp-label">Autopilot</span>
+              <button class="pill row-pill" [class.on]="s.player.autoHelper.autoHeal" (click)="toggleAutoHeal()">
+                <span>Auto-heal</span>
+                <small>potion under {{ s.player.autoHelper.autoHealPct }}% HP</small>
+                <span class="dot"></span>
+              </button>
+              @if (s.player.autoHelper.autoHeal) {
+                <label class="hp-slider">
+                  <input type="range" min="10" max="90" step="5"
+                         [value]="s.player.autoHelper.autoHealPct"
+                         (input)="setHealPct($any($event.target).value)" />
+                  <span class="hp-pct">{{ s.player.autoHelper.autoHealPct }}%</span>
+                </label>
+              }
+              <button class="pill row-pill" [class.on]="s.player.autoHelper.autoCards" (click)="toggleAutoCards()">
+                <span>Auto-pick cards</span>
+                <small>takes the highest-rarity eco</small>
+                <span class="dot"></span>
+              </button>
+              <button class="pill row-pill" [class.on]="s.player.autoHelper.navMode === 'loot'" (click)="toggleAutoLoot()">
+                <span>Auto-loot</span>
+                <small>explore chests &amp; altars, then exit</small>
+                <span class="dot"></span>
+              </button>
+            </div>
+
+            <div class="hp-actions">
+              <button class="hp-save" [class.saved]="helperSaved()" (click)="saveHelperProfile()">
+                {{ helperSaved() ? '✓ Saved for this Kaeli' : 'Save as default' }}
+              </button>
+              <button class="hp-reset" (click)="resetHelper()" title="Back to defaults">Reset</button>
+            </div>
           </div>
         }
         <button class="btn secondary leave" (click)="leave()">Sair</button>
@@ -170,28 +222,48 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
       }
 
       <!-- card offer -->
-      @if (snapshot()?.run?.offer; as offer) {
-        <div class="overlay cards">
-          <h2>Level up! Escolha um eco:</h2>
-          <div class="choices">
-            @for (c of offer; track c.id; let i = $index) {
-              <button class="choice" [attr.data-rarity]="c.rarity" (click)="chooseCard(c.id)">
-                <span class="rarity">{{ rarityLabel(c.rarity) }}</span>
-                <b>{{ c.name }}</b>
-                <p>{{ c.description }}</p>
-                @if (c.tags.length) {
-                  <div class="tags">
-                    @for (t of c.tags; track t) {
-                      <span class="tag">{{ t }}</span>
-                    }
-                  </div>
-                }
-                <span class="stacks">{{ c.currentStacks }}/{{ c.maxStacks }}</span>
-                <small class="card-key">[{{ i + 1 }}]</small>
-              </button>
-            }
+      @if (snapshot()?.run; as run) {
+        @if (run.offer; as offer) {
+          <div class="overlay cards">
+            <h2>Escolha um eco:</h2>
+            <div class="offer-actions">
+              @if (run.cardRerollsRemaining > 0) {
+                <button class="offer-action" (click)="rerollCards()">
+                  Reroll <b>{{ run.cardRerollsRemaining }}</b>
+                </button>
+              } @else {
+                <!-- G-09: rerolls grátis esgotados → reroll pago (loja do altar da run) -->
+                <button class="offer-action" [disabled]="run.gold < run.cardRerollGoldCost" (click)="rerollCards()">
+                  Reroll <b>{{ run.cardRerollGoldCost }}🪙</b>
+                </button>
+              }
+              <span>Banidas {{ run.bannedCardsCount }}</span>
+            </div>
+            <div class="choices">
+              @for (c of offer; track c.id; let i = $index) {
+                <button class="choice" [attr.data-rarity]="c.rarity" (click)="chooseCard(c.id)">
+                  <span class="rarity">{{ rarityLabel(c.rarity) }}</span>
+                  <b>{{ c.name }}</b>
+                  <p>{{ c.description }}</p>
+                  @if (c.tags.length) {
+                    <div class="tags">
+                      @for (t of c.tags; track t) {
+                        <span class="tag">{{ t }}</span>
+                      }
+                    </div>
+                  }
+                  <span class="stacks">{{ c.currentStacks }}/{{ c.maxStacks }}</span>
+                  <small class="card-key">[{{ i + 1 }}]</small>
+                </button>
+              }
+            </div>
+            <div class="ban-actions">
+              @for (c of offer; track c.id; let i = $index) {
+                <button (click)="banCard(c.id)">Banir {{ i + 1 }}</button>
+              }
+            </div>
           </div>
-        </div>
+        }
       }
 
       <!-- run end -->
@@ -218,6 +290,9 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
             </div>
           }
           @for (note of end.dailyProgressNotes; track note) { <p class="note">📜 {{ note }}</p> }
+          @if (autoRunsRemaining() > 0) {
+            <p class="note farm-note">Lote {{ farmProgressLabel() }}: proxima run em {{ autoRepeatCountdown() }}s</p>
+          }
           <div class="actions">
             <button class="btn" (click)="again()">JOGAR DE NOVO</button>
             <button class="btn secondary" (click)="leave()">VOLTAR À CAÇADA</button>
@@ -286,22 +361,75 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
     }
     .stance span { grid-column: 1 / -1; color: #8bfff1; font-size: 10px; font-weight: 800; text-transform: uppercase; }
     .stance.fixed { border-color: #3a3a4c; background: rgba(16,16,26,0.9); }
+
+    /* G-10: combat helper — autoplay control panel. Teal = on, echo-purple = identity, aurum = saved. */
     .helper-panel {
-      pointer-events: auto; width: 260px; min-height: 78px; border: 1px solid #3a3a4c; border-radius: 9px;
-      background: rgba(16,16,26,0.9); color: #cfcde0; padding: 6px 8px;
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; align-items: center;
+      pointer-events: auto; width: 270px; border-radius: 12px;
+      border: 1px solid rgba(196,125,255,0.18);
+      background: linear-gradient(180deg, rgba(20,17,29,0.96), rgba(13,12,19,0.96));
+      box-shadow: 0 12px 30px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);
+      color: #d8d6e4; padding: 11px 12px 12px; display: flex; flex-direction: column; gap: 11px;
     }
-    .helper-panel span {
-      grid-column: 1 / -1; color: #8bfff1; font-size: 10px; font-weight: 900; text-transform: uppercase;
+    .hp-head { display: flex; flex-direction: column; gap: 3px; }
+    .hp-title { font-size: 10px; font-weight: 900; letter-spacing: 0.22em; text-transform: uppercase; color: #c47dff; }
+    .hp-readout { font-size: 10.5px; line-height: 1.3; color: #9a98ae; min-height: 14px; }
+    .hp-group { display: flex; flex-direction: column; gap: 6px; }
+    .hp-label { font-size: 8.5px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: #6f6e84; }
+    .hp-pills { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+    .helper-panel .pill {
+      height: 27px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03);
+      color: #9594a8; font-size: 10.5px; font-weight: 800; letter-spacing: 0.02em; cursor: pointer;
+      transition: border-color 110ms, background 110ms, color 110ms;
     }
-    .helper-panel button {
-      height: 24px; border: 1px solid #4a4a5e; border-radius: 7px; background: #272738; color: #8b8a9c;
-      font-size: 10px; font-weight: 900; padding: 0; line-height: 1;
+    .helper-panel .pill:hover { border-color: rgba(45,212,191,0.4); color: #cfcde0; }
+    .helper-panel .pill.on { border-color: rgba(45,212,191,0.7); background: rgba(45,212,191,0.16); color: #8bfff1; }
+    .helper-panel .row-pill {
+      width: 100%; display: flex; align-items: center; gap: 9px; height: 34px; padding: 0 11px; text-align: left;
     }
-    .helper-panel button.on {
-      border-color: #2dd4bf; background: rgba(45, 212, 191, 0.22); color: #8bfff1;
+    .helper-panel .row-pill small { color: #6f6e84; font-size: 9.5px; font-weight: 600; letter-spacing: 0; }
+    .helper-panel .row-pill .dot {
+      margin-left: auto; width: 9px; height: 9px; border-radius: 50%; background: #3a3a4c; flex: 0 0 auto;
+      transition: background 110ms, box-shadow 110ms;
     }
-    .helper-panel button.wide { grid-column: span 1; font-size: 9px; }
+    .helper-panel .row-pill.on small { color: #6fb9b0; }
+    .helper-panel .row-pill.on .dot { background: #2dd4bf; box-shadow: 0 0 8px rgba(45,212,191,0.75); }
+    .seg {
+      display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; padding: 2px;
+      border-radius: 9px; background: rgba(0,0,0,0.3);
+    }
+    .seg button {
+      height: 24px; border: 0; border-radius: 7px; background: transparent; color: #8b8a9c;
+      font-size: 10px; font-weight: 800; cursor: pointer; transition: background 110ms, color 110ms;
+    }
+    .seg button:hover { color: #cfcde0; }
+    .seg button.on { background: rgba(45,212,191,0.18); color: #8bfff1; box-shadow: inset 0 0 0 1px rgba(45,212,191,0.32); }
+    .seg.muted { opacity: 0.4; }
+    .hp-hint { font-size: 9.5px; color: #6f6e84; line-height: 1.25; }
+    .hp-slider { display: flex; align-items: center; gap: 9px; padding: 0 2px; }
+    .hp-slider input[type=range] {
+      flex: 1; height: 4px; -webkit-appearance: none; appearance: none; border-radius: 3px; cursor: pointer;
+      background: linear-gradient(90deg, #2dd4bf, rgba(45,212,191,0.25)); outline: none;
+    }
+    .hp-slider input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; width: 13px; height: 13px; border-radius: 50%;
+      background: #8bfff1; border: 2px solid #0f1118; box-shadow: 0 0 6px rgba(45,212,191,0.7); cursor: pointer;
+    }
+    .hp-slider input[type=range]::-moz-range-thumb {
+      width: 13px; height: 13px; border-radius: 50%; background: #8bfff1; border: 2px solid #0f1118; cursor: pointer;
+    }
+    .hp-slider .hp-pct { font-size: 10px; font-weight: 800; color: #8bfff1; width: 30px; text-align: right; }
+    .hp-actions { display: flex; gap: 6px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); }
+    .hp-save {
+      flex: 1; height: 28px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.03);
+      color: #d8d6e4; font-size: 10px; font-weight: 800; letter-spacing: 0.02em; cursor: pointer; transition: border-color 120ms, background 120ms, color 120ms;
+    }
+    .hp-save:hover { border-color: rgba(240,180,80,0.55); color: #ffd98a; }
+    .hp-save.saved { border-color: rgba(240,180,80,0.7); background: rgba(240,180,80,0.16); color: #ffd98a; }
+    .hp-reset {
+      flex: 0 0 auto; height: 28px; padding: 0 13px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+      background: transparent; color: #8b8a9c; font-size: 10px; font-weight: 800; cursor: pointer;
+    }
+    .hp-reset:hover { color: #cfcde0; border-color: rgba(255,255,255,0.2); }
     .minimap { position: absolute; right: 14px; top: 64px; border: 1px solid #2c2c3e; border-radius: 8px; background: #000; opacity: 0.9; }
     .hud.skills { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
     .skill {
@@ -337,7 +465,10 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
       position: absolute; inset: 0; background: rgba(5,5,10,0.88); z-index: 20;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
     }
-    .overlay.cards .choices { display: flex; gap: 16px; }
+    .overlay.cards .choices { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 760px; }
+    .offer-actions, .ban-actions { display: flex; align-items: center; gap: 10px; color: #9c9ab0; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    .offer-actions button, .ban-actions button { border: 1px solid rgba(125,240,255,0.28); border-radius: 999px; background: rgba(125,240,255,0.10); color: #d7fbff; font-weight: 900; padding: 8px 12px; cursor: pointer; }
+    .offer-action:disabled { opacity: .45; cursor: not-allowed; }
     .choice {
       width: 210px; min-height: 130px; border-radius: 12px; border: 2px solid #2dd4bf;
       background: linear-gradient(180deg, #16242a, #101018); color: inherit; padding: 14px;
@@ -364,6 +495,7 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
     }
     .choice .stacks { color: #707088; font-size: 11px; }
     .choice .card-key { color: rgba(125, 240, 255, 0.55); font-size: 11px; font-weight: 700; font-family: monospace; align-self: flex-end; }
+    .ban-actions button { color: #ffd1d1; border-color: rgba(255,93,93,0.35); background: rgba(255,93,93,0.10); }
     .overlay.end h1 { font-size: 52px; margin: 0; color: #ff5d5d; letter-spacing: 4px; }
     .overlay.end h1.victory { color: #2dd4bf; }
     .reason { color: #9c9ab0; margin: 0; }
@@ -374,6 +506,7 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
     .loot { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 600px; }
     .lootitem { background: #15151f; border: 1px solid #2c2c3e; border-radius: 8px; padding: 6px; display: flex; flex-direction: column; align-items: center; font-size: 11px; }
     .note { color: #e8a93c; font-size: 13px; margin: 0; }
+    .farm-note { color: #8bfff1; font-weight: 800; }
     .actions { display: flex; gap: 14px; margin-top: 8px; }
   `],
 })
@@ -387,6 +520,12 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   readonly resumeToast = signal(false);
   readonly showBag = signal(false);
 
+  // G-10: feedback do botão "Save as default" do painel HELPER.
+  readonly helperSaved = signal(false);
+  readonly plannedRuns = signal(1);
+  readonly autoRunsRemaining = signal(0);
+  readonly autoRepeatCountdown = signal(0);
+
   private renderer: GameRenderer | null = null;
   private raf = 0;
   private tier = 1;
@@ -395,6 +534,9 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   private lastDir = { x: 0, y: 0 };
   private moveHeartbeat = 0;
   private resumeToastTimer = 0;
+  private autoRepeatTimer = 0;
+  private autoRepeatCountdownTimer = 0;
+  private autoRepeatEndKey = '';
   private ladderTriggered = false;
 
   constructor(
@@ -414,12 +556,17 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
       const snap = this.client.snapshot();
       if (snap && this.renderer) this.renderer.setSnapshot(snap, performance.now());
       if (snap && !snap.run.ended && !snap.run.offer) this.tryAutoLadder(snap);
+      if (snap?.run.ended) this.maybeScheduleAutoRepeat(snap);
+      else if (snap && !snap.run.ended) this.clearAutoRepeatSchedule();
     });
   }
 
   ngOnInit(): void {
     this.tier = Number(this.route.snapshot.paramMap.get('tier') ?? '1');
     this.waifuId = this.route.snapshot.queryParamMap.get('waifu') ?? undefined;
+    const runs = normalizeFarmRunCount(Number(this.route.snapshot.queryParamMap.get('runs') ?? readFarmRunCount()));
+    this.plannedRuns.set(runs);
+    this.autoRunsRemaining.set(Math.max(0, runs - 1));
   }
 
   async ngAfterViewInit(): Promise<void> {
@@ -490,7 +637,8 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
       const offer = this.snapshot()?.run?.offer;
       if (offer) { const c = offer[idx]; if (c) this.chooseCard(c.id); }
       else this.cast(idx);
-    } else if (k === '4') this.cast(3);
+    } else if (this.snapshot()?.run?.offer && k === 'r') this.rerollCards();
+    else if (k === '4') this.cast(3);
     else if (k === 'r') this.cast(4);
     else if (k === 't') this.usePotion();
     else if (k === '5') this.cycleMovementMode();
@@ -586,51 +734,94 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     this.client.toggleStance();
   }
 
-  setAutoHelper(module: 'targeting' | 'skills' | 'ultimate', enabled: boolean): void {
-    const current = this.snapshot()?.player.autoHelper;
-    if (!current) return;
+  // G-10: aplica uma alteração parcial à config do helper (mescla com o estado atual e envia).
+  private applyHelper(patch: Partial<AutoHelperSettingsDto>): void {
+    const c = this.snapshot()?.player.autoHelper;
+    if (!c) return;
+    const next = { ...c, ...patch };
     this.client.setAutoHelper(
-      module === 'targeting' ? enabled : current.targeting,
-      module === 'skills' ? enabled : current.skills,
-      module === 'ultimate' ? enabled : current.ultimate,
-      current.targetPreference,
-      current.movementMode,
+      next.targeting, next.skills, next.ultimate,
+      next.targetPreference, next.movementMode,
+      next.autoHeal, next.autoHealPct, next.navMode, next.autoCards,
     );
+  }
+
+  setAutoHelper(module: 'targeting' | 'skills' | 'ultimate', enabled: boolean): void {
+    this.applyHelper({ [module]: enabled });
   }
 
   cycleMovementMode(): void {
-    const current = this.snapshot()?.player.autoHelper;
-    if (!current) return;
-    const next = current.movementMode === 'none' ? current.defaultMovementMode : 'none';
-    this.setAutoHelperMovement(next);
+    const c = this.snapshot()?.player.autoHelper;
+    if (!c) return;
+    this.setAutoHelperMovement(c.movementMode === 'none' ? c.defaultMovementMode : 'none');
   }
 
   setAutoHelperMovement(movementMode: 'none' | 'follow' | 'avoid'): void {
-    const current = this.snapshot()?.player.autoHelper;
-    if (!current) return;
-    this.client.setAutoHelper(
-      current.targeting,
-      current.skills,
-      current.ultimate,
-      current.targetPreference,
-      movementMode,
-    );
+    this.applyHelper({ movementMode });
   }
 
-  toggleTargetPreference(): void {
-    const current = this.snapshot()?.player.autoHelper;
-    if (!current) return;
-    this.client.setAutoHelper(
-      current.targeting,
-      current.skills,
-      current.ultimate,
-      current.targetPreference === 'nearest' ? 'lowestHp' : 'nearest',
-      current.movementMode,
-    );
+  setTargetPreference(targetPreference: 'lowestHp' | 'nearest'): void {
+    this.applyHelper({ targetPreference });
   }
 
-  targetPreferenceLabel(preference: string): string {
-    return preference === 'nearest' ? 'Perto' : 'HP';
+  toggleAutoHeal(): void {
+    const c = this.snapshot()?.player.autoHelper;
+    if (!c) return;
+    this.applyHelper({ autoHeal: !c.autoHeal });
+  }
+
+  setHealPct(value: string | number): void {
+    const n = Math.round(Number(value));
+    if (!Number.isFinite(n)) return;
+    this.applyHelper({ autoHealPct: Math.min(90, Math.max(10, n)) });
+  }
+
+  toggleAutoCards(): void {
+    const c = this.snapshot()?.player.autoHelper;
+    if (!c) return;
+    this.applyHelper({ autoCards: !c.autoCards });
+  }
+
+  toggleAutoLoot(): void {
+    const c = this.snapshot()?.player.autoHelper;
+    if (!c) return;
+    this.applyHelper({ navMode: c.navMode === 'loot' ? 'off' : 'loot' });
+  }
+
+  saveHelperProfile(): void {
+    this.client.saveHelperProfile();
+    this.helperSaved.set(true);
+    window.setTimeout(() => this.helperSaved.set(false), 1600);
+  }
+
+  resetHelper(): void {
+    const c = this.snapshot()?.player.autoHelper;
+    if (!c) return;
+    this.applyHelper({
+      targeting: true, skills: true, ultimate: true,
+      targetPreference: 'nearest', movementMode: c.defaultMovementMode,
+      autoHeal: true, autoHealPct: 50, navMode: 'loot', autoCards: true,
+    });
+  }
+
+  // Signature: a plain-English line of what the helper will do, so you can "read" the build at a glance.
+  helperReadout(h: AutoHelperSettingsDto): string {
+    const parts: string[] = [];
+    if (h.navMode === 'loot') parts.push('exploring & looting');
+
+    if (h.targeting) parts.push(`hitting ${h.targetPreference === 'nearest' ? 'the nearest' : 'the weakest'} foe`);
+    else if (!h.skills && !h.ultimate) parts.push('holding fire');
+
+    if (h.navMode === 'off') {
+      if (h.movementMode === 'follow') parts.push('chasing');
+      else if (h.movementMode === 'avoid') parts.push('kiting');
+      else parts.push('standing ground');
+    }
+    if (h.autoHeal) parts.push('auto-healing');
+
+    if (!parts.length) return 'Idle — nothing automated.';
+    const text = parts.join(' · ');
+    return text.charAt(0).toUpperCase() + text.slice(1) + '.';
   }
 
   rarityLabel(rarity: string): string {
@@ -639,6 +830,52 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
 
   chooseCard(cardId: string): void {
     this.client.chooseCard(cardId);
+  }
+
+  private maybeScheduleAutoRepeat(snap: SnapshotDto): void {
+    const end = snap.run.ended;
+    if (!end || this.autoRunsRemaining() <= 0) return;
+    const key = `${snap.run.seed}:${end.durationMs}:${end.victory ? 1 : 0}`;
+    if (this.autoRepeatEndKey === key) return;
+
+    this.clearAutoRepeatSchedule(false);
+    this.autoRepeatEndKey = key;
+
+    const delay = this.api.catalog()?.farm.autoRepeatDelayMs ?? 2500;
+    const started = Date.now();
+    const updateCountdown = () => {
+      const remaining = Math.max(1, Math.ceil((delay - (Date.now() - started)) / 1000));
+      this.autoRepeatCountdown.set(remaining);
+    };
+    updateCountdown();
+    this.autoRepeatCountdownTimer = window.setInterval(updateCountdown, 250);
+    this.autoRepeatTimer = window.setTimeout(() => {
+      this.autoRunsRemaining.update((remaining) => Math.max(0, remaining - 1));
+      this.clearAutoRepeatSchedule();
+      void this.again(true);
+    }, delay);
+  }
+
+  private clearAutoRepeatSchedule(resetKey = true): void {
+    window.clearTimeout(this.autoRepeatTimer);
+    window.clearInterval(this.autoRepeatCountdownTimer);
+    this.autoRepeatTimer = 0;
+    this.autoRepeatCountdownTimer = 0;
+    this.autoRepeatCountdown.set(0);
+    if (resetKey) this.autoRepeatEndKey = '';
+  }
+
+  farmProgressLabel(): string {
+    const planned = this.plannedRuns();
+    return `${planned - this.autoRunsRemaining()}/${planned}`;
+  }
+
+  rerollCards(): void {
+    this.client.rerollCards();
+  }
+
+  banCard(cardId: string): void {
+    this.client.banCard(cardId);
   }
 
   private interactNearest(): void {
@@ -718,12 +955,16 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     return `Equip: ${values.join(' · ')}`;
   }
 
-  async again(): Promise<void> {
+  async again(fromAutoRepeat = false): Promise<void> {
+    this.clearAutoRepeatSchedule();
+    if (!fromAutoRepeat) this.autoRunsRemaining.set(0);
     await this.client.joinRun(this.tier, this.waifuId, undefined, false);
     void this.api.refreshAccount();
   }
 
   async leave(): Promise<void> {
+    this.clearAutoRepeatSchedule();
+    this.autoRunsRemaining.set(0);
     await this.client.leave(true);
     void this.api.refreshAccount();
     void this.router.navigate(['/hunt']);
@@ -733,6 +974,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     cancelAnimationFrame(this.raf);
     window.clearInterval(this.moveHeartbeat);
     window.clearTimeout(this.resumeToastTimer);
+    this.clearAutoRepeatSchedule();
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);

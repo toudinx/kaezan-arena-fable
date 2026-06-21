@@ -80,9 +80,20 @@ export class GameClientService {
     ultimate: boolean,
     targetPreference: 'lowestHp' | 'nearest',
     movementMode: 'none' | 'follow' | 'avoid',
+    autoHeal: boolean,
+    autoHealPct: number,
+    navMode: 'off' | 'loot',
+    autoCards: boolean,
   ): void {
-    void this.connection?.invoke('SetAutoHelper', targeting, skills, ultimate, targetPreference, movementMode)
+    void this.connection
+      ?.invoke('SetAutoHelper', targeting, skills, ultimate, targetPreference, movementMode,
+        autoHeal, autoHealPct, navMode, autoCards)
       .catch(() => undefined);
+  }
+
+  /** G-10: salva a config atual do helper como default da Kaeli da run. */
+  saveHelperProfile(): void {
+    void this.connection?.invoke('SaveHelperProfile').catch(() => undefined);
   }
 
   interact(x: number, y: number): void {
@@ -91,6 +102,14 @@ export class GameClientService {
 
   chooseCard(cardId: string): void {
     void this.connection?.invoke('ChooseCard', cardId).catch(() => undefined);
+  }
+
+  rerollCards(): void {
+    void this.connection?.invoke('RerollCards').catch(() => undefined);
+  }
+
+  banCard(cardId: string): void {
+    void this.connection?.invoke('BanCard', cardId).catch(() => undefined);
   }
 
 }

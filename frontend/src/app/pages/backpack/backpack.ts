@@ -1,6 +1,7 @@
 import { Component, computed, signal } from '@angular/core';
 import { ApiService } from '../../core/api.service';
 import { ItemIcon } from '../../core/item-icon';
+import { isGearMaterial } from '../../core/types';
 
 @Component({
   selector: 'app-backpack',
@@ -73,7 +74,9 @@ import { ItemIcon } from '../../core/item-icon';
   `],
 })
 export class BackpackPage {
-  readonly inventory = computed(() => this.api.account()?.inventory ?? []);
+  // G-09: material de Eco vive na tela de equipamento da Kaeli, não na mochila de venda.
+  readonly inventory = computed(() =>
+    (this.api.account()?.inventory ?? []).filter((item) => !isGearMaterial(item.itemId)));
   readonly busy = signal(false);
   readonly salePrices = computed(() =>
     new Map((this.api.catalog()?.items ?? []).map((item) => [item.itemId, item.salePrice])),

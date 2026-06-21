@@ -1,5 +1,5 @@
 import { AssetsService } from './assets.service';
-import { EventDto, MapDto, MonsterDto, PlayerDto, SnapshotDto, TICK_MS } from './types';
+import { BiomeDto, EventDto, MapDto, MonsterDto, PlayerDto, SnapshotDto, TICK_MS } from './types';
 
 const TILE = 32;
 const BASE_SCALE = 2;
@@ -69,6 +69,28 @@ function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
+/** Tiny deterministic PRNG (mulberry32) — seeds the cosmetic atmosphere particle field per map. */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// ---- G-07: biome atmosphere (color-grade + fog + vignette + drifting motes), all cosmetic ----
+const ATMO_PARTICLE_MAX = 90;      // particle count at density 1.0
+/** Minimap markers for room types not already covered by a POI sprite (chest/sanctuary/ladder). */
+const ROOM_ICONS: Record<string, { color: string; glyph: string }> = {
+  elite: { color: '#ff5d5d', glyph: '!' },
+  miniboss: { color: '#ff8c4d', glyph: '×' },
+  hazard: { color: '#c08cff', glyph: '?' },
+  boss: { color: '#ff3b3b', glyph: '★' },
+};
+interface AtmoParticle { x: number; y: number; size: number; speed: number; phase: number; }
+
 /** Slight-overshoot ease used for the damage-number "pop-in". */
 function easeOutBack(x: number): number {
   const c1 = 1.70158;
@@ -131,6 +153,9 @@ export class GameRenderer {
   /** Snapshot of the previous frame's monsters, so a death event can capture the dying outfit. */
   private deathLookup = new Map<number, MonsterDto>();
 
+  // G-07 biome atmosphere (cosmetic): a deterministic mote field rebuilt per map.
+  private atmoParticles: AtmoParticle[] = [];
+
   // G-03 helper legibility + Echo Break climax
   private skillShapes = new Map<string, SkillShape>();
   private shockwaves: Shockwave[] = [];
@@ -165,6 +190,7 @@ export class GameRenderer {
 
   setMap(map: MapDto): void {
     this.map = map;
+    this.buildAtmoParticles(map);
     this.effects = [];
     this.projectiles = [];
     this.loot = [];
@@ -630,14 +656,26 @@ export class GameRenderer {
     }
     for (const poi of map.pois) {
       if (poi.kind === 'chest' && poi.used) continue;
+      const cursed = poi.kind === 'chest' && poi.variant === 'cursed';
+      // G-09: baú amaldiçoado ganha uma névoa sombria sob o sprite (telegrafa o risco).
+      if (cursed) {
+        const aura = 0.18 + 0.12 * Math.sin(nowPerf / 280);
+        ctx.fillStyle = `rgba(140, 40, 200, ${aura})`;
+        ctx.fillRect(sx(poi.x) + 1, sy(poi.y) + 1, TS - 2, TS - 2);
+      }
       this.assets.drawObject(ctx, poi.itemId, sx(poi.x), sy(poi.y), SCALE, poi.x, poi.y, nowPerf);
-      // gentle highlight pulse on interactables
+      // gentle highlight pulse on interactables (sanctuary = echo purple, chest = gold, ladder = cyan,
+      // cursed chest = ominous magenta).
       const pulse = 0.35 + 0.25 * Math.sin(nowPerf / 350);
-      ctx.strokeStyle = poi.kind === 'chest' ? `rgba(255, 211, 93, ${pulse})` : `rgba(125, 240, 255, ${pulse})`;
-      ctx.lineWidth = 2;
+      ctx.strokeStyle =
+        cursed ? `rgba(214, 76, 255, ${0.55 + 0.3 * Math.sin(nowPerf / 220)})`
+        : poi.kind === 'chest' ? `rgba(255, 211, 93, ${pulse})`
+        : poi.kind === 'sanctuary' ? `rgba(196, 125, 255, ${pulse})`
+        : `rgba(125, 240, 255, ${pulse})`;
+      ctx.lineWidth = poi.kind === 'sanctuary' || cursed ? 3 : 2;
       ctx.strokeRect(sx(poi.x) + 4, sy(poi.y) + 4, TS - 8, TS - 8);
-      // show [F] hint when player is adjacent to a chest (ladder is auto)
-      if (poi.kind === 'chest' && snap.player) {
+      // show [F] hint when player is adjacent to a chest/sanctuary (ladder is auto)
+      if ((poi.kind === 'chest' || poi.kind === 'sanctuary') && snap.player) {
         const dist = Math.max(Math.abs(poi.x - snap.player.x), Math.abs(poi.y - snap.player.y));
         if (dist <= 1) {
           const cx = sx(poi.x) + TS / 2;
@@ -709,8 +747,13 @@ export class GameRenderer {
     }
     while (ci < creatures.length) creatures[ci++].draw();
 
+    // 4.5 biome atmosphere (G-07): color-grade + fog + vignette + drifting motes over the world,
+    //     under the helper/effects/HUD so combat stays legible. Cosmetic only — driven by map.biome.
+    this.drawAtmosphere(ctx, map.biome, nowPerf);
+
     // 5. helper legibility (G-03): intention line + animated reticle + skill telegraph, then the
     //    Echo Break "damage window" aura while the boss is staggered.
+    this.drawNavTarget(ctx, snap, cam, nowPerf);
     this.drawHelperIntent(ctx, snap, serverNow, cam, nowPerf);
     this.drawBreakWindow(ctx, snap, serverNow, cam, nowPerf);
     if (this.hoverTile) {
@@ -874,6 +917,73 @@ export class GameRenderer {
   }
 
   // ---- G-03 helper legibility ----
+
+  /**
+   * G-10: where the auto-loot helper is walking. A pulsing marker on the destination tile when it's
+   * on screen, plus an edge pointer toward it when it's off screen — so the autoplay is legible
+   * ("she's heading there"). Pure snapshot read; the engine owns the pathing.
+   */
+  private drawNavTarget(
+    ctx: CanvasRenderingContext2D, snap: SnapshotDto, cam: { x: number; y: number }, now: number,
+  ): void {
+    const nav = snap.run.navTarget;
+    if (!nav || snap.run.ended) return;
+    const W = this.canvas.width;
+    const H = this.canvas.height;
+    const tcx = nav.x * TS - cam.x + TS / 2;
+    const tcy = nav.y * TS - cam.y + TS / 2;
+    const loot = nav.kind === 'chest' || nav.kind === 'sanctuary';
+    const color = loot ? '#c47dff' : '#7df0ff'; // eco-purple for loot, cyan for the exit/boss
+    const pulse = 0.5 + 0.5 * Math.sin(now / 320);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    if (tcx >= -TS && tcx <= W + TS && tcy >= -TS && tcy <= H + TS) {
+      // on-screen: pulsing ring + center dot + a bobbing chevron above the tile
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.22 + 0.26 * pulse;
+      ctx.beginPath();
+      ctx.arc(tcx, tcy, TS * (0.52 + 0.12 * pulse), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 0.6;
+      ctx.beginPath();
+      ctx.arc(tcx, tcy, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      const top = tcy - TS * 0.72 + Math.sin(now / 300) * 3;
+      ctx.globalAlpha = 0.85;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(tcx - 6, top - 6);
+      ctx.lineTo(tcx, top);
+      ctx.lineTo(tcx + 6, top - 6);
+      ctx.stroke();
+    } else {
+      // off-screen: a small arrow pinned to the screen edge, pointing toward the destination
+      const cx = W / 2;
+      const cy = H / 2;
+      const ang = Math.atan2(tcy - cy, tcx - cx);
+      const halfW = W / 2 - 26;
+      const halfH = H / 2 - 26;
+      const t = Math.min(halfW / (Math.abs(Math.cos(ang)) || 1e-6), halfH / (Math.abs(Math.sin(ang)) || 1e-6));
+      const ex = cx + Math.cos(ang) * t;
+      const ey = cy + Math.sin(ang) * t;
+      ctx.translate(ex, ey);
+      ctx.rotate(ang);
+      ctx.globalAlpha = 0.5 + 0.3 * pulse;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(11, 0);
+      ctx.lineTo(-7, -7);
+      ctx.lineTo(-3, 0);
+      ctx.lineTo(-7, 7);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
 
   /**
    * "Read the build's intent": an intention line from the Kaeli to the helper's current target, an
@@ -1131,6 +1241,81 @@ export class GameRenderer {
     ctx.restore();
   }
 
+  /** G-07: seed the cosmetic mote field for this map (stable per floor → no shimmer on redraw). */
+  private buildAtmoParticles(map: MapDto): void {
+    this.atmoParticles = [];
+    const biome = map.biome;
+    if (!biome || biome.particleDensity <= 0) return;
+    const count = Math.round(biome.particleDensity * ATMO_PARTICLE_MAX);
+    const rnd = mulberry32(((map.floor + 1) * 2654435761) ^ (map.w * 40503) ^ (map.h * 2246822519));
+    for (let i = 0; i < count; i++) {
+      this.atmoParticles.push({
+        x: rnd(), y: rnd(),
+        size: 0.6 + rnd() * 1.8,
+        speed: 0.25 + rnd() * 0.8,
+        phase: rnd() * Math.PI * 2,
+      });
+    }
+  }
+
+  /**
+   * G-07: post-process the world with the stratum's palette — a multiply color-grade, a vertical fog
+   * haze, an edge vignette and drifting ambient motes. Pure screen-space cosmetics; reads map.biome.
+   */
+  private drawAtmosphere(ctx: CanvasRenderingContext2D, biome: BiomeDto | undefined, now: number): void {
+    if (!biome) return;
+    const W = this.canvas.width;
+    const H = this.canvas.height;
+
+    if (biome.tintStrength > 0) {
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.globalAlpha = biome.tintStrength;
+      ctx.fillStyle = `rgb(${biome.tintR},${biome.tintG},${biome.tintB})`;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
+    if (biome.fogStrength > 0) {
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      const c = `${biome.fogR},${biome.fogG},${biome.fogB}`;
+      g.addColorStop(0, `rgba(${c},${biome.fogStrength})`);
+      g.addColorStop(0.5, `rgba(${c},${biome.fogStrength * 0.35})`);
+      g.addColorStop(1, `rgba(${c},${biome.fogStrength})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    if (biome.vignette > 0) {
+      const r = Math.max(W, H);
+      const vg = ctx.createRadialGradient(W / 2, H / 2, r * 0.34, W / 2, H / 2, r * 0.76);
+      vg.addColorStop(0, 'rgba(0,0,0,0)');
+      vg.addColorStop(1, `rgba(0,0,0,${biome.vignette})`);
+      ctx.fillStyle = vg;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    if (this.atmoParticles.length) {
+      const t = now / 1000;
+      const drift = biome.particleDrift;
+      ctx.fillStyle = `rgb(${biome.particleR},${biome.particleG},${biome.particleB})`;
+      for (const p of this.atmoParticles) {
+        const sway = Math.sin(t * 0.6 + p.phase) * 12;
+        const baseY = p.y * H;
+        const py = drift === 0
+          ? baseY + Math.sin(t * 0.5 + p.phase) * 18
+          : baseY + drift * t * p.speed * 22;
+        const wx = (((p.x * W + sway) % W) + W) % W;
+        const wy = ((py % H) + H) % H;
+        ctx.globalAlpha = 0.2 + 0.4 * (0.5 + 0.5 * Math.sin(t * 1.3 + p.phase));
+        ctx.beginPath();
+        ctx.arc(wx, wy, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
   /** Tiny minimap in the given canvas: blocked grid + player + boss. */
   drawMinimap(mini: HTMLCanvasElement): void {
     if (!this.map || !this.snapshot) return;
@@ -1146,9 +1331,40 @@ export class GameRenderer {
         ctx.fillRect(x * cell, y * cell, cell, cell);
       }
     }
+    // G-07: room-type icons make the route readable at a glance (POIs cover chest/sanctuary/ladder;
+    // these add elite/miniboss/hazard/boss). Drawn under the POIs/monsters/player.
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const room of map.rooms) {
+      const icon = ROOM_ICONS[room.role];
+      if (!icon) continue;
+      const cx = (room.x + room.w / 2) * cell;
+      const cy = (room.y + room.h / 2) * cell;
+      const big = room.role === 'boss' || room.role === 'miniboss';
+      const rad = Math.max(big ? cell * 1.7 : cell * 1.2, 3.5);
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+      ctx.fillStyle = icon.color;
+      ctx.globalAlpha = 0.92;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.stroke();
+      ctx.fillStyle = '#10131c';
+      ctx.font = `bold ${big ? 9 : 7}px monospace`;
+      ctx.fillText(icon.glyph, cx, cy + 0.5);
+    }
     for (const poi of map.pois) {
-      ctx.fillStyle = poi.kind === 'chest' ? '#ffd35d' : '#7df0ff';
-      ctx.fillRect(poi.x * cell, poi.y * cell, cell, cell);
+      if (poi.kind === 'chest' && poi.used) continue;
+      ctx.fillStyle =
+        poi.kind === 'chest' && poi.variant === 'cursed' ? '#d64cff'
+        : poi.kind === 'chest' ? '#ffd35d'
+        : poi.kind === 'sanctuary' ? '#c47dff'
+        : '#7df0ff';
+      // sanctuary reads as a slightly larger beacon so the beat is easy to spot on the route
+      const sz = poi.kind === 'sanctuary' ? cell + 1 : cell;
+      ctx.fillRect(poi.x * cell, poi.y * cell, sz, sz);
     }
     for (const m of this.snapshot.monsters) {
       ctx.fillStyle = m.isBoss ? '#ff8c4d' : '#c03030';

@@ -15,14 +15,14 @@ public static class MetaEndpoints
         // ---- catalog (static game data for the client) ----
         api.MapGet("/catalog", (
             GameData data, ContentStore content, MonsterRegistry registry, KaeliRegistry kaelis,
-            ItemRegistry itemRegistry) => Results.Ok(new
+            ItemRegistry itemRegistry, GachaService gacha) => Results.Ok(new
         {
             waifus = kaelis.All,
             classes = Classes.All,
             skills = Classes.Skills.Values,
             cards = Cards.All,
             tiers = content.Tiers,
-            banners = GachaService.Banners,
+            banners = gacha.GetBanners(),
             pullCost = GameConfig.PullCostKaeros,
             ascensionShardCost = GameConfig.AscensionShardCost,
             addonAscensions = new[] { GameConfig.AddonOneAscension, GameConfig.AddonTwoAscension },
@@ -48,6 +48,14 @@ public static class MetaEndpoints
                 respecGold = GameConfig.MasteryRespecGold,
                 pointsPerVictory = GameConfig.MasteryPointsPerVictory,
                 pointsPerDefeat = GameConfig.MasteryPointsPerDefeat
+            },
+            farm = new
+            {
+                autoRepeatDelayMs = GameConfig.AutoRepeatDelayMs,
+                minRuns = GameConfig.FarmRunMinCount,
+                maxRuns = GameConfig.FarmRunMaxCount,
+                energyPerRun = GameConfig.DungeonEnergyPerRun,
+                energyCap = GameConfig.DungeonEnergyCap
             },
             items = itemRegistry.All.Values.Select(i => new
             {
@@ -116,8 +124,9 @@ public static class MetaEndpoints
         }));
 
         // ---- account ----
-        api.MapGet("/account", (AccountStore store, DailyService dailies) =>
+        api.MapGet("/account", (AccountStore store, DailyService dailies, RewardService rewards) =>
         {
+            var offlineReward = rewards.ClaimOfflineProgression();
             var contracts = dailies.GetToday();
             return Results.Ok(store.Read(s => new
             {
@@ -151,7 +160,8 @@ public static class MetaEndpoints
                 s.RunsWon,
                 s.TierClears,
                 pity = s.Pity,
-                dailies = contracts
+                dailies = contracts,
+                offlineReward
             }));
         });
 
@@ -564,6 +574,29 @@ public static class MetaEndpoints
                 return Results.Ok(new { added = req.Amount, s.Kaeros });
             }));
 
+        // ---- admin: banners ativos ----
+
+        admin.MapGet("/banners", (ContentStore content) => Results.Ok(new
+        {
+            activeWaifuIds = content.ActiveBannerWaifuIds,
+            allWaifuIds = Waifus.All.Select(w => w.Id).ToArray()
+        }));
+
+        admin.MapPut("/banners", (BannersRequest req, ContentStore content, GachaService gacha) =>
+        {
+            if (req.WaifuIds is null || req.WaifuIds.Count == 0)
+                return Results.BadRequest(new { error = "envie ao menos uma waifu" });
+            if (req.WaifuIds.Count > 3)
+                return Results.BadRequest(new { error = "maximo de 3 banners de personagem" });
+
+            var unknown = req.WaifuIds.Where(id => !Waifus.ById.ContainsKey(id)).ToArray();
+            if (unknown.Length > 0)
+                return Results.BadRequest(new { error = $"waifus desconhecidas: {string.Join(", ", unknown)}" });
+
+            var saved = content.SetActiveBanners(req.WaifuIds);
+            return Results.Ok(new { activeWaifuIds = saved, banners = gacha.GetBanners() });
+        });
+
         admin.MapDelete("/items/{id:int}", (int id, ContentStore content, AccountStore accounts) =>
         {
             var referenced = accounts.Read(state =>
@@ -696,4 +729,5 @@ public static class MetaEndpoints
     public sealed record UnequipRequest(string WaifuId, string Slot, int Tier = 1);
     public sealed record ItemGrantRequest(int Count = 1);
     public sealed record GrantKaerosRequest(int Amount = 1600);
+    public sealed record BannersRequest(List<string> WaifuIds);
 }

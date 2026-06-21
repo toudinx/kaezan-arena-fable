@@ -5,7 +5,8 @@ namespace KaezanArenaFable.Api.Engine;
 public sealed class Room
 {
     public int X, Y, W, H;
-    public string Role = "mob"; // entry | mob | treasure | ladder | boss
+    // G-07 taxonomy: entry | mob (combate) | treasure | elite | hazard | miniboss | sanctuary | ladder | boss
+    public string Role = "mob";
     public int CenterX => X + W / 2;
     public int CenterY => Y + H / 2;
     public bool Contains(int px, int py) => px >= X && px < X + W && py >= Y && py < Y + H;
@@ -24,6 +25,7 @@ public sealed class DungeonFloor
     public (int X, int Y) Entry;
     public (int X, int Y)? LadderDown;
     public List<(int X, int Y)> Chests = [];
+    public List<(int X, int Y)> Sanctuaries = []; // G-06: altares de Eco (beat de escolha)
 
     public bool InBounds(int x, int y) => x >= 0 && x < W && y >= 0 && y < H;
     public bool IsBlocked(int x, int y) => !InBounds(x, y) || Blocked[y * W + x];
@@ -36,6 +38,7 @@ public sealed class DungeonFloor
 public static class DungeonGenerator
 {
     public const ushort ChestId = 2472;
+    public const ushort SanctuaryId = 2478; // G-06: baú ornado de gemas = altar do Santuário de Eco
     public const ushort LadderDownId = 386;
 
     public static DungeonFloor Generate(Rng rng, int floorIndex, bool isBossFloor, BiomeDef biome)
@@ -76,39 +79,151 @@ public static class DungeonGenerator
                 for (var xx = room.X; xx < room.X + room.W; xx++)
                     floor.Blocked[yy * size + xx] = false;
 
-        // connect rooms in a chain (plus one extra loop link) with L corridors
-        for (var i = 1; i < floor.Rooms.Count; i++)
-            CarveCorridor(floor, floor.Rooms[i - 1], floor.Rooms[i], rng);
-        if (floor.Rooms.Count > 3)
-            CarveCorridor(floor, floor.Rooms[0], floor.Rooms[rng.Range(2, floor.Rooms.Count - 1)], rng);
+        // G-07: connect rooms as a spatial spanning tree (nearest-neighbour from the entry) instead of
+        // a spawn-order chain. A tree has real branches/dead-ends — the seam for risk/reward detours —
+        // while still guaranteeing every room is reachable. One extra loop link keeps navigation open.
+        var tree = ConnectRooms(floor, rng);
+        AssignRoles(floor, tree, isBossFloor, rng);
 
-        // assign roles: entry = first, farthest = ladder/boss, one treasure room
-        var entry = floor.Rooms[0];
+        PaintTiles(floor, rng, biome);
+        return floor;
+    }
+
+    private static int Manhattan(Room a, Room b) =>
+        Math.Abs(a.CenterX - b.CenterX) + Math.Abs(a.CenterY - b.CenterY);
+
+    /// <summary>
+    /// Deterministic Prim spanning tree rooted at the entry (room 0): repeatedly carve the shortest
+    /// edge from the connected set to an unconnected room (Manhattan between centres, ties broken by
+    /// ascending index). Returns the adjacency used to route the entry→exit path. A single loop edge
+    /// is carved for navigability but kept out of the adjacency so routing stays on the tree.
+    /// </summary>
+    private static List<int>[] ConnectRooms(DungeonFloor floor, Rng rng)
+    {
+        var n = floor.Rooms.Count;
+        var adj = new List<int>[n];
+        for (var i = 0; i < n; i++) adj[i] = [];
+        if (n <= 1) return adj;
+
+        var inTree = new bool[n];
+        inTree[0] = true;
+        for (var added = 1; added < n; added++)
+        {
+            int bestFrom = -1, bestTo = -1, bestDist = int.MaxValue;
+            for (var i = 0; i < n; i++)
+            {
+                if (!inTree[i]) continue;
+                for (var j = 0; j < n; j++)
+                {
+                    if (inTree[j]) continue;
+                    var d = Manhattan(floor.Rooms[i], floor.Rooms[j]);
+                    if (d < bestDist) { bestDist = d; bestFrom = i; bestTo = j; }
+                }
+            }
+            inTree[bestTo] = true;
+            adj[bestFrom].Add(bestTo);
+            adj[bestTo].Add(bestFrom);
+            CarveCorridor(floor, floor.Rooms[bestFrom], floor.Rooms[bestTo], rng);
+        }
+
+        if (n > 3)
+            CarveCorridor(floor, floor.Rooms[0], floor.Rooms[rng.Range(2, n - 1)], rng);
+        return adj;
+    }
+
+    /// <summary>
+    /// G-07: assign room types using the graph. Entry = room 0; the farthest room is the exit
+    /// (ladder, or boss on the boss floor). Rooms off the entry→exit tree-path are detours and get the
+    /// reward/risk roles first (treasure/elite/eco/evento/miniboss), so a fork means "safe ahead vs.
+    /// loot behind". Deterministic: stable candidate order + the run rng.
+    /// </summary>
+    private static void AssignRoles(DungeonFloor floor, List<int>[] tree, bool isBossFloor, Rng rng)
+    {
+        var rooms = floor.Rooms;
+        var entry = rooms[0];
         entry.Role = "entry";
         floor.Entry = (entry.CenterX, entry.CenterY);
+        if (rooms.Count == 1) return;
 
-        var farthest = floor.Rooms.Skip(1)
-            .OrderByDescending(r => Math.Abs(r.CenterX - entry.CenterX) + Math.Abs(r.CenterY - entry.CenterY))
-            .First();
-        farthest.Role = isBossFloor ? "boss" : "ladder";
-        if (!isBossFloor) floor.LadderDown = (farthest.CenterX, farthest.CenterY);
+        var exitIdx = 1;
+        var bestDist = -1;
+        for (var i = 1; i < rooms.Count; i++)
+        {
+            var d = Manhattan(entry, rooms[i]);
+            if (d > bestDist) { bestDist = d; exitIdx = i; }
+        }
+        var exit = rooms[exitIdx];
+        exit.Role = isBossFloor ? "boss" : "ladder";
+        if (!isBossFloor) floor.LadderDown = (exit.CenterX, exit.CenterY);
 
-        var treasureCandidates = floor.Rooms.Where(r => r.Role == "mob").ToList();
-        if (treasureCandidates.Count > 0)
-            rng.Pick(treasureCandidates).Role = "treasure";
+        var onPath = PathRooms(tree, 0, exitIdx);
+        var detours = new List<Room>();
+        var mainMid = new List<Room>();
+        for (var i = 1; i < rooms.Count; i++)
+        {
+            if (i == exitIdx) continue;
+            (onPath.Contains(i) ? mainMid : detours).Add(rooms[i]);
+        }
 
-        // chests: in treasure room + random mob room corners
-        foreach (var room in floor.Rooms.Where(r => r.Role == "treasure"))
-            floor.Chests.Add((room.CenterX, room.CenterY));
-        var mobRooms = floor.Rooms.Where(r => r.Role == "mob").ToList();
+        // detours first: rewards sit behind a fork off the critical path; main-path rooms fill in after.
+        var candidates = new List<Room>(detours);
+        candidates.AddRange(mainMid);
+        var next = 0;
+        Room? Take() => next < candidates.Count ? candidates[next++] : null;
+
+        if (isBossFloor)
+        {
+            // pre-boss floor stays lean: a treasure cache and the Eco sanctuary beat, rest combat.
+            if (Take() is { } t) t.Role = "treasure";
+            for (var s = 0; s < GameConfig.SanctuariesPerFloor; s++)
+                if (Take() is { } sr) sr.Role = "sanctuary";
+        }
+        else
+        {
+            if (Take() is { } t) t.Role = "treasure";
+            if (Take() is { } e) e.Role = "elite";
+            for (var s = 0; s < GameConfig.SanctuariesPerFloor; s++)
+                if (Take() is { } sr) sr.Role = "sanctuary";
+            if (Take() is { } h) h.Role = "hazard";
+            if (rooms.Count >= GameConfig.MiniBossMinRooms && Take() is { } mb) mb.Role = "miniboss";
+        }
+        // anything left keeps the default "mob" (combat) role.
+
+        // POIs from roles: chest in treasure + elite rooms (the detour loot), Eco altars in sanctuaries,
+        // plus a couple of random extra caches in combat rooms.
+        foreach (var room in rooms)
+        {
+            if (room.Role == "treasure") floor.Chests.Add((room.CenterX, room.CenterY));
+            else if (room.Role == "elite") floor.Chests.Add((room.X + 1, room.Y + 1));
+            else if (room.Role == "sanctuary") floor.Sanctuaries.Add((room.CenterX, room.CenterY));
+        }
+        var mobRooms = rooms.Where(r => r.Role == "mob").ToList();
         for (var i = 0; i < GameConfig.ChestsPerFloor - 1 && mobRooms.Count > 0; i++)
         {
             var room = rng.Pick(mobRooms);
             floor.Chests.Add((room.X + 1, room.Y + 1));
         }
+    }
 
-        PaintTiles(floor, rng, biome);
-        return floor;
+    /// <summary>BFS on the (tree) adjacency: the set of room indices on the unique entry→exit path.</summary>
+    private static HashSet<int> PathRooms(List<int>[] tree, int start, int goal)
+    {
+        var prev = new int[tree.Length];
+        Array.Fill(prev, -1);
+        var visited = new bool[tree.Length];
+        var queue = new Queue<int>();
+        queue.Enqueue(start);
+        visited[start] = true;
+        while (queue.Count > 0)
+        {
+            var cur = queue.Dequeue();
+            if (cur == goal) break;
+            foreach (var nb in tree[cur])
+                if (!visited[nb]) { visited[nb] = true; prev[nb] = cur; queue.Enqueue(nb); }
+        }
+        var path = new HashSet<int>();
+        for (var at = goal; at != -1; at = prev[at]) path.Add(at);
+        return path;
     }
 
     private static void CarveCorridor(DungeonFloor floor, Room a, Room b, Rng rng)
@@ -195,6 +310,7 @@ public static class DungeonGenerator
         var set = new HashSet<(int, int)> { floor.Entry };
         if (floor.LadderDown is { } ladder) set.Add(ladder);
         foreach (var chest in floor.Chests) set.Add(chest);
+        foreach (var sanctuary in floor.Sanctuaries) set.Add(sanctuary);
         return set;
     }
 }

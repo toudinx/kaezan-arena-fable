@@ -36,6 +36,12 @@ import { CurrencyPill } from '../core/ui/currency-pill';
           <currency-pill icon="🪙" label="Ouro" [value]="acc.gold" />
           <currency-pill icon="✦" label="Kaeros" tone="gold" [value]="acc.kaeros" />
 
+          @if (acc.offlineReward; as idle) {
+            <span class="offline-pill" [title]="'Creditos de ' + idle.creditedMinutes + ' min offline'">
+              Offline +{{ idle.gold }} ouro · +{{ idle.accountXp }} XP
+            </span>
+          }
+
           <details class="tools" routerLinkActive="admin-active">
             <summary title="Ferramentas" aria-label="Ferramentas">⚙</summary>
             <div class="tools-menu">
@@ -182,6 +188,20 @@ import { CurrencyPill } from '../core/ui/currency-pill';
     .level-pill strong {
       color: var(--accent-bright);
       font-size: var(--fs-sm);
+    }
+    .offline-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 4px 11px;
+      border-radius: var(--r-full);
+      border: 1px solid color-mix(in srgb, var(--accent) 36%, var(--line-strong));
+      background: color-mix(in srgb, var(--accent) 12%, rgba(14,14,24,0.8));
+      color: var(--accent-bright);
+      box-shadow: var(--glass-edge);
+      font-size: var(--fs-xs);
+      font-weight: 900;
+      white-space: nowrap;
     }
 
     .tools {

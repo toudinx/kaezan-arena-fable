@@ -145,6 +145,16 @@ export class ApiService {
     await this.refreshAccount();
   }
 
+  async getAdminBanners(): Promise<{ activeWaifuIds: string[]; allWaifuIds: string[] }> {
+    return this.request('GET', '/admin/banners');
+  }
+
+  async saveAdminBanners(waifuIds: string[]): Promise<string[]> {
+    const res = await this.request<{ activeWaifuIds: string[] }>('PUT', '/admin/banners', { waifuIds });
+    await this.reloadCatalog();
+    return res.activeWaifuIds;
+  }
+
   async grantAdminItem(itemId: number, count = 1): Promise<void> {
     await this.request('POST', `/admin/items/${itemId}/grant`, { count });
     await this.refreshAccount();

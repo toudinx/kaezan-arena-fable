@@ -1,3 +1,4 @@
+using KaezanArenaFable.Api.Content;
 using KaezanArenaFable.Api.Domain;
 
 namespace KaezanArenaFable.Api.Meta;
@@ -19,18 +20,41 @@ public sealed record PullResponse(
 /// Featured 50/50 keeps its guarantee after losing one.
 /// Dupes convert to per-waifu Echo Shards used for ascension (Tibia outfit addons).
 /// </summary>
-public sealed class GachaService(AccountStore store, ItemRegistry items)
+public sealed class GachaService(AccountStore store, ItemRegistry items, ContentStore content)
 {
-    public static readonly IReadOnlyList<BannerDef> Banners =
-    [
-        new("banner:nightmare", "Chamado do Abismo", "Banner promocional: taxa aumentada para Velvet, Arauto do Pesadelo.", Waifus.FeaturedFiveStarId),
-        new("banner:standard", "Convocação Padrão", "Banner permanente com todas as Kaelis.", null),
-    ];
+    private static readonly BannerDef StandardBanner =
+        new("banner:standard", "Convocação Padrão", "Banner permanente com todas as Kaelis.", null);
+
+    /// <summary>
+    /// ID estável do banner para uma waifu. Velvet mantém "banner:nightmare" por compatibilidade
+    /// de pity; demais usam "banner:{sufixo}", ex.: "banner:rin".
+    /// </summary>
+    public static string BannerIdFor(string waifuId) =>
+        waifuId == Waifus.FeaturedFiveStarId ? "banner:nightmare" : $"banner:{waifuId[6..]}";
+
+    /// <summary>
+    /// Banners ativos: waifus em destaque (da ContentStore) + padrão fixo ao final.
+    /// </summary>
+    public IReadOnlyList<BannerDef> GetBanners()
+    {
+        var result = new List<BannerDef>();
+        foreach (var waifuId in content.ActiveBannerWaifuIds)
+        {
+            if (!Waifus.ById.TryGetValue(waifuId, out var waifu)) continue;
+            result.Add(new BannerDef(
+                BannerIdFor(waifuId),
+                waifu.Title,
+                $"Banner promocional: taxa aumentada para {waifu.Name}, {waifu.Title}.",
+                waifuId));
+        }
+        result.Add(StandardBanner);
+        return result;
+    }
 
     public PullResponse Pull(string bannerId, int count)
     {
         if (count is not (1 or 10)) throw new ArgumentException("count deve ser 1 ou 10");
-        var banner = Banners.FirstOrDefault(b => b.Id == bannerId)
+        var banner = GetBanners().FirstOrDefault(b => b.Id == bannerId)
                      ?? throw new ArgumentException("banner desconhecido");
         var cost = GameConfig.PullCostKaeros * count;
 

@@ -1,6 +1,7 @@
 import { Component, OnDestroy, computed, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../../core/api.service';
+import { normalizeFarmRunCount, readFarmRunCount } from '../../core/farm-settings';
 import { KaeliArtService } from '../../core/kaeli-art.service';
 import { OutfitPreview } from '../../core/outfit-preview';
 import { tierBiome } from '../../core/tier-biomes';
@@ -76,6 +77,7 @@ import { ELEMENT_LABELS, RARITY_COLORS, SkinDef, WaifuDef } from '../../core/typ
               </div>
 
               <div class="actions">
+                <span class="run-plan">{{ runCount() }} run{{ runCount() > 1 ? 's' : '' }}</span>
                 <button class="pill-btn secondary" (click)="details(w)">Detalhes</button>
                 <button class="pill-btn" (click)="enter()">Continuar</button>
               </div>
@@ -310,6 +312,18 @@ import { ELEMENT_LABELS, RARITY_COLORS, SkinDef, WaifuDef } from '../../core/typ
       flex-wrap: wrap;
       padding-top: var(--sp-3);
     }
+    .run-plan {
+      display: inline-flex;
+      align-items: center;
+      min-height: 42px;
+      padding: 0 14px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--r-full);
+      background: rgba(14, 14, 24, 0.58);
+      color: var(--text-dim);
+      font-size: var(--fs-sm);
+      font-weight: 800;
+    }
     .muted { color: var(--text-mute); }
 
     @media (max-width: 940px) {
@@ -328,6 +342,7 @@ import { ELEMENT_LABELS, RARITY_COLORS, SkinDef, WaifuDef } from '../../core/typ
 export class PrerunPage implements OnDestroy {
   readonly tierNum = signal(1);
   readonly selected = signal<WaifuDef | null>(null);
+  readonly runCount = signal(1);
 
   readonly tierDef = computed(() =>
     this.api.catalog()?.tiers.find((t) => t.tier === this.tierNum()) ?? null);
@@ -350,6 +365,7 @@ export class PrerunPage implements OnDestroy {
     private readonly art: KaeliArtService,
   ) {
     this.tierNum.set(Number(this.route.snapshot.paramMap.get('tier') ?? '1'));
+    this.runCount.set(normalizeFarmRunCount(Number(this.route.snapshot.queryParamMap.get('runs') ?? readFarmRunCount())));
     this.initTimer = setInterval(() => {
       if (this.selected()) { this.stopInit(); return; }
       const owned = this.ownedWaifus();
@@ -390,7 +406,7 @@ export class PrerunPage implements OnDestroy {
   enter(): void {
     const w = this.selected();
     if (!w) return;
-    void this.router.navigate(['/game', this.tierNum()], { queryParams: { waifu: w.id } });
+    void this.router.navigate(['/game', this.tierNum()], { queryParams: { waifu: w.id, runs: this.runCount() } });
   }
 
   back(): void { void this.router.navigate(['/hunt', 'dungeon']); }

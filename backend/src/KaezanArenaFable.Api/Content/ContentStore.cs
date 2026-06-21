@@ -22,11 +22,13 @@ public sealed class ContentStore
     private readonly string _monstersPath;
     private readonly string _kaeliSkinsPath;
     private readonly string _authoredItemsPath;
+    private readonly string _bannersPath;
     private readonly object _lock = new();
     private List<DungeonTier> _tiers;
     private List<MonsterDefinition> _monsters;
     private List<KaeliSkinDefinition> _kaeliSkins;
     private List<AuthoredItemDefinition> _authoredItems;
+    private List<string> _activeBannerWaifuIds;
 
     public ContentStore(IWebHostEnvironment env)
     {
@@ -36,10 +38,12 @@ public sealed class ContentStore
         _monstersPath = Path.Combine(dir, "monsters.json");
         _kaeliSkinsPath = Path.Combine(dir, "kaeli-skins.json");
         _authoredItemsPath = Path.Combine(dir, "authored-items.json");
+        _bannersPath = Path.Combine(dir, "banners.json");
         _tiers = LoadTiers();
         _monsters = LoadMonsters();
         _kaeliSkins = LoadKaeliSkins();
         _authoredItems = LoadAuthoredItems();
+        _activeBannerWaifuIds = LoadActiveBanners();
     }
 
     private List<DungeonTier> LoadTiers()
@@ -367,6 +371,43 @@ public sealed class ContentStore
             _authoredItems.RemoveAt(index);
             WriteAuthoredItems(_authoredItems);
             return removed;
+        }
+    }
+
+    // ---- banners ativos (gacha) ----
+
+    private List<string> LoadActiveBanners()
+    {
+        if (File.Exists(_bannersPath))
+        {
+            try
+            {
+                var loaded = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(_bannersPath), JsonOpts);
+                if (loaded is { Count: > 0 }) return loaded;
+            }
+            catch (JsonException) { }
+        }
+        var seed = new List<string> { Domain.Waifus.FeaturedFiveStarId };
+        WriteActiveBanners(seed);
+        return seed;
+    }
+
+    private void WriteActiveBanners(List<string> ids) =>
+        File.WriteAllText(_bannersPath, JsonSerializer.Serialize(ids, JsonOpts));
+
+    public IReadOnlyList<string> ActiveBannerWaifuIds
+    {
+        get { lock (_lock) return _activeBannerWaifuIds.ToList(); }
+    }
+
+    public IReadOnlyList<string> SetActiveBanners(IReadOnlyList<string> waifuIds)
+    {
+        var next = waifuIds.Distinct().ToList();
+        lock (_lock)
+        {
+            _activeBannerWaifuIds = next;
+            WriteActiveBanners(_activeBannerWaifuIds);
+            return _activeBannerWaifuIds.ToList();
         }
     }
 

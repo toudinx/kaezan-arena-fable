@@ -35,7 +35,7 @@ public sealed class GameHub(
 
         // A Kaeli da run é explícita: o cliente manda quem entra (tela de pré-run). Sem waifuId
         // (compat), cai na fixada (ActiveWaifuId) e por fim na starter.
-        var (accountLevel, runWaifuId, ascension, bestiary, equipment, affinityXp, masteryNodes, skinId) =
+        var (accountLevel, runWaifuId, ascension, bestiary, equipment, affinityXp, masteryNodes, skinId, helperProfile) =
             store.Read(s =>
             {
                 var target = waifuId is { Length: > 0 } && s.OwnedWaifus.Contains(waifuId)
@@ -52,7 +52,8 @@ public sealed class GameHub(
                     loadout?.ToDictionary() ?? [],
                     s.AffinityXp.GetValueOrDefault(target),
                     s.Mastery.TryGetValue(target, out var mastery) ? mastery.Nodes.ToList() : [],
-                    s.SelectedSkins.GetValueOrDefault(target));
+                    s.SelectedSkins.GetValueOrDefault(target),
+                    s.HelperProfiles.GetValueOrDefault(target, ""));
             });
 
         if (accountLevel < tierDef.RequiredAccountLevel)
@@ -71,7 +72,8 @@ public sealed class GameHub(
 
         var equipmentStats = EquipmentStatAggregator.Aggregate(equipment, items.All);
         var world = new GameWorld(
-            runSeed, tierDef, waifu, ascension, data, monsters, bestiary, equipmentStats, kaeliLoadout, items);
+            runSeed, tierDef, waifu, ascension, data, monsters, bestiary, equipmentStats, kaeliLoadout, items,
+            helperProfile);
         runs.StartRun(Context.ConnectionId, world);
         return new { seed = runSeed, tier = tierDef.Tier, tierName = tierDef.Name, waifuId = waifu.Id, resumed = false };
     }
@@ -91,16 +93,32 @@ public sealed class GameHub(
     public void ToggleStance() =>
         runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.ToggleStance, 0, 0, null));
 
-    public void SetAutoHelper(bool targeting, bool skills, bool ultimate, string targetPreference, string movementMode)
+    public void SetAutoHelper(
+        bool targeting, bool skills, bool ultimate, string targetPreference, string movementMode,
+        bool autoHeal, int autoHealPct, string navMode, bool autoCards)
     {
-        var flags = (targeting ? 1 : 0) | (skills ? 2 : 0) | (ultimate ? 4 : 0);
+        var flags = (targeting ? 1 : 0) | (skills ? 2 : 0) | (ultimate ? 4 : 0)
+                    | (autoHeal ? GameConfig.AutoHelperAutoHealFlag : 0)
+                    | (autoCards ? GameConfig.AutoHelperAutoCardsFlag : 0);
         var movement = movementMode switch
         {
             GameConfig.AutoHelperMovementModeFollow => GameConfig.AutoHelperMovementModeFollowCode,
             GameConfig.AutoHelperMovementModeAvoid => GameConfig.AutoHelperMovementModeAvoidCode,
             _ => GameConfig.AutoHelperMovementModeNoneCode
         };
-        runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.ToggleAutoHelper, flags, movement, targetPreference));
+        // S = "targetPreference|navMode|healPct" (um único campo de string no comando).
+        var payload = $"{targetPreference}|{GameConfig.NormalizeAutoHelperNav(navMode)}|{GameConfig.ClampHealPct(autoHealPct)}";
+        runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.ToggleAutoHelper, flags, movement, payload));
+    }
+
+    // G-10: persiste a config do helper como default da Kaeli da run (carregado no próximo JoinRun).
+    public void SaveHelperProfile()
+    {
+        var run = runs.GetRun(Context.ConnectionId);
+        if (run is null) return;
+        var encoded = run.EncodeHelperProfile();
+        var waifuId = run.Waifu.Id;
+        store.Mutate(s => s.HelperProfiles[waifuId] = encoded);
     }
 
     public void Interact(int x, int y) =>
@@ -108,6 +126,12 @@ public sealed class GameHub(
 
     public void ChooseCard(string cardId) =>
         runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.ChooseCard, 0, 0, cardId));
+
+    public void RerollCards() =>
+        runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.RerollCards, 0, 0, null));
+
+    public void BanCard(string cardId) =>
+        runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.BanCard, 0, 0, cardId));
 
     public void Abandon() => runs.AbandonRun(Context.ConnectionId);
 

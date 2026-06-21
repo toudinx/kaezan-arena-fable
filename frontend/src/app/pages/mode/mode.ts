@@ -1,6 +1,7 @@
 import { Component, computed, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../../core/api.service';
+import { readFarmRunCount, normalizeFarmRunCount, writeFarmRunCount } from '../../core/farm-settings';
 import { GAME_MODES } from '../../core/game-modes';
 import { ItemIcon } from '../../core/item-icon';
 import { OutfitPreview } from '../../core/outfit-preview';
@@ -90,6 +91,24 @@ import { MonsterCatalogEntry } from '../../core/types';
                     } @empty {
                       <small class="muted">Loot nao catalogado.</small>
                     }
+                  </div>
+                </div>
+
+                <div class="farm-plan" [class.multi]="runCount() > 1">
+                  <div class="farm-head">
+                    <span>Tentativas</span>
+                    <b>{{ runCount() }}x</b>
+                  </div>
+                  <div class="farm-controls">
+                    <button class="farm-step" (click)="adjustRunCount(-1)" [disabled]="runCount() <= farmMin()">-</button>
+                    <input type="range"
+                           [min]="farmMin()" [max]="farmMax()" [value]="runCount()"
+                           (input)="setRunCount($any($event.target).value)" />
+                    <button class="farm-step" (click)="adjustRunCount(1)" [disabled]="runCount() >= farmMax()">+</button>
+                  </div>
+                  <div class="farm-cost">
+                    <span>{{ farmEnergyPerRun() }} energia por run</span>
+                    <b>{{ plannedEnergy() }} / {{ farmEnergyCap() }}</b>
                   </div>
                 </div>
 
@@ -283,6 +302,61 @@ import { MonsterCatalogEntry } from '../../core/types';
     .mob-lines span.elite { color: var(--rarity-4); margin-top: 4px; }
     .mob-lines p { margin: 0; color: var(--text-dim); font-size: 0.92rem; line-height: 1.55; }
     .rewards { display: flex; flex-direction: column; gap: 10px; }
+    .farm-plan {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 1px solid color-mix(in srgb, var(--bc) 26%, var(--line));
+      border-radius: var(--r-sm);
+      background: rgba(12, 12, 20, 0.48);
+      box-shadow: var(--glass-edge);
+    }
+    .farm-plan.multi {
+      border-color: color-mix(in srgb, var(--bc) 58%, white 8%);
+      background: color-mix(in srgb, var(--bc) 11%, rgba(12,12,20,0.58));
+    }
+    .farm-head,
+    .farm-cost,
+    .farm-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .farm-head { justify-content: space-between; }
+    .farm-head span,
+    .farm-cost span {
+      color: var(--text-mute);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .farm-head b {
+      color: var(--text);
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 650;
+      line-height: 1;
+    }
+    .farm-controls input {
+      flex: 1;
+      min-width: 0;
+      accent-color: var(--bc);
+    }
+    .farm-step {
+      width: 34px;
+      height: 28px;
+      border: 1px solid color-mix(in srgb, var(--bc) 42%, var(--line-strong));
+      border-radius: var(--r-full);
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      font-size: 1rem;
+      font-weight: 900;
+    }
+    .farm-step:disabled { opacity: 0.4; }
+    .farm-cost { justify-content: space-between; }
+    .farm-cost b { color: color-mix(in srgb, var(--bc) 76%, white); font-size: 0.9rem; }
     .actions {
       display: flex;
       justify-content: flex-end;
@@ -333,6 +407,7 @@ export class ModeSelectPage {
     return this.api.catalog()?.monsters.find((m) => m.name === t.boss) ?? null;
   });
   readonly bossLoot = computed(() => this.bossMonster()?.loot.slice(0, 6) ?? []);
+  readonly runCount = signal(readFarmRunCount());
 
   constructor(
     private readonly api: ApiService,
@@ -347,6 +422,17 @@ export class ModeSelectPage {
   clears(tier: number): number { return this.api.account()?.tierClears?.[String(tier)] ?? 0; }
   roman(tier: number): string { return ['I', 'II', 'III', 'IV', 'V'][tier - 1] ?? String(tier); }
   select(tier: number): void { this.selectedNum.set(tier); }
-  start(tier: number): void { void this.router.navigate(['/play', tier]); }
+  farmMin(): number { return this.api.catalog()?.farm.minRuns ?? 1; }
+  farmMax(): number { return this.api.catalog()?.farm.maxRuns ?? 5; }
+  farmEnergyPerRun(): number { return this.api.catalog()?.farm.energyPerRun ?? 60; }
+  farmEnergyCap(): number { return this.api.catalog()?.farm.energyCap ?? 300; }
+  plannedEnergy(): number { return this.runCount() * this.farmEnergyPerRun(); }
+  setRunCount(value: number | string): void {
+    const count = normalizeFarmRunCount(Number(value), this.farmMin(), this.farmMax());
+    this.runCount.set(count);
+    writeFarmRunCount(count, this.farmMin(), this.farmMax());
+  }
+  adjustRunCount(delta: number): void { this.setRunCount(this.runCount() + delta); }
+  start(tier: number): void { void this.router.navigate(['/play', tier], { queryParams: { runs: this.runCount() } }); }
   back(): void { void this.router.navigate(['/hunt']); }
 }

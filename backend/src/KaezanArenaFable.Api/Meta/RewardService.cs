@@ -3,9 +3,53 @@ using KaezanArenaFable.Api.Engine;
 
 namespace KaezanArenaFable.Api.Meta;
 
+public sealed record OfflineProgressionReward(
+    long ElapsedMinutes,
+    long CreditedMinutes,
+    long Gold,
+    long AccountXp,
+    int Tier,
+    bool Capped);
+
 /// <summary>Applies a finished run to the account: currencies, xp, bestiary, inventory, dailies.</summary>
 public sealed class RewardService(AccountStore store, DailyService dailies)
 {
+    public OfflineProgressionReward? ClaimOfflineProgression() =>
+        store.Mutate(state => ClaimOfflineProgression(state, DateTimeOffset.UtcNow));
+
+    public static OfflineProgressionReward? ClaimOfflineProgression(AccountState state, DateTimeOffset now)
+    {
+        if (!DateTimeOffset.TryParse(state.LastSeenUtc, out var lastSeen) || lastSeen > now)
+        {
+            state.LastSeenUtc = now.ToString("O");
+            return null;
+        }
+
+        var elapsedMinutes = (long)Math.Floor((now - lastSeen).TotalMinutes);
+        var creditedMinutes = Math.Min(elapsedMinutes, GameConfig.OfflineProgressCapMinutes);
+        state.LastSeenUtc = now.ToString("O");
+        if (creditedMinutes < GameConfig.OfflineProgressMinMinutes) return null;
+
+        var tier = Math.Clamp(
+            state.TierClears.Where(entry => entry.Value > 0)
+                .Select(entry => entry.Key)
+                .DefaultIfEmpty(1)
+                .Max(),
+            1, 5);
+        var tierMult = GameConfig.OfflineProgressTierMultiplier(tier);
+        var gold = (long)Math.Floor(GameConfig.OfflineProgressGoldPerHour * tierMult * creditedMinutes / 60.0);
+        var accountXp = (long)Math.Floor(GameConfig.OfflineProgressAccountXpPerHour * tierMult * creditedMinutes / 60.0);
+
+        if (gold <= 0 && accountXp <= 0) return null;
+
+        state.Gold += gold;
+        GrantAccountXp(state, accountXp);
+
+        return new OfflineProgressionReward(
+            elapsedMinutes, creditedMinutes, gold, accountXp, tier,
+            elapsedMinutes > GameConfig.OfflineProgressCapMinutes);
+    }
+
     public RunEndDto Apply(GameWorld world, RunEndDto end)
     {
         dailies.GetToday(); // roll the day if needed before progressing contracts

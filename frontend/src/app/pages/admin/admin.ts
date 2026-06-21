@@ -5,8 +5,10 @@ import { CreaturePreview } from './creature-preview';
 import { MonsterEditor } from './monster-editor';
 import { KaeliManager } from './kaeli-manager';
 import { ItemEditor } from './item-editor';
+import { KaeliArtService } from '../../core/kaeli-art.service';
+import { OutfitPreview } from '../../core/outfit-preview';
 
-type AdminMode = 'dungeons' | 'monsters' | 'kaelis' | 'items';
+type AdminMode = 'dungeons' | 'monsters' | 'kaelis' | 'items' | 'banners';
 type CatalogMode = 'monsters' | 'elites' | 'bosses';
 type MobKind = 'commonMobs' | 'eliteMobs';
 type DropZone = MobKind | 'boss';
@@ -14,7 +16,7 @@ type DropZone = MobKind | 'boss';
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CreaturePreview, MonsterEditor, KaeliManager, ItemEditor],
+  imports: [CreaturePreview, MonsterEditor, KaeliManager, ItemEditor, OutfitPreview],
   template: `
     <div class="page">
       <header class="titlebar">
@@ -29,6 +31,7 @@ type DropZone = MobKind | 'boss';
             <button type="button" [class.active]="pageMode() === 'items'" (click)="pageMode.set('items')">Items</button>
             <button type="button" [class.active]="pageMode() === 'dungeons'" (click)="pageMode.set('dungeons')">Dungeons</button>
             <button type="button" [class.active]="pageMode() === 'kaelis'" (click)="pageMode.set('kaelis')">Skins</button>
+            <button type="button" [class.active]="pageMode() === 'banners'" (click)="openBanners()">Banners</button>
           </div>
         </div>
       </header>
@@ -39,6 +42,68 @@ type DropZone = MobKind | 'boss';
         <app-kaeli-manager />
       } @else if (pageMode() === 'items') {
         <app-item-editor />
+      } @else if (pageMode() === 'banners') {
+        <section class="banners-editor">
+          @if (bannerStatus(); as st) {
+            <div class="status" [class.ok]="st.kind === 'ok'" [class.err]="st.kind === 'err'">{{ st.msg }}</div>
+          }
+          <div class="banners-head">
+            <div>
+              <span class="eyebrow">Gacha</span>
+              <h2>Banners ativos</h2>
+              <p class="banners-desc">Escolha até 3 personagens em destaque. O banner padrão é sempre incluído ao final.</p>
+            </div>
+            <button class="primary" type="button" [disabled]="bannerSaving() || activeBannerWaifuIds().length === 0" (click)="saveBanners()">
+              {{ bannerSaving() ? 'Salvando...' : 'Salvar banners' }}
+            </button>
+          </div>
+          <div class="banner-kaeli-grid">
+            @for (w of allWaifus(); track w.id) {
+              <button class="bk-card" type="button"
+                      [class.bk-active]="activeBannerWaifuIds().includes(w.id)"
+                      [class.bk-disabled]="!activeBannerWaifuIds().includes(w.id) && activeBannerWaifuIds().length >= 3"
+                      (click)="toggleBanner(w.id)">
+                <div class="bk-art">
+                  @if (thumb(w.id); as t) {
+                    <img [src]="t" alt="" />
+                  } @else {
+                    <app-outfit-preview [lookType]="w.lookType" [head]="w.head" [body]="w.body"
+                      [legs]="w.legs" [feet]="w.feet" [addons]="w.skins[0].addons ?? 0"
+                      [mountLookType]="w.skins[0].mountLookType ?? 0" [size]="56" [animate]="false" />
+                  }
+                </div>
+                <div class="bk-info">
+                  <strong>{{ w.name }}</strong>
+                  <span class="bk-title">{{ w.title }}</span>
+                  <span class="bk-el" [attr.data-el]="w.element">{{ w.element }}</span>
+                </div>
+                <span class="bk-check">{{ activeBannerWaifuIds().includes(w.id) ? '✓' : '' }}</span>
+                @if (activeBannerWaifuIds().includes(w.id)) {
+                  <span class="bk-order">{{ activeBannerWaifuIds().indexOf(w.id) + 1 }}</span>
+                }
+              </button>
+            }
+          </div>
+          <div class="banner-preview-row">
+            <span class="eyebrow">Ordem na tela de Recrutar</span>
+            <div class="banner-preview-list">
+              @for (id of activeBannerWaifuIds(); track id) {
+                @if (waifuById(id); as w) {
+                  <div class="bp-chip">
+                    <span class="bp-num">{{ $index + 1 }}</span>
+                    <span>{{ w.name }}</span>
+                    <button type="button" (click)="toggleBanner(w.id)">&times;</button>
+                  </div>
+                }
+              }
+              <div class="bp-chip bp-standard">
+                <span class="bp-num">{{ activeBannerWaifuIds().length + 1 }}</span>
+                <span>Padrão</span>
+                <span class="bp-lock">fixo</span>
+              </div>
+            </div>
+          </div>
+        </section>
       } @else {
         @if (status(); as state) {
           <div class="status" [class.ok]="state.kind === 'ok'" [class.err]="state.kind === 'err'">{{ state.msg }}</div>
@@ -289,10 +354,98 @@ type DropZone = MobKind | 'boss';
     .summary span { background: #11111a; border: 1px solid #29293a; border-radius: 4px; color: #77758b; font-size: 9px; padding: 6px; text-align: center; } .summary b { color: #d8d6e2; }
     @media (max-width: 1100px) { .workspace { grid-template-columns: 1fr; } .dungeon { max-height: none; position: static; } .creature-grid { max-height: none; } }
     @media (max-width: 720px) { .page { padding: 16px; } .titlebar, .header-actions { align-items: stretch; flex-direction: column; } .filters, .drop-zone { grid-template-columns: 1fr; } }
+
+    /* ---- banners editor ---- */
+    .banners-editor { max-width: 900px; }
+    .banners-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; border-bottom: 1px solid #29293a; padding-bottom: 14px; }
+    .banners-head h2 { margin: 2px 0 0; } .banners-head p { color: #8c899d; font-size: 12px; margin: 4px 0 0; }
+    .banners-desc { max-width: 440px; }
+    .banner-kaeli-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+    .bk-card {
+      position: relative; display: grid; grid-template-columns: 70px 1fr 22px; align-items: center;
+      gap: 0; background: #11111a; border: 1px solid #2b2b3c; border-radius: 6px;
+      cursor: pointer; overflow: hidden; min-height: 80px; text-align: left; font: inherit; color: #d9d7e5;
+      transition: border-color .15s, background .15s;
+    }
+    .bk-card:hover { border-color: #505068; background: #14141f; }
+    .bk-card.bk-active { border-color: #1db9aa; background: #0e2220; }
+    .bk-card.bk-disabled { opacity: .42; cursor: not-allowed; }
+    .bk-art {
+      height: 80px; background: radial-gradient(circle, #28293a, #12121b 70%);
+      display: grid; place-items: center; border-right: 1px solid #29293a; overflow: hidden;
+    }
+    .bk-art img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+    .bk-info { padding: 8px 6px; min-width: 0; }
+    .bk-info strong { display: block; font-size: 12px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bk-title { display: block; color: #9a98aa; font-size: 9px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bk-el { display: inline-block; margin-top: 5px; border-radius: 3px; background: #181823; border: 1px solid #303043; color: #70bbeb; font-size: 8px; padding: 2px 5px; text-transform: uppercase; }
+    .bk-check { color: #1db9aa; font-size: 16px; font-weight: 900; text-align: center; }
+    .bk-order {
+      position: absolute; top: 5px; right: 5px;
+      background: #1db9aa; color: #061d1a; border-radius: 3px;
+      font-size: 9px; font-weight: 900; padding: 2px 5px;
+    }
+    .banner-preview-row { margin-top: 22px; }
+    .banner-preview-row > .eyebrow { display: block; margin-bottom: 8px; }
+    .banner-preview-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .bp-chip {
+      display: flex; align-items: center; gap: 6px;
+      background: #11111a; border: 1px solid #2b2b3c; border-radius: 4px; padding: 5px 8px;
+    }
+    .bp-chip.bp-standard { border-color: #303043; opacity: .55; }
+    .bp-num { background: #1db9aa; color: #061d1a; border-radius: 3px; font-size: 8px; font-weight: 900; padding: 2px 5px; }
+    .bp-standard .bp-num { background: #8c899d; }
+    .bp-chip span { font-size: 11px; }
+    .bp-chip button { background: transparent; border: 0; color: #d97884; font-size: 14px; padding: 0; cursor: pointer; line-height: 1; }
+    .bp-lock { color: #555468; font-size: 9px; }
   `],
 })
 export class AdminPage implements OnInit {
   readonly pageMode = signal<AdminMode>('monsters');
+
+  // ---- banners ----
+  readonly activeBannerWaifuIds = signal<string[]>([]);
+  readonly bannerSaving = signal(false);
+  readonly bannerStatus = signal<{ kind: 'ok' | 'err'; msg: string } | null>(null);
+  readonly allWaifus = computed(() => this.api.catalog()?.waifus ?? []);
+
+  waifuById(id: string) { return this.allWaifus().find(w => w.id === id) ?? null; }
+  thumb(id: string): string | null { return this.art.thumb(id); }
+
+  toggleBanner(waifuId: string): void {
+    const current = this.activeBannerWaifuIds();
+    if (current.includes(waifuId)) {
+      this.activeBannerWaifuIds.set(current.filter(id => id !== waifuId));
+    } else if (current.length < 3) {
+      this.activeBannerWaifuIds.set([...current, waifuId]);
+    }
+    this.bannerStatus.set(null);
+  }
+
+  async openBanners(): Promise<void> {
+    this.pageMode.set('banners');
+    try {
+      const res = await this.api.getAdminBanners();
+      this.activeBannerWaifuIds.set(res.activeWaifuIds);
+    } catch (err) {
+      this.bannerStatus.set({ kind: 'err', msg: (err as Error).message });
+    }
+  }
+
+  async saveBanners(): Promise<void> {
+    this.bannerSaving.set(true);
+    this.bannerStatus.set(null);
+    try {
+      await this.api.saveAdminBanners(this.activeBannerWaifuIds());
+      this.bannerStatus.set({ kind: 'ok', msg: 'Banners salvos. A tela de Recrutar já reflete a mudança.' });
+    } catch (err) {
+      this.bannerStatus.set({ kind: 'err', msg: (err as Error).message });
+    } finally {
+      this.bannerSaving.set(false);
+    }
+  }
+
+  // ---- dungeons ----
   readonly draft = signal<DungeonTier[]>([]);
   readonly sel = signal(0);
   readonly mode = signal<CatalogMode>('monsters');
@@ -339,7 +492,7 @@ export class AdminPage implements OnInit {
     }).sort((a, b) => a.name.localeCompare(b.name));
   });
 
-  constructor(private readonly api: ApiService) {}
+  constructor(private readonly api: ApiService, private readonly art: KaeliArtService) {}
 
   async ngOnInit(): Promise<void> {
     try {

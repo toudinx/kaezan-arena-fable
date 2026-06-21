@@ -6,8 +6,9 @@ import { ItemIcon } from '../../core/item-icon';
 import { OutfitPreview } from '../../core/outfit-preview';
 import { KaeliIdle } from '../../core/ui/kaeli-idle';
 import {
-  ClassDef, ClassStanceDef, ELEMENT_LABELS, EquipmentSlot, ItemCatalogEntry,
+  ClassDef, ClassStanceDef, ELEMENT_LABELS, EquipmentSlot, GEAR_MATERIAL_ID_BASE, ItemCatalogEntry,
   MasteryNodeDef, MasteryState, RARITY_COLORS, SET_TIERS, SkillDef, SkinDef, WaifuDef, equipKey,
+  isGearMaterial,
 } from '../../core/types';
 
 type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
@@ -236,6 +237,18 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
                   </div>
                   <span class="muted small tier-hint">A dungeon usa o set do tier selecionado.</span>
                 </div>
+                <!-- G-09: material de Eco que os baús da caçada dropam (crescimento de conta) -->
+                @if (gearMaterials().length > 0) {
+                  <div class="materials">
+                    <span class="eyebrow">Materiais de Eco</span>
+                    <div class="mat-chips">
+                      @for (m of gearMaterials(); track m.tier) {
+                        <span class="mat-chip" [class.active]="m.tier === selectedTier()">T{{ m.tier }} <b>×{{ m.count }}</b></span>
+                      }
+                    </div>
+                    <span class="muted small mat-hint">Saque dos baús da caçada (altares, amaldiçoados e mímicos). Forja de gear chega numa próxima atualização.</span>
+                  </div>
+                }
                 @if (equipmentTotals(w.id).length > 0) {
                   <div class="equip-summary">
                     @for (stat of equipmentTotals(w.id); track stat.label) {
@@ -590,6 +603,13 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .tier-tab:hover:not(.active) { color: var(--text); }
     .tier-tab.active { background: color-mix(in srgb, var(--gold) 16%, var(--bg-3)); color: var(--gold-bright); box-shadow: var(--glass-edge); }
     .tier-hint { flex-basis: 100%; }
+    /* G-09: materiais de Eco (saque dos baús) */
+    .materials { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin: var(--sp-1) 0 var(--sp-2); }
+    .mat-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+    .mat-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 11px; font-weight: 800; color: var(--text-dim); background: var(--bg-2); border: 1px solid var(--line); border-radius: 999px; }
+    .mat-chip b { color: #c47dff; }
+    .mat-chip.active { border-color: color-mix(in srgb, #c47dff 50%, var(--line)); color: var(--text); box-shadow: var(--glass-edge); }
+    .mat-hint { flex-basis: 100%; }
     .equip-summary { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
     .summary-stat { flex: 1; min-width: 64px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 8px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md); }
     .summary-stat span { font-size: 10px; color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.05em; }
@@ -995,6 +1015,14 @@ export class KaelisPage implements OnDestroy {
   selectTier(tier: number): void {
     this.selectedTier.set(tier);
     this.selectedEquipmentSlot.set(null);
+  }
+
+  /** G-09: material de Eco por tier (lido do inventário da conta; ids sintéticos fora do catálogo). */
+  gearMaterials(): { tier: number; count: number }[] {
+    return (this.api.account()?.inventory ?? [])
+      .filter((stack) => isGearMaterial(stack.itemId))
+      .map((stack) => ({ tier: stack.itemId - GEAR_MATERIAL_ID_BASE, count: stack.count }))
+      .sort((a, b) => a.tier - b.tier);
   }
 
   equippedItem(waifuId: string, slot: EquipmentSlot): ItemCatalogEntry | undefined {

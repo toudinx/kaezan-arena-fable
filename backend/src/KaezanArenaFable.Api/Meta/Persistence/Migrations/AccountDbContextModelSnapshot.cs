@@ -162,6 +162,14 @@ namespace KaezanArenaFable.Api.Meta.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("kaeros");
 
+                    b.Property<string>("LastSeenUtc")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("varchar(40)")
+                        .HasDefaultValue("")
+                        .HasColumnName("last_seen_utc");
+
                     b.Property<int>("Level")
                         .HasColumnType("int")
                         .HasColumnName("level");

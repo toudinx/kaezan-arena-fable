@@ -2,16 +2,18 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "kaezan-fable-frontend",
+      "name": "frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start", "--prefix", "frontend"],
-      "port": 4200
+      "runtimeArgs": ["start"],
+      "port": 4200,
+      "autoPort": false
     },
     {
       "name": "kaezan-fable-preview",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "start", "--prefix", "frontend", "--", "--port", "4321"],
-      "port": 4321
+      "port": 4321,
+      "autoPort": true
     }
   ]
 }

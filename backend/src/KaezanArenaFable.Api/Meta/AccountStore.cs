@@ -45,6 +45,7 @@ public sealed class AccountStore
         AccountXp = source.AccountXp,
         Gold = source.Gold,
         Kaeros = source.Kaeros,
+        LastSeenUtc = source.LastSeenUtc,
         OwnedWaifus = [.. source.OwnedWaifus],
         Shards = source.Shards.ToDictionary(),
         Ascension = source.Ascension.ToDictionary(),
@@ -96,6 +97,7 @@ public sealed class AccountStore
         }).ToList(),
         RunsPlayed = source.RunsPlayed,
         RunsWon = source.RunsWon,
-        TierClears = source.TierClears.ToDictionary()
+        TierClears = source.TierClears.ToDictionary(),
+        HelperProfiles = source.HelperProfiles.ToDictionary()
     };
 }

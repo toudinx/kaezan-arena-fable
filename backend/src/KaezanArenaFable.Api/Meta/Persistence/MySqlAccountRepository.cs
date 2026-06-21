@@ -161,6 +161,7 @@ public sealed class MySqlAccountRepository(
             AccountXp = account.Xp,
             Gold = account.Gold,
             Kaeros = account.Kaeros,
+            LastSeenUtc = account.LastSeenUtc,
             ActiveWaifuId = account.ActiveWaifuId,
             DailyDate = account.DailyDate,
             GiftsDate = account.GiftsDate,
@@ -244,6 +245,7 @@ public sealed class MySqlAccountRepository(
         account.Xp = state.AccountXp;
         account.Gold = state.Gold;
         account.Kaeros = state.Kaeros;
+        account.LastSeenUtc = state.LastSeenUtc;
         account.ActiveWaifuId = state.ActiveWaifuId;
         account.DailyDate = state.DailyDate;
         account.GiftsDate = state.GiftsDate;

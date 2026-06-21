@@ -4,9 +4,24 @@ public sealed record MapDto(
     int Floor, int W, int H,
     ushort[] Ground, ushort[] Wall, ushort[] Decor, bool[] Blocked,
     int EntryX, int EntryY, int? LadderX, int? LadderY,
-    List<PoiDto> Pois);
+    List<PoiDto> Pois,
+    // G-07: grafo de salas + bioma. Rooms expõe o tipo de cada sala (combate/elite/tesouro/eco/
+    // evento/miniboss/boss) pro minimapa desenhar ícones; Biome é a paleta de color-grade do estrato.
+    List<RoomDto> Rooms, BiomeDto Biome);
 
-public sealed record PoiDto(int Id, string Kind, int X, int Y, int ItemId, bool Used);
+// G-09: Variant expõe só "cursed" (amaldiçoado, telegrafado) ou "" — mímicos chegam como "" (surpresa).
+public sealed record PoiDto(int Id, string Kind, int X, int Y, int ItemId, string Variant, bool Used);
+
+/// <summary>G-07: retângulo + tipo de uma sala, para o minimapa pintar a rota antecipável.</summary>
+public sealed record RoomDto(int X, int Y, int W, int H, string Role);
+
+/// <summary>G-07: paleta cosmética do estrato (color-grade/luz/névoa/partículas). Só o front lê.</summary>
+public sealed record BiomeDto(
+    string Name,
+    int TintR, int TintG, int TintB, double TintStrength,
+    int FogR, int FogG, int FogB, double FogStrength,
+    double Vignette,
+    int ParticleR, int ParticleG, int ParticleB, double ParticleDensity, int ParticleDrift);
 
 public sealed record SnapshotDto(
     long Tick, long SimulationMs, int Floor,
@@ -26,7 +41,8 @@ public sealed record EquipmentStatsDto(
 
 public sealed record AutoHelperSettingsDto(
     bool Targeting, bool Skills, bool Ultimate,
-    string TargetPreference, string MovementMode, string DefaultMovementMode);
+    string TargetPreference, string MovementMode, string DefaultMovementMode,
+    bool AutoHeal, int AutoHealPct, string NavMode, bool AutoCards);
 
 public sealed record PlayerDto(
     int Id, int X, int Y, int Dir, int Hp, int MaxHp,
@@ -78,11 +94,16 @@ public sealed record RunStateDto(
     long Gold, int Kills,
     List<CardStackDto> Cards,
     List<CardOfferDto>? Offer,
+    int CardRerollsRemaining, int BannedCardsCount, int CardRerollGoldCost,
     int? BossHp, int? BossMaxHp, string? BossName,
     double? BossPosture, double? BossPostureMax, bool BossStaggered, int BossPostureCycle,
     long ElapsedMs,
     RunEndDto? Ended,
-    List<RewardItemDto> Items);
+    List<RewardItemDto> Items,
+    NavTargetDto? NavTarget);
+
+/// <summary>G-10: para onde o auto-loot está andando (tile + tipo), só pra legibilidade no cliente.</summary>
+public sealed record NavTargetDto(int X, int Y, string Kind);
 
 public sealed record CardStackDto(
     string Id, string Name, int Stacks,

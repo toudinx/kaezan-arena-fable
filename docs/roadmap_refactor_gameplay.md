@@ -1,4 +1,4 @@
-# Roadmap — Refatoração da Gameplay Base
+						# Roadmap — Refatoração da Gameplay Base
 
 > **Como usar este arquivo.** Cada `G-NN` abaixo é uma unidade de trabalho **auto-contida**: o
 > agente que executa começa "frio", então o prompt já traz o contexto que ele precisa. Você dispara
@@ -455,7 +455,12 @@ muda o jeito de jogar (ex. Gaia `pack` marcando 2 Presas; Rin `wildfire` com tud
 
 # G-05 — Reroll + Banir (Hades-style)
 
-Resumo: _(preencher ao concluir)_
+Resumo: ✅ Reroll/banir implementados no fluxo autoritativo de oferta: `GameWorld` ganhou
+`RerollCards`, `BanCard`, `_bannedCards` e 2 rerolls por run em `GameConfig`; reroll respeita bans,
+stacks, filtro de Kaeli e pesos de raridade/progresso da run, evitando repetir a oferta quando ha
+alternativa; banir remove a carta do pool pelo resto da run e repoe a oferta quando possivel.
+Snapshot expoe rerolls restantes/banidas; Hub + cliente SignalR + overlay exibem botao de reroll com
+contador e banir por carta. `dotnet build` + `npx ng build` limpos.
 
 - **Modelo:** GPT-5.5 (Codex) · **Effort:** medium · **Skill:** nenhuma · **Depende de:** G-04 · **Paraleliza com:** G-08 (Onda 3) — ⚠ **não** com G-09 (cadeia de cartas em `recruit/game.ts`/`GameWorld`)
 
@@ -486,7 +491,17 @@ volta.
 
 # G-06 — Cadência: Beats Fixos
 
-Resumo: _(preencher ao concluir)_
+Resumo: ✅ Level-up deixou de abrir tela: `GainXp` agora chama `GrantAutoStatus` (sorteia 1 carta
+comum não-banida/não-capada via `_rng` e aplica um stack na hora — drip automático). As escolhas
+pesadas vêm de **beats** roteados por `OfferCardBeat()`: elite de sala comum derrotado
+(`Actor.IsElite`, marcado só no spawn de salas comuns — guardas de boss/emboscada não contam), andar
+limpo (`DescendToFloor`, `OfferChoiceOnFloorClear`) e a nova sala **Santuário de Eco**
+(`Room.Role="sanctuary"` + POI `kind:"sanctuary"`, altar 2478, interação em `TryInteract`). O teto
+`GameConfig.MaxCardChoicesPerRun=9` segura o alvo ~6-9; `WeightedPickByRarity` lê `RunChoiceProgress`
+(fração de escolhas concedidas) e `GameConfig.CardRarityWeight(rarity, progress)` interpola os pesos
+(começo comum/raro → fim raro/eco). Determinístico (só `_rng`/ordem estável; geração do santuário usa
+o `Rng` da run). Front: minimapa pinta o santuário em roxo-eco (`#c47dff`, beacon maior), realce/atalho
+[F] no mundo, reuso do fluxo de oferta (reroll/ban) do G-05. `dotnet build` + `npx ng build` limpos.
 
 - **Modelo:** Claude Code Opus 4.8 · **Effort:** high · **Skill:** nenhuma (`use context7` p/ APIs) · **Depende de:** G-04 · **Paraleliza com:** G-10 (Onda 4) — ⚠ **não** com G-07/G-09 (conflito em `DungeonGenerator.cs`)
 
@@ -520,7 +535,22 @@ minimapa + a escalada de raridade.
 
 # G-07 — Mapas: Grafo de Salas + Bioma por Estrato
 
-Resumo: _(preencher ao concluir)_
+Resumo: ✅ O corredor virou **grafo de salas** no `DungeonGenerator`: as salas agora se conectam por uma
+**árvore geradora espacial** (Prim por vizinho mais próximo a partir da entrada, determinística —
+distância Manhattan, desempate por índice) em vez da cadeia por ordem de spawn, criando ramos/becos
+reais + 1 elo de loop pra navegação. **Tipos de sala** explícitos na taxonomia
+`entry|mob(combate)|treasure|elite|hazard|miniboss|sanctuary|ladder|boss`: a saída é a sala mais
+distante (escada/boss) e as salas **fora do caminho entrada→saída** (detours, achados por BFS na árvore)
+recebem primeiro os papéis de recompensa/risco — **bifurcação risco/recompensa** literal ("seguro à
+frente vs. loot atrás do garfo"). Spawns por tipo: elite força um pacote de elites (`EliteRoomMaxElites`),
+hazard amplia o orçamento (swarm, `HazardBudgetMult`), miniboss = 1 elite reforçado (`MiniBossHpScale`) +
+escolta — todos beats previsíveis de G-06. `BiomeDef` ganhou `BiomeAtmosphere` (color-grade/névoa/vinheta/
+partículas por estrato, dado puramente cosmético) e o `MapDto` passou a expor `Rooms[]` + `Biome`.
+Front: `renderer.ts` aplica a **atmosfera** (tint multiply + névoa em gradiente + vinheta + motes à deriva
+semeados deterministicamente por `mulberry32`, sob o HUD pra não atrapalhar a leitura) e o **minimapa**
+desenha **ícones por tipo de sala** (elite `!`, miniboss `×`, hazard `?`, boss `★`; chest/santuário/escada
+já vêm dos POIs). Determinismo do gerador preservado (só `Rng` da run). `dotnet build` + `npx ng build`
+limpos.
 
 - **Modelo:** Claude Code Opus 4.8 · **Effort:** high · **Skill:** nenhuma (`use context7` p/ APIs) · **Depende de:** G-06 · **Paraleliza com:** G-11 (Onda 5) — ⚠ **não** com G-06/G-09 (conflito em `DungeonGenerator.cs`)
 
@@ -599,7 +629,19 @@ exceção e respeitam o `Rng` (determinismo).
 
 # G-09 — Baú = Altar de Eco / Loja da Run
 
-Resumo: _(preencher ao concluir)_
+Resumo: ✅ O baú virou **altar de Eco / loja da run** com três variantes sorteadas por baú
+(determinístico via `_rng` em `SpawnPois`): **comum** (abre uma oferta de carta reusando o beat de
+G-06 — overlay com reroll/banir de G-05 — além de ouro/itens), **amaldiçoado** (telegrafado: emboscada
+de comuns + maldição de lentidão no jogador, em troca de uma **oferta abençoada** ponderada como o fim
+da run via `OfferProgress`/`BlessedOfferProgress` + material garantido) e **mímico** (oculto do cliente:
+nasce um elite reforçado em cima do baú, `MimicHpScale`, que dropa material ao cair). A **loja** é o
+**reroll pago**: esgotados os grátis, `RerollCards` cobra `CardRerollGoldCost` em ouro (UI mostra o
+preço e desabilita sem saldo). **Material de gear** (`Estilhaço de Eco · T{tier}`) entra como item
+sintético (`GearMaterialItemId`, fora do catálogo) que flui pelo inventário da conta nos dois stores
+sem migração; é filtrado da Mochila e aparece numa faixa **Materiais de Eco** na aba Equipamento da
+Kaeli (forja/craft fica em "Depois"). `PoiDto.Variant` só expõe `cursed`; o renderer dá névoa/borda
+magenta e ícone roxo no minimapa ao baú amaldiçoado. Determinístico; constantes em `GameConfig`.
+`dotnet build` + `npx ng build` limpos.
 
 - **Modelo:** Claude Code Opus 4.8 · **Effort:** high · **Skill:** nenhuma · **Depende de:** G-04, G-05, G-07 · **Paraleliza com:** — (Onda 6, solo)
 
@@ -636,7 +678,26 @@ material chegando na Mochila/tela de gear.
 
 # G-10 — Painel HELPER → Editor de Táticas Gambit (FF12)
 
-Resumo: _(preencher ao concluir)_
+Resumo: ✅ O painel HELPER virou um **controle de autoplay estilo on/off de gacha** (UI em inglês,
+identidade glass + teal=on / echo-purple), sempre visível, com um *readout* em linguagem natural no
+topo. Seções: **Combat** (on/off Target/Skills/Ultimate + prioridade Nearest/Lowest HP), **Movement**
+(Stand/Follow/Avoid) e **Autopilot** — três automações **ligadas por default** (o jogo é autoplay-first):
+**Auto-heal** (poção abaixo de um limiar por **slider** 10–90%, default 50%), **Auto-pick cards**
+(resolve a oferta sozinho pegando a de maior raridade, após um flash de `AutoCardPickDelayMs`, pra não
+travar nos beats) e **Auto-loot** (o "cavebot": **BFS server-side** `NextNavStep` caminha até o baú
+**ou altar de Eco** ativo mais próximo, abre via `TryInteract`, repete; sem coletáveis segue pra saída/
+boss — sempre parando pra lutar quando um inimigo encosta; espera `AutoLootStartDelayMs`≈1s no início
+de cada andar). **Sem modo rush/skip** de propósito. Reusou o seam: `AutoHelperSettingsDto` ganhou
+`AutoHeal/AutoHealPct/NavMode/AutoCards`; `SetAutoHelper` empacota tudo (flags + `pref|nav|healPct`);
+`TickAutoHelper` faz auto-heal + roteia movimento pra `TickHelperNav` quando navMode=loot. **Profile
+por Kaeli** (1 default) persistido em `AccountState.HelperProfiles` (`GameHub.SaveHelperProfile` lê
+`world.EncodeHelperProfile()`; `JoinRun` injeta no ctor). `ToggleAutoHelper` passou a valer durante a
+oferta de carta (config não toca a simulação pausada). **Indicador de destino** (legibilidade, G-03):
+o backend expõe `run.navTarget` (tile + kind via `CurrentNavTargetDto`/`NavGoal`) e o `renderer`
+desenha um marcador pulsante no tile-alvo quando visível, ou uma seta na borda apontando a direção
+quando fora da tela (roxo=baú/altar, ciano=saída) — só leitura do snapshot, engine dono do pathing.
+Determinístico (só estado do tick + ordem estável; sem `Random`/`DateTime`). `dotnet build` +
+`npx ng build` limpos.
 
 - **Modelo:** Claude Code Opus 4.8 · **Effort:** high · **Skill:** nenhuma (`use context7` p/ APIs) · **Depende de:** — · **Paraleliza com:** G-06 (Onda 4) — ⚠ atenção a merge em `game.ts`
 
@@ -674,7 +735,10 @@ momento certo; recarregar e confirmar preset persistido.
 
 # G-11 — Farm/Auto-Repeat + Progressão Offline
 
-Resumo: _(preencher ao concluir)_
+Resumo: ✅ Auto-repeat do mesmo tier por lote de 1-5 tentativas escolhido em `/hunt/dungeon`
+(persistido no client e repassado ao deploy) reinicia a caça até o lote acabar; `/account` liquida progressão offline com
+`LastSeenUtc`, ouro+XP escalando pelo maior tier limpo e cap/taxa em `GameConfig`, com suporte JSON e
+migration MySQL.
 
 - **Modelo:** GPT-5.5 (Codex) · **Effort:** medium · **Skill:** nenhuma · **Depende de:** — · **Paraleliza com:** G-07 (Onda 5)
 

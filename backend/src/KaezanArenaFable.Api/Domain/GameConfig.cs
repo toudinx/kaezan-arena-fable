@@ -37,6 +37,32 @@ public static class GameConfig
     public const int AutoHelperMovementModeAvoidCode = 2;
     public const int AutoHelperFollowDistance = 1;
     public const int AutoHelperAvoidDistance = 2;
+
+    // G-10: automações do HELPER (estilo autoplay de gacha). Tudo determinístico no tick.
+    // Auto-heal: usa a poção da run quando a vida cai abaixo deste percentual (configurável na UI;
+    // a poção respeita seus próprios cargas/cooldown). 50% é o default; faixa 10..90.
+    public const int AutoHelperHealPctDefault = 50;
+    public const int AutoHelperHealPctMin = 10;
+    public const int AutoHelperHealPctMax = 90;
+    public static int ClampHealPct(int pct) => Math.Clamp(pct, AutoHelperHealPctMin, AutoHelperHealPctMax);
+    // Auto-pick de carta: na oferta, pega sozinho a de maior raridade (echo>rare>common; desempate
+    // por ordem estável). Pequeno atraso pra a oferta piscar na tela antes de resolver. Ligado por default.
+    public const int AutoHelperAutoCardsFlag = 16;
+    public const int AutoCardPickDelayMs = 700;
+    // Auto-loot ("cavebot" do helper): caminha sozinho até o baú/altar ativo mais próximo, abre e
+    // repete; sem mais nada pra coletar, segue pra saída — sempre lutando no caminho. Ligado por
+    // default. Não há modo "rush/skip" de propósito (não incentivar pular o mapa).
+    //   off  = pathing desligado (combate normal: stand/follow/avoid governam o movimento)
+    //   loot = explora coletando, depois sai
+    public const string AutoHelperNavOff = "off";
+    public const string AutoHelperNavLoot = "loot";
+    // Espera ~1s no início de cada andar antes de começar a andar sozinho (a tela carrega primeiro).
+    public const int AutoLootStartDelayMs = 1000;
+    // bit do auto-heal no bitmask de flags do comando ToggleAutoHelper (1=target,2=skills,4=ult).
+    public const int AutoHelperAutoHealFlag = 8;
+
+    public static string NormalizeAutoHelperNav(string? nav) =>
+        nav == AutoHelperNavLoot ? AutoHelperNavLoot : AutoHelperNavOff;
     public const int MeleeRange = 1;
     public const int BowRange = 5;
     public const int WandRange = 4;
@@ -178,6 +204,7 @@ public static class GameConfig
     public const int CardChoicesPerOffer = 3;
     public const int MaxCardStacks = 3;
     public const int CardOfferTimeoutMs = 20000;
+    public const int CardRerollsPerRun = 2;
 
     // ---- G-04: framework de cartas (raridade + mecânica) ----
     /// <summary>Eco define a run; não empilha como os status.</summary>
@@ -185,14 +212,34 @@ public static class GameConfig
     public static int MaxStacksForRarity(string rarity) =>
         rarity == Cards.Echo ? EchoMaxStacks : MaxCardStacks;
 
-    /// <summary>Peso de amostragem da oferta por raridade (G-06 escala isso por progresso da run).</summary>
-    public static double CardRarityWeight(string rarity) => rarity switch
+    // ---- G-06: cadência (beats fixos) ----
+    // Level-up dá um status pequeno automático (drip de dopamina, sem abrir tela); as escolhas
+    // pesadas ficam em beats antecipáveis: derrotar um elite, limpar um andar e a sala Santuário de
+    // Eco. O teto abaixo mantém ~6-9 escolhas por run, e a raridade escala com o progresso.
+    /// <summary>Teto de escolhas de carta por run (alvo ~6-9). Throttle dos beats.</summary>
+    public const int MaxCardChoicesPerRun = 9;
+    /// <summary>Salas Santuário de Eco por andar (beat garantido, sinalizado no minimapa).</summary>
+    public const int SanctuariesPerFloor = 1;
+    /// <summary>Limpar um andar (descer a escada) também concede um beat de escolha.</summary>
+    public const bool OfferChoiceOnFloorClear = true;
+
+    /// <summary>
+    /// Peso de amostragem da oferta por raridade, escalado pelo progresso da run em [0,1]
+    /// (fração de escolhas já concedidas). Começo favorece comum/raro (monta a engine); fim
+    /// favorece raro/eco (define a run). Determinístico: só interpola pesos fixos.
+    /// </summary>
+    public static double CardRarityWeight(string rarity, double progress)
     {
-        Cards.Common => 100,
-        Cards.Rare => 35,
-        Cards.Echo => 14,
-        _ => 100,
-    };
+        progress = Math.Clamp(progress, 0, 1);
+        static double Lerp(double a, double b, double t) => a + (b - a) * t;
+        return rarity switch
+        {
+            Cards.Common => Lerp(100, 22, progress),
+            Cards.Rare => Lerp(34, 52, progress),
+            Cards.Echo => Lerp(7, 46, progress),
+            _ => Lerp(100, 22, progress),
+        };
+    }
 
     // Eco Sobrecarregado (echo_surge): carga de ult por acerto direto, por stack.
     public const double CardEchoSurgeGaugePerHit = 4;
@@ -221,9 +268,20 @@ public static class GameConfig
     public const int RoomsFloor1 = 8;
     public const int RoomsFloor2 = 4;
     public const int ChestsPerFloor = 2;
-    public const int ChestAmbushPercent = 25;
     public const int SpawnBudgetBase = 14;
     public const double SpawnBudgetTierGrowth = 0.55;
+
+    // ---- G-07: tipos de sala (grafo + bifurcação risco/recompensa) ----
+    /// <summary>Sala de elite (detour de risco) força elites até este teto; o resto do orçamento vira comum.</summary>
+    public const int EliteRoomMaxElites = 2;
+    /// <summary>Sala de evento/risco (hazard): orçamento de spawn ampliado por este fator (swarm = o risco).</summary>
+    public const double HazardBudgetMult = 1.35;
+    /// <summary>Miniboss só aparece em andares com pelo menos este número de salas (evita lotar mapas pequenos).</summary>
+    public const int MiniBossMinRooms = 6;
+    /// <summary>HP do miniboss = HP do elite × este fator (mini-clímax antes do boss).</summary>
+    public const double MiniBossHpScale = 2.4;
+    /// <summary>Comuns que escoltam o miniboss.</summary>
+    public const int MiniBossEscort = 2;
 
     // ---- player damage ----
     /// <summary>Multiplicador global do dano do player (autos + skills). MVP/dificuldade: dávamos pouco dano.</summary>
@@ -429,6 +487,36 @@ public static class GameConfig
     public const double KaezanBossRelicDropChance = 0.30;
     public const int KaezanChestItemDrops = 2;
 
+    // ---- G-09: baú = altar de Eco / loja da run + amaldiçoados + mímicos + material de gear ----
+    /// <summary>Chance de um baú ser, na verdade, um mímico (elite corrompido). Surpresa — oculto do cliente.</summary>
+    public const double ChestMimicChance = 0.12;
+    /// <summary>Chance de um baú (não-mímico) ser amaldiçoado: Eco forte + emboscada/maldição. Telegrafado.</summary>
+    public const double ChestCursedChance = 0.22;
+    /// <summary>HP do mímico = HP do elite × este fator (baú-Eco corrompido = mini-clímax).</summary>
+    public const double MimicHpScale = 2.0;
+    /// <summary>Comuns que emboscam ao abrir um baú amaldiçoado (a maldição em si).</summary>
+    public const int CursedChestAmbush = 3;
+    /// <summary>Maldição no jogador ao abrir um baú amaldiçoado: lentidão temporária.</summary>
+    public const int CursedChestSlowMs = 6000;
+    public const double CursedChestSlowFactor = 0.6;
+    /// <summary>Custo em ouro de um reroll quando os grátis acabam (a "loja" do altar da run).</summary>
+    public const int CardRerollGoldCost = 150;
+    /// <summary>Oferta abençoada (baú amaldiçoado): pondera como o fim da run (favorece raro/eco).</summary>
+    public const double BlessedOfferProgress = 1.0;
+
+    /// <summary>Material de Eco: ids sintéticos (1 por tier) que fluem pelo inventário da conta para
+    /// a tela de equipamento. Fora do catálogo de itens (não-equipável, não-vendável).</summary>
+    public const int GearMaterialItemIdBase = 950000;
+    public static int GearMaterialItemId(int tier) => GearMaterialItemIdBase + Math.Clamp(tier, 1, 5);
+    public static bool IsGearMaterial(int itemId) =>
+        itemId > GearMaterialItemIdBase && itemId <= GearMaterialItemIdBase + 5;
+    public static string GearMaterialName(int tier) => $"Estilhaço de Eco · T{Math.Clamp(tier, 1, 5)}";
+    /// <summary>Chance de um baú comum dropar 1 material de Eco; amaldiçoado/mímico garantem N.</summary>
+    public const double ChestMaterialDropChance = 0.45;
+    public const int CursedChestMaterialDrops = 2;
+    /// <summary>Sprite (gema preciosa) usado na animação do material voando até o jogador.</summary>
+    public const int GearMaterialFlySpriteId = 2478;
+
     public static (int Min, int Max) KaezanDropGoldRange(int tier, string rank)
     {
         var t = Math.Clamp(tier, 1, 5);
@@ -478,6 +566,18 @@ public static class GameConfig
     public const long AccountXpPerDefeat = 20;
     public const long AccountXpPerRunLevel = 6;
     public const int RunReconnectGraceMs = 60000;
+    public const int AutoRepeatDelayMs = 2500;
+    public const int FarmRunMinCount = 1;
+    public const int FarmRunMaxCount = 5;
+    public const int DungeonEnergyPerRun = 60;
+    public const int DungeonEnergyCap = 300;
+    public const int OfflineProgressMinMinutes = 5;
+    public const int OfflineProgressCapMinutes = 8 * 60;
+    public const int OfflineProgressGoldPerHour = 180;
+    public const int OfflineProgressAccountXpPerHour = 35;
+    public const double OfflineProgressTierBonus = 0.25;
+    public static double OfflineProgressTierMultiplier(int tier) =>
+        1 + (Math.Clamp(tier, 1, 5) - 1) * OfflineProgressTierBonus;
     public static long XpForAccountLevel(int level) => (long)(80 * Math.Pow(level, 1.7));
     public const int MaxAccountLevel = 100;
 

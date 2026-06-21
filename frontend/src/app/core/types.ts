@@ -117,6 +117,14 @@ export interface MasteryConfig {
   pointsPerDefeat: number;
 }
 
+export interface FarmConfig {
+  autoRepeatDelayMs: number;
+  minRuns: number;
+  maxRuns: number;
+  energyPerRun: number;
+  energyCap: number;
+}
+
 export interface AffinityProgress {
   level: number;
   xpIntoLevel: number;
@@ -418,6 +426,7 @@ export interface Catalog {
   masteryTrees: Record<string, MasteryNodeDef[]>;
   affinity: AffinityConfig;
   mastery: MasteryConfig;
+  farm: FarmConfig;
   items: ItemCatalogEntry[];
   monsters: MonsterCatalogEntry[];
 }
@@ -445,6 +454,15 @@ export interface InventoryStack {
   count: number;
 }
 
+export interface OfflineReward {
+  elapsedMinutes: number;
+  creditedMinutes: number;
+  gold: number;
+  accountXp: number;
+  tier: number;
+  capped: boolean;
+}
+
 export interface Account {
   id: string;
   accountLevel: number;
@@ -470,6 +488,7 @@ export interface Account {
   tierClears: Record<string, number>;
   pity: Record<string, PityState>;
   dailies: DailyContract[];
+  offlineReward: OfflineReward | null;
 }
 
 export interface PullResult {
@@ -523,6 +542,14 @@ export interface AutoHelperSettingsDto {
   targetPreference: 'lowestHp' | 'nearest';
   movementMode: 'none' | 'follow' | 'avoid';
   defaultMovementMode: 'follow' | 'avoid';
+  /** G-10: auto-usa a poção quando a vida cai abaixo de autoHealPct%. */
+  autoHeal: boolean;
+  /** G-10: limiar do auto-heal em % (10..90, default 50). */
+  autoHealPct: number;
+  /** G-10: auto-loot — 'off' | 'loot' (coleta baús/altares e segue pra saída). */
+  navMode: 'off' | 'loot';
+  /** G-10: pega sozinho a carta de maior raridade na oferta. */
+  autoCards: boolean;
 }
 
 export interface PoiDto {
@@ -531,7 +558,43 @@ export interface PoiDto {
   x: number;
   y: number;
   itemId: number;
+  /** G-09: "" (comum) | "cursed" (baú amaldiçoado, telegrafado). Mímicos chegam como "" (surpresa). */
+  variant: string;
   used: boolean;
+}
+
+/** G-09: material de Eco — ids sintéticos (1 por tier) fora do catálogo de itens equipáveis. */
+export const GEAR_MATERIAL_ID_BASE = 950000;
+export function isGearMaterial(itemId: number): boolean {
+  return itemId > GEAR_MATERIAL_ID_BASE && itemId <= GEAR_MATERIAL_ID_BASE + 5;
+}
+
+/** G-07: room rectangle + type, so the minimap can draw an icon per room. */
+export interface RoomDto {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  role: string;
+}
+
+/** G-07: cosmetic per-stratum color-grade/fog/particle palette (rendered client-side only). */
+export interface BiomeDto {
+  name: string;
+  tintR: number;
+  tintG: number;
+  tintB: number;
+  tintStrength: number;
+  fogR: number;
+  fogG: number;
+  fogB: number;
+  fogStrength: number;
+  vignette: number;
+  particleR: number;
+  particleG: number;
+  particleB: number;
+  particleDensity: number;
+  particleDrift: number;
 }
 
 export interface MapDto {
@@ -547,6 +610,8 @@ export interface MapDto {
   ladderX: number | null;
   ladderY: number | null;
   pois: PoiDto[];
+  rooms: RoomDto[];
+  biome: BiomeDto;
 }
 
 export interface SkillStateDto {
@@ -692,6 +757,9 @@ export interface RunStateDto {
   kills: number;
   cards: CardStackDto[];
   offer: CardOfferDto[] | null;
+  cardRerollsRemaining: number;
+  bannedCardsCount: number;
+  cardRerollGoldCost: number;
   bossHp: number | null;
   bossMaxHp: number | null;
   bossName: string | null;
@@ -702,6 +770,15 @@ export interface RunStateDto {
   elapsedMs: number;
   ended: RunEndDto | null;
   items: RewardItemDto[];
+  /** G-10: tile/tipo pra onde o auto-loot está andando (null = pathing off). */
+  navTarget: NavTargetDto | null;
+}
+
+/** G-10: alvo atual do auto-loot — só legibilidade (a Kaeli caminha pra lá). */
+export interface NavTargetDto {
+  x: number;
+  y: number;
+  kind: string;
 }
 
 export interface SnapshotDto {

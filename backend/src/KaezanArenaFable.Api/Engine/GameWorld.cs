@@ -26,6 +26,8 @@ public sealed class Actor
     public long ExposedUntilMs;
     public long SappedUntilMs;
     public bool IsBossActor;
+    public bool IsElite;        // G-06: elite de sala comum — derrotá-lo concede um beat de escolha
+    public bool IsMimic;        // G-09: baú-Eco corrompido — dropa material de gear ao morrer
     public double StatMult = 1.0;
 
     // monster kit (T-53): reactive defenses, summon timers, self-haste
@@ -157,12 +159,14 @@ public sealed class GroundItem
 public sealed class Poi
 {
     public int Id;
-    public string Kind = "chest"; // chest | ladder
+    public string Kind = "chest"; // chest | sanctuary | ladder
+    // G-09: variante do baú — "" (comum) | "cursed" (amaldiçoado, telegrafado) | "mimic" (oculto do cliente).
+    public string Variant = "";
     public int Floor, X, Y;
     public bool Used;
 }
 
-public enum CommandKind { SetMoveDir, SetTarget, CastSkill, ToggleStance, ToggleAutoHelper, Interact, ChooseCard, Abandon, UsePotion }
+public enum CommandKind { SetMoveDir, SetTarget, CastSkill, ToggleStance, ToggleAutoHelper, Interact, ChooseCard, RerollCards, BanCard, Abandon, UsePotion }
 
 public sealed record Command(CommandKind Kind, int A, int B, string? S);
 
@@ -214,9 +218,13 @@ public sealed class GameWorld
     private int _kills;
     private double _gauge;
     private readonly Dictionary<string, int> _cards = [];
+    private readonly HashSet<string> _bannedCards = new(StringComparer.Ordinal);
     private List<CardOfferDto>? _pendingOffer;
     private long _cardOfferStartedTick;
     private int _queuedOffers;
+    private int _choicesOffered; // G-06: escolhas de carta já concedidas em beats (teto + progresso)
+    private bool _offerBlessed;  // G-09: oferta abençoada (baú amaldiçoado) — pondera raro/eco
+    private int _cardRerollsRemaining = GameConfig.CardRerollsPerRun;
     public Dictionary<string, int> KillsBySpecies { get; } = [];
     public List<RewardItemDto> ItemsLooted { get; } = [];
     private int _potionCharges = GameConfig.PotionChargesPerRun;
@@ -235,6 +243,15 @@ public sealed class GameWorld
     private string _autoHelperMovementMode = GameConfig.AutoHelperMovementModeNone;
     private string _savedAutoHelperMovementMode = GameConfig.AutoHelperMovementModeNone;
     private string _defaultAutoHelperMovementMode = GameConfig.AutoHelperMovementModeNone;
+    // G-10: automações do helper (estilo autoplay) — ligadas por default. Auto-heal usa a poção
+    // quando a vida cai abaixo de _autoHelperHealPct%; navMode ("off"/"loot") faz o helper caminhar
+    // sozinho coletando baús/altares e indo pra saída; autoCards pega a carta de maior raridade.
+    private bool _autoHelperAutoHeal = true;
+    private int _autoHelperHealPct = GameConfig.AutoHelperHealPctDefault;
+    private string _autoHelperNavMode = GameConfig.AutoHelperNavLoot;
+    private bool _autoHelperAutoCards = true;
+    // marca quando o andar atual começou — o auto-loot espera AutoLootStartDelayMs antes de andar.
+    private long _floorEnteredMs;
     private int _helperMovementOverrideTargetId;
     private int _manualTargetId;
     private int _moveDirX, _moveDirY; // held movement direction (-1..1)
@@ -273,7 +290,8 @@ public sealed class GameWorld
 
     public GameWorld(long seed, DungeonTier tier, WaifuDef waifu, int ascension,
         GameData data, MonsterRegistry monsterRegistry, IReadOnlyDictionary<string, long> bestiaryKills,
-        EquipmentStats? equipmentStats = null, KaeliLoadout? loadout = null, ItemRegistry? items = null)
+        EquipmentStats? equipmentStats = null, KaeliLoadout? loadout = null, ItemRegistry? items = null,
+        string? helperProfile = null)
     {
         Seed = seed;
         Tier = tier;
@@ -300,6 +318,7 @@ public sealed class GameWorld
             ? GameConfig.AutoHelperMovementModeFollow
             : GameConfig.AutoHelperMovementModeAvoid;
         _autoHelperMovementMode = _defaultAutoHelperMovementMode;
+        if (!string.IsNullOrWhiteSpace(helperProfile)) ApplyHelperProfile(helperProfile);
 
         var biome = Biomes.ForTier(tier.Tier);
         _floors = [DungeonGenerator.Generate(_rng, 0, false, biome), DungeonGenerator.Generate(_rng, 1, true, biome)];
@@ -335,25 +354,51 @@ public sealed class GameWorld
             switch (room.Role)
             {
                 case "entry": continue;
+                // G-06: o Santuário de Eco é seguro — o player reivindica a carta sem briga.
+                case "sanctuary": continue;
                 case "boss":
                     SpawnBossRoom(floorIndex, room);
+                    continue;
+                // G-07: miniboss = mini-clímax do detour (1 elite reforçado + escolta).
+                case "miniboss":
+                    SpawnMiniBossRoom(floorIndex, room);
                     continue;
             }
 
             // echo-spots style budget spawn: commons cost 2, elites cost 5
             var sizeFactor = room.W * room.H / 49.0;
             var budget = (int)(GameConfig.SpawnBudgetBase * (1 + (Tier.Tier - 1) * GameConfig.SpawnBudgetTierGrowth) * Math.Clamp(sizeFactor, 0.6, 1.4));
+            // G-07: tesouro = menos guardas; evento/risco = mais guardas (swarm); elite = pacote de elites.
             if (room.Role == "treasure") budget = budget / 2 + 2;
+            else if (room.Role == "hazard") budget = (int)(budget * GameConfig.HazardBudgetMult);
+            var forceElite = room.Role == "elite";
+            var elitesSpawned = 0;
             var guard = 0;
             while (budget > 0 && guard++ < 50)
             {
-                var elite = budget >= 5 && _rng.Chance(0.25);
+                var elite = forceElite
+                    ? budget >= 5 && elitesSpawned < GameConfig.EliteRoomMaxElites
+                    : budget >= 5 && _rng.Chance(0.25);
                 var name = elite ? _rng.Pick(Tier.EliteMobs) : _rng.Pick(Tier.CommonMobs);
-                if (SpawnMonster(floorIndex, name, room) is not null)
+                // G-06: só elites de salas comuns viram beat (guardas de boss/emboscada não contam).
+                if (SpawnMonster(floorIndex, name, room, isElite: elite) is not null)
+                {
                     budget -= elite ? 5 : 2;
+                    if (elite) elitesSpawned++;
+                }
                 else break;
             }
         }
+    }
+
+    /// <summary>G-07: sala de miniboss — um elite reforçado (beat de escolha ao morrer) + escolta de comuns.</summary>
+    private void SpawnMiniBossRoom(int floorIndex, Room room)
+    {
+        var mini = SpawnMonster(floorIndex, _rng.Pick(Tier.EliteMobs), room, isElite: true);
+        if (mini is not null)
+            mini.MaxHp = mini.Hp = (int)(mini.Hp * GameConfig.MiniBossHpScale);
+        for (var i = 0; i < GameConfig.MiniBossEscort; i++)
+            SpawnMonster(floorIndex, _rng.Pick(Tier.CommonMobs), room, isElite: false);
     }
 
     private void SpawnBossRoom(int floorIndex, Room room)
@@ -370,7 +415,7 @@ public sealed class GameWorld
             SpawnMonster(floorIndex, _rng.Pick(Tier.EliteMobs), room);
     }
 
-    private Actor? SpawnMonster(int floorIndex, string speciesName, Room room, bool isBoss = false)
+    private Actor? SpawnMonster(int floorIndex, string speciesName, Room room, bool isBoss = false, bool isElite = false)
     {
         var species = _monsterRegistry.Get(speciesName);
         var floor = _floors[floorIndex];
@@ -394,6 +439,7 @@ public sealed class GameWorld
                 SummonReadyAtMs = new long[species.Summons.Count],
                 NextWanderAtMs = _rng.Range(0, GameConfig.MonsterWanderIntervalMs),
                 IsBossActor = isBoss,
+                IsElite = isElite,
                 StatMult = mult,
                 Facing = (Dir)_rng.Next(4)
             };
@@ -409,7 +455,16 @@ public sealed class GameWorld
         for (var f = 0; f < _floors.Length; f++)
         {
             foreach (var (cx, cy) in _floors[f].Chests)
-                _pois.Add(new Poi { Id = nextPoi++, Kind = "chest", Floor = f, X = cx, Y = cy });
+            {
+                // G-09: cada baú sorteia uma variante determinística — mímico (oculto) ou amaldiçoado
+                // (telegrafado), senão altar comum. Determinístico via _rng da run.
+                var variant = _rng.Chance(GameConfig.ChestMimicChance) ? "mimic"
+                    : _rng.Chance(GameConfig.ChestCursedChance) ? "cursed"
+                    : "";
+                _pois.Add(new Poi { Id = nextPoi++, Kind = "chest", Variant = variant, Floor = f, X = cx, Y = cy });
+            }
+            foreach (var (sx, sy) in _floors[f].Sanctuaries)
+                _pois.Add(new Poi { Id = nextPoi++, Kind = "sanctuary", Floor = f, X = sx, Y = sy });
             if (_floors[f].LadderDown is { } ladder)
                 _pois.Add(new Poi { Id = nextPoi++, Kind = "ladder", Floor = f, X = ladder.X, Y = ladder.Y });
         }
@@ -434,7 +489,9 @@ public sealed class GameWorld
                 cmd = _commands.Dequeue();
             }
 
-            if (cardPause && cmd.Kind is not (CommandKind.SetMoveDir or CommandKind.ChooseCard or CommandKind.Abandon))
+            // G-10: ToggleAutoHelper é uma mudança de config (não toca a simulação pausada) — deixa
+            // passar mesmo durante a oferta de carta, senão ajustes do painel HELPER são engolidos.
+            if (cardPause && cmd.Kind is not (CommandKind.SetMoveDir or CommandKind.ChooseCard or CommandKind.RerollCards or CommandKind.BanCard or CommandKind.Abandon or CommandKind.ToggleAutoHelper))
                 continue;
 
             Apply(cmd);
@@ -468,8 +525,15 @@ public sealed class GameWorld
                 _autoHelperTargeting = (cmd.A & 1) != 0;
                 _autoHelperSkills = (cmd.A & 2) != 0;
                 _autoHelperUltimate = (cmd.A & 4) != 0;
+                _autoHelperAutoHeal = (cmd.A & GameConfig.AutoHelperAutoHealFlag) != 0;
+                _autoHelperAutoCards = (cmd.A & GameConfig.AutoHelperAutoCardsFlag) != 0;
                 _autoHelperMovementMode = NormalizeAutoHelperMovementMode(cmd.B);
-                _autoHelperTargetPreference = NormalizeAutoHelperTargetPreference(cmd.S);
+                // S carrega "targetPreference|navMode|healPct".
+                var parts = (cmd.S ?? "").Split('|');
+                _autoHelperTargetPreference = NormalizeAutoHelperTargetPreference(parts.Length > 0 ? parts[0] : null);
+                _autoHelperNavMode = GameConfig.NormalizeAutoHelperNav(parts.Length > 1 ? parts[1] : null);
+                if (parts.Length > 2 && int.TryParse(parts[2], out var healPct))
+                    _autoHelperHealPct = GameConfig.ClampHealPct(healPct);
                 _helperMovementOverrideTargetId = 0;
                 if (!_autoHelperTargeting && _manualTargetId == 0)
                     Player.TargetId = 0;
@@ -479,6 +543,12 @@ public sealed class GameWorld
                 break;
             case CommandKind.ChooseCard:
                 ChooseCard(cmd.S ?? "");
+                break;
+            case CommandKind.RerollCards:
+                RerollCards();
+                break;
+            case CommandKind.BanCard:
+                BanCard(cmd.S ?? "");
                 break;
             case CommandKind.Abandon:
                 EndRun(false, "abandono");
@@ -501,7 +571,12 @@ public sealed class GameWorld
 
             DrainCommands(cardPauseAtStart);
 
-            if (Ended is null && _pendingOffer is not null
+            // G-10: auto-pick — escolhe sozinho a carta de maior raridade (depois de um curto flash
+            // na tela), pra autoplay/cavebot não travar nas ofertas. Senão, espera o timeout/jogador.
+            if (Ended is null && _pendingOffer is not null && _autoHelperAutoCards
+                && (TickCount - _cardOfferStartedTick) * GameConfig.TickMs >= GameConfig.AutoCardPickDelayMs)
+                ChooseCard(BestOfferCardId());
+            else if (Ended is null && _pendingOffer is not null
                 && (TickCount - _cardOfferStartedTick) * GameConfig.TickMs >= GameConfig.CardOfferTimeoutMs)
                 ChooseCard(_pendingOffer[0].Id);
 
@@ -773,7 +848,16 @@ public sealed class GameWorld
 
         if (Player.IsStunned(NowMs)) return;
 
-        TickAutoHelperMovement();
+        // G-10: auto-heal — usa a poção quando a vida cai abaixo do limiar (a poção respeita cargas/cooldown).
+        if (_autoHelperAutoHeal && Player.Hp * 100 < Player.MaxHp * _autoHelperHealPct)
+            TryUsePotion();
+
+        // G-10: pathing — quando ligado, o helper caminha sozinho até o objetivo (baú/saída),
+        // substituindo o movimento de combate (stand/follow/avoid). Combate (alvo/skills/ult) segue.
+        if (_autoHelperNavMode == GameConfig.AutoHelperNavOff)
+            TickAutoHelperMovement();
+        else
+            TickHelperNav();
 
         if (_autoHelperSkills)
             for (var slot = 0; slot < 4; slot++)
@@ -782,6 +866,161 @@ public sealed class GameWorld
         if (_autoHelperUltimate)
             TryAutoHelperSkill(4);
     }
+
+    // ---- G-10: pathing do helper ("cavebot") + perfil persistido ----
+
+    // Auto-loot: caminha até o coletável (baú OU altar/Santuário) ativo mais próximo, abre, repete;
+    // sem mais nada, segue pra saída (escada/boss). Para pra lutar quando um inimigo encosta. Espera
+    // AutoLootStartDelayMs no início do andar (a tela carrega antes de a Kaeli sair andando).
+    // Determinístico (só estado do tick + ordem estável no NextNavStep).
+    private void TickHelperNav()
+    {
+        if (NowMs - _floorEnteredMs < GameConfig.AutoLootStartDelayMs) return;
+        if (Player.IsMoving(NowMs)) return;
+        if (_moveDirX != 0 || _moveDirY != 0 || _hasBufferedMoveDir) return; // input manual tem prioridade
+
+        var goal = NavGoal();
+        if (goal is null) return;
+        var (gx, gy, interactable, _) = goal.Value;
+
+        // chegou: interage (abre baú/altar, desce escada) quando adjacente ao POI.
+        if (interactable && Chebyshev(Player.X, Player.Y, gx, gy) <= 1)
+        {
+            TryInteract(gx, gy);
+            return;
+        }
+
+        // pausa pra lutar quando um inimigo encosta (não atravessa o mob tomando dano).
+        if (_monsters.Any(m => m.Hp > 0 && m.Floor == _currentFloor && Chebyshev(Player.X, Player.Y, m.X, m.Y) <= 1))
+            return;
+
+        var step = NextNavStep(gx, gy);
+        if (step is { } s) TryStep(Player, s.Dx, s.Dy, PlayerSpeed());
+    }
+
+    // Objetivo de navegação: o coletável ativo mais próximo (baú comum/amaldiçoado OU altar de Eco —
+    // os "roxos" do minimapa); sem coletáveis, a saída (escada do andar, ou o boss se não houver escada).
+    private (int X, int Y, bool Interactable, string Kind)? NavGoal()
+    {
+        Poi? loot = null;
+        var best = int.MaxValue;
+        foreach (var p in _pois)
+        {
+            if (p.Used || p.Floor != _currentFloor) continue;
+            if (p.Kind is not ("chest" or "sanctuary")) continue;
+            var d = Chebyshev(Player.X, Player.Y, p.X, p.Y);
+            if (d < best || (d == best && (loot is null || p.Id < loot.Id)))
+            {
+                loot = p;
+                best = d;
+            }
+        }
+        if (loot is not null) return (loot.X, loot.Y, true, loot.Kind);
+
+        var ladder = _pois.FirstOrDefault(p => !p.Used && p.Floor == _currentFloor && p.Kind == "ladder");
+        if (ladder is not null) return (ladder.X, ladder.Y, true, "ladder");
+
+        // sem escada (andar do boss): a saída é derrotar o boss → caminha até ele.
+        var boss = _monsters.FirstOrDefault(m => m.IsBossActor && m.Hp > 0 && m.Floor == _currentFloor);
+        return boss is not null ? (boss.X, boss.Y, false, "boss") : null;
+    }
+
+    // G-10: alvo atual do auto-loot pra legibilidade no cliente (null quando o pathing está off).
+    private NavTargetDto? CurrentNavTargetDto()
+    {
+        if (_autoHelperNavMode != GameConfig.AutoHelperNavLoot || Player.Hp <= 0) return null;
+        return NavGoal() is { } g ? new NavTargetDto(g.X, g.Y, g.Kind) : null;
+    }
+
+    // Primeiro passo de um caminho mais curto (BFS) do jogador até ficar adjacente a (tx,ty).
+    // BFS real contorna paredes/cantos — o passo guloso travava em becos. Monstros vivos bloqueiam
+    // tiles (a Kaeli desvia; o combate limpa se o corredor estiver tampado). Determinístico: ordem
+    // de vizinhos fixa, sem `_rng`/`DateTime`. Retorna null se não há caminho.
+    private (int Dx, int Dy)? NextNavStep(int tx, int ty)
+    {
+        var floor = Floor;
+        int w = floor.W, h = floor.H, sx = Player.X, sy = Player.Y;
+        if (Chebyshev(sx, sy, tx, ty) <= 1) return null;
+
+        var occupied = new HashSet<int>();
+        foreach (var m in _monsters)
+            if (m.Hp > 0 && m.Floor == _currentFloor) occupied.Add(m.Y * w + m.X);
+
+        var firstStep = new (int Dx, int Dy)?[w * h];
+        var seen = new bool[w * h];
+        var q = new Queue<int>();
+        seen[sy * w + sx] = true;
+        q.Enqueue(sy * w + sx);
+
+        // cardinais antes das diagonais → caminho estável e determinístico.
+        ReadOnlySpan<(int dx, int dy)> dirs =
+        [
+            (0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (1, -1), (-1, 1), (1, 1)
+        ];
+
+        while (q.Count > 0)
+        {
+            var cur = q.Dequeue();
+            int cx = cur % w, cy = cur / w;
+            foreach (var (dx, dy) in dirs)
+            {
+                int nx = cx + dx, ny = cy + dy;
+                if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                var ni = ny * w + nx;
+                if (seen[ni]) continue;
+
+                var isTargetTile = nx == tx && ny == ty;
+                if (!isTargetTile)
+                {
+                    if (floor.IsBlocked(nx, ny)) continue;
+                    if (dx != 0 && dy != 0 && (floor.IsBlocked(cx + dx, cy) || floor.IsBlocked(cx, cy + dy))) continue;
+                    if (occupied.Contains(ni)) continue;
+                }
+
+                seen[ni] = true;
+                var step = firstStep[cur] ?? (dx, dy);
+                if (Chebyshev(nx, ny, tx, ty) <= 1) return step; // adjacente ao alvo → basta interagir/lutar
+                firstStep[ni] = step;
+                q.Enqueue(ni);
+            }
+        }
+        return null;
+    }
+
+    // Perfil do helper persistido por Kaeli:
+    // "targeting|skills|ult|pref|movement|autoheal|nav|healpct|autocards".
+    public string EncodeHelperProfile() => string.Join('|',
+        _autoHelperTargeting ? 1 : 0,
+        _autoHelperSkills ? 1 : 0,
+        _autoHelperUltimate ? 1 : 0,
+        _autoHelperTargetPreference,
+        _autoHelperMovementMode,
+        _autoHelperAutoHeal ? 1 : 0,
+        _autoHelperNavMode,
+        _autoHelperHealPct,
+        _autoHelperAutoCards ? 1 : 0);
+
+    private void ApplyHelperProfile(string encoded)
+    {
+        var p = encoded.Split('|');
+        if (p.Length < 7) return;
+        _autoHelperTargeting = p[0] == "1";
+        _autoHelperSkills = p[1] == "1";
+        _autoHelperUltimate = p[2] == "1";
+        _autoHelperTargetPreference = NormalizeAutoHelperTargetPreference(p[3]);
+        _autoHelperMovementMode = NormalizeAutoHelperMovementModeName(p[4]);
+        _autoHelperAutoHeal = p[5] == "1";
+        _autoHelperNavMode = GameConfig.NormalizeAutoHelperNav(p[6]);
+        if (p.Length > 7 && int.TryParse(p[7], out var healPct)) _autoHelperHealPct = GameConfig.ClampHealPct(healPct);
+        if (p.Length > 8) _autoHelperAutoCards = p[8] == "1";
+    }
+
+    private static string NormalizeAutoHelperMovementModeName(string? mode) => mode switch
+    {
+        GameConfig.AutoHelperMovementModeFollow => GameConfig.AutoHelperMovementModeFollow,
+        GameConfig.AutoHelperMovementModeAvoid => GameConfig.AutoHelperMovementModeAvoid,
+        _ => GameConfig.AutoHelperMovementModeNone
+    };
 
     private void TickAutoHelperMovement()
     {
@@ -2306,6 +2545,13 @@ public sealed class GameWorld
 
         if (!monster.IsSummon) DropLoot(monster); // summons give xp but no loot (anti-farm)
 
+        // G-09: o mímico (baú-Eco corrompido) garante material de gear ao cair.
+        if (monster.IsMimic)
+            for (var i = 0; i < GameConfig.CursedChestMaterialDrops; i++) GrantGearMaterial(monster.X, monster.Y);
+
+        // G-06: derrotar um elite de sala comum é um beat — concede uma escolha de carta pesada.
+        if (monster.IsElite && !monster.IsSummon) OfferCardBeat();
+
         if (monster.IsBossActor)
             EndRun(true, $"{monster.Species.Name} derrotado");
     }
@@ -2465,21 +2711,118 @@ public sealed class GameWorld
             _runLevel++;
             Emit("levelup", Player.X, Player.Y, 0, 0, _runLevel);
             Emit("effect", Player.X, Player.Y, 0, 0, 182); // magic powder
-            if (_pendingOffer is null) OfferCards();
-            else _queuedOffers++;
+            // G-06: level-up = status pequeno automático (sem tela). As escolhas pesadas vêm dos
+            // beats (elite/andar/santuário), não de cada level.
+            GrantAutoStatus();
         }
     }
 
-    private void OfferCards()
+    /// <summary>
+    /// G-06: progresso da run em [0,1] medido pela fração de escolhas já concedidas — usado pra
+    /// escalar a raridade da oferta (começo monta a engine, fim define). Determinístico.
+    /// </summary>
+    private double RunChoiceProgress => GameConfig.MaxCardChoicesPerRun <= 1
+        ? 1.0
+        : Math.Clamp((_choicesOffered - 1) / (double)(GameConfig.MaxCardChoicesPerRun - 1), 0, 1);
+
+    /// <summary>
+    /// G-06: concede uma escolha de carta pesada num beat fixo (elite derrotado, andar limpo, sala
+    /// Santuário). Respeita o teto de escolhas por run e reusa a fila quando já há oferta aberta.
+    /// </summary>
+    private void OfferCardBeat(bool blessed = false)
+    {
+        if (Ended is not null || _choicesOffered >= GameConfig.MaxCardChoicesPerRun) return;
+        if (AvailableCardPool(null).Count == 0) return;
+        _choicesOffered++;
+        // G-09: oferta abençoada (baú amaldiçoado) só vale para a oferta aberta na hora; as enfileiradas
+        // usam ponderação normal (mantém o teto/cadência sem acumular bênçãos).
+        if (_pendingOffer is null) OfferCards(blessed);
+        else _queuedOffers++;
+    }
+
+    /// <summary>
+    /// G-06: status pequeno automático do level-up — sorteia uma carta comum (respeitando bans/caps)
+    /// e aplica um stack na hora, sem abrir tela de escolha. Determinístico via _rng da run.
+    /// </summary>
+    private void GrantAutoStatus()
+    {
+        var pool = Cards.All
+            .Where(c => c.Rarity == Cards.Common && !_bannedCards.Contains(c.Id))
+            .Where(c => _cards.GetValueOrDefault(c.Id) < GameConfig.MaxStacksForRarity(c.Rarity))
+            .ToList();
+        if (pool.Count == 0) return;
+        var pick = _rng.Pick(pool);
+        ApplyCardStack(pick.Id);
+        Emit("text", Player.X, Player.Y, 0, 0, 0, pick.Name);
+    }
+
+    /// <summary>Aplica um stack de carta e seu efeito imediato (ex. maxhp cura o bônus ganho).</summary>
+    private void ApplyCardStack(string cardId)
+    {
+        _cards[cardId] = _cards.GetValueOrDefault(cardId) + 1;
+        if (cardId == "card:maxhp")
+        {
+            var def = Cards.ById[cardId];
+            var bonus = (int)(Waifu.BaseHp * def.Value);
+            Player.MaxHp += bonus;
+            HealPlayer(bonus);
+        }
+    }
+
+    private void OfferCards(bool blessed = false)
     {
         // G-04: pool ciente de raridade. Eco filtra pela Kaeli ativa; cada raridade tem seu cap de
         // stacks. A amostragem é ponderada por raridade (sem repor), determinística via _rng da run.
-        var pool = Cards.All
+        // G-09: blessed (baú amaldiçoado) pondera como o fim da run — favorece raro/eco.
+        _offerBlessed = blessed;
+        var offer = BuildCardOffer();
+        if (offer.Count == 0) { _offerBlessed = false; return; }
+        _pendingOffer = offer;
+        _cardOfferStartedTick = TickCount;
+    }
+
+    /// <summary>G-09: progresso de ponderação da oferta atual — abençoada salta para o fim da curva.</summary>
+    private double OfferProgress => _offerBlessed
+        ? Math.Max(RunChoiceProgress, GameConfig.BlessedOfferProgress)
+        : RunChoiceProgress;
+
+    /// <summary>Monta uma oferta usando o pool de cartas disponivel para a run.</summary>
+    private List<CardOfferDto> BuildCardOffer(IReadOnlySet<string>? temporaryExcluded = null)
+    {
+        var offer = DrawCardOffer(AvailableCardPool(temporaryExcluded));
+
+        if (temporaryExcluded is not null)
+        {
+            var desiredCount = Math.Min(GameConfig.CardChoicesPerOffer, AvailableCardPool(null).Count);
+            if (offer.Count < desiredCount)
+            {
+                var picked = offer.Select(o => o.Id).ToHashSet(StringComparer.Ordinal);
+                var fallback = AvailableCardPool(null)
+                    .Where(c => temporaryExcluded.Contains(c.Id) && !picked.Contains(c.Id))
+                    .ToList();
+
+                while (offer.Count < desiredCount && fallback.Count > 0)
+                {
+                    var pick = WeightedPickByRarity(fallback);
+                    fallback.Remove(pick);
+                    offer.Add(ToOfferDto(pick));
+                }
+            }
+        }
+
+        return offer;
+    }
+
+    private List<CardDef> AvailableCardPool(IReadOnlySet<string>? temporaryExcluded) =>
+        Cards.All
+            .Where(c => !_bannedCards.Contains(c.Id))
+            .Where(c => temporaryExcluded is null || !temporaryExcluded.Contains(c.Id))
             .Where(c => _cards.GetValueOrDefault(c.Id) < GameConfig.MaxStacksForRarity(c.Rarity))
             .Where(c => c.WaifuId is null || c.WaifuId == Waifu.Id)
             .ToList();
-        if (pool.Count == 0) return;
 
+    private List<CardOfferDto> DrawCardOffer(List<CardDef> pool)
+    {
         var offer = new List<CardOfferDto>();
         for (var n = 0; n < GameConfig.CardChoicesPerOffer && pool.Count > 0; n++)
         {
@@ -2487,19 +2830,21 @@ public sealed class GameWorld
             pool.Remove(pick);
             offer.Add(ToOfferDto(pick));
         }
-        _pendingOffer = offer;
-        _cardOfferStartedTick = TickCount;
+        return offer;
     }
 
-    /// <summary>Amostra uma carta do pool com peso por raridade. Ordem estável do pool + _rng → determinístico.</summary>
+    /// <summary>Amostra uma carta do pool com peso por raridade. Ordem estavel do pool + _rng -> deterministico.</summary>
     private CardDef WeightedPickByRarity(List<CardDef> pool)
     {
+        // G-06: pesos escalados pelo progresso da run (raro/eco ganham peso perto do fim).
+        // G-09: ofertas abençoadas (baú amaldiçoado) usam o progresso saltado de OfferProgress.
+        var progress = OfferProgress;
         var total = 0.0;
-        foreach (var c in pool) total += GameConfig.CardRarityWeight(c.Rarity);
+        foreach (var c in pool) total += GameConfig.CardRarityWeight(c.Rarity, progress);
         var roll = _rng.NextDouble() * total;
         foreach (var c in pool)
         {
-            roll -= GameConfig.CardRarityWeight(c.Rarity);
+            roll -= GameConfig.CardRarityWeight(c.Rarity, progress);
             if (roll <= 0) return c;
         }
         return pool[^1]; // guarda contra erro de ponto flutuante
@@ -2509,21 +2854,90 @@ public sealed class GameWorld
         c.Id, c.Name, c.Description, _cards.GetValueOrDefault(c.Id),
         c.Rarity, c.TagList, GameConfig.MaxStacksForRarity(c.Rarity));
 
+    // G-10: melhor carta da oferta atual para o auto-pick — maior raridade, desempate por ordem
+    // estável (índice na oferta). Determinístico.
+    private string BestOfferCardId()
+    {
+        var offer = _pendingOffer!;
+        var bestId = offer[0].Id;
+        var bestRank = RarityRank(offer[0].Rarity);
+        for (var i = 1; i < offer.Count; i++)
+        {
+            var rank = RarityRank(offer[i].Rarity);
+            if (rank > bestRank)
+            {
+                bestRank = rank;
+                bestId = offer[i].Id;
+            }
+        }
+        return bestId;
+    }
+
+    private static int RarityRank(string rarity) => rarity switch
+    {
+        "echo" => 3,
+        "rare" => 2,
+        _ => 1
+    };
+
     private void ChooseCard(string cardId)
     {
         if (_pendingOffer is null || !_pendingOffer.Any(o => o.Id == cardId)) return;
         _pendingOffer = null;
-        _cards[cardId] = _cards.GetValueOrDefault(cardId) + 1;
-
-        if (cardId == "card:maxhp")
-        {
-            var def = Cards.ById[cardId];
-            var bonus = (int)(Waifu.BaseHp * def.Value);
-            Player.MaxHp += bonus;
-            HealPlayer(bonus);
-        }
+        ApplyCardStack(cardId);
 
         if (_queuedOffers > 0)
+        {
+            _queuedOffers--;
+            OfferCards();
+        }
+        else _offerBlessed = false;
+    }
+
+    private void RerollCards()
+    {
+        if (_pendingOffer is null) return;
+        // G-09: rerolls grátis primeiro; esgotados, vira reroll pago (a "loja" do altar da run).
+        var paid = _cardRerollsRemaining <= 0;
+        if (paid && _gold < GameConfig.CardRerollGoldCost) return;
+
+        var currentIds = _pendingOffer.Select(o => o.Id).ToHashSet(StringComparer.Ordinal);
+        if (AvailableCardPool(currentIds).Count == 0) return;
+
+        var offer = BuildCardOffer(currentIds);
+        if (offer.Count == 0) return;
+
+        if (paid)
+        {
+            _gold -= GameConfig.CardRerollGoldCost;
+            EmitLootFly(GameConfig.GoldCoinItemId, $"-{GameConfig.CardRerollGoldCost} gold", Player.X, Player.Y, isGold: true);
+        }
+        else _cardRerollsRemaining--;
+        _pendingOffer = offer;
+        _cardOfferStartedTick = TickCount;
+        Emit("text", Player.X, Player.Y, 0, 0, 0, "REROLL");
+    }
+
+    private void BanCard(string cardId)
+    {
+        if (_pendingOffer is null || !_pendingOffer.Any(o => o.Id == cardId)) return;
+        if (!_bannedCards.Add(cardId)) return;
+
+        var kept = _pendingOffer.Where(o => o.Id != cardId).ToList();
+        var keptIds = kept.Select(o => o.Id).ToHashSet(StringComparer.Ordinal);
+        var pool = AvailableCardPool(keptIds);
+        while (kept.Count < GameConfig.CardChoicesPerOffer && pool.Count > 0)
+        {
+            var pick = WeightedPickByRarity(pool);
+            pool.Remove(pick);
+            kept.Add(ToOfferDto(pick));
+        }
+
+        _pendingOffer = kept.Count > 0 ? kept : null;
+        _cardOfferStartedTick = TickCount;
+        Emit("text", Player.X, Player.Y, 0, 0, 0, "BANIDA");
+
+        if (_pendingOffer is null && _queuedOffers > 0)
         {
             _queuedOffers--;
             OfferCards();
@@ -3107,28 +3521,46 @@ public sealed class GameWorld
             return;
         }
 
-        // chest
-        poi.Used = true;
-        _chestsOpened++;
-        Emit("effect", x, y, 0, 0, 3); // poff
-
-        if (_rng.Chance(GameConfig.ChestAmbushPercent / 100.0))
+        if (poi.Kind == "sanctuary")
         {
-            Emit("text", x, y, 0, 0, 0, "EMBOSCADA!");
-            var room = Floor.Rooms.FirstOrDefault(r => r.Contains(x, y)) ?? Floor.Rooms[0];
-            for (var i = 0; i < 3; i++)
-            {
-                var mob = SpawnMonster(_currentFloor, _rng.Pick(Tier.CommonMobs), room);
-                if (mob is not null)
-                {
-                    AcquirePlayer(mob);
-                    Emit("effect", mob.X, mob.Y, 0, 0, 11); // teleport
-                }
-            }
+            // G-06: altar do Santuário de Eco — beat de escolha garantido (sinalizado no minimapa).
+            poi.Used = true;
+            Emit("effect", x, y, 0, 0, 49); // holy/energy burst
+            Emit("text", x, y, 0, 0, 0, "SANTUÁRIO DE ECO");
+            OfferCardBeat();
             return;
         }
 
-        // loot burst: gold + random items from the tier's mob loot tables (voam até o player)
+        // G-09: baú = altar de Eco / loja da run. Variantes: mímico (luta), amaldiçoado (ganância) e comum.
+        poi.Used = true;
+        _chestsOpened++;
+
+        if (poi.Variant == "mimic")
+        {
+            OpenMimic(x, y);
+            return;
+        }
+
+        Emit("effect", x, y, 0, 0, 3); // poff
+        var cursed = poi.Variant == "cursed";
+        if (cursed) ApplyChestCurse(x, y);
+
+        // loot do baú (mantém o baú gratificante além da carta do altar)
+        GrantChestLoot(x, y);
+
+        // material de Eco (cresce a conta): amaldiçoado garante N, comum por chance
+        if (cursed)
+            for (var i = 0; i < GameConfig.CursedChestMaterialDrops; i++) GrantGearMaterial(x, y);
+        else if (_rng.Chance(GameConfig.ChestMaterialDropChance))
+            GrantGearMaterial(x, y);
+
+        // altar: abre uma oferta de carta (overlay reusa reroll/banir/loja). Amaldiçoado = oferta abençoada.
+        OfferCardBeat(blessed: cursed);
+    }
+
+    /// <summary>G-09: loot bruto do baú (ouro + itens equipáveis do tier), voando até o jogador.</summary>
+    private void GrantChestLoot(int x, int y)
+    {
         var gold = (long)(_rng.Range(40, 120) * Tier.StatMultiplier * (1 + CardValue("goldPercent")));
         _gold += gold;
         EmitLootFly(GameConfig.GoldCoinItemId, $"+{gold} gold", x, y, isGold: true);
@@ -3154,10 +3586,59 @@ public sealed class GameWorld
         }
     }
 
+    /// <summary>G-09: material de Eco do tier (cresce a conta, alimenta a tela de equipamento da Kaeli).</summary>
+    private void GrantGearMaterial(int x, int y)
+    {
+        var name = GameConfig.GearMaterialName(Tier.Tier);
+        AddLootedItem(GameConfig.GearMaterialItemId(Tier.Tier), name, 1);
+        EmitLootFly(GameConfig.GearMaterialFlySpriteId, name, x, y, isGold: false);
+    }
+
+    /// <summary>G-09: emboscada de comuns no baú (custo de risco). Determinístico via _rng.</summary>
+    private void SpawnChestAmbush(int x, int y, int count)
+    {
+        var room = Floor.Rooms.FirstOrDefault(r => r.Contains(x, y)) ?? Floor.Rooms[0];
+        for (var i = 0; i < count; i++)
+        {
+            var mob = SpawnMonster(_currentFloor, _rng.Pick(Tier.CommonMobs), room);
+            if (mob is not null)
+            {
+                AcquirePlayer(mob);
+                Emit("effect", mob.X, mob.Y, 0, 0, 11); // teleport
+            }
+        }
+    }
+
+    /// <summary>G-09: baú amaldiçoado — emboscada + maldição (lentidão) no jogador. Ganância vs. segurança.</summary>
+    private void ApplyChestCurse(int x, int y)
+    {
+        Emit("effect", x, y, 0, 0, 18); // mort area
+        Emit("text", x, y, 0, 0, 0, "BAÚ AMALDIÇOADO!");
+        SpawnChestAmbush(x, y, GameConfig.CursedChestAmbush);
+        _playerSlowUntilMs = NowMs + GameConfig.CursedChestSlowMs;
+        _playerSlowFactor = GameConfig.CursedChestSlowFactor;
+    }
+
+    /// <summary>G-09: mímico — baú-Eco corrompido que nasce em cima do baú, reforçado, e parte pra cima.</summary>
+    private void OpenMimic(int x, int y)
+    {
+        Emit("effect", x, y, 0, 0, 11); // teleport
+        Emit("text", x, y, 0, 0, 0, "MÍMICO!");
+        var room = Floor.Rooms.FirstOrDefault(r => r.Contains(x, y)) ?? Floor.Rooms[0];
+        var mimic = SpawnMonster(_currentFloor, _rng.Pick(Tier.EliteMobs), room, isElite: true);
+        if (mimic is null) return;
+        mimic.X = mimic.FromX = x;
+        mimic.Y = mimic.FromY = y;
+        mimic.MaxHp = mimic.Hp = (int)(mimic.Hp * GameConfig.MimicHpScale);
+        mimic.IsMimic = true;
+        AcquirePlayer(mimic);
+    }
+
     private void DescendToFloor(int floorIndex)
     {
         _currentFloor = floorIndex;
         Player.Floor = floorIndex;
+        _floorEnteredMs = NowMs; // G-10: re-arma o atraso do auto-loot ao chegar no novo andar
         var entry = _floors[floorIndex].Entry;
         Player.X = entry.X; Player.Y = entry.Y;
         Player.FromX = entry.X; Player.FromY = entry.Y;
@@ -3166,6 +3647,9 @@ public sealed class GameWorld
         _manualTargetId = 0;
         MapDirty = true;
         Emit("effect", entry.X, entry.Y, 0, 0, 11);
+
+        // G-06: limpar um andar é um beat — concede uma escolha (milestone de progressão antecipável).
+        if (GameConfig.OfferChoiceOnFloorClear) OfferCardBeat();
     }
 
     // ---- run end ----
@@ -3321,16 +3805,33 @@ public sealed class GameWorld
     private MapDto BuildMap()
     {
         var floor = Floor;
+        var atmo = Biomes.ForTier(Tier.Tier).Atmosphere;
         return new MapDto(
             _currentFloor, floor.W, floor.H,
             floor.Ground, floor.Wall, floor.Decor, floor.Blocked,
             floor.Entry.X, floor.Entry.Y,
             floor.LadderDown?.X, floor.LadderDown?.Y,
             _pois.Where(p => p.Floor == _currentFloor)
-                .Select(p => new PoiDto(p.Id, p.Kind, p.X, p.Y,
-                    p.Kind == "chest" ? DungeonGenerator.ChestId : DungeonGenerator.LadderDownId, p.Used))
-                .ToList());
+                // G-09: mímico viaja como variante vazia (só "cursed" é telegrafado pro cliente).
+                .Select(p => new PoiDto(p.Id, p.Kind, p.X, p.Y, PoiSpriteId(p.Kind),
+                    p.Variant == "cursed" ? "cursed" : "", p.Used))
+                .ToList(),
+            // G-07: tipos de sala (ícones do minimapa) + paleta cosmética do estrato.
+            floor.Rooms.Select(r => new RoomDto(r.X, r.Y, r.W, r.H, r.Role)).ToList(),
+            new BiomeDto(
+                atmo.Name,
+                atmo.TintR, atmo.TintG, atmo.TintB, atmo.TintStrength,
+                atmo.FogR, atmo.FogG, atmo.FogB, atmo.FogStrength,
+                atmo.Vignette,
+                atmo.ParticleR, atmo.ParticleG, atmo.ParticleB, atmo.ParticleDensity, atmo.ParticleDrift));
     }
+
+    private static ushort PoiSpriteId(string kind) => kind switch
+    {
+        "chest" => DungeonGenerator.ChestId,
+        "sanctuary" => DungeonGenerator.SanctuaryId,
+        _ => DungeonGenerator.LadderDownId,
+    };
 
     private List<string> BuildActiveConditions()
     {
@@ -3432,7 +3933,8 @@ public sealed class GameWorld
             Math.Max(_autoAttackReadyAtMs - NowMs, 0),
             new AutoHelperSettingsDto(
                 _autoHelperTargeting, _autoHelperSkills, _autoHelperUltimate,
-                _autoHelperTargetPreference, _autoHelperMovementMode, _defaultAutoHelperMovementMode),
+                _autoHelperTargetPreference, _autoHelperMovementMode, _defaultAutoHelperMovementMode,
+                _autoHelperAutoHeal, _autoHelperHealPct, _autoHelperNavMode, _autoHelperAutoCards),
             _buffsUntilMs.Where(b => NowMs < b.Value).Select(b => b.Key).ToList(),
             BuildActiveConditions(),
             new EquipmentStatsDto(
@@ -3479,13 +3981,15 @@ public sealed class GameWorld
                 return new CardStackDto(c.Key, def.Name, c.Value, def.Rarity, def.TagList);
             }).ToList(),
             _pendingOffer,
+            _cardRerollsRemaining, _bannedCards.Count, GameConfig.CardRerollGoldCost,
             boss?.Hp, boss?.MaxHp, boss?.Species!.Name,
             boss is { PostureMax: > 0 } ? boss.Posture : null,
             boss is { PostureMax: > 0 } ? boss.PostureMax : null,
             boss is not null && boss.IsStaggered(NowMs),
             boss?.PostureCycle ?? 0,
             NowMs, Ended,
-            ItemsLooted.ToList());
+            ItemsLooted.ToList(),
+            CurrentNavTargetDto());
 
         return new SnapshotDto(TickCount, NowMs, _currentFloor, player, monsters, items, _events.ToList(), run);
     }

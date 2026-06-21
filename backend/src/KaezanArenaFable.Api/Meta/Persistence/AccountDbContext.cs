@@ -38,6 +38,8 @@ public sealed class AccountDbContext(DbContextOptions<AccountDbContext> options)
             entity.Property(row => row.Xp).HasColumnName("xp");
             entity.Property(row => row.Gold).HasColumnName("gold");
             entity.Property(row => row.Kaeros).HasColumnName("kaeros");
+            entity.Property(row => row.LastSeenUtc).HasColumnName("last_seen_utc").HasMaxLength(40)
+                .HasDefaultValue("");
             entity.Property(row => row.ActiveWaifuId).HasColumnName("active_waifu_id").HasMaxLength(64);
             entity.Property(row => row.DailyDate).HasColumnName("daily_date").HasMaxLength(10);
             entity.Property(row => row.GiftsDate).HasColumnName("gifts_date").HasMaxLength(10)

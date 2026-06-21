@@ -16,11 +16,26 @@ namespace KaezanArenaFable.Api.Domain;
 /// <param name="DecorChance">Per room-cell chance of a decor prop.</param>
 /// <param name="Accent">Themed accent tiles (e.g. lava pools); empty = none.</param>
 /// <param name="AccentChance">Per room-cell chance of an accent tile (evaluated before decor).</param>
+/// <param name="Atmosphere">G-07: per-stratum color-grade/light/fog/particle palette. Purely cosmetic
+/// data the frontend renders as a post-process; the engine never reads it.</param>
 public sealed record BiomeDef(
     ushort[] Ground, ushort[] BossGround,
     ushort WallH, ushort WallV, ushort WallPole, ushort WallCorner,
     ushort[] Decor, double DecorChance,
-    ushort[] Accent, double AccentChance);
+    ushort[] Accent, double AccentChance,
+    BiomeAtmosphere Atmosphere);
+
+/// <summary>
+/// G-07: cosmetic atmosphere of a stratum, sent verbatim to the renderer (no engine coupling).
+/// Colors are 0–255 channels; strengths are 0–1. <see cref="ParticleDrift"/> is the vertical motion
+/// of ambient motes: -1 rises (embers), +1 falls (ash/dust), 0 floats in place.
+/// </summary>
+public sealed record BiomeAtmosphere(
+    string Name,
+    byte TintR, byte TintG, byte TintB, double TintStrength,
+    byte FogR, byte FogG, byte FogB, double FogStrength,
+    double Vignette,
+    byte ParticleR, byte ParticleG, byte ParticleB, double ParticleDensity, int ParticleDrift);
 
 /// <summary>
 /// Biome catalog by tier. Asset notes (all verified present in frontend manifest.json):
@@ -51,30 +66,48 @@ public static class Biomes
     // stone walls (64px alpha) — solid corner/junction via 1116 to avoid corner gaps.
     private const ushort StoneH = 1113, StoneV = 1112, StonePole = 1116, StoneCorner = 1116;
 
+    // G-07: one color-grade + light/fog/particle palette per stratum. A strong grade + drifting motes
+    // is the cheapest way to make each estrato read as a distinct place while reusing the same tiles.
+    private static readonly BiomeAtmosphere CaveAtmo = new(
+        "Toca Ecoante", 255, 190, 120, 0.16, 40, 28, 18, 0.18, 0.34,
+        216, 196, 156, 0.40, 0);                  // warm amber, floating dust
+    private static readonly BiomeAtmosphere FortAtmo = new(
+        "Forte Uruk", 200, 224, 178, 0.12, 120, 140, 110, 0.10, 0.22,
+        222, 236, 172, 0.34, 0);                  // green daylight, drifting pollen
+    private static readonly BiomeAtmosphere CryptAtmo = new(
+        "Cripta Sombria", 132, 152, 210, 0.20, 28, 34, 56, 0.26, 0.46,
+        176, 196, 232, 0.46, 1);                  // cold blue mist, settling motes
+    private static readonly BiomeAtmosphere LairAtmo = new(
+        "Covil Escamado", 255, 150, 90, 0.22, 50, 18, 12, 0.20, 0.40,
+        255, 172, 84, 0.52, -1);                  // hot orange, rising embers
+    private static readonly BiomeAtmosphere AbyssAtmo = new(
+        "Abismo Ecoante", 182, 92, 202, 0.24, 30, 12, 38, 0.30, 0.52,
+        222, 122, 232, 0.56, -1);                 // violet abyss, rising ash
+
     /// <summary>Tier 1 — Toca Ecoante: brown dirt cavern with boulders.</summary>
     public static readonly BiomeDef Cave = new(
         CaveGround, StoneGround, DirtH, DirtV, DirtPole, DirtCorner,
-        CaveRocks, 0.025, [], 0);
+        CaveRocks, 0.025, [], 0, CaveAtmo);
 
     /// <summary>Tier 2 — Forte Uruk: grassy orc camp ringed by stone ruins.</summary>
     public static readonly BiomeDef Fort = new(
         GrassGround, StoneGround, StoneH, StoneV, StonePole, StoneCorner,
-        CaveRocks, 0.02, [], 0);
+        CaveRocks, 0.02, [], 0, FortAtmo);
 
     /// <summary>Tier 3 — Cripta Sombria: mossy stone crypt strewn with bones.</summary>
     public static readonly BiomeDef Crypt = new(
         MossStone, StoneGround, StoneH, StoneV, StonePole, StoneCorner,
-        Bones, 0.03, [], 0);
+        Bones, 0.03, [], 0, CryptAtmo);
 
     /// <summary>Tier 4 — Covil Escamado: dark stone lair with decorative lava pools.</summary>
     public static readonly BiomeDef Lair = new(
         DarkStone, StoneGround, StoneH, StoneV, StonePole, StoneCorner,
-        CaveRocks, 0.02, Lava, 0.05);
+        CaveRocks, 0.02, Lava, 0.05, LairAtmo);
 
     /// <summary>Tier 5 — Abismo Ecoante: stone abyss flooded with lava and bone.</summary>
     public static readonly BiomeDef Abyss = new(
         DarkStone, StoneGround, StoneH, StoneV, StonePole, StoneCorner,
-        Bones, 0.02, Lava, 0.055);
+        Bones, 0.02, Lava, 0.055, AbyssAtmo);
 
     public static BiomeDef ForTier(int tier) => tier switch
     {

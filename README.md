@@ -143,8 +143,8 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
 | WASD / setas | Movimento cardinal (combinações de duas teclas também formam diagonais) |
 | Q / E / Z / C | Movimento diagonal (sem cortar quinas; diagonal bloqueada desliza pelo eixo livre) |
 | Espaço | Mirar no inimigo mais próximo |
-| Clique | Mirar inimigo / interagir (baú, escada) |
-| Painel Helper | Controla alvo automático, preferência de alvo, skills, ultimate e modo de movimento |
+| Clique / F | Mirar inimigo / interagir (baú, **Santuário de Eco**, escada) |
+| Painel Helper | Controla alvo automático, preferência de alvo, skills, ultimate e modo de movimento; abre o **editor de táticas** (gambit) |
 | 1 / 2 / 3 / 4 | Slots 1-4 do kit da classe |
 | R | Ultimate da classe (gauge) |
 | 5 | Poção de cura (2 cargas por run; cura escala com o tier; cooldown curto) |
@@ -170,12 +170,26 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
   e dissolve por pixels na morte. A intensidade vem sempre do dado do servidor, nunca de RNG no front.
 - Monstros desviam de bloqueios e aglomerações, perdem aggro após distância/LOS prolongados e
   respeitam `staticAttackChance` para sustentar posições de ataque.
-- O helper vem ligado por padrão e pode ser modularizado no HUD: alvo automático, preferência de
-  alvo (`HP` ou `Perto`), skills 1-4, ultimate e modo de movimento (`Stand`, `Follow` ou `Avoid`).
-  Kaelis melee começam preferindo `Perto` + `Follow`; ranged começa em `HP` + `Avoid`, tentando
-  manter 2 SQM do alvo. A escolha manual continua prevalecendo até o alvo morrer/sair da zona.
-  Skills e ultimate só são usadas quando a área/linha alcançaria algum mob; movimento continua
-  manual salvo quando um modo automático está ativo.
+- **Painel HELPER — controle de autoplay (estilo on/off de gacha).** O painel fica sempre visível no
+  HUD, em seções claras (UI em inglês), com um *readout* em linguagem natural no topo ("Exploring &
+  looting · hitting the nearest foe · auto-healing.") pra você "ler" a config num relance:
+  - **Combat:** on/off de **Target**, **Skills**, **Ultimate**; e prioridade de alvo **Nearest** ou
+    **Lowest HP**. Skills/ult só disparam quando a área/linha alcançaria um mob; a escolha manual
+    de alvo prevalece até ele morrer/sair.
+  - **Movement:** **Stand** (off), **Follow** ou **Avoid**. Melee começa em Follow, ranged em Avoid
+    (mantém ~2 SQM).
+  - **Autopilot** (ligado por default — o jogo é autoplay-first): **Auto-heal** (usa a poção da run
+    abaixo de um limiar configurável por **slider**, 10–90%, default 50%); **Auto-pick cards**
+    (resolve a oferta sozinho pegando a de maior raridade, pra não travar nos beats); e **Auto-loot**
+    (o "cavebot" do helper, BFS server-side): caminha sozinho até o baú **ou altar de Eco** ativo mais
+    próximo, abre e repete; sem mais nada a coletar, segue pra saída — sempre lutando no caminho.
+    Espera ~1s no início de cada andar antes de começar a andar (a tela carrega primeiro). **Não há
+    modo "rush/skip"** de propósito — a graça é assistir a run, não pular o mapa. Um **indicador de
+    destino** mostra pra onde a Kaeli está indo: um marcador pulsante no tile-alvo quando ele está na
+    tela, ou uma seta na borda apontando a direção quando está fora dela (roxo = baú/altar, ciano =
+    saída). O alvo vem do backend (`run.navTarget`); o cliente só desenha.
+  - **Save as default** persiste a config **por Kaeli** (recarrega no início da próxima run dela);
+    **Reset** volta ao default. Tudo é avaliado deterministicamente no tick (backend autoritativo).
 - **Legibilidade do helper (client-side).** Dá pra "ler" o que a build vai fazer: um retículo animado
   marca o alvo atual do helper, uma linha de intenção liga a Kaeli ao alvo (dourada quando há skill
   pronta para cair) e um *telegraph* pulsante prevê o shape que vai disparar (cone/beam saindo da
@@ -186,8 +200,14 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
   perfis data-driven do engine; sprites/corpses ainda podem reaproveitar a biblioteca Canary.
 - O catálogo seedado tem 50 monstros Kaezan nos cinco tiers, com 6 comuns, 3 elites e 1 boss por
   dungeon. Loot de equipamentos vem de tabelas curadas por tier/classe, não das loot tables Tibia.
-- Ofertas de card pausam o relógio da simulação; após 20s sem escolha, a primeira opção é aplicada.
+- Ofertas de card pausam o relógio da simulação; dá para rerolar a oferta ou banir cartas pelo
+  resto da run; após 20s sem escolha, a primeira opção é aplicada.
 - Atualizar a página preserva a run por até 60s e retoma o mesmo mapa, HP e estado do mundo.
+- A tela de dungeon tem seletor de **Tentativas** (1-5). A primeira run acontece normalmente; se o
+  lote tiver mais tentativas, o cliente reinicia o mesmo tier sozinho apos cada encerramento ate o
+  lote acabar. A UI ja mostra a conta de energia planejada (60 por run / 300 total) para encaixar no
+  futuro sistema de resina. Ao voltar ao jogo depois de ficar offline, a conta recebe ouro e XP
+  limitados por tempo desde a ultima sessao, com taxa/cap em `GameConfig`.
 
 ## Postura de boss e reações elementais (F-E)
 
@@ -215,16 +235,35 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
 ## Loop de jogo
 
 1. **Home Hub** — vitrine da Kaeli ativa, contratos diários, progresso de conta.
-2. **Caçada** — 5 tiers de dungeon (gate por nível de conta). Cada run: 2 andares procedurais
-   (salas de mobs com spawn por *budget* estilo Echo Spots, baús com chance de emboscada,
-   escada para o covil) e um **boss Kaezan** no fundo. Cada tier tem um **bioma visual próprio**
-   (`Domain/Biomes.cs`): caverna de terra (1), forte gramado (2), cripta de pedra com ossos (3),
-   covil escuro com poças de lava (4) e abismo (5). As paredes escolhem a peça por vizinhança
+2. **Caçada** — 5 tiers de dungeon (gate por nível de conta). Cada run: 2 andares procedurais e
+   um **boss Kaezan** no fundo. O `DungeonGenerator` conecta as salas como um **grafo** (árvore
+   geradora espacial determinística + 1 loop), com **tipo por sala** (G-07): combate, **elite**,
+   **tesouro**, **Santuário de Eco**, **evento/risco** (swarm), **miniboss** e **boss**. As salas
+   **fora do caminho entrada→saída** viram detours de **risco/recompensa** (elite/tesouro atrás de um
+   garfo — o jogador escolhe o caminho, o helper anda), e o **minimapa desenha um ícone por tipo de
+   sala** (elite `!`, miniboss `×`, evento `?`, boss `★`; baú/santuário/escada vêm dos POIs), deixando
+   a rota antecipável. Cada tier tem um **bioma visual próprio** (`Domain/Biomes.cs`): caverna de terra
+   (1), forte gramado (2), cripta de pedra com ossos (3), covil escuro com poças de lava (4) e abismo
+   (5), cada um com uma **atmosfera** distinta (color-grade + névoa + vinheta + partículas, em
+   `BiomeAtmosphere`, renderizada client-side). As paredes escolhem a peça por vizinhança
    (horizontal/vertical/canto), e os acentos de lava ficam na camada de decoração — nunca
    bloqueiam o caminho.
-3. Durante a run: XP → level-ups oferecem **cards passivos** (escolha 1 de 3, max 3 stacks);
-   monstros e baús entregam ouro e equipamentos Kaezan do tier atual. Drops priorizam a classe ativa
-   e alternam com acessórios genéricos; bosses também têm chance de relíquia do próprio tier.
+3. Durante a run (cadência G-06): **level-up dá um status pequeno automático** (sorteia uma carta
+   comum e aplica na hora, sem abrir tela). As **escolhas pesadas** (1 de 3, max 3 stacks) ficam
+   reservadas a **beats antecipáveis** — derrotar um **elite**, limpar um **andar** e a sala
+   **Santuário de Eco** (altar sinalizado no minimapa em roxo). Alvo de **~6-9 escolhas por run**,
+   com a **raridade escalando** ao longo da run (começo favorece comum/raro, fim favorece raro/eco).
+   Cada oferta ainda permite reroll limitado e banir cartas pelo resto da run. Monstros e baús
+   entregam ouro e equipamentos Kaezan do tier atual; drops priorizam a classe ativa e alternam com
+   acessórios genéricos; bosses também têm chance de relíquia do próprio tier.
+   **Baús = altar de Eco / loja da run (G-09).** Abrir um baú **comum** abre uma oferta de carta (o
+   mesmo overlay de beat, com reroll/banir) além do ouro/itens — os baús viram beats e ajudam a
+   cadência. A **loja** é o **reroll pago**: esgotados os rerolls grátis, rerolar custa ouro. Há
+   **baús amaldiçoados** (telegrafados em magenta no mundo e no minimapa: emboscam e amaldiçoam o
+   jogador com lentidão, mas a oferta vem **abençoada** — ponderada como o fim da run — e garantem
+   material) e **mímicos** (disfarçados de baú comum: um elite reforçado salta do baú). Alguns baús
+   dropam **Material de Eco** por tier (`Estilhaço de Eco`), que cresce a conta e aparece na faixa
+   **Materiais de Eco** da aba Equipamento da Kaeli (forja/craft fica para depois).
 4. **Recrutar** — banners com pity para Kaelis jogáveis. Quando um roll não acerta uma Kaeli, ele
    entrega **1 item Kaezan aleatório**; quando acerta uma Kaeli repetida, o dupe vira Echo
    Shards → **Ascensão** (+8% stats por nível; os addons do outfit são definidos por skin no Outfit

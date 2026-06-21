@@ -60,6 +60,7 @@ internal static class AccountStateDefaults
     {
         Kaeros = GameConfig.StartingKaeros,
         Gold = GameConfig.StartingGold,
+        LastSeenUtc = DateTimeOffset.UtcNow.ToString("O"),
         OwnedWaifus = [Waifus.StarterWaifuId],
         ActiveWaifuId = Waifus.StarterWaifuId
     };

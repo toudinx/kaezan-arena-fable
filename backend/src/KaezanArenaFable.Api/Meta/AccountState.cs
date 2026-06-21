@@ -34,6 +34,7 @@ public sealed class AccountState
     public long AccountXp { get; set; }
     public long Gold { get; set; }
     public long Kaeros { get; set; }
+    public string LastSeenUtc { get; set; } = "";
 
     public List<string> OwnedWaifus { get; set; } = [];
     public Dictionary<string, int> Shards { get; set; } = [];
@@ -59,6 +60,9 @@ public sealed class AccountState
     public int RunsPlayed { get; set; }
     public int RunsWon { get; set; }
     public Dictionary<int, int> TierClears { get; set; } = [];
+
+    /// <summary>G-10: config default do helper por Kaeli — "targeting|skills|ult|pref|movement|autoheal|nav".</summary>
+    public Dictionary<string, string> HelperProfiles { get; set; } = [];
 
     /// <summary>Chave do loadout de equipamento: um set por Kaeli POR tier ("waifu:x#3").</summary>
     public static string EquipKey(string waifuId, int tier) => $"{waifuId}#{tier}";

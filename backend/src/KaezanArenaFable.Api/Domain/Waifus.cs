@@ -36,12 +36,21 @@ public sealed record SkinDef(
     int Addons = 0, int MountLookType = 0);
 
 /// <summary>
+/// MG-02: papel é o eixo PRIMÁRIO de identidade mecânica (dano de auto vs skill, velocidade, range,
+/// AOE — ver <see cref="GameConfig.Roles"/>). A velha dicotomia melee/ranged morreu como conceito de
+/// design: <see cref="WaifuDef.Weapon"/> agora é só cosmético (sprite/missile/visual de auto).
+/// Mapa: Mage = Eloa/Velvet/Rin; Archer = Gaia/Lunara; Knight = Rynna/Seren.
+/// </summary>
+public enum KaeliRole { Mage, Archer, Knight }
+
+/// <summary>
 /// A Kaeli: identidade (lore/personalidade), trait de assinatura, skins e gostos de presente.
 /// O kit de combate vem da classe (ClassId); Skins[0] é o visual padrão.
 /// Lore tem 4 fragmentos, destravados por afinidade (GameConfig.AffinityLoreLevels).
 /// </summary>
 public sealed record WaifuDef(
     string Id, string Name, string Title, int Rarity, string Element, string Weapon,
+    [property: JsonIgnore] KaeliRole Role,
     double BaseAtk, int BaseHp, string ClassId, string Description, string Personality,
     TraitDef Trait,
     IReadOnlyList<string> Lore,
@@ -71,7 +80,7 @@ public static class Waifus
 {
     public static readonly IReadOnlyList<WaifuDef> All =
     [
-        new("waifu:eloa", "Eloa", "Serafim do Julgamento", 5, "holy", "wand",
+        new("waifu:eloa", "Eloa", "Serafim do Julgamento", 5, "holy", "wand", KaeliRole.Mage,
             22, 150, Classes.OracleId,
             "Anjo de luz que não reza pela salvação alheia: ela a aplica. Onde Eloa abre as " +
             "asas, a noite encolhe e o que se escondia nela perde o direito de continuar escondido.",
@@ -108,7 +117,7 @@ public static class Waifus
                     141, 114, 90, 88, 95, "affinity", 6),
             ]),
 
-        new("waifu:seren", "Seren", "Cavaleira Astral", 5, "physical", "melee",
+        new("waifu:seren", "Seren", "Cavaleira Astral", 5, "physical", "melee", KaeliRole.Knight,
             21, 240, Classes.WarriorId,
             "Aprendeu a esgrima sob um céu que ela jura que respondia aos golpes. Cada duelo, " +
             "para Seren, é uma conversa de uma frase só — e ela sempre tem a última palavra.",
@@ -145,7 +154,7 @@ public static class Waifus
                     156, 0, 0, 19, 114, "affinity", 6),
             ]),
 
-        new("waifu:velvet", "Velvet", "Arauto do Pesadelo", 5, "death", "wand",
+        new("waifu:velvet", "Velvet", "Arauto do Pesadelo", 5, "death", "wand", KaeliRole.Mage,
             22, 150, Classes.NecromancerId,
             "Dizem que ela voltou do abismo. O abismo discorda: nunca a deixou ir. Velvet " +
             "caminha com um pé em cada mundo — e os dois mundos fingem que não é com eles.",
@@ -183,7 +192,7 @@ public static class Waifus
                     279, 114, 90, 90, 112, "affinity", 8),
             ]),
 
-        new("waifu:rin", "Rin", "Súcubus do Pacto", 5, "fire", "wand",
+        new("waifu:rin", "Rin", "Súcubus do Pacto", 5, "fire", "wand", KaeliRole.Mage,
             22, 150, Classes.PyromancerId,
             "Não seduz para enganar: seduz porque é a forma mais honesta que conhece de fazer " +
             "um trato. Rin oferece fogo, calor e companhia — e cobra exatamente o combinado.",
@@ -221,7 +230,7 @@ public static class Waifus
                     288, 113, 94, 94, 114, "affinity", 6),
             ]),
 
-        new("waifu:rynna", "Rynna", "Dragoa do Trovão", 5, "energy", "melee",
+        new("waifu:rynna", "Rynna", "Dragoa do Trovão", 5, "energy", "melee", KaeliRole.Knight,
             21, 220, Classes.StormcallerId,
             "Metade dragoa, metade tempestade, inteira impaciente. Rynna não espera o raio cair " +
             "do céu: ela é o ponto onde o céu decide descer e bater primeiro.",
@@ -259,7 +268,7 @@ public static class Waifus
                     150, 86, 5, 38, 86, "affinity", 6),
             ]),
 
-        new("waifu:lunara", "Lunara", "Lebre Lunar", 5, "ice", "melee",
+        new("waifu:lunara", "Lunara", "Lebre Lunar", 5, "ice", "melee", KaeliRole.Archer,
             20, 205, Classes.CryomancerId,
             "Rápida como uma decisão e fria como a noite que a fez. Lunara dança pelo gelo que " +
             "ela mesma cria, e quando você percebe que ela passou, já está mais lento que ela.",
@@ -297,7 +306,7 @@ public static class Waifus
                     156, 9, 19, 19, 94, "affinity", 6),
             ]),
 
-        new("waifu:gaia", "Gaia", "Arqueira dos Monólitos", 5, "earth", "bow",
+        new("waifu:gaia", "Gaia", "Arqueira dos Monólitos", 5, "earth", "bow", KaeliRole.Archer,
             21, 170, Classes.ShamanId,
             "A terra não floresce para Gaia: ela se ergue. Onde outros veem pedra parada, ela vê " +
             "uma flecha esperando, uma raiz pronta, um monólito que ainda não decidiu cair.",

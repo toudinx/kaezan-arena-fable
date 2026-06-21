@@ -195,6 +195,7 @@ tempo de hunt e dano por Kaeli — sem hub, sem frontend, sem DB.
 # MG-02 — Modelo de Papéis (Knight · Mage · Archer)  ⭐ identidade
 
 - **Modelo:** Opus 4.8 · **Effort:** high · **Skill:** nenhuma (`use context7`) · **Depende de:** MG-01 · **Paraleliza com:** — (solo, Onda 2)
+- **[x] Concluído.** `KaeliRole` enum + campo `Role` em `WaifuDef` (`[JsonIgnore]`, server-only — não vaza no catálogo, `types.ts` intacto). `RoleTuning` record + `GameConfig.Roles` com os valores SEED. `GameWorld` ganhou `RoleAutoMult()`/`RoleSkillMult()`: auto-hit usa o auto-mult, e os 16 sites de skill (cast central + summon/field/barrage/DoT + 12 procs de trait/echo/carta) usam o skill-mult — sem embutir em `PlayerAttack()`. `AutoAttackInterval` e o alcance/ default de movimento agora vêm do papel, não da arma. Sim ajustado: ciclo = base de auto do papel. Builds verdes, canário de determinismo PASS.
 
 **Objetivo:** introduzir **papel** como eixo primário e separar dano de auto vs skill, velocidade e
 range por papel. A dicotomia melee/ranged deixa de dirigir design — `Weapon` fica só cosmético.

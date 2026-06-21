@@ -24,12 +24,12 @@ internal sealed record RunResult(RunRow Summary, List<KillRow> Kills);
 /// </summary>
 internal static class Simulator
 {
-    // ciclo de ação = um intervalo-base de auto-attack (pré-papéis: o global de GameConfig).
-    private const double CycleMs = GameConfig.PlayerAutoAttackMs;
-
     public static RunResult Run(GameWorld world, string kaeli, int tier, long seed, bool cards, int maxTicks)
     {
         var playerId = world.Player.Id;
+        // MG-02: ciclo de ação = o intervalo-base de auto-attack do PAPEL da Kaeli (archer 1400 <
+        // knight 1700 < mage 2000). Medir TTK em ciclos por papel mantém a comparação justa.
+        var cycleMs = (double)GameConfig.Roles[world.Waifu.Role].BaseAutoAttackMs;
 
         // Liga o piloto: mira + skills + ult + auto-heal (+auto-cards se cards=full), navegação por loot
         // (anda sozinho coletando e indo até a saída/boss). Mira no mais próximo, cura a 50% de vida.
@@ -89,7 +89,7 @@ internal static class Simulator
                         kaeli, tier, seed,
                         species.GetValueOrDefault(id, "?"),
                         world.MonsterRank(id) ?? "common",
-                        maxHp[id], ttkTicks, ttkMs, ttkMs / CycleMs, oneShot));
+                        maxHp[id], ttkTicks, ttkMs, ttkMs / cycleMs, oneShot));
                 }
             }
 

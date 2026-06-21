@@ -24,6 +24,8 @@ public static class GameConfig
     public const int AggroDropOutOfRangeMs = 4000;
     public const int AggroDropNoLosMs = 6000;
     public const int MonsterWanderIntervalMs = 1600;
+    // MG-02: supersedido por RoleTuning.BaseAutoAttackMs (velocidade de auto agora é por papel).
+    // Mantido como referência histórica do baseline pré-papéis; não usar no tick.
     public const int PlayerAutoAttackMs = 1800;
     public const int AutoHelperTargetRange = 8;
     public const double AutoHelperHealHpFraction = 0.70;
@@ -323,6 +325,20 @@ public static class GameConfig
     public const double MiniBossHpScale = 2.4;
     /// <summary>Comuns que escoltam o miniboss.</summary>
     public const int MiniBossEscort = 2;
+
+    // ---- MG-02: papéis (Knight · Mage · Archer) — eixo primário de identidade ----
+    // Cada papel dirige dano de auto vs skill, velocidade de auto, range e tamanho de AOE. Estes são
+    // os valores SEED (refinados por MG-06/MG-07 via simulador); em MG-05 viram editáveis no admin.
+    // Ordens-alvo: auto archer/knight > mage; skill mage > archer > knight; spd archer > knight > mage;
+    // range archer > mage > knight; aoe mage > knight > archer.
+    public static readonly IReadOnlyDictionary<KaeliRole, RoleTuning> Roles =
+        new Dictionary<KaeliRole, RoleTuning>
+        {
+            //                       AutoDmg SkillDmg AutoMs Range Aoe
+            [KaeliRole.Mage]   = new(0.75,   1.15,    2000,  4,    1.00),
+            [KaeliRole.Archer] = new(1.15,   0.95,    1400,  5,    0.65),
+            [KaeliRole.Knight] = new(1.05,   0.80,    1700,  1,    0.80),
+        };
 
     // ---- player damage ----
     /// <summary>Multiplicador global do dano do player (autos + skills). MVP/dificuldade: dávamos pouco dano.</summary>
@@ -877,6 +893,13 @@ public static class GameConfig
     public const int KeywordResistMin = -100;
     public const int KeywordResistMax = 100;
 }
+
+/// <summary>
+/// MG-02: tuning de combate por papel. AoeScale é consumido em MG-04 (resize de AOE); aqui em MG-02
+/// só AutoDmgMult/SkillDmgMult/BaseAutoAttackMs/AutoRange entram em vigor.
+/// </summary>
+public sealed record RoleTuning(
+    double AutoDmgMult, double SkillDmgMult, int BaseAutoAttackMs, int AutoRange, double AoeScale);
 
 public sealed record DungeonTier(
     int Tier, string Name, string Description,

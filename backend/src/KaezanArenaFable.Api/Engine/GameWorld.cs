@@ -327,7 +327,8 @@ public sealed class GameWorld
         _monsterRegistry = monsterRegistry;
         _bestiaryKills = bestiaryKills;
         _rng = new Rng((ulong)seed);
-        var isMelee = Waifus.WeaponRange(Waifu.Weapon) <= GameConfig.MeleeRange;
+        // MG-02: o default de movimento (seguir vs kitar) segue o range do papel, não mais a arma.
+        var isMelee = GameConfig.Roles[Waifu.Role].AutoRange <= GameConfig.MeleeRange;
         _autoHelperTargetPreference = GameConfig.AutoHelperTargetPreferenceNearest;
         _defaultAutoHelperMovementMode = isMelee
             ? GameConfig.AutoHelperMovementModeFollow
@@ -817,6 +818,14 @@ public sealed class GameWorld
         Emit("effect", Player.X, Player.Y, 0, 0, Classes.Skills[next.Slots[0]].EffectId);
     }
 
+    // MG-02: tuning do papel da Kaeli (dano de auto vs skill, velocidade, range, AOE).
+    private RoleTuning RoleTuning => GameConfig.Roles[Waifu.Role];
+    // MG-02: a separação auto/skill é feita NOS CALL SITES, nunca dentro de PlayerAttack() (aplicaria
+    // duas vezes). Auto-hit usa * RoleAutoMult(); skill-dmg e todos os procs de trait/echo/carta usam
+    // * RoleSkillMult(). PlayerAttack() devolve o ataque "puro" (sem multiplicador de papel).
+    private double RoleAutoMult() => RoleTuning.AutoDmgMult;
+    private double RoleSkillMult() => RoleTuning.SkillDmgMult;
+
     private double PlayerAttack()
     {
         var atk = (Waifu.BaseAtk + EquipmentStats.AttackBonus)
@@ -847,7 +856,9 @@ public sealed class GameWorld
 
     private long AutoAttackInterval()
     {
-        var interval = GameConfig.PlayerAutoAttackMs / (1 + CardValue("atkSpeedPercent"));
+        // MG-02: a base de velocidade vem do papel (archer > knight > mage); divisores de carta/buff/Gaia
+        // e o piso de 400ms continuam por cima.
+        var interval = (double)RoleTuning.BaseAutoAttackMs / (1 + CardValue("atkSpeedPercent"));
         if (IsBuffActive("atkspeed")) interval /= 1.40;
         if (IsBuffActive("aegis")) interval /= GameConfig.SentinelAegisAttackSpeedMultiplier;
         if (NowMs < _preyHuntBonusUntilMs) interval /= 1 + GameConfig.GaiaHuntAtkSpeedBonus; // Gaia — caça
@@ -1370,8 +1381,9 @@ public sealed class GameWorld
         return false;
     }
 
+    // MG-02: alcance do auto vem do papel (archer > mage > knight), não mais da arma (cosmética).
     private bool CanPlayerAutoAttack(Actor target) =>
-        IsTargetableByPlayer(target, Waifus.WeaponRange(Waifu.Weapon));
+        IsTargetableByPlayer(target, RoleTuning.AutoRange);
 
     private bool IsTargetableByPlayer(Actor target, int maxRange) =>
         target.Hp > 0
@@ -1402,7 +1414,7 @@ public sealed class GameWorld
         var attackElement = string.IsNullOrWhiteSpace(EquipmentStats.WeaponElement)
             ? Waifu.Element
             : EquipmentStats.WeaponElement;
-        DealDamageToMonster(target, PlayerAttack(), attackElement, hitEffect: missile > 0 ? 0 : 216);
+        DealDamageToMonster(target, PlayerAttack() * RoleAutoMult(), attackElement, hitEffect: missile > 0 ? 0 : 216);
     }
 
     private void TryCastSkill(int slot)
@@ -1451,7 +1463,7 @@ public sealed class GameWorld
 
         // maestria: slots 1-4 multiplicam o Power; a ultimate amplifica duração/cura (ultmod)
         var ultScale = isUlt ? Loadout.Mastery.UltimatePowerMult : 1.0;
-        var damage = PlayerAttack() * skill.Power * EquipmentStats.SkillPowerMultiplier
+        var damage = PlayerAttack() * RoleSkillMult() * skill.Power * EquipmentStats.SkillPowerMultiplier
                      * (isUlt ? 1.0 : Loadout.Mastery.SlotPowerMult(slot));
         switch (skill.Shape)
         {
@@ -1542,7 +1554,7 @@ public sealed class GameWorld
                     Floor = _currentFloor, X = Player.X, Y = Player.Y,
                     Element = skill.Element, Fx = skill.EffectId,
                     Radius = Math.Max(skill.SummonRadius, 1),
-                    DamagePerPulse = PlayerAttack() * skill.SummonPower
+                    DamagePerPulse = PlayerAttack() * RoleSkillMult() * skill.SummonPower
                         * EquipmentStats.SkillPowerMultiplier * slotMult,
                     PulseMs = pulseMs,
                     NextPulseAtMs = NowMs + pulseMs,
@@ -1589,7 +1601,7 @@ public sealed class GameWorld
             case "field":
             {
                 // pinta tiles-perigo no chao (ao redor do alvo, ou de si mesma se sem alvo).
-                var dmg = PlayerAttack() * skill.SummonPower * EquipmentStats.SkillPowerMultiplier
+                var dmg = PlayerAttack() * RoleSkillMult() * skill.SummonPower * EquipmentStats.SkillPowerMultiplier
                     * (isUlt ? ultScale : Loadout.Mastery.SlotPowerMult(slot));
                 var tickMs = Math.Max(skill.SummonPulseMs, GameConfig.TickMs);
                 foreach (var (tx, ty) in CircleTiles(aimX, aimY, Math.Max(skill.SummonRadius, 0)))
@@ -1611,7 +1623,7 @@ public sealed class GameWorld
                 // golpes em multiplos tempos no ponto alvo (chuva/rajada que cai em sequencia).
                 var strikes = Math.Max(skill.Strikes, 1);
                 var interval = Math.Max(skill.StrikeIntervalMs, GameConfig.TickMs);
-                var dotPerTick = PlayerAttack() * skill.DotPower * EquipmentStats.SkillPowerMultiplier;
+                var dotPerTick = PlayerAttack() * RoleSkillMult() * skill.DotPower * EquipmentStats.SkillPowerMultiplier;
                 for (var k = 0; k < strikes; k++)
                     _pendingStrikes.Add(new ScheduledStrike
                     {
@@ -1655,7 +1667,7 @@ public sealed class GameWorld
 
         if (monster.Hp > 0 && skill.DotTicks > 0 && skill.DotPower > 0)
             ApplyDotToMonster(monster, skill.Element, skill.EffectId,
-                PlayerAttack() * skill.DotPower * EquipmentStats.SkillPowerMultiplier * buffScale,
+                PlayerAttack() * RoleSkillMult() * skill.DotPower * EquipmentStats.SkillPowerMultiplier * buffScale,
                 skill.DotTicks, skill.DotTickMs > 0 ? skill.DotTickMs : GameConfig.ConditionDefaultTickMs);
 
         if (monster.Hp > 0 && skill.SlowMs > 0 && skill.SlowFactor < 1)
@@ -2053,7 +2065,7 @@ public sealed class GameWorld
                         monster.SlowUntilMs = NowMs + GameConfig.EchoDeepRootsSlowMs;
                         monster.SlowFactor = GameConfig.EchoDeepRootsSlowFactor;
                         ApplyDotToMonster(monster, "earth", GameConfig.ConditionTickFx["poison"],
-                            PlayerAttack() * GameConfig.EchoDeepRootsDotPower,
+                            PlayerAttack() * RoleSkillMult() * GameConfig.EchoDeepRootsDotPower,
                             GameConfig.EchoDeepRootsDotTicks, GameConfig.EchoDeepRootsDotTickMs);
                     }
                 }
@@ -2097,7 +2109,7 @@ public sealed class GameWorld
                 if (decayGain <= 0) break;
                 monster.DecayStacks = Math.Min(ActiveDecayStacks(monster) + decayGain, GameConfig.VelvetDecayMaxStacks);
                 monster.DecayUntilMs = NowMs + GameConfig.VelvetDecayDurationMs;
-                var decayPower = PlayerAttack() * GameConfig.VelvetDecayDamagePerStack * monster.DecayStacks;
+                var decayPower = PlayerAttack() * RoleSkillMult() * GameConfig.VelvetDecayDamagePerStack * monster.DecayStacks;
                 ApplyDotToMonster(monster, "death", GameConfig.ConditionTickFx["curse"],
                     decayPower, GameConfig.VelvetDecayTicks, GameConfig.VelvetDecayTickMs);
                 // Eco Pacto de Sangue: a carga de Maldição ergue escudo em vez de Velvet curar.
@@ -2243,7 +2255,7 @@ public sealed class GameWorld
                 _cardDoubleStrikeHits = 0;
                 Emit("text", monster.X, monster.Y, 0, 0, 0, "GOLPE DUPLO");
                 DealDamageToMonster(monster,
-                    PlayerAttack() * GameConfig.CardDoubleStrikeDamageMult * doubleStrike,
+                    PlayerAttack() * RoleSkillMult() * GameConfig.CardDoubleStrikeDamageMult * doubleStrike,
                     CurrentStance.Element, 0,
                     fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
             }
@@ -2264,7 +2276,7 @@ public sealed class GameWorld
                 Floor = monster.Floor, X = monster.X, Y = monster.Y,
                 Element = "death", Fx = GameConfig.CardHarvestSpectreFx,
                 Radius = GameConfig.CardHarvestSpectreRadius,
-                DamagePerPulse = PlayerAttack() * GameConfig.CardHarvestSpectreDamageMult,
+                DamagePerPulse = PlayerAttack() * RoleSkillMult() * GameConfig.CardHarvestSpectreDamageMult,
                 PulseMs = pulseMs, NextPulseAtMs = NowMs + pulseMs,
                 ExpireAtMs = NowMs + GameConfig.CardHarvestSpectreDurationMs,
                 IsEchoSpectre = true,
@@ -2283,7 +2295,7 @@ public sealed class GameWorld
                 next.DecayStacks = Math.Min(stacks, GameConfig.VelvetDecayMaxStacks);
                 next.DecayUntilMs = NowMs + GameConfig.VelvetDecayDurationMs;
                 ApplyDotToMonster(next, "death", GameConfig.ConditionTickFx["curse"],
-                    PlayerAttack() * GameConfig.VelvetDecayDamagePerStack * next.DecayStacks,
+                    PlayerAttack() * RoleSkillMult() * GameConfig.VelvetDecayDamagePerStack * next.DecayStacks,
                     GameConfig.VelvetDecayTicks, GameConfig.VelvetDecayTickMs);
                 Emit("projectile", monster.X, monster.Y, next.X, next.Y, 11); // death missile
                 Emit("text", next.X, next.Y, 0, 0, 0, "PRAGA");
@@ -2293,7 +2305,7 @@ public sealed class GameWorld
         // Rin — Holocausto: alvo que morre em chamas explode num estouro de fogo em área.
         if (HasEcho("holocaust") && IsBurning(monster))
         {
-            var burst = PlayerAttack() * GameConfig.EchoHolocaustDamageMult;
+            var burst = PlayerAttack() * RoleSkillMult() * GameConfig.EchoHolocaustDamageMult;
             Emit("text", monster.X, monster.Y, 0, 0, 0, "HOLOCAUSTO");
             foreach (var (tx, ty) in CircleTiles(monster.X, monster.Y, GameConfig.EchoHolocaustRadius))
             {
@@ -2312,7 +2324,7 @@ public sealed class GameWorld
         if (monster.Hp <= 0) return;
         var stacks = CardKindStacks("detonate");
         if (stacks <= 0) return;
-        var burst = PlayerAttack() * GameConfig.CardDetonateDamageMult * stacks;
+        var burst = PlayerAttack() * RoleSkillMult() * GameConfig.CardDetonateDamageMult * stacks;
         Emit("text", monster.X, monster.Y, 0, 0, 0, "DETONAÇÃO");
         foreach (var (tx, ty) in CircleTiles(monster.X, monster.Y, GameConfig.CardDetonateRadius))
         {
@@ -2360,7 +2372,7 @@ public sealed class GameWorld
     private void RynnaDischarge(Actor origin, int triggerDamage)
     {
         Emit("text", origin.X, origin.Y, 0, 0, 0, "DESCARGA");
-        var dmg = PlayerAttack() * GameConfig.RynnaDischargeDamageMult;
+        var dmg = PlayerAttack() * RoleSkillMult() * GameConfig.RynnaDischargeDamageMult;
         // Eco Núcleo de Trovão: a Descarga enche a ultimate muito mais rápido.
         var gaugeBonus = GameConfig.RynnaParalyzeGaugeBonus
             * (HasEcho("thunder_core") ? GameConfig.EchoThunderCoreGaugeMult : 1);
@@ -2377,7 +2389,7 @@ public sealed class GameWorld
             _gauge = Math.Min(_gauge + gaugeBonus, GameConfig.UltimateGaugeMax);
             if (overload)
                 ApplyDotToMonster(current, "energy", GameConfig.ConditionTickFx["energy"],
-                    PlayerAttack() * GameConfig.EchoOverloadDotPower,
+                    PlayerAttack() * RoleSkillMult() * GameConfig.EchoOverloadDotPower,
                     GameConfig.EchoOverloadDotTicks, GameConfig.EchoOverloadDotTickMs);
             fromX = current.X; fromY = current.Y;
             DealDamageToMonster(current, dmg, "energy", 12,
@@ -2402,7 +2414,7 @@ public sealed class GameWorld
                 monster.FrostHits = 0;
                 Emit("text", monster.X, monster.Y, 0, 0, 0, "ESTILHAÇO");
                 Emit("effect", monster.X, monster.Y, 0, 0, 44); // ice fx
-                DealDamageToMonster(monster, PlayerAttack() * GameConfig.LunaraShatterDamageMult, "ice", 0,
+                DealDamageToMonster(monster, PlayerAttack() * RoleSkillMult() * GameConfig.LunaraShatterDamageMult, "ice", 0,
                     fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
                 // Eco Estilhaço em Cadeia: repassa o estouro aos lentos próximos.
                 if (HasEcho("chain_shatter")) ChainShatterFrom(monster);
@@ -2423,7 +2435,7 @@ public sealed class GameWorld
     /// <summary>Lunara — Estilhaço em Cadeia: o estouro salta para os lentos próximos (fração do dano).</summary>
     private void ChainShatterFrom(Actor source)
     {
-        var burst = PlayerAttack() * GameConfig.LunaraShatterDamageMult * GameConfig.EchoChainShatterDamageMult;
+        var burst = PlayerAttack() * RoleSkillMult() * GameConfig.LunaraShatterDamageMult * GameConfig.EchoChainShatterDamageMult;
         foreach (var m in _monsters)
         {
             if (m.Hp <= 0 || m.Floor != _currentFloor || m.Id == source.Id) continue;
@@ -2442,7 +2454,7 @@ public sealed class GameWorld
         var mult = KeywordResistMult(monster, "burn");
         if (mult <= 0) return;
         ApplyDotToMonster(monster, "fire", GameConfig.ConditionTickFx["fire"],
-            PlayerAttack() * GameConfig.RinContagionBurnPower * mult,
+            PlayerAttack() * RoleSkillMult() * GameConfig.RinContagionBurnPower * mult,
             GameConfig.RinContagionBurnTicks, GameConfig.RinContagionBurnTickMs);
     }
 

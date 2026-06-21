@@ -79,6 +79,27 @@ public static class KaezanContentSeed
         new(5, "monster:t5-solar-revenant", "Solar Revenant", "elite", "support", "holy", "balanced", "death", "holy"),
         new(5, "monster:t5-storm-tyrant", "Storm Tyrant", "elite", "artillery", "energy", "glass", "earth", "energy"),
         new(5, "monster:t5-boss-echo-of-kaezan", "Echo of Kaezan", "boss", "controller", "death", "balanced", "holy", "death"),
+
+        // ---- G-08B: criaturas-assinatura dos novos arquétipos (apêndice — não desloca os outfits acima) ----
+        // Ecoídes: enxame de eco (swarm) — derrete no fogo (amplifica burn) pra empurrar build de Rin.
+        new(1, "monster:t1-echoides", "Ecoide", "common", "swarm", "death", "glass", "holy", "death",
+            Keywords: [("burn", -50)]),
+        // Besta de Investida: avança com dash (charger).
+        new(2, "monster:t2-charge-beast", "Besta de Investida", "common", "charger", "physical", "swift", "fire", "physical"),
+        // Casulo Detonante: corre e explode ao morrer (bomber).
+        new(2, "monster:t2-blast-cocoon", "Casulo Detonante", "common", "bomber", "fire", "glass", "ice", "fire"),
+        // Necromante Caído: invocador miniboss que espelha a Velvet — resiste forte à Maldição (curse:80).
+        new(3, "monster:t3-fallen-necromancer", "Necromante Caido", "elite", "summoner", "death", "caster", "holy", "death",
+            Keywords: [("curse", 80)]),
+        new(4, "monster:t4-fallen-necromancer", "Necromante Maldito", "elite", "summoner", "death", "caster", "holy", "death",
+            Keywords: [("curse", 80)]),
+        // Couraça de Eco: tanque de postura — couraça que só abre brecha no Echo Break.
+        new(3, "monster:t3-echo-bulwark", "Couraca de Eco", "common", "posture-tank", "physical", "tank", "energy", "physical"),
+        // Portador de Eco: escudeiro que redireciona o helper — resiste à Carga, vulnerável à Postura.
+        new(4, "monster:t4-echo-bearer", "Portador de Eco", "common", "shielder", "holy", "caster", "death", "holy",
+            Keywords: [("charge", 60), ("posture", -40)]),
+        new(5, "monster:t5-echo-warden", "Guardiao de Eco", "elite", "shielder", "holy", "caster", "death", "holy",
+            Keywords: [("charge", 60), ("posture", -40)]),
     ];
 
     private static readonly ClassItemLine[] ClassItemLines =
@@ -140,6 +161,11 @@ public static class KaezanContentSeed
         if (seed.ResistTo != "physical") resistances[seed.ResistTo] = seed.Rank == "boss" ? 20 : 10;
         if (!string.IsNullOrWhiteSpace(seed.WeakTo)) resistances[seed.WeakTo] = seed.Rank == "boss" ? -15 : -10;
 
+        // G-08B: resistência por keyword de carta (curse/burn/charge/posture...).
+        var keywords = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        if (seed.Keywords is not null)
+            foreach (var (tag, pct) in seed.Keywords) keywords[tag] = pct;
+
         var modifier = seed.Rank switch
         {
             "boss" => 1.08,
@@ -165,7 +191,8 @@ public static class KaezanContentSeed
             $"Kaezan T{seed.Tier}",
             resistances,
             "",
-            true), seed.Id);
+            true,
+            keywords), seed.Id);
     }
 
     private static IReadOnlyList<AuthoredItemDefinition> BuildItems()
@@ -415,7 +442,8 @@ public static class KaezanContentSeed
         string Element,
         string Preset,
         string WeakTo,
-        string ResistTo);
+        string ResistTo,
+        (string Tag, int Pct)[]? Keywords = null);
 
     private sealed record ClassItemLine(
         string ClassId,

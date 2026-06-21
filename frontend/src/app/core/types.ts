@@ -239,6 +239,8 @@ export interface MonsterDefinition {
   cadenceMultiplier: number;
   bestiaryClass: string;
   resistances: Record<string, number>;
+  // G-08B: resistência por keyword de carta (sin/curse/burn/charge/frost/posture/combo/prey); % 0-100, negativo amplifica.
+  keywordResistances: Record<string, number>;
   appearanceId: string;
   enabled: boolean;
 }
@@ -299,6 +301,10 @@ export interface MonsterAuthoringMetadata {
   modifierMax: number;
   resistanceMin: number;
   resistanceMax: number;
+  // G-08B: tags de keyword (de G-04) e faixa de resistência por keyword.
+  keywordTags: string[];
+  keywordResistMin: number;
+  keywordResistMax: number;
   appearances: MonsterAppearance[];
 }
 

@@ -84,10 +84,16 @@ public sealed class ContentStore
             var loaded = JsonSerializer.Deserialize<List<MonsterDefinition>>(
                        File.ReadAllText(_monstersPath), JsonOpts)
                    ?? [];
-            if (!ShouldSeedMonsters(loaded)) return loaded;
-            var seed = KaezanContentSeed.Monsters.ToList();
-            WriteMonsters(seed);
-            return seed;
+            if (ShouldSeedMonsters(loaded))
+            {
+                var seed = KaezanContentSeed.Monsters.ToList();
+                WriteMonsters(seed);
+                return seed;
+            }
+            // G-08B: add-only — novos monstros do seed (ex. criaturas-assinatura) entram sem clobberar edições.
+            var merged = MergeMissingSeedMonsters(loaded);
+            WriteMonsters(merged);
+            return merged;
         }
         catch (JsonException)
         {
@@ -99,6 +105,14 @@ public sealed class ContentStore
 
     private void WriteMonsters(List<MonsterDefinition> monsters) =>
         File.WriteAllText(_monstersPath, JsonSerializer.Serialize(monsters, JsonOpts));
+
+    /// <summary>G-08B: anexa monstros do seed cujo id ainda não existe no arquivo (add-only, preserva edições).</summary>
+    private static List<MonsterDefinition> MergeMissingSeedMonsters(List<MonsterDefinition> monsters)
+    {
+        var existing = monsters.Select(m => m.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        monsters.AddRange(KaezanContentSeed.Monsters.Where(m => !existing.Contains(m.Id)));
+        return monsters;
+    }
 
     private List<KaeliSkinDefinition> LoadKaeliSkins()
     {
@@ -172,11 +186,23 @@ public sealed class ContentStore
         File.WriteAllText(_authoredItemsPath,
             JsonSerializer.Serialize(items.OrderBy(item => item.ItemId).ToList(), JsonOpts));
 
-    private static bool ShouldSeedTiers(IReadOnlyList<DungeonTier> tiers) =>
-        tiers.Count != KaezanContentSeed.Tiers.Length
-        || tiers.Any(tier =>
+    private static bool ShouldSeedTiers(IReadOnlyList<DungeonTier> tiers)
+    {
+        if (tiers.Count != KaezanContentSeed.Tiers.Length) return true;
+        if (tiers.Any(tier =>
             tier.CommonMobs.Concat(tier.EliteMobs).Append(tier.Boss)
-                .Any(reference => !reference.StartsWith("monster:", StringComparison.OrdinalIgnoreCase)));
+                .Any(reference => !reference.StartsWith("monster:", StringComparison.OrdinalIgnoreCase))))
+            return true;
+
+        // G-08B: re-seed quando o seed traz mobs novos (criaturas-assinatura) ainda ausentes dos pools
+        // persistidos — mantém os novos arquétipos vivos em runs sem exigir limpar o .data manualmente.
+        var persisted = tiers
+            .SelectMany(tier => tier.CommonMobs.Concat(tier.EliteMobs).Append(tier.Boss))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var seeded = KaezanContentSeed.Tiers
+            .SelectMany(tier => tier.CommonMobs.Concat(tier.EliteMobs).Append(tier.Boss));
+        return seeded.Any(reference => !persisted.Contains(reference));
+    }
 
     private static bool ShouldSeedMonsters(IReadOnlyList<MonsterDefinition> monsters) =>
         monsters.Count == 0

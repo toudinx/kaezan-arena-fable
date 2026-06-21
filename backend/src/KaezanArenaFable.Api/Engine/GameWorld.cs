@@ -41,6 +41,10 @@ public sealed class Actor
     public long SlowUntilMs;
     public double SlowFactor = 1.0;
 
+    // G-08B: escudeiro — barreira de eco que absorve dano antes da vida (concedida por um aliado escudeiro).
+    public double MonsterShield;
+    public long ShieldCastReadyAtMs; // cooldown do próprio escudeiro entre concessões de barreira
+
     // K-04 signature trait state carried per target.
     public int SinStacks;       // Eloa — Selo de Julgamento (3 = Julgado, próximo acerto detona)
     public long SinUntilMs;
@@ -381,9 +385,11 @@ public sealed class GameWorld
                     : budget >= 5 && _rng.Chance(0.25);
                 var name = elite ? _rng.Pick(Tier.EliteMobs) : _rng.Pick(Tier.CommonMobs);
                 // G-06: só elites de salas comuns viram beat (guardas de boss/emboscada não contam).
+                // G-08B: o custo do comum vem do perfil (swarm = 1 → dobra a contagem, pressão numérica).
+                var cost = elite ? 5 : SpawnCostFor(name);
                 if (SpawnMonster(floorIndex, name, room, isElite: elite) is not null)
                 {
-                    budget -= elite ? 5 : 2;
+                    budget -= cost;
                     if (elite) elitesSpawned++;
                 }
                 else break;
@@ -443,11 +449,22 @@ public sealed class GameWorld
                 StatMult = mult,
                 Facing = (Dir)_rng.Next(4)
             };
+            // G-08B: tanque-de-postura — mob comum/elite ganha barra de Postura (Echo Break) escalada pelo perfil.
+            if (!isBoss && GameConfig.BehaviorProfile(species.BehaviorId) is { PostureScale: > 0 } postureProfile)
+            {
+                actor.PostureBaseMax = GameConfig.PostureBaseMax * postureProfile.PostureScale
+                                       * (1 + (Tier.Tier - 1) * GameConfig.PostureTierGrowth);
+                actor.PostureMax = actor.PostureBaseMax;
+            }
             _monsters.Add(actor);
             return actor;
         }
         return null;
     }
+
+    /// <summary>G-08B: custo de orçamento de spawn do comum (swarm custa 1 → enche a sala de chaff).</summary>
+    private int SpawnCostFor(string speciesName) =>
+        GameConfig.BehaviorProfile(_monsterRegistry.Get(speciesName).BehaviorId)?.SpawnCost ?? 2;
 
     private void SpawnPois()
     {
@@ -1137,6 +1154,10 @@ public sealed class GameWorld
 
     private Actor? BestAutoHelperTarget(int maxRange, Func<Actor, bool>? extra = null)
     {
+        // G-08B: escudeiro força o foco — se há um escudeiro alvo-válido, o helper o prioriza.
+        var shielder = FindTargetableShielder(maxRange, extra);
+        if (shielder is not null) return shielder;
+
         Actor? best = null;
         var bestHp = int.MaxValue;
         var bestDist = int.MaxValue;
@@ -1157,6 +1178,20 @@ public sealed class GameWorld
                 bestHp = m.Hp;
                 bestDist = dist;
             }
+        }
+        return best;
+    }
+
+    /// <summary>G-08B: escudeiro alvo-válido mais próximo de ser escolhido (desempate estável por id).</summary>
+    private Actor? FindTargetableShielder(int maxRange, Func<Actor, bool>? extra)
+    {
+        Actor? best = null;
+        foreach (var m in _monsters)
+        {
+            if (!IsTargetableByPlayer(m, maxRange)) continue;
+            if (extra is not null && !extra(m)) continue;
+            if (GameConfig.BehaviorProfile(m.Species!.BehaviorId) is not { ShieldFraction: > 0 }) continue;
+            if (best is null || m.Id < best.Id) best = m;
         }
         return best;
     }
@@ -1829,6 +1864,19 @@ public sealed class GameWorld
             return;
         }
 
+        // G-08B: barreira do escudeiro absorve antes da vida (some o golpe se cobrir tudo).
+        if (monster.MonsterShield > 0)
+        {
+            var absorbed = Math.Min(monster.MonsterShield, final);
+            monster.MonsterShield -= absorbed;
+            final -= (int)absorbed;
+            if (final <= 0)
+            {
+                Emit("text", monster.X, monster.Y, 0, 0, 0, "BLOQUEADO");
+                return;
+            }
+        }
+
         monster.Hp -= final;
         Emit("damage", monster.X, monster.Y, 0, 0, final, "", monster.Id, crit);
         if (hitEffect > 0) Emit("effect", monster.X, monster.Y, 0, 0, hitEffect);
@@ -1868,6 +1916,35 @@ public sealed class GameWorld
         if (monster.Hp <= 0) KillMonster(monster);
     }
 
+    // ================= G-08B: keyword interaction (mob × tags de G-04) =================
+    // Um mob pode resistir (0-100%) ou amplificar (negativo) uma keyword de carta. Multiplica a
+    // magnitude do efeito daquela tag aplicado AO mob. Determinístico: o multiplicador é puro; o
+    // arredondamento de stacks inteiros usa _rng SÓ quando há resistência configurada (não perturba
+    // o stream de RNG dos mobs sem keyword resist, preservando determinismo das runs existentes).
+
+    /// <summary>Fração da keyword que afeta o mob: 1 = normal, 0 = imune (100), >1 = amplifica (negativo).</summary>
+    private static double KeywordResistMult(Actor m, string tag)
+    {
+        var dict = m.Species?.KeywordResistances;
+        if (dict is null || dict.Count == 0 || !dict.TryGetValue(tag, out var pct)) return 1.0;
+        return Math.Max(1 - pct / 100.0, 0);
+    }
+
+    private static bool HasKeywordResist(Actor m, string tag) =>
+        m.Species?.KeywordResistances is { Count: > 0 } d && d.ContainsKey(tag);
+
+    /// <summary>Escala um ganho de stacks inteiro pela resistência de keyword. Sem entrada → devolve o
+    /// valor cru (não toca _rng). Com entrada → parte inteira + 1 extra probabilístico pela fração.</summary>
+    private int KeywordScaledStacks(Actor m, string tag, int baseStacks)
+    {
+        if (baseStacks <= 0 || !HasKeywordResist(m, tag)) return baseStacks;
+        var scaled = baseStacks * KeywordResistMult(m, tag);
+        var whole = (int)Math.Floor(scaled);
+        var frac = scaled - whole;
+        if (frac > 0 && _rng.NextDouble() < frac) whole++;
+        return whole;
+    }
+
     // ================= K-04: passivas assinatura =================
     // Uma família mecânica por Kaeli. Determinístico: só NowMs/_rng da run, contadores estáveis e
     // seleção de alvo por menor distância com desempate por menor id. _traitMult (maestria) sempre
@@ -1894,7 +1971,8 @@ public sealed class GameWorld
                 var ramp = HasEcho("endless_cadence")
                     ? _comboHits * _trait.Value
                     : Math.Min(_comboHits * _trait.Value, _trait.Param);
-                roll *= 1 + ramp * _traitMult;
+                // G-08B: keyword "combo" — resiste/amplifica o ramp de Disciplina contra este alvo.
+                roll *= 1 + ramp * _traitMult * KeywordResistMult(monster, "combo");
                 // Eco Execução Perfeita: Corte a cada 2º e o crit garantido executa alvos fracos.
                 var cutEvery = HasEcho("perfect_execution")
                     ? GameConfig.EchoPerfectCutEvery : GameConfig.SerenPerfectCutEvery;
@@ -1947,7 +2025,8 @@ public sealed class GameWorld
                     var rampPerSec = _trait.Value * (HasEcho("eternal_hunt") ? GameConfig.EchoEternalHuntRampMult : 1);
                     var cap = _trait.Param * (HasEcho("eternal_hunt") ? GameConfig.EchoEternalHuntCapMult : 1);
                     var huntSec = (NowMs - _preyStartMs) / 1000.0;
-                    roll *= 1 + Math.Min(huntSec * rampPerSec, cap) * _traitMult;
+                    // G-08B: keyword "prey" — resiste/amplifica o ramp de caça contra este alvo.
+                    roll *= 1 + Math.Min(huntSec * rampPerSec, cap) * _traitMult * KeywordResistMult(monster, "prey");
                     // Eco Raízes Profundas: cada acerto na Presa a enraíza e crava veneno de terra.
                     if (HasEcho("deep_roots") && monster.Hp > 0)
                     {
@@ -1981,14 +2060,22 @@ public sealed class GameWorld
                 }
                 else
                 {
-                    monster.SinStacks = ActiveSinStacks(monster) + 1;
-                    monster.SinUntilMs = NowMs + GameConfig.EloaSinDurationMs;
+                    // G-08B: keyword "sin" — alvo resistente acumula Pecado mais devagar (imune = nunca).
+                    var sinGain = KeywordScaledStacks(monster, "sin", 1);
+                    if (sinGain > 0)
+                    {
+                        monster.SinStacks = ActiveSinStacks(monster) + sinGain;
+                        monster.SinUntilMs = NowMs + GameConfig.EloaSinDurationMs;
+                    }
                 }
                 break;
 
             case "decay": // Velvet — cada acerto empilha Decadência (DoT) e sobe o limiar
                 if (!directHit || monster.Hp <= 0) break;
-                monster.DecayStacks = Math.Min(ActiveDecayStacks(monster) + 1, GameConfig.VelvetDecayMaxStacks);
+                // G-08B: keyword "curse" — alvo resistente recebe menos stacks de Maldição (imune = nenhum).
+                var decayGain = KeywordScaledStacks(monster, "curse", 1);
+                if (decayGain <= 0) break;
+                monster.DecayStacks = Math.Min(ActiveDecayStacks(monster) + decayGain, GameConfig.VelvetDecayMaxStacks);
                 monster.DecayUntilMs = NowMs + GameConfig.VelvetDecayDurationMs;
                 var decayPower = PlayerAttack() * GameConfig.VelvetDecayDamagePerStack * monster.DecayStacks;
                 ApplyDotToMonster(monster, "death", GameConfig.ConditionTickFx["curse"],
@@ -2009,8 +2096,10 @@ public sealed class GameWorld
             case "static_charge": // Rynna — acertos enchem a carga; cheia, descarrega
                 if (!directHit || monster.Hp <= 0) break;
                 // Eco Tempestade Perpétua: a Carga enche o dobro de rápido.
+                // G-08B: keyword "charge" — alvo resistente enche a Carga mais devagar.
                 _staticCharge += GameConfig.RynnaChargePerHit
-                    * (HasEcho("perpetual_storm") ? GameConfig.EchoPerpetualChargeMult : 1);
+                    * (HasEcho("perpetual_storm") ? GameConfig.EchoPerpetualChargeMult : 1)
+                    * KeywordResistMult(monster, "charge");
                 if (_staticCharge >= GameConfig.RynnaChargeMax)
                 {
                     // Eco Tempestade Perpétua: a Descarga retém metade da Carga.
@@ -2286,7 +2375,8 @@ public sealed class GameWorld
         {
             _traitHasteUntilMs = NowMs + (HasEcho("moon_dance") ? GameConfig.LunaraHasteMs * 15 : GameConfig.LunaraHasteMs);
             _traitHasteFactor = GameConfig.LunaraHasteFactor;
-            monster.FrostHits++;
+            // G-08B: keyword "frost" — alvo resistente acumula acertos de gelo mais devagar (imune = nunca estilhaça).
+            monster.FrostHits += KeywordScaledStacks(monster, "frost", 1);
             if (monster.FrostHits >= shatterHits)
             {
                 monster.FrostHits = 0;
@@ -2302,7 +2392,7 @@ public sealed class GameWorld
         }
         else
         {
-            monster.FrostHits = 1;
+            monster.FrostHits = KeywordScaledStacks(monster, "frost", 1);
         }
         monster.SlowUntilMs = NowMs + (long)_trait.Param;
         // Eco Inverno Eterno: lentidão mais forte (sem piso).
@@ -2326,10 +2416,15 @@ public sealed class GameWorld
         }
     }
 
-    private void ApplyContagionBurn(Actor monster) =>
+    private void ApplyContagionBurn(Actor monster)
+    {
+        // G-08B: keyword "burn" — alvo resistente queima menos; imune (100) não pega fogo.
+        var mult = KeywordResistMult(monster, "burn");
+        if (mult <= 0) return;
         ApplyDotToMonster(monster, "fire", GameConfig.ConditionTickFx["fire"],
-            PlayerAttack() * GameConfig.RinContagionBurnPower,
+            PlayerAttack() * GameConfig.RinContagionBurnPower * mult,
             GameConfig.RinContagionBurnTicks, GameConfig.RinContagionBurnTickMs);
+    }
 
     private void SpreadBurnFrom(Actor source)
     {
@@ -2412,6 +2507,8 @@ public sealed class GameWorld
         var gain = fromSkill ? GameConfig.PostureGainPerSkill : GameConfig.PostureGainPerAuto;
         if (boss.Species!.Elements.GetValueOrDefault(element, 0) < 0)
             gain *= GameConfig.PostureWeaknessMult; // hitting a weakness breaks faster
+        // G-08B: keyword "posture" — alvo resistente é mais difícil de quebrar (negativo = quebra mais rápido).
+        gain *= KeywordResistMult(boss, "posture");
         boss.Posture += gain;
         boss.PostureLastHitMs = NowMs;
         if (boss.Posture >= boss.PostureMax) TriggerEchoBreak(boss);
@@ -2537,6 +2634,10 @@ public sealed class GameWorld
 
         Emit("death", monster.X, monster.Y, 0, 0, monster.Species.Corpse, monster.Species.Name, monster.Id);
 
+        // G-08B: bomber/suicida — estoura em área ao morrer perto do player.
+        if (GameConfig.BehaviorProfile(monster.Species.BehaviorId) is { ExplodeRadius: > 0 } bomber)
+            BomberExplode(monster, bomber);
+
         // xp + gauge
         var xpScale = monster.Species.IsAuthored ? 1 : Tier.StatMultiplier;
         var xp = (long)(monster.Species.Experience * xpScale * (1 + CardValue("xpPercent")));
@@ -2554,6 +2655,26 @@ public sealed class GameWorld
 
         if (monster.IsBossActor)
             EndRun(true, $"{monster.Species.Name} derrotado");
+    }
+
+    /// <summary>G-08B: estouro do bomber ao morrer — pinta a área e fere o player se estiver no raio.
+    /// Determinístico: dano derivado do kit (maior MaxDamage) × escala, sem _rng.</summary>
+    private void BomberExplode(Actor bomber, MonsterBehaviorProfile profile)
+    {
+        Emit("effect", bomber.X, bomber.Y, 0, 0, GameConfig.BomberExplodeFx);
+        foreach (var (tx, ty) in CircleTiles(bomber.X, bomber.Y, profile.ExplodeRadius))
+            if (tx != bomber.X || ty != bomber.Y)
+                Emit("effect", tx, ty, 0, 0, GameConfig.BomberExplodeFx);
+
+        if (Player.Hp <= 0) return;
+        if (Chebyshev(bomber.X, bomber.Y, Player.X, Player.Y) > profile.ExplodeRadius) return;
+
+        var baseDamage = bomber.Species!.Attacks.Count > 0
+            ? bomber.Species.Attacks.Max(a => a.MaxDamage)
+            : Math.Max(bomber.MaxHp / 10, 1);
+        var element = bomber.Species.Attacks.FirstOrDefault()?.DamageType ?? "physical";
+        var damage = Math.Max((int)(baseDamage * profile.ExplodeDamageScale * bomber.StatMult), 1);
+        DamagePlayer(damage, element, bomber);
     }
 
     private void DropLoot(Actor monster)
@@ -3101,6 +3222,7 @@ public sealed class GameWorld
             TryMonsterAttacks(monster);
             TickMonsterDefenses(monster);
             TickMonsterSummons(monster);
+            TickMonsterShield(monster);
 
             if (monster.IsMoving(NowMs)) continue;
 
@@ -3189,6 +3311,19 @@ public sealed class GameWorld
                 continue;
             }
 
+            if (attack.Kind == "charge")
+            {
+                // G-08B: investida — precisa de espaço para correr (não já colado) e linha de visão.
+                if (monster.IsMoving(NowMs)) continue;
+                var chargeRange = attack.Range > 0 ? attack.Range : GameConfig.ChargeMaxTiles + 1;
+                if (dist < 2 || dist > chargeRange) continue;
+                if (!HasLineOfSight(monster.X, monster.Y, Player.X, Player.Y)) continue;
+                monster.AttackReadyAtMs[i] = NowMs + attack.Interval;
+                if (!_rng.Chance(Math.Min(attack.Chance, 100) / 100.0)) continue;
+                ChargeAt(monster, attack);
+                continue;
+            }
+
             if (attack.Kind == "melee")
             {
                 if (dist > 1) continue;
@@ -3246,9 +3381,55 @@ public sealed class GameWorld
     /// <summary>An attack connected with the player: damage (if any) + condition/slow payloads.</summary>
     private void HitPlayerWithAttack(Actor monster, MonsterAttack attack)
     {
-        if (attack.MaxDamage > 0 || attack.Kind == "melee")
+        if (attack.MaxDamage > 0 || attack.Kind == "melee" || attack.Kind == "charge")
             DamagePlayer(RollMonsterDamage(monster, attack), attack.DamageType, monster);
         ApplyAttackSideEffects(monster, attack);
+    }
+
+    /// <summary>G-08B: charger — avança em linha reta até o alvo (para a 1 tile), depois golpeia se colar.
+    /// O deslocamento é um único passo "longo" que o cliente interpola como um dash. Determinístico:
+    /// a chance já foi rolada pelo chamador; aqui só caminha tiles livres.</summary>
+    private void ChargeAt(Actor monster, MonsterAttack attack)
+    {
+        var startX = monster.X;
+        var startY = monster.Y;
+        var cx = startX;
+        var cy = startY;
+        var floor = _floors[monster.Floor];
+        for (var step = 0; step < GameConfig.ChargeMaxTiles; step++)
+        {
+            if (Chebyshev(cx, cy, Player.X, Player.Y) <= 1) break; // para a 1 tile do alvo
+            var dx = Math.Sign(Player.X - cx);
+            var dy = Math.Sign(Player.Y - cy);
+            if (dx == 0 && dy == 0) break;
+            if (dx != 0 && dy != 0 && (floor.IsBlocked(cx + dx, cy) || floor.IsBlocked(cx, cy + dy))) break;
+            var nx = cx + dx;
+            var ny = cy + dy;
+            if (floor.IsBlocked(nx, ny)) break;
+            var occ = OccupiedBy(monster.Floor, nx, ny);
+            if (occ is not null && occ.Id != monster.Id) break;
+            cx = nx;
+            cy = ny;
+        }
+
+        if (cx != startX || cy != startY)
+        {
+            monster.FromX = startX;
+            monster.FromY = startY;
+            monster.X = cx;
+            monster.Y = cy;
+            monster.StepStartMs = NowMs;
+            monster.StepDurMs = GameConfig.ChargeDashMs;
+            monster.Facing = FacingFrom(cx - startX, cy - startY, monster.Facing);
+            Emit("effect", startX, startY, 0, 0, GameConfig.ChargeFx);
+            Emit("effect", cx, cy, 0, 0, GameConfig.ChargeFx);
+        }
+
+        if (Chebyshev(monster, Player) <= 1)
+        {
+            HitPlayerWithAttack(monster, attack);
+            Emit("effect", Player.X, Player.Y, 0, 0, 1); // blood
+        }
     }
 
     private Actor? MostWoundedAlly(Actor healer, int range)
@@ -3322,6 +3503,35 @@ public sealed class GameWorld
                 if (SpawnSummon(monster, summon.Name) is null) break;
             }
         }
+    }
+
+    /// <summary>G-08B: escudeiro — ergue uma barreira de eco no aliado próximo mais ferido sem escudo.
+    /// Determinístico: varre _monsters em ordem estável, desempate por menor id; sem _rng.</summary>
+    private void TickMonsterShield(Actor shielder)
+    {
+        if (GameConfig.BehaviorProfile(shielder.Species!.BehaviorId) is not { ShieldFraction: > 0 } profile) return;
+        if (NowMs < shielder.ShieldCastReadyAtMs) return;
+        shielder.ShieldCastReadyAtMs = NowMs + Math.Max(profile.ShieldIntervalMs, GameConfig.TickMs);
+
+        Actor? ally = null;
+        var bestMissing = -1;
+        foreach (var m in _monsters)
+        {
+            if (m.Hp <= 0 || m.Id == shielder.Id || m.Floor != shielder.Floor) continue;
+            if (m.MonsterShield > 0) continue;
+            if (Chebyshev(shielder.X, shielder.Y, m.X, m.Y) > profile.ShieldRadius) continue;
+            var missing = m.MaxHp - m.Hp;
+            if (missing > bestMissing || (missing == bestMissing && (ally is null || m.Id < ally.Id)))
+            {
+                bestMissing = missing;
+                ally = m;
+            }
+        }
+        if (ally is null) return;
+
+        var amount = Math.Max(ally.MaxHp * Math.Min(profile.ShieldFraction, GameConfig.MonsterShieldCapFraction), 1);
+        ally.MonsterShield = amount;
+        Emit("effect", ally.X, ally.Y, 0, 0, GameConfig.MonsterShieldFx);
     }
 
     private int CountOwnedSummons(int ownerId) =>

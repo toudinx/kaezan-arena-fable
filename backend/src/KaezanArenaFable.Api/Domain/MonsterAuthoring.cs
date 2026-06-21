@@ -21,7 +21,9 @@ public sealed record MonsterDefinition(
     string BestiaryClass,
     Dictionary<string, double> Resistances,
     string AppearanceId = "",
-    bool Enabled = true);
+    bool Enabled = true,
+    // G-08B: resistência por keyword de carta (% 0-100; negativo amplifica). Distinta de Resistances (elemento).
+    Dictionary<string, double>? KeywordResistances = null);
 
 public sealed record MonsterAppearance(
     string Id,
@@ -64,6 +66,12 @@ public static class MonsterAuthoring
                 .ToDictionary(
                     pair => pair.Key.ToLowerInvariant(),
                     pair => Math.Clamp(pair.Value, GameConfig.AuthoredResistanceMin, GameConfig.AuthoredResistanceMax),
+                    StringComparer.OrdinalIgnoreCase),
+            KeywordResistances = (definition.KeywordResistances ?? new Dictionary<string, double>())
+                .Where(pair => GameConfig.MonsterKeywordTags.Contains(pair.Key, StringComparer.OrdinalIgnoreCase))
+                .ToDictionary(
+                    pair => pair.Key.ToLowerInvariant(),
+                    pair => Math.Clamp(pair.Value, GameConfig.KeywordResistMin, GameConfig.KeywordResistMax),
                     StringComparer.OrdinalIgnoreCase)
         };
     }
@@ -118,6 +126,20 @@ public static class MonsterAuthoring
                 condition);
         }).ToList();
 
+        // G-08B: summoner liga o campo Summons a partir do perfil de comportamento (sem dispatch novo —
+        // o tick reusa TickMonsterSummons). A espécie conjurada é resolvida pelo MonsterRegistry por id/nome.
+        var summons = new List<MonsterSummon>();
+        var maxSummons = 0;
+        if (!string.IsNullOrWhiteSpace(behavior.SummonSpecies))
+        {
+            summons.Add(new MonsterSummon(
+                behavior.SummonSpecies,
+                Math.Clamp(behavior.SummonChance, 0, 100),
+                Math.Max(behavior.SummonIntervalMs, GameConfig.SummonMinIntervalMs),
+                Math.Max(behavior.SummonCount, 1)));
+            maxSummons = Math.Max(behavior.SummonMax, behavior.SummonCount);
+        }
+
         var defenses = new List<MonsterDefense>();
         if (behavior.HealFraction > 0)
         {
@@ -147,8 +169,8 @@ public static class MonsterAuthoring
             new Dictionary<string, double>(definition.Resistances, StringComparer.OrdinalIgnoreCase),
             [],
             [],
-            0,
-            [],
+            maxSummons,
+            summons,
             defenses,
             "KAEZAN",
             definition.Rank == "boss" ? "authored" : null,
@@ -162,7 +184,8 @@ public static class MonsterAuthoring
             definition.SpeedMultiplier,
             definition.CadenceMultiplier,
             definition.PowerTier,
-            true);
+            true,
+            new Dictionary<string, double>(definition.KeywordResistances ?? new Dictionary<string, double>(), StringComparer.OrdinalIgnoreCase));
     }
 
     public static string CreateId(string name)

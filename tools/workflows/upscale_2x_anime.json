@@ -1,0 +1,142 @@
+{
+  "last_node_id": 8,
+  "last_link_id": 6,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "Note",
+      "pos": [20, 20],
+      "size": {"0": 560, "1": 130},
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "properties": {
+        "text": "KAEZAN — Upscale 2x Anime (Real-ESRGAN)\n\nPré-requisito: copie RealESRGAN_x4plus_anime_6B.pth para\n  ComfyUI/models/upscale_models/\n(download: github.com/xinntao/Real-ESRGAN/releases/tag/v0.2.2.4)\n\nUsage: carregue a imagem em Load Image → Queue Prompt → resultado em output/kaezan_upscaled_*"
+      },
+      "widgets_values": ["KAEZAN — Upscale 2x Anime (Real-ESRGAN)\n\nPré-requisito: copie RealESRGAN_x4plus_anime_6B.pth para\n  ComfyUI/models/upscale_models/\n(download: github.com/xinntao/Real-ESRGAN/releases/tag/v0.2.2.4)\n\nUsage: carregue a imagem em Load Image → Queue Prompt → resultado em output/kaezan_upscaled_*"]
+    },
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "pos": [20, 200],
+      "size": {"0": 315, "1": 314},
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE",  "links": [1], "shape": 3, "slot_index": 0},
+        {"name": "MASK",  "type": "MASK",   "links": null, "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "LoadImage"},
+      "widgets_values": ["idle-1.png", "image"]
+    },
+    {
+      "id": 3,
+      "type": "UpscaleModelLoader",
+      "pos": [20, 570],
+      "size": {"0": 315, "1": 58},
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [
+        {"name": "UPSCALE_MODEL", "type": "UPSCALE_MODEL", "links": [2], "shape": 3, "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "UpscaleModelLoader"},
+      "widgets_values": ["RealESRGAN_x4plus_anime_6B.pth"]
+    },
+    {
+      "id": 4,
+      "type": "ImageUpscaleWithModel",
+      "pos": [400, 360],
+      "size": {"0": 280, "1": 46},
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {"name": "upscale_model", "type": "UPSCALE_MODEL", "link": 2},
+        {"name": "image",         "type": "IMAGE",         "link": 1}
+      ],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [3], "shape": 3, "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "ImageUpscaleWithModel"}
+    },
+    {
+      "id": 5,
+      "type": "ImageScaleBy",
+      "pos": [740, 360],
+      "size": {"0": 210, "1": 82},
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {"name": "image", "type": "IMAGE", "link": 3}
+      ],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [4, 5], "shape": 3, "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "ImageScaleBy"},
+      "widgets_values": ["lanczos", 0.5]
+    },
+    {
+      "id": 6,
+      "type": "SaveImage",
+      "pos": [1010, 200],
+      "size": {"0": 280, "1": 58},
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 4}
+      ],
+      "properties": {"Node name for S&R": "SaveImage"},
+      "widgets_values": ["kaezan_upscaled"]
+    },
+    {
+      "id": 7,
+      "type": "PreviewImage",
+      "pos": [1010, 330],
+      "size": {"0": 280, "1": 46},
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 5}
+      ],
+      "properties": {"Node name for S&R": "PreviewImage"}
+    },
+    {
+      "id": 8,
+      "type": "Note",
+      "pos": [740, 200],
+      "size": {"0": 210, "1": 110},
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "properties": {
+        "text": "ImageScaleBy 0.5\n= resultado líquido 2×\n(modelo 4× interno → downscale lanczos)\nMelhor qualidade que modelo 2× nativo."
+      },
+      "widgets_values": ["ImageScaleBy 0.5\n= resultado líquido 2×\n(modelo 4× interno → downscale lanczos)\nMelhor qualidade que modelo 2× nativo."]
+    }
+  ],
+  "links": [
+    [1, 2, 0, 4, 1, "IMAGE"],
+    [2, 3, 0, 4, 0, "UPSCALE_MODEL"],
+    [3, 4, 0, 5, 0, "IMAGE"],
+    [4, 5, 0, 6, 0, "IMAGE"],
+    [5, 5, 0, 7, 0, "IMAGE"]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "Upscale 2x — Real-ESRGAN anime_6B",
+      "bounding": [10, 170, 1320, 500],
+      "color": "#3a2060",
+      "font_size": 20,
+      "locked": false
+    }
+  ],
+  "config": {},
+  "extra": {"ds": {"scale": 0.8, "offset": [0, 0]}},
+  "version": 0.4
+}

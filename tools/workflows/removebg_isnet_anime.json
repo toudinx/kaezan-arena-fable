@@ -1,0 +1,122 @@
+{
+  "last_node_id": 7,
+  "last_link_id": 4,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "Note",
+      "pos": [20, 20],
+      "size": {"0": 620, "1": 150},
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "properties": {
+        "text": "KAEZAN — Remove Background (isnet-anime)\n\nPré-requisito: instale via ComfyUI Manager → Install Custom Nodes\n  Pesquise: \"ComfyUI-rembg\"  (by Acly / comfyui-inpaint-nodes)\n  OU: \"comfyui-art-venture\"  (by sipherxyz)\n  OU: \"WAS Node Suite\"  (by WASassin)\n\nApós instalar: reinicie o ComfyUI e importe este workflow novamente.\nO nó 'Image Remove Background' aparecerá no lugar do placeholder."
+      },
+      "widgets_values": ["KAEZAN — Remove Background (isnet-anime)\n\nPré-requisito: instale via ComfyUI Manager → Install Custom Nodes\n  Pesquise: \"ComfyUI-rembg\"  (by Acly / comfyui-inpaint-nodes)\n  OU: \"comfyui-art-venture\"  (by sipherxyz)\n  OU: \"WAS Node Suite\"  (by WASassin)\n\nApós instalar: reinicie o ComfyUI e importe este workflow novamente.\nO nó 'Image Remove Background' aparecerá no lugar do placeholder."]
+    },
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "pos": [20, 230],
+      "size": {"0": 315, "1": 314},
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [1], "shape": 3, "slot_index": 0},
+        {"name": "MASK",  "type": "MASK",  "links": null, "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "LoadImage"},
+      "widgets_values": ["idle-1.png", "image"]
+    },
+    {
+      "id": 3,
+      "type": "AV_RemoveBackground",
+      "pos": [420, 310],
+      "size": {"0": 280, "1": 106},
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 1}
+      ],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [2, 3], "shape": 3, "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "AV_RemoveBackground"},
+      "widgets_values": ["isnet-anime", false]
+    },
+    {
+      "id": 4,
+      "type": "Note",
+      "pos": [420, 180],
+      "size": {"0": 280, "1": 110},
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "properties": {
+        "text": "Se este nó aparecer vermelho:\n→ instale 'comfyui-art-venture'\n   via Manager e reinicie.\n\nAlternativa: troque por\n'WAS_Image_Remove_Background'\n(WAS Node Suite)"
+      },
+      "widgets_values": ["Se este nó aparecer vermelho:\n→ instale 'comfyui-art-venture'\n   via Manager e reinicie.\n\nAlternativa: troque por\n'WAS_Image_Remove_Background'\n(WAS Node Suite)"]
+    },
+    {
+      "id": 5,
+      "type": "SaveImage",
+      "pos": [760, 230],
+      "size": {"0": 280, "1": 58},
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 2}
+      ],
+      "properties": {"Node name for S&R": "SaveImage"},
+      "widgets_values": ["kaezan_nobg"]
+    },
+    {
+      "id": 6,
+      "type": "PreviewImage",
+      "pos": [760, 360],
+      "size": {"0": 280, "1": 46},
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 3}
+      ],
+      "properties": {"Node name for S&R": "PreviewImage"}
+    },
+    {
+      "id": 7,
+      "type": "Note",
+      "pos": [20, 590],
+      "size": {"0": 620, "1": 90},
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "properties": {
+        "text": "Pipeline recomendado:\n  1. upscale_2x_anime.json  →  idle-1.png vira 1792×2688, nítido\n  2. removebg_isnet_anime.json  →  remove o fundo, saída PNG transparente\n  Resultado: idle de alta resolução, fundo transparente, pronto para o game."
+      },
+      "widgets_values": ["Pipeline recomendado:\n  1. upscale_2x_anime.json  →  idle-1.png vira 1792×2688, nítido\n  2. removebg_isnet_anime.json  →  remove o fundo, saída PNG transparente\n  Resultado: idle de alta resolução, fundo transparente, pronto para o game."]
+    }
+  ],
+  "links": [
+    [1, 2, 0, 3, 0, "IMAGE"],
+    [2, 3, 0, 5, 0, "IMAGE"],
+    [3, 3, 0, 6, 0, "IMAGE"]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "Remove Background — isnet-anime",
+      "bounding": [10, 200, 1060, 420],
+      "color": "#1a3a2a",
+      "font_size": 20,
+      "locked": false
+    }
+  ],
+  "config": {},
+  "extra": {"ds": {"scale": 0.8, "offset": [0, 0]}},
+  "version": 0.4
+}

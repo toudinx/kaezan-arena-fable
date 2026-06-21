@@ -182,7 +182,48 @@ public static class GameConfig
             new("melee", 1, 0, 0, 0, false, 2300, 100, 0.82, 1.28, false, 0),
             new("spell", 1, 2, 0, 0, false, 4200, 32, 0.60, 1.02, true, 0),
         ]),
+
+        // ---- G-08B: arquétipos novos ----
+        // swarm: instâncias baratas e rápidas; custo de spawn 1 (dobra a contagem por sala) = pressão numérica.
+        new("swarm", "Enxame", "Lacaios baratos e velozes que pressionam pelo número.", 1, 60,
+        [
+            new("melee", 1, 0, 0, 0, false, 850, 90, 0.28, 0.50, false, 0),
+        ], SpawnCost: 1),
+        // summoner: mantém distância e conjura Ecoídes sem parar (reusa TickMonsterSummons).
+        new("summoner", "Invocador", "Recua e conjura lacaios de eco sem descanso.", 5, 88,
+        [
+            new("spell", 5, 0, 0, 0, true, 2300, 70, 0.46, 0.82, true, 0),
+        ], SummonSpecies: "monster:t1-echoides", SummonCount: 2, SummonChance: 70, SummonIntervalMs: 5200, SummonMax: 4),
+        // tanque-de-postura: couraça que só cede dano útil depois do Echo Break (PostureScale alimenta a barra).
+        new("posture-tank", "Sentinela de Postura", "Couraça impassível: só abre brecha de dano no Echo Break.", 1, 95,
+        [
+            new("melee", 1, 0, 0, 0, false, 2100, 100, 0.70, 1.12, false, 0),
+            new("spell", 1, 1, 0, 0, false, 4000, 30, 0.55, 0.95, true, 0),
+        ], PostureScale: 0.55),
+        // charger: recua e investe num dash brutal (MonsterAttackPattern.Kind = "charge").
+        new("charger", "Investida", "Ronda à distância e investe com um avanço brutal.", 2, 65,
+        [
+            new("melee", 1, 0, 0, 0, false, 1600, 80, 0.52, 0.84, false, 0),
+            new("charge", 6, 0, 0, 0, false, 4200, 85, 1.05, 1.55, false, 0),
+        ]),
+        // bomber/suicida: corre até o alvo e explode em área ao morrer perto dele.
+        new("bomber", "Detonador", "Corre até o alvo e se desfaz numa explosão de eco.", 1, 45,
+        [
+            new("melee", 1, 0, 0, 0, false, 1200, 70, 0.22, 0.42, false, 0),
+        ], ExplodeRadius: 1, ExplodeDamageScale: 1.7),
+        // escudeiro: blinda o aliado mais ferido por perto → força o helper a focá-lo primeiro.
+        new("shielder", "Portador de Eco", "Ergue barreiras em aliados e força o foco sobre si.", 5, 90,
+        [
+            new("spell", 5, 0, 0, 0, true, 2600, 55, 0.40, 0.72, true, 0),
+        ], ShieldRadius: 4, ShieldFraction: 0.35, ShieldIntervalMs: 3500),
     ];
+
+    /// <summary>G-08B: lookup O(1) por id para o tick ler campos de comportamento (summon/posture/explode/shield).</summary>
+    public static readonly IReadOnlyDictionary<string, MonsterBehaviorProfile> MonsterBehaviorById =
+        MonsterBehaviorProfiles.ToDictionary(b => b.Id, StringComparer.OrdinalIgnoreCase);
+
+    public static MonsterBehaviorProfile? BehaviorProfile(string id) =>
+        MonsterBehaviorById.GetValueOrDefault(id);
 
     /// <summary>Per-tick FX by condition type (tibia CONST_ME ids).</summary>
     public static readonly IReadOnlyDictionary<string, int> ConditionTickFx = new Dictionary<string, int>
@@ -819,6 +860,22 @@ public static class GameConfig
     public const double EchoDeepRootsDotPower = 0.15;
     public const int EchoDeepRootsDotTicks = 3;
     public const int EchoDeepRootsDotTickMs = 1000;
+
+    // ---- G-08B: arquétipos novos + keyword interaction ----
+    // charger: o dash anda em linha reta até o alvo (parando a 1 tile), com janela de animação no cliente.
+    public const int ChargeMaxTiles = 4;
+    public const int ChargeDashMs = 220;
+    public const int ChargeFx = 11; // poof de teleporte como rastro do avanço
+    // bomber/suicida: estouro em área ao morrer; dano = maior ataque do kit × escala.
+    public const int BomberExplodeFx = 35; // grande explosão
+    // escudeiro: a barreira em aliado nunca passa desta fração da vida máx do aliado.
+    public const double MonsterShieldCapFraction = 0.50;
+    public const int MonsterShieldFx = 49; // brilho de proteção
+    // Keyword interaction: tags de G-04 que um mob pode resistir/amplificar (% 0-100, negativo = amplifica).
+    public static readonly string[] MonsterKeywordTags =
+        ["sin", "combo", "curse", "burn", "charge", "frost", "prey", "posture"];
+    public const int KeywordResistMin = -100;
+    public const int KeywordResistMax = 100;
 }
 
 public sealed record DungeonTier(
@@ -844,4 +901,11 @@ public sealed record MonsterAttackPattern(
     bool UsesElement, double ConditionDamageScale);
 public sealed record MonsterBehaviorProfile(
     string Id, string Name, string Description, int TargetDistance, int StaticAttackChance,
-    MonsterAttackPattern[] Attacks, double HealFraction = 0, int HealIntervalMs = 0);
+    MonsterAttackPattern[] Attacks, double HealFraction = 0, int HealIntervalMs = 0,
+    // G-08B: arquétipos novos. Campos data-only — o tick lê o perfil por BehaviorId (sem dispatch novo).
+    int SpawnCost = 2,                       // custo no orçamento de spawn da sala (swarm = 1, pressão numérica)
+    double PostureScale = 0,                 // >0: mob comum/elite ganha Postura (tanque de postura) escalada por este fator
+    string SummonSpecies = "",               // summoner: id/nome autoral conjurado (liga em MonsterAuthoring.Resolve)
+    int SummonCount = 1, int SummonChance = 100, int SummonIntervalMs = 0, int SummonMax = 0,
+    int ExplodeRadius = 0, double ExplodeDamageScale = 0,  // bomber/suicida: estouro em área ao morrer perto do player
+    int ShieldRadius = 0, double ShieldFraction = 0, int ShieldIntervalMs = 0); // escudeiro: barreira em aliado próximo

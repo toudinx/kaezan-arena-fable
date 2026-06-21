@@ -88,10 +88,13 @@ public sealed record MonsterType(
     string BehaviorId = "legacy", string StatPresetId = "legacy",
     double HpMultiplier = 1, double DamageMultiplier = 1,
     double SpeedMultiplier = 1, double CadenceMultiplier = 1,
-    int PowerTier = 0, bool IsAuthored = false)
+    int PowerTier = 0, bool IsAuthored = false,
+    // G-08B: resistência por keyword de carta (sin/curse/burn/charge/frost/posture/combo/prey).
+    Dictionary<string, double>? KeywordResistances = null)
 {
     public List<MonsterSummon> Summons { get; init; } = Summons ?? [];
     public List<MonsterDefense> Defenses { get; init; } = Defenses ?? [];
+    public Dictionary<string, double> KeywordResistances { get; init; } = KeywordResistances ?? [];
     public string StableId => string.IsNullOrWhiteSpace(Id) ? Name : Id;
 }
 

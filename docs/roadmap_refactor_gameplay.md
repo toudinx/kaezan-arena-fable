@@ -80,8 +80,16 @@ O feedback assumiu "do zero" em vários pontos onde **já há seam pronto**. Sab
   a clímax, não recria.**
 - **8 arquétipos de mob data-driven** já existem: `MonsterBehaviorProfile` em `Domain/GameConfig.cs`
   (bruiser, skirmisher, ranger, artillery, breather, controller, support, juggernaut), resolvidos por
-  `Domain/MonsterAuthoring.cs`. → **G-08 adiciona arquétipos novos + criaturas autorais reskinadas;
-  não reescreve o sistema.**
+  `Domain/MonsterAuthoring.cs`. **50 criaturas autorais Kaezan** (6 comuns + 3 elite + 1 boss × 5
+  tiers) substituíram o pool Tibia — vivas em runs via `ContentStore`/`KaezanContentSeed.Tiers` com
+  auto-migração (`ContentStore.ShouldSeedTiers`). `GameConfig.Tiers` (linhas 506-528) e `BossHpScale`
+  (531-540) viraram **dead code**. → **G-08 ✅ concluído. G-08B adiciona arquétipos novos +
+  interação por keyword.**
+- **Itens Kaezan + relic + tela admin** (entregues pelo Codex, além do G-08): 135 itens autorais
+  (IDs 900000+) com auto-balance por tier (`ItemAuthoring.ApplyTierBalance`), tag normal|relic, drop
+  ponderado por classe/tier em `Engine/GameWorld.cs:2379-2443`; tela admin 4 abas (`pages/admin/`
+  com CRUD via `/admin/*`, persistido em `.data/content/*.json`). → Seam do G-09 (material/loja)
+  **já parcialmente pronto**.
 - **Roles de sala já existem** (`Engine/DungeonGenerator.cs:85-108`: entry/mob/treasure/ladder/boss)
   e **5 biomas** em `Domain/Biomes.cs`. → **G-06/G-07 expandem** (santuário de Eco, bifurcação,
   ícones, color-grade por bioma); o grafo de salas já é a base.
@@ -147,15 +155,16 @@ O feedback assumiu "do zero" em vários pontos onde **já há seam pronto**. Sab
 | G-05   | Reroll + banir (Hades-style)                                                    | GPT-5.5 (Codex) | medium | G-04                      | 3    |
 | G-06   | Cadência: beats fixos, level-up = status auto, ~6-9 escolhas/run                | Opus 4.8        | high   | G-04                      | 4    |
 | G-07   | Grafo de salas + tipos + minimapa + bifurcação + color-grade por bioma          | Opus 4.8        | high   | G-06 (⚠ DungeonGenerator) | 5    |
-| G-08   | Arquétipos novos de mob + criaturas autorais Kaezan                             | Opus 4.8        | high   | G-04*                     | 4    |
+| G-08   | ~~Arquétipos novos de mob + criaturas autorais Kaezan~~ ✅                      | —               | —      | —                         | —    |
+| G-08B  | ~~Arquétipos novos de comportamento + criaturas-assinatura + keyword interaction~~ ✅ | Opus 4.8        | high   | G-04, G-08                | 4    |
 | G-09   | Baú = altar de Eco / loja da run + amaldiçoados + mimics + material de gear     | Opus 4.8        | high   | G-04, G-05, G-07          | 6    |
 | G-10   | Painel HELPER → editor de táticas gambit (FF12), presets por Kaeli              | Opus 4.8        | high   | —                         | 5    |
 | G-11   | Farm/auto-repeat de tier + progressão offline                                   | GPT-5.5 (Codex) | medium | —                         | 6    |
 | G-12   | Balance e verificação ponta-a-ponta                                             | Opus 4.8        | medium | G-02–G-11                 | 7    |
 
-> Pratos cheios (G-02, G-04, G-04B, G-06, G-07, G-08, G-09, G-10) no **Opus 4.8 high** — feel do
+> Pratos cheios (G-02, G-04, G-04B, G-06, G-07, G-08B, G-09, G-10) no **Opus 4.8 high** — feel do
 > combate + design de cartas/mobs/mapas + invariantes de engine. Conversões bounded (G-01, G-05, G-11)
-> no **GPT-5.5**. `*` G-08 *soft-depende* de G-04: pode rodar antes referenciando as tags planejadas.
+> no **GPT-5.5**. G-08 ✅ (reskin feito pelo Codex); G-08B é o sucessor com comportamentos novos.
 
 ---
 
@@ -171,7 +180,7 @@ backend **serializa**. Casamento natural: **1 Opus + 1 Codex por onda**, em regi
 Onda 1  G-02 (Opus · juice: renderer.ts + Emit)          ‖  G-01 (Codex · docs)
 Onda 2  G-04 (Opus · framework cartas: Cards.cs/GameWorld)‖  G-03 (Opus · frontend: renderer/game.ts)
 Onda 3  G-04B (Opus · Ecos por Kaeli: Cards/hooks)        ‖  G-05 (Codex · reroll/ban: GameWorld cmd + overlay)
-Onda 4  G-06 (Opus · cadência: GainXp/DungeonGenerator)   ‖  G-08 (Opus · mobs: config/MonsterAuthoring)
+Onda 4  G-06 (Opus · cadência: GainXp/DungeonGenerator)   ‖  G-08B (Opus · arqs novos + keyword: config/MonsterAuthoring)
 Onda 5  G-07 (Opus · mapas: DungeonGenerator/Biomes)      ‖  G-10 (Opus · gambit: TickAutoHelper/types)
 Onda 6  G-09 (Opus · baú-altar; precisa G-04/05/07)       ‖  G-11 (Codex · farm/offline: RunManager/Meta)
 Onda 7  G-12 (verificação final)                          — solo
@@ -186,8 +195,8 @@ Onda 7  G-12 (verificação final)                          — solo
 - **G-06 / G-10 em `game.ts`** — regiões diferentes (overlay de carta vs painel helper); atenção ao
   merge no template.
 
-**Ganho:** 13 passos sequenciais → **7 ondas**. Caminho crítico: G-04 → G-04B → G-06 → G-07 → G-09 →
-G-12.
+**Ganho:** 13 passos sequenciais → **7 ondas** (G-08 ✅ liberou a onda 4 para G-08B). Caminho crítico:
+G-04 → G-04B → G-06 → G-07 → G-09 → G-12.
 
 ---
 
@@ -462,7 +471,7 @@ alternativa; banir remove a carta do pool pelo resto da run e repoe a oferta qua
 Snapshot expoe rerolls restantes/banidas; Hub + cliente SignalR + overlay exibem botao de reroll com
 contador e banir por carta. `dotnet build` + `npx ng build` limpos.
 
-- **Modelo:** GPT-5.5 (Codex) · **Effort:** medium · **Skill:** nenhuma · **Depende de:** G-04 · **Paraleliza com:** G-08 (Onda 3) — ⚠ **não** com G-09 (cadeia de cartas em `recruit/game.ts`/`GameWorld`)
+- **Modelo:** GPT-5.5 (Codex) · **Effort:** medium · **Skill:** nenhuma · **Depende de:** G-04 · **Paraleliza com:** G-08B (Onda 3) — ⚠ **não** com G-09 (cadeia de cartas em `recruit/game.ts`/`GameWorld`)
 
 **Objetivo:** dar decisão mesmo no automode. Reroll re-sorteia a oferta; banir remove do pool a carta
 que você nunca quer. Regra fechada — tarefa bounded.
@@ -588,42 +597,102 @@ Expanda; não reescreva o gerador.
 
 # G-08 — Arquétipos Novos de Mob + Criaturas Autorais Kaezan
 
-Resumo: _(preencher ao concluir)_
+Resumo: ✅ **50 criaturas autorais Kaezan** (6 comuns + 3 elite + 1 boss × 5 tiers) nos 8 arquétipos
+existentes, com elemento/resistência/stat preset. Vivas em runs via `ContentStore.Tier()` →
+`KaezanContentSeed.Tiers`, com auto-migração que reescreve qualquer `tiers.json` com nomes Tibia
+(`ContentStore.ShouldSeedTiers`). `GameConfig.Tiers` (506-528) e `BossHpScale` (531-540) viraram dead
+code. Paralelo: Codex entregou 135 itens Kaezan + relic (`ItemAuthoring`, 900000+) + tela admin 4 abas
+(`pages/admin/`). → **Ver G-08B para o que falta (arquétipos novos + keyword interaction).**
 
-- **Modelo:** Claude Code Opus 4.8 · **Effort:** high · **Skill:** nenhuma · **Depende de:** G-04* (soft) · **Paraleliza com:** G-05 (Onda 3)
+---
 
-**Objetivo:** **taxonomia primeiro, skin depois.** Documentar mobs como **arquétipos de comportamento
-reutilizáveis** e criar criaturas originais do Kaezan como **instâncias temáticas** reskinadas,
-desenhadas para interagir com as keywords das cartas.
+# G-08B — Arquétipos Novos de Comportamento + Criaturas-Assinatura + Keyword Interaction
 
-**Arquivos prováveis:** `backend/src/KaezanArenaFable.Api/Domain/GameConfig.cs`
-(`MonsterBehaviorProfile` novos), `backend/src/KaezanArenaFable.Api/Domain/MonsterAuthoring.cs`,
-`tools/convert-monsters/config.json` (+ re-rodar `node convert.mjs`) e os rosters por tier
-(`CommonMobs[]`/`EliteMobs[]` em `GameConfig.cs`).
+Resumo: ✅ **6 arquétipos novos** no mesmo record `MonsterBehaviorProfile` (sem dispatch paralelo — o
+tick lê o perfil por `BehaviorId` via `GameConfig.BehaviorProfile`): **swarm** (data-only, `SpawnCost=1`
+→ dobra a contagem por sala), **summoner** (liga `SummonSpecies`→`Summons`/`MaxSummons` em
+`MonsterAuthoring.Resolve`, reusa `TickMonsterSummons`), **posture-tank** (`PostureScale` dá barra de
+Postura/Echo Break a comum/elite no spawn), **charger** (novo `MonsterAttackPattern.Kind="charge"` →
+`ChargeAt` dá dash em linha reta + golpe, telegrafado com effect), **bomber** (`ExplodeRadius/Scale` →
+`BomberExplode` no `KillMonster`, fere o player no raio) e **shielder** (`TickMonsterShield` blinda o
+aliado mais ferido — `Actor.MonsterShield` absorve antes da vida em `DealDamageToMonster`; o helper é
+**redirecionado** via `FindTargetableShielder` em `BestAutoHelperTarget`). **8 criaturas-assinatura**
+(append no `KaezanContentSeed`, sem deslocar outfits): Ecoíde (swarm T1), Besta de Investida (charger
+T2), Casulo Detonante (bomber T2), Necromante Caído/Maldito (summoner T3/T4, conjuram Ecoíde), Couraça
+de Eco (posture-tank T3), Portador/Guardião de Eco (shielder T4/T5). **Keyword interaction:** campo novo
+`KeywordResistances` em `MonsterDefinition`→`MonsterType` (% 0-100, negativo amplifica; tags de G-04:
+sin/combo/curse/burn/charge/frost/prey/posture) aplicado na origem de cada stack/efeito (`KeywordResistMult`
+contínuo p/ charge/burn/posture/combo/prey; `KeywordScaledStacks` discreto p/ sin/curse/frost — só toca
+`_rng` quando há resistência, preservando determinismo das runs sem keyword). 3+ mobs forçam variedade:
+Necromante `{curse:80}` (espelha a Velvet — stacks reduzidos), Ecoíde `{burn:-50}` (derrete no fogo),
+Portador/Guardião `{charge:60, posture:-40}`. Editor admin expõe os novos arquétipos (dropdown já lê
+`behaviors`) + faixa de keyword resist (`/admin/monster-authoring` → `keywordTags/keywordResistMin/Max`;
+inputs em `monster-editor.ts`). Seeding: `ContentStore` faz merge add-only de monstros novos do seed e
+re-seeda os pools de tier quando trazem mobs ausentes (sem limpar `.data`). Determinístico (só `_rng`,
+desempate por id). `dotnet build` + `npx ng build` limpos.
 
-**Seam existente (REUTILIZE):** já há 8 arquétipos (bruiser, skirmisher, ranger, artillery, breather,
-controller, support, juggernaut) e o resolver `MonsterAuthoring`. Adicione perfis novos no mesmo
-formato; não crie dispatch paralelo.
+- **Modelo:** Claude Code Opus 4.8 · **Effort:** high · **Skill:** nenhuma · **Depende de:** G-04 (tags), G-08 · **Paraleliza com:** G-06 (Onda 4)
+
+**Objetivo:** O roster atual usa só os 8 arquétipos originais — todos razoavelmente similares no
+comportamento. G-08B entrega **comportamentos radicalmente novos** e uma **camada de keyword
+interaction** que faz o roster criar decisão de build (o mob te força a adaptar a build).
+
+**Seam existente (REUTILIZE):**
+- Engine já tem invocação de mob (`Actor.SummonReadyAtMs`, `species.Summons`, `TickMonsterSummons`
+  em `Engine/GameWorld.cs:3032`; `GameData.cs:85`). **summoner** só precisa ligar
+  `MonsterDefinition` autoral → campo `Summons` em `MonsterAuthoring.Resolve`.
+- `MonsterBehaviorProfile` em `Domain/GameConfig.cs` (mesmo record). **Não crie dispatch paralelo**
+  — adicione perfis no mesmo formato.
+- `MonsterDefinition.Resistances` (resistência por elemento) já existe. A camada de keyword é um
+  campo adicional — mesmo conceito, domínio diferente.
 
 **Tarefas:**
-- **Arquétipos novos** (faltantes vs. o feedback): **invocador**, **chargador**, **swarm**,
-  **explosivo suicida**, **tanque de postura**, **suporte/escudeiro**.
-- **Criaturas autorais Kaezan** como instâncias reskinadas: ex. "Necromante Caído" (invocador
-  espelhando a Velvet num miniboss); "Ecoídes" (swarm); "Portador de Eco" (suporte que escuda os
-  outros e força o helper a priorizar).
-- **Interação com keywords:** desenhar o roster para criar decisão de build (ex. mob resistente a
-  Maldição força variedade) — usar as tags de G-04.
-- Como dado/config, o mesmo comportamento **reskina entre biomas**. Arte autoral final fica em
-  "Depois".
+
+**A — Arquétipos data-only (só config, sem código novo no tick):**
+- **swarm** — instâncias baratas + rápidas; preset glass; contagem alta por sala; sensação de
+  pressão numérica.
+- **summoner** — liga `MonsterDefinition` autoral → `Summons`; reusa `TickMonsterSummons`.
+- **tanque-de-postura** — preset tank, `PostureMax` elevado; intenção: forçar o jogador a
+  construir Echo Break antes de conseguir dano útil.
+
+**B — Arquétipos com comportamento novo no tick (`GameWorld.cs:2831-2844`):**
+- **charger** — investe/dá dash: novo `MonsterAttackPattern.Kind = "charge"` com deslocamento
+  do mob + dano aumentado; sinalizar ao cliente com evento para animação.
+- **bomber/suicida** — auto-destruição em área ao morrer perto do player; hook no `KillMonster`.
+- **escudeiro** — aplica shield em aliado próximo → força o helper a priorizar o escudeiro;
+  novo flag de estado em `Actor`.
+
+**C — Criaturas-assinatura** usando os novos arquétipos:
+- "Necromante Caído" (summoner, miniboss Tier 3/4 — espelha a Velvet)
+- "Ecoídes" (swarm Tier 1/2)
+- "Portador de Eco" (escudeiro Tier 4/5 — force-redirects o helper)
+
+**D — Keyword interaction (mob × tags de G-04):**
+- Campo novo em `MonsterDefinition`: `KeywordResistances: Dict<string, int>` (% resist 0-100;
+  negativo = amplifica). Distinto de `Resistances` por elemento.
+- Aplicação no engine: na hora de aplicar condição/stacks (ex. `DecayStacks`, `SinStacks`,
+  `_staticCharge`), multiplica pela resistência de keyword. Mob com `{"curse": 80}` recebe 20%
+  dos stacks de Maldição.
+- Pelo menos 3 mobs desenhados para forçar variedade (ex. imune a `burn`, se cura com `frost`,
+  amplifica `combo`).
+- Expor no editor admin: inputs de keyword resist + dropdown de novos arquétipos em
+  `Api/MetaEndpoints.cs:327` (metadata `/admin/monster-authoring`) e
+  `pages/admin/monster-editor.ts`.
+
+**Invariantes:**
+- Data-driven; toda constante em `Domain/GameConfig.cs`.
+- Determinístico (só `_rng`, desempate por id estável; salto de shield/summon por ordem de lista).
+- `dotnet build` + `npx ng build` limpos.
 
 **Aceite:**
-- Arquétipos novos são data-driven (perfis em `GameConfig.cs`, resolvidos por `MonsterAuthoring`).
-- Há criaturas autorais por bioma instanciando os arquétipos.
-- O roster cria interação com as keywords das cartas.
-- `dotnet build` limpo (e `npx ng build` se algo no front mudar).
+- Pelo menos 6 arquétipos novos registrados em `GameConfig.cs` / `MonsterAuthoring`.
+- Criaturas-assinatura spawnando sem exceção, respeitando o `Rng`.
+- Campo `KeywordResistances` funcional; pelo menos 3 mobs testados contra uma tag de G-04.
+- Editor admin expõe novos arquétipos e o campo de keyword resist.
 
-**Verificação:** builds + run encontrando invocador/swarm/escudeiro etc.; confirmar que disparam sem
-exceção e respeitam o `Rng` (determinismo).
+**Verificação:** builds + run encontrando charger (dash visível), swarm (pressão numérica),
+summoner (spawna minions), escudeiro (helper redireciona). Velvet vs. mob `{"curse":80}` confirma
+stacks reduzidos. Console limpo.
 
 ---
 
@@ -782,7 +851,7 @@ domina por erro óbvio de número. Exige julgamento de balance, por isso fica no
 - Run melee (ex. Seren) e run ranged (ex. Velvet/Eloa) até o boss.
 - Conferir: juice e break aparecem (G-02/G-03); cartas têm 3 tiers e sinergia de tag (G-04); reroll/
   banir funcionam (G-05); ~6-9 escolhas em beats (G-06); mapas geram com tipos/bifurcação e biomas
-  distintos (G-07); mobs novos disparam (G-08); baú-altar oferece carta + material (G-09); gambit
+  distintos (G-07); arquétipos novos + keyword interaction disparam (G-08B); baú-altar oferece carta + material (G-09); gambit
   dispara uma regra custom (G-10); farm/offline credita (G-11).
 
 **Aceite:**

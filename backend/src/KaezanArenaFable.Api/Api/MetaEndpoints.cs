@@ -344,6 +344,10 @@ public static class MetaEndpoints
             modifierMax = GameConfig.AuthoredModifierMax,
             resistanceMin = GameConfig.AuthoredResistanceMin,
             resistanceMax = GameConfig.AuthoredResistanceMax,
+            // G-08B: keyword interaction — tags de carta e faixa de resistência por keyword.
+            keywordTags = GameConfig.MonsterKeywordTags,
+            keywordResistMin = GameConfig.KeywordResistMin,
+            keywordResistMax = GameConfig.KeywordResistMax,
             appearances = data.MonsterAppearances
         }));
 

@@ -270,6 +270,39 @@ const AUTHORED_PAGE_SIZE = 8;
                 }
               </div>
             </section>
+
+            <section class="form-section keywords">
+              <h3>Resistencia a keywords (cartas)</h3>
+              <p class="hint">
+                % que o monstro resiste de cada keyword de carta (G-04): 0 = normal, 100 = imune,
+                negativo amplifica. Use para forcar variedade de build (ex. Maldicao 80 contra a Velvet).
+              </p>
+              <div class="resistance-toolbar">
+                <button type="button" class="secondary compact" (click)="clearKeywordResistances()">Limpar keywords</button>
+              </div>
+              <div class="resistance-grid keyword-grid">
+                @for (tag of meta.keywordTags; track tag) {
+                  <label
+                    class="resistance-card"
+                    [class.weak]="keywordResist(tag) < 0"
+                    [class.resist]="keywordResist(tag) > 0"
+                  >
+                    <span>{{ keywordLabel(tag) }}</span>
+                    <div class="suffix">
+                      <input
+                        type="number"
+                        [min]="meta.keywordResistMin"
+                        [max]="meta.keywordResistMax"
+                        step="5"
+                        [value]="keywordResist(tag)"
+                        (input)="setKeywordResist(tag, $any($event.target).value)"
+                      />
+                      <span>%</span>
+                    </div>
+                  </label>
+                }
+              </div>
+            </section>
           </div>
         } @else {
           <div class="loading">Carregando autoria de monstros...</div>
@@ -428,6 +461,8 @@ const AUTHORED_PAGE_SIZE = 8;
     .form-section { background: #11111a; border: 1px solid #29293a; border-radius: 6px; padding: 13px; }
     .identity { grid-column: 1; }
     .resistances { grid-column: 1 / -1; }
+    .keywords { grid-column: 1 / -1; }
+    .keyword-grid { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
     .build { grid-column: 2; grid-row: 1 / span 2; }
     .result { grid-column: 1; }
     .identity-grid { display: grid; gap: 12px; grid-template-columns: 140px minmax(0, 1fr); }
@@ -536,6 +571,11 @@ export class MonsterEditor implements OnInit {
     { key: 'speedMultiplier', label: 'Velocidade' },
     { key: 'cadenceMultiplier', label: 'Cadencia' },
   ] as const;
+  // G-08B: rótulos PT-BR das keywords de carta (mesma taxonomia de G-04).
+  readonly keywordLabels: Record<string, string> = {
+    sin: 'Pecado', combo: 'Disciplina', curse: 'Maldicao', burn: 'Queimadura',
+    charge: 'Carga', frost: 'Gelo', prey: 'Presa', posture: 'Postura',
+  };
 
   readonly appearanceFamilies = computed(() => {
     const families = this.metadata()?.appearances.map((entry) => entry.bestiaryClass).filter(Boolean) ?? [];
@@ -853,6 +893,29 @@ export class MonsterEditor implements OnInit {
     this.patch({ resistances: {} });
   }
 
+  // G-08B: keyword interaction — % que o mob resiste de cada keyword de carta (negativo amplifica).
+  keywordResist(tag: string): number {
+    return this.draft().keywordResistances?.[tag] ?? 0;
+  }
+
+  keywordLabel(tag: string): string {
+    return this.keywordLabels[tag] ?? tag;
+  }
+
+  setKeywordResist(tag: string, value: string): void {
+    const meta = this.metadata();
+    if (!meta) return;
+    const clamped = Math.max(meta.keywordResistMin, Math.min(meta.keywordResistMax, Math.round(+value || 0)));
+    const next = { ...(this.draft().keywordResistances ?? {}) };
+    if (clamped === 0) delete next[tag];
+    else next[tag] = clamped;
+    this.patch({ keywordResistances: next });
+  }
+
+  clearKeywordResistances(): void {
+    this.patch({ keywordResistances: {} });
+  }
+
   private applyResistance(element: string, kind: Exclude<ResistanceKind, 'neutral'>, grade: ResistanceGrade): void {
     const value = grade === 'high' ? 15 : grade === 'moderate' ? 10 : 5;
     this.patch({
@@ -944,6 +1007,7 @@ export class MonsterEditor implements OnInit {
       cadenceMultiplier: 1,
       bestiaryClass: 'Authored',
       resistances: {},
+      keywordResistances: {},
       appearanceId: '',
       enabled: true,
     };

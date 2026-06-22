@@ -1,3 +1,5 @@
+using KaezanArenaFable.Api.Domain;
+
 namespace KaezanArenaFable.Api.Engine;
 
 public sealed record MapDto(
@@ -7,7 +9,30 @@ public sealed record MapDto(
     List<PoiDto> Pois,
     // G-07: grafo de salas + bioma. Rooms expõe o tipo de cada sala (combate/elite/tesouro/eco/
     // evento/miniboss/boss) pro minimapa desenhar ícones; Biome é a paleta de color-grade do estrato.
-    List<RoomDto> Rooms, BiomeDto Biome);
+    List<RoomDto> Rooms, BiomeDto Biome)
+{
+    /// <summary>
+    /// LM-08: monta o <see cref="MapDto"/> de wire a partir de um andar gerado + a atmosfera do estrato.
+    /// Compartilhado pelo snapshot ao vivo (<see cref="GameWorld.BuildMap"/>) e pelo preview de bioma do
+    /// admin (LM-09) — assim os dois leem o mapa de forma idêntica. Os POIs já vêm convertidos pelo
+    /// chamador (cada modo decide o que telegrafar); o helper só costura ground/wall/decor + salas + bioma.
+    /// </summary>
+    public static MapDto FromFloor(
+        DungeonFloor floor, BiomeAtmosphere atmo, int floorIndex, IReadOnlyList<PoiDto> pois) =>
+        new(
+            floorIndex, floor.W, floor.H,
+            floor.Ground, floor.Wall, floor.Decor, floor.Blocked,
+            floor.Entry.X, floor.Entry.Y,
+            floor.LadderDown?.X, floor.LadderDown?.Y,
+            pois.ToList(),
+            floor.Rooms.Select(r => new RoomDto(r.X, r.Y, r.W, r.H, r.Role)).ToList(),
+            new BiomeDto(
+                atmo.Name,
+                atmo.TintR, atmo.TintG, atmo.TintB, atmo.TintStrength,
+                atmo.FogR, atmo.FogG, atmo.FogB, atmo.FogStrength,
+                atmo.Vignette,
+                atmo.ParticleR, atmo.ParticleG, atmo.ParticleB, atmo.ParticleDensity, atmo.ParticleDrift));
+}
 
 // G-09: Variant expõe só "cursed" (amaldiçoado, telegrafado) ou "" — mímicos chegam como "" (surpresa).
 public sealed record PoiDto(int Id, string Kind, int X, int Y, int ItemId, string Variant, bool Used);

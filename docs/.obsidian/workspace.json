@@ -27,16 +27,30 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "roadmap_dungeons.md",
+                "file": "roadmap/not started/roadmap_custom_sprites.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "roadmap_dungeons"
+              "title": "roadmap_custom_sprites"
+            }
+          },
+          {
+            "id": "494a193bb697adc6",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "roadmap/not started/roadmap_producao_visual.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "roadmap_producao_visual"
             }
           }
         ],
-        "currentTab": 1
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -198,38 +212,40 @@
       "bases:Criar nova base": false
     }
   },
-  "active": "f6868d5fdd6836e0",
+  "active": "494a193bb697adc6",
   "lastOpenFiles": [
-    "roadmap_dungeons.md.tmp.33880.c3f6b5cdcfdf",
-    "roadmap_dungeons.md.tmp.33880.07bc98d77bbc",
-    "roadmap_dungeons.md.tmp.33880.22773b456fea",
-    "roadmap_dungeons.md.tmp.33880.cd3b3e63bc84",
-    "roadmap_dungeons.md.tmp.33880.b609290836a0",
-    "roadmap_dungeons.md.tmp.60212.f468f7dd438d",
-    "roadmap_custom_sprites.md",
-    "roadmap_custom_sprites.md.tmp.26420.f0b1d4e8f655",
-    "roadmap_dungeons.md.tmp.33880.ad9bbf000cba",
-    "roadmap_dungeons.md.tmp.53128.c5dce5edebce",
-    "roadmap_dungeons.md.tmp.53128.88d77d82170c",
-    "design/tibia_map_patterns.md",
-    "design",
-    "roadmap_image_pipeline.md",
-    "roadmap_meta_gameplay.md",
-    "roadmap_dungeons.md",
-    "roadmap_refactor_kaelis.md",
-    "roadmap_refactor_gameplay.md",
-    "prompts/prompts por imagem.md",
-    "GDD.md",
-    "ROADMAP.md",
+    "WORKFLOW_imagem_e_cutscenes.md",
+    "WORKFLOW_imagem_e_cutscenes.md.tmp.11996.f2b8204e1d07",
+    "WORKFLOW_imagem_e_cutscenes.md.tmp.11996.9974aeb9e205",
+    "WORKFLOW_imagem_e_cutscenes.md.tmp.11996.3397be3e8836",
+    "roadmap/not started/roadmap_producao_visual.md",
     "STYLE_GUIDE.md",
+    "roadmap/not started/roadmap_custom_sprites.md",
+    "roadmap/not started/roadmap_image_pipeline.md",
+    "roadmap/not started/roadmap_cutscenes.md",
+    "roadmap/ongoing/roadmap_dungeons.md",
+    "roadmap/ongoing/roadmap_dungeons.md.tmp.52720.363144f5220a",
+    "roadmap/ongoing/roadmap_dungeons.md.tmp.57584.4a4bcd2d69b5",
+    "roadmap/ongoing/roadmap_dungeons.md.tmp.57584.a958e112d925",
+    "roadmap/not started",
+    "FABLE_TRACK.md",
+    "roadmap/done/FRONTEND_REMAP.md",
+    "roadmap/done/GAMEPLAY_ROADMAP.md",
+    "roadmap/done/ROADMAP.md",
+    "roadmap/done/GDD.md",
+    "DESIGN_NOTES.md",
+    "roadmap/done/roadmap_refactor_kaelis.md",
+    "roadmap/done/roadmap_refactor_gameplay.md",
+    "roadmap/done/roadmap_meta_gameplay.md",
+    "roadmap/done",
+    "roadmap/ongoing",
+    "roadmap",
+    "design/tibia_map_patterns.md",
+    "prompts/prompts por imagem.md",
     "prompts/velvet.md",
     "prompts/roster-base.md",
     "prompts/hunt-redesign/hunt-menu-anchor.png",
     "prompts/hunt-redesign/hunt-dungeon-anchor.png",
-    "prompts/hunt-redesign/prerun-anchor.png",
-    "FRONTEND_REMAP.md",
-    "FABLE_TRACK.md",
-    "DESIGN_NOTES.md",
-    "GAMEPLAY_ROADMAP.md"
+    "prompts/hunt-redesign/prerun-anchor.png"
   ]
 }

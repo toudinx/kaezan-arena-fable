@@ -112,6 +112,7 @@ internal static class Program
         // ---- pivô de TTK (linhas tier×rank, colunas Kaeli, célula = TTK mediano em ciclos) ----
         PrintTtkPivot(allKills, roster.Select(w => w.Name).ToList(), tiers.Select(t => t.Tier).ToList());
         PrintTtkTargetPivot(allKills, roster.Select(w => w.Name).ToList(), tiers.Select(t => t.Tier).ToList());
+        PrintPostureBreakPivot(allRuns, tiers.Select(t => t.Tier).ToList());
         PrintRunSummary(allRuns, roster.Select(w => w.Name).ToList(), tiers.Select(t => t.Tier).ToList());
         PrintParityPivot(allRuns, roster);
         PrintRolePivot(allRuns, roster);
@@ -211,6 +212,38 @@ internal static class Program
             // boss < 8 ciclos é a restrição dura do roadmap.
             if (rank == "boss" && obs < 8) status += " ⛔<8";
             Console.WriteLine($"   {label,-12}{obs,8:F1}{target,6:F0}{dev,+8:F1}{scale,7:F2}{oneShots,7}{maxHpMed,10:F0}  {status}");
+        }
+    }
+
+    // F-E posture: quanto da morte do boss vem das janelas de Echo Break. Por tier (só runs que de fato
+    // lutaram o boss = BossTotalDamage > 0): nº mediano de quebras, % mediano da vida do boss removido
+    // EM quebras (break/maxHp), % do dano total do boss vindo de quebras, e o pico de janela (%maxHp).
+    // Alvo: a quebra contribui ≲ 40% da barra do boss (acima disso o Echo Break vira "delete").
+    private static void PrintPostureBreakPivot(List<RunRow> runs, List<int> tiers)
+    {
+        Console.WriteLine();
+        Console.WriteLine("== ECHO BREAK (F-E): contribuição das quebras à morte do boss (só runs que lutaram o boss) ==");
+        Console.WriteLine("   (alvo: %vida/quebras ≲ 40%; pico = maior dano efetivo numa única janela, em %maxHp)");
+        Console.WriteLine($"   {"tier",-6}{"runs",6}{"quebras",9}{"%vida(qb)",11}{"%dano(qb)",11}{"picoJanela",12}  status");
+        Console.WriteLine("   " + new string('-', 64));
+
+        const double breakShareTarget = 0.40;
+        foreach (var tier in tiers)
+        {
+            var bossRuns = runs.Where(r => r.Tier == tier && r.BossTotalDamage > 0 && r.BossMaxHp > 0).ToList();
+            if (bossRuns.Count == 0)
+            {
+                Console.WriteLine($"   {("T" + tier),-6}{"-",6}{"-",9}{"-",11}{"-",11}{"-",12}  sem dados");
+                continue;
+            }
+            var breaksMed = Median(bossRuns.Select(r => (double)r.BreakCount).ToList());
+            var hpShareMed = Median(bossRuns.Select(r => (double)r.BossBreakDamage / r.BossMaxHp).ToList());
+            var dmgShareMed = Median(bossRuns.Select(r => (double)r.BossBreakDamage / r.BossTotalDamage).ToList());
+            var peakMed = Median(bossRuns.Select(r => (double)r.PeakWindowDamage / r.BossMaxHp).ToList());
+            var status = hpShareMed <= breakShareTarget ? "OK" : "ALTO";
+            Console.WriteLine(
+                $"   {("T" + tier),-6}{bossRuns.Count,6}{breaksMed,9:F1}" +
+                $"{hpShareMed * 100,10:F0}%{dmgShareMed * 100,10:F0}%{peakMed * 100,11:F0}%  {status}");
         }
     }
 
@@ -368,14 +401,14 @@ internal static class Program
         var sb = new StringBuilder();
         sb.AppendLine("kind,kaeli,tier,seed,species,rank,maxHp,ttkTicks,ttkMs,ttkCycles,oneShot," +
                       "victory,playerDied,unfinished,durationMs,kills,dmgDealt,dmgTaken,oneShotCount," +
-                      "endHpFrac,minHpFrac");
+                      "endHpFrac,minHpFrac,bossMaxHp,bossTotalDamage,bossBreakDamage,breakCount,peakWindowDamage");
 
         foreach (var k in kills)
             sb.Append("kill,").Append(Csv(k.Kaeli)).Append(',').Append(k.Tier).Append(',').Append(k.Seed).Append(',')
               .Append(Csv(k.Species)).Append(',').Append(k.Rank).Append(',').Append(k.MaxHp).Append(',')
               .Append(k.TtkTicks).Append(',').Append(k.TtkMs).Append(',')
               .Append(k.TtkCycles.ToString("F3", CultureInfo.InvariantCulture)).Append(',')
-              .Append(k.OneShot ? 1 : 0).Append(",,,,,,,,,,\n");
+              .Append(k.OneShot ? 1 : 0).Append(",,,,,,,,,,,,,,,\n");
 
         foreach (var r in runs)
             sb.Append("run,").Append(Csv(r.Kaeli)).Append(',').Append(r.Tier).Append(',').Append(r.Seed)
@@ -384,7 +417,9 @@ internal static class Program
               .Append(r.Unfinished ? 1 : 0).Append(',').Append(r.DurationMs).Append(',').Append(r.Kills).Append(',')
               .Append(r.DamageDealt).Append(',').Append(r.DamageTaken).Append(',').Append(r.OneShotCount).Append(',')
               .Append(r.EndHpFraction.ToString("F3", CultureInfo.InvariantCulture)).Append(',')
-              .Append(r.MinHpFraction.ToString("F3", CultureInfo.InvariantCulture)).Append('\n');
+              .Append(r.MinHpFraction.ToString("F3", CultureInfo.InvariantCulture)).Append(',')
+              .Append(r.BossMaxHp).Append(',').Append(r.BossTotalDamage).Append(',').Append(r.BossBreakDamage)
+              .Append(',').Append(r.BreakCount).Append(',').Append(r.PeakWindowDamage).Append('\n');
 
         File.WriteAllText(path, sb.ToString());
     }

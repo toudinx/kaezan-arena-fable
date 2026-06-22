@@ -203,6 +203,9 @@ public sealed class GameWorld
     private readonly IReadOnlyDictionary<string, long> _bestiaryKills;
     // MG-05: tabela de tuning por papel vigente nesta run (injetada pela Hub do ContentStore).
     private readonly IReadOnlyDictionary<KaeliRole, RoleTuning> _roles;
+    // LM-08: bioma resolvido UMA vez na construção (injetado pela Hub do ContentStore; fallback aos
+    // defaults canônicos). Nunca relido no tick — determinismo preservado (igual ao RoleTuning).
+    private readonly BiomeDef _biome;
 
     public long TickCount { get; private set; }
     private long _simulationMs;
@@ -320,7 +323,7 @@ public sealed class GameWorld
         GameData data, MonsterRegistry monsterRegistry, IReadOnlyDictionary<string, long> bestiaryKills,
         EquipmentStats? equipmentStats = null, KaeliLoadout? loadout = null, ItemRegistry? items = null,
         string? helperProfile = null, IReadOnlyDictionary<KaeliRole, RoleTuning>? roleTuning = null,
-        GameMode mode = GameMode.Dungeon)
+        GameMode mode = GameMode.Dungeon, BiomeDef? biome = null)
     {
         Seed = seed;
         Mode = mode;
@@ -355,9 +358,11 @@ public sealed class GameWorld
         _autoHelperMovementMode = _defaultAutoHelperMovementMode;
         if (!string.IsNullOrWhiteSpace(helperProfile)) ApplyHelperProfile(helperProfile);
 
-        var biome = Biomes.ForTier(tier.Tier);
+        // LM-08: bioma vem do ContentStore (editável no admin); fallback aos defaults canônicos para
+        // chamadores sem store (ex.: simulador, que mede contra a baseline estável). Resolvido aqui uma vez.
+        _biome = biome ?? Biomes.ForTier(tier.Tier);
         // LM-03 (1) fonte de mapa: o modo decide como o lugar é produzido (mesma seq. de Rng no Dungeon).
-        _floors = _modeRules.BuildFloors(_rng, biome);
+        _floors = _modeRules.BuildFloors(_rng, _biome);
 
         var hp = (int)(waifu.BaseHp * (1 + ascension * GameConfig.AscensionAtkBonus)
                        * (1 + _affinityStatBonus) * Loadout.Mastery.HpMult)
@@ -948,14 +953,14 @@ public sealed class GameWorld
         if (Player.IsMoving(NowMs)) return;
         if (_moveDirX != 0 || _moveDirY != 0 || _hasBufferedMoveDir) return; // input manual tem prioridade
 
-        var goal = NavGoal();
-        if (goal is null) return;
-        var (gx, gy, interactable, _) = goal.Value;
+        var goals = NavGoals();
+        if (goals.Count == 0) return;
 
-        // chegou: interage (abre baú/altar, desce escada) quando adjacente ao POI.
-        if (interactable && Chebyshev(Player.X, Player.Y, gx, gy) <= 1)
+        // chegou: interage (abre baú/altar, desce escada) quando adjacente ao objetivo mais próximo.
+        var first = goals[0];
+        if (first.Interactable && Chebyshev(Player.X, Player.Y, first.X, first.Y) <= 1)
         {
-            TryInteract(gx, gy);
+            TryInteract(first.X, first.Y);
             return;
         }
 
@@ -963,35 +968,62 @@ public sealed class GameWorld
         if (_monsters.Any(m => m.Hp > 0 && m.Floor == _currentFloor && Chebyshev(Player.X, Player.Y, m.X, m.Y) <= 1))
             return;
 
-        var step = NextNavStep(gx, gy);
-        if (step is { } s) TryStep(Player, s.Dx, s.Dy, PlayerSpeed());
+        // caminha até o primeiro objetivo ALCANÇÁVEL desviando dos mobs (caminho liso, sem tomar dano).
+        // As coordenadas já vêm do servidor (NavGoals lê os POIs direto — não é varredura/fog); um baú
+        // preso em lava/atrás de parede dá NextNavStep == null, então pula o inalcançável e tenta o próximo.
+        foreach (var (gx, gy, _, _) in goals)
+            if (NextNavStep(gx, gy, avoidMonsters: true) is { } step)
+            {
+                TryStep(Player, step.Dx, step.Dy, PlayerSpeed());
+                return;
+            }
+
+        // nenhum objetivo desviável: o corredor está tampado por mobs vivos (que o BFS-com-desvio trata
+        // como parede) e o bloqueador está longe demais pro alcance de combate — a Kaeli congelava aqui.
+        // Recalcula IGNORANDO os mobs e anda nessa direção: isso leva a Kaeli até o mob que tampa a
+        // passagem, onde o helper de combate o engaja e libera o caminho. Como a dungeon é conexa pelo
+        // terreno, sempre há um próximo passo enquanto o objetivo existir — o helper nunca trava.
+        foreach (var (gx, gy, _, _) in goals)
+            if (NextNavStep(gx, gy, avoidMonsters: false) is { } step)
+            {
+                TryStep(Player, step.Dx, step.Dy, PlayerSpeed());
+                return;
+            }
+
+        // último recurso (objetivo cercado de mobs adjacentes a ponto de TryStep não andar): puxa o
+        // inimigo mais próximo no alcance pra que o combate limpe o entorno e a navegação volte a fluir.
+        var blocker = BestAutoHelperTarget(GameConfig.AutoHelperTargetRange);
+        if (blocker is not null)
+            TryStepTowardDistance(blocker, GameConfig.AutoHelperFollowDistance, PlayerSpeed());
     }
 
-    // Objetivo de navegação: o coletável ativo mais próximo (baú comum/amaldiçoado OU altar de Eco —
-    // os "roxos" do minimapa); sem coletáveis, a saída (escada do andar, ou o boss se não houver escada).
-    private (int X, int Y, bool Interactable, string Kind)? NavGoal()
+    // Objetivos de navegação em ordem de prioridade: coletáveis ativos (baú comum/amaldiçoado OU altar
+    // de Eco — os "roxos" do minimapa) do mais próximo ao mais distante; depois a saída (escada do
+    // andar, ou o boss se não houver escada). As coordenadas vêm direto dos POIs do servidor.
+    // Determinístico: OrderBy é estável e desempata por Id.
+    private List<(int X, int Y, bool Interactable, string Kind)> NavGoals()
     {
-        Poi? loot = null;
-        var best = int.MaxValue;
-        foreach (var p in _pois)
-        {
-            if (p.Used || p.Floor != _currentFloor) continue;
-            if (p.Kind is not ("chest" or "sanctuary")) continue;
-            var d = Chebyshev(Player.X, Player.Y, p.X, p.Y);
-            if (d < best || (d == best && (loot is null || p.Id < loot.Id)))
-            {
-                loot = p;
-                best = d;
-            }
-        }
-        if (loot is not null) return (loot.X, loot.Y, true, loot.Kind);
+        var goals = _pois
+            .Where(p => !p.Used && p.Floor == _currentFloor && p.Kind is "chest" or "sanctuary")
+            .OrderBy(p => Chebyshev(Player.X, Player.Y, p.X, p.Y))
+            .ThenBy(p => p.Id)
+            .Select(p => (p.X, p.Y, true, p.Kind))
+            .ToList();
 
         var ladder = _pois.FirstOrDefault(p => !p.Used && p.Floor == _currentFloor && p.Kind == "ladder");
-        if (ladder is not null) return (ladder.X, ladder.Y, true, "ladder");
+        if (ladder is not null) goals.Add((ladder.X, ladder.Y, true, "ladder"));
 
         // sem escada (andar do boss): a saída é derrotar o boss → caminha até ele.
         var boss = _monsters.FirstOrDefault(m => m.IsBossActor && m.Hp > 0 && m.Floor == _currentFloor);
-        return boss is not null ? (boss.X, boss.Y, false, "boss") : null;
+        if (boss is not null) goals.Add((boss.X, boss.Y, false, "boss"));
+
+        return goals;
+    }
+
+    private (int X, int Y, bool Interactable, string Kind)? NavGoal()
+    {
+        var goals = NavGoals();
+        return goals.Count > 0 ? goals[0] : null;
     }
 
     // G-10: alvo atual do auto-loot pra legibilidade no cliente (null quando o pathing está off).
@@ -1002,18 +1034,23 @@ public sealed class GameWorld
     }
 
     // Primeiro passo de um caminho mais curto (BFS) do jogador até ficar adjacente a (tx,ty).
-    // BFS real contorna paredes/cantos — o passo guloso travava em becos. Monstros vivos bloqueiam
-    // tiles (a Kaeli desvia; o combate limpa se o corredor estiver tampado). Determinístico: ordem
-    // de vizinhos fixa, sem `_rng`/`DateTime`. Retorna null se não há caminho.
-    private (int Dx, int Dy)? NextNavStep(int tx, int ty)
+    // BFS real contorna paredes/cantos — o passo guloso travava em becos. Com avoidMonsters=true os
+    // mobs vivos bloqueiam tiles (a Kaeli desvia, caminho sem dano); com false só o terreno bloqueia
+    // (fallback que anda em direção ao mob que tampa o corredor pra o combate limpá-lo). Determinístico:
+    // ordem de vizinhos fixa, sem `_rng`/`DateTime`. Retorna null se não há caminho pelo terreno.
+    private (int Dx, int Dy)? NextNavStep(int tx, int ty, bool avoidMonsters = true)
     {
         var floor = Floor;
         int w = floor.W, h = floor.H, sx = Player.X, sy = Player.Y;
         if (Chebyshev(sx, sy, tx, ty) <= 1) return null;
 
-        var occupied = new HashSet<int>();
-        foreach (var m in _monsters)
-            if (m.Hp > 0 && m.Floor == _currentFloor) occupied.Add(m.Y * w + m.X);
+        HashSet<int>? occupied = null;
+        if (avoidMonsters)
+        {
+            occupied = new HashSet<int>();
+            foreach (var m in _monsters)
+                if (m.Hp > 0 && m.Floor == _currentFloor) occupied.Add(m.Y * w + m.X);
+        }
 
         var firstStep = new (int Dx, int Dy)?[w * h];
         var seen = new bool[w * h];
@@ -1043,7 +1080,7 @@ public sealed class GameWorld
                 {
                     if (floor.IsBlocked(nx, ny)) continue;
                     if (dx != 0 && dy != 0 && (floor.IsBlocked(cx + dx, cy) || floor.IsBlocked(cx, cy + dy))) continue;
-                    if (occupied.Contains(ni)) continue;
+                    if (occupied is not null && occupied.Contains(ni)) continue;
                 }
 
                 seen[ni] = true;
@@ -1114,77 +1151,51 @@ public sealed class GameWorld
 
         if (_autoHelperMovementMode == GameConfig.AutoHelperMovementModeFollow)
         {
-            var followDistance = Chebyshev(Player, target);
-            if (followDistance > GameConfig.AutoHelperFollowDistance)
-            {
-                var stepped = TryAutoHelperCardinalStep(
-                    target,
-                    speed,
-                    moveAway: false,
-                    (_, nextDist) => nextDist >= GameConfig.AutoHelperFollowDistance && nextDist < followDistance);
-                // O passo cardinal guloso não desvia de obstáculo: se os dois passos em direção
-                // ao alvo estão bloqueados (pedregulho/parede entre a Kaeli e o inimigo), a perseguição
-                // travava de vez e a run nunca terminava. Cai no mesmo pather BFS do auto-loot
-                // (NextNavStep para na adjacência, AutoHelperFollowDistance=1) para contornar o bloqueio.
-                // Determinístico: NextNavStep não usa _rng/DateTime.
-                if (!stepped && NextNavStep(target.X, target.Y) is { } nav)
-                    TryStep(Player, nav.Dx, nav.Dy, speed);
-            }
+            // Aproxima até ficar adjacente (AutoHelperFollowDistance=1). O steering local tenta as 8
+            // direções (inclui diagonal) e contorna obstáculo pequeno; se nenhum passo aproxima
+            // (parede côncava entre a Kaeli e o inimigo, que travava a perseguição), cai no pather
+            // BFS do auto-loot (NextNavStep para na adjacência). Determinístico: nenhum usa _rng/DateTime.
+            if (Chebyshev(Player, target) > GameConfig.AutoHelperFollowDistance
+                && !TryStepTowardDistance(target, GameConfig.AutoHelperFollowDistance, speed)
+                && NextNavStep(target.X, target.Y) is { } nav)
+                TryStep(Player, nav.Dx, nav.Dy, speed);
             return;
         }
 
         if (_autoHelperMovementMode != GameConfig.AutoHelperMovementModeAvoid) return;
 
-        var distance = Chebyshev(Player, target);
-        if (distance < GameConfig.AutoHelperAvoidDistance)
-        {
-            TryAutoHelperCardinalStep(target, speed, moveAway: true, (_, nextDist) => nextDist > distance);
-        }
-        else if (distance > GameConfig.AutoHelperAvoidDistance)
-        {
-            TryAutoHelperCardinalStep(
-                target,
-                speed,
-                moveAway: false,
-                (_, nextDist) => nextDist >= GameConfig.AutoHelperAvoidDistance && nextDist <= distance);
-        }
+        // Avoid: assenta em AutoHelperAvoidDistance, aproximando ou recuando conforme necessário.
+        // Diagonais permitidas → escorrega ao longo da parede em vez de congelar tomando dano.
+        TryStepTowardDistance(target, GameConfig.AutoHelperAvoidDistance, speed);
     }
 
-    private bool TryAutoHelperCardinalStep(Actor target, int speed, bool moveAway, Func<int, int, bool> acceptDistance)
+    // Steering local determinístico: entre os 8 passos vizinhos (cardinais antes das diagonais,
+    // mesma ordem do NextNavStep), escolhe o passo desbloqueado cuja distância de Chebyshev ao
+    // alvo fica mais perto de desiredDist. Empate → primeira direção na ordem fixa. Não anda se
+    // nenhum passo melhora a distância atual (evita jitter no equilíbrio). CanStep já barra
+    // paredes, corte de quina e tiles ocupados por monstro.
+    private bool TryStepTowardDistance(Actor target, int desiredDist, int speed)
     {
-        var currentDist = Chebyshev(Player, target);
-        foreach (var (dx, dy) in CardinalDirectionsToTarget(target, moveAway))
+        var bestErr = Math.Abs(Chebyshev(Player, target) - desiredDist);
+        (int dx, int dy) best = default;
+        var found = false;
+        ReadOnlySpan<(int dx, int dy)> dirs =
+        [
+            (0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (1, -1), (-1, 1), (1, 1)
+        ];
+        foreach (var (dx, dy) in dirs)
         {
-            var nextDist = Math.Max(Math.Abs(target.X - (Player.X + dx)), Math.Abs(target.Y - (Player.Y + dy)));
-            if (!acceptDistance(currentDist, nextDist)) continue;
-            if (TryStep(Player, dx, dy, speed)) return true;
+            if (!CanStep(Player, dx, dy)) continue;
+            var nd = Math.Max(Math.Abs(target.X - (Player.X + dx)), Math.Abs(target.Y - (Player.Y + dy)));
+            var err = Math.Abs(nd - desiredDist);
+            if (err < bestErr)
+            {
+                bestErr = err;
+                best = (dx, dy);
+                found = true;
+            }
         }
-        return false;
-    }
-
-    private IEnumerable<(int dx, int dy)> CardinalDirectionsToTarget(Actor target, bool moveAway)
-    {
-        var deltaX = target.X - Player.X;
-        var deltaY = target.Y - Player.Y;
-        var dx = Math.Sign(deltaX);
-        var dy = Math.Sign(deltaY);
-        if (moveAway)
-        {
-            dx = -dx;
-            dy = -dy;
-        }
-
-        var preferHorizontal = Math.Abs(deltaX) >= Math.Abs(deltaY);
-        if (preferHorizontal)
-        {
-            if (dx != 0) yield return (dx, 0);
-            if (dy != 0) yield return (0, dy);
-        }
-        else
-        {
-            if (dy != 0) yield return (0, dy);
-            if (dx != 0) yield return (dx, 0);
-        }
+        return found && TryStep(Player, best.dx, best.dy, speed);
     }
 
     private Actor? LockedManualTarget()
@@ -4080,26 +4091,14 @@ public sealed class GameWorld
 
     private MapDto BuildMap()
     {
-        var floor = Floor;
-        var atmo = Biomes.ForTier(Tier.Tier).Atmosphere;
-        return new MapDto(
-            _currentFloor, floor.W, floor.H,
-            floor.Ground, floor.Wall, floor.Decor, floor.Blocked,
-            floor.Entry.X, floor.Entry.Y,
-            floor.LadderDown?.X, floor.LadderDown?.Y,
-            _pois.Where(p => p.Floor == _currentFloor)
-                // G-09: mímico viaja como variante vazia (só "cursed" é telegrafado pro cliente).
-                .Select(p => new PoiDto(p.Id, p.Kind, p.X, p.Y, PoiSpriteId(p.Kind),
-                    p.Variant == "cursed" ? "cursed" : "", p.Used))
-                .ToList(),
-            // G-07: tipos de sala (ícones do minimapa) + paleta cosmética do estrato.
-            floor.Rooms.Select(r => new RoomDto(r.X, r.Y, r.W, r.H, r.Role)).ToList(),
-            new BiomeDto(
-                atmo.Name,
-                atmo.TintR, atmo.TintG, atmo.TintB, atmo.TintStrength,
-                atmo.FogR, atmo.FogG, atmo.FogB, atmo.FogStrength,
-                atmo.Vignette,
-                atmo.ParticleR, atmo.ParticleG, atmo.ParticleB, atmo.ParticleDensity, atmo.ParticleDrift));
+        // G-09: mímico viaja como variante vazia (só "cursed" é telegrafado pro cliente).
+        var pois = _pois.Where(p => p.Floor == _currentFloor)
+            .Select(p => new PoiDto(p.Id, p.Kind, p.X, p.Y, PoiSpriteId(p.Kind),
+                p.Variant == "cursed" ? "cursed" : "", p.Used))
+            .ToList();
+        // LM-08: helper compartilhado com o preview de bioma do admin (LM-09). Bioma resolvido na
+        // construção (não relido no tick); ground/wall/decor + salas + paleta lidos de forma idêntica.
+        return MapDto.FromFloor(Floor, _biome.Atmosphere, _currentFloor, pois);
     }
 
     private static ushort PoiSpriteId(string kind) => kind switch

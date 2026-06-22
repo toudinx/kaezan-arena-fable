@@ -13,11 +13,15 @@ internal sealed record KillRow(
 /// <remarks>MG-08: EndHpFraction = vida do player no fim da run (pós-boss em vitória → "termina com
 /// 30-60% HP"); MinHpFraction = menor vida vista na run (pressão de survival, menos mascarada pelo
 /// auto-heal). Ambos lidos do snapshot — reporting puro, não tocam o engine (determinismo intacto).</remarks>
+/// <remarks>F-E posture calibration: BossMaxHp + BossBreakDamage/BossTotalDamage isolam quanto da
+/// morte do boss vem das janelas de Echo Break (BreakCount = nº de quebras; PeakWindowDamage = maior
+/// dano efetivo causado numa única janela). Tudo lido do snapshot — reporting puro, determinismo intacto.</remarks>
 internal sealed record RunRow(
     string Kaeli, int Tier, long Seed,
     bool Victory, bool PlayerDied, bool Unfinished,
     long DurationMs, int Kills, long DamageDealt, long DamageTaken, int OneShotCount,
-    double EndHpFraction, double MinHpFraction);
+    double EndHpFraction, double MinHpFraction,
+    int BossMaxHp, long BossTotalDamage, long BossBreakDamage, int BreakCount, long PeakWindowDamage);
 
 internal sealed record RunResult(RunRow Summary, List<KillRow> Kills);
 
@@ -55,6 +59,12 @@ internal static class Simulator
         long dmgDealt = 0, dmgTaken = 0;
         var oneShotCount = 0;
 
+        // F-E posture: contribuição das janelas de Echo Break à morte do boss (dano EFETIVO, capado na
+        // vida restante — overkill não infla). bossId vem do MonsterDto.IsBoss (ignora posture-tank comum).
+        int bossId = 0, bossMaxHp = 0, breakCount = 0, prevPostureCycle = 0;
+        long bossTotalDamage = 0, bossBreakDamage = 0, peakWindowDamage = 0, currentWindowDamage = 0;
+        var prevStaggered = false;
+
         long tick = 0;
         RunEndDto? ended = null;
         long lastElapsedMs = 0;
@@ -87,8 +97,15 @@ internal static class Simulator
                         firstDmgTick.TryAdd(id, tick);
                         // dano efetivo: nunca conta mais que a vida que o alvo ainda tinha.
                         var rem = effHp.TryGetValue(id, out var r) ? r : maxHp.GetValueOrDefault(id, e.Value);
-                        dmgDealt += Math.Min(e.Value, Math.Max(0, rem));
+                        var eff = Math.Min(e.Value, Math.Max(0, rem));
+                        dmgDealt += eff;
                         effHp[id] = rem - e.Value;
+                        // F-E: dano EFETIVO causado ao boss; o que cair numa janela de stagger conta como quebra.
+                        if (id == bossId)
+                        {
+                            bossTotalDamage += eff;
+                            if (snap.Run.BossStaggered) { bossBreakDamage += eff; currentWindowDamage += eff; }
+                        }
                         var threshold = prevHp.TryGetValue(id, out var hp0) && hp0 > 0
                             ? hp0
                             : maxHp.GetValueOrDefault(id);
@@ -123,11 +140,27 @@ internal static class Simulator
                 maxHp[m.Id] = m.MaxHp;
                 effHp[m.Id] = m.Hp;   // ressincroniza a vida efetiva com o snapshot (cobre regen/cura)
                 species[m.Id] = m.Species;
+                if (m.IsBoss) { bossId = m.Id; bossMaxHp = m.MaxHp; } // ignora posture-tank comum (IsBoss=false)
             }
+
+            // F-E: conta as quebras (PostureCycle sobe a cada Echo Break) e fecha a janela de pico quando
+            // o stagger termina (maior dano efetivo despejado numa única quebra).
+            if (snap.Run.BossPostureCycle > prevPostureCycle)
+                breakCount += snap.Run.BossPostureCycle - prevPostureCycle;
+            prevPostureCycle = snap.Run.BossPostureCycle;
+            if (prevStaggered && !snap.Run.BossStaggered)
+            {
+                peakWindowDamage = Math.Max(peakWindowDamage, currentWindowDamage);
+                currentWindowDamage = 0;
+            }
+            prevStaggered = snap.Run.BossStaggered;
 
             if (snap.Run.Ended is not null) { ended = snap.Run.Ended; break; }
             if (tick >= maxTicks) break;
         }
+
+        // boss morto dentro de uma janela aberta → fecha o último pico.
+        peakWindowDamage = Math.Max(peakWindowDamage, currentWindowDamage);
 
         var victory = ended?.Victory ?? false;
         var summary = new RunRow(
@@ -141,7 +174,12 @@ internal static class Simulator
             DamageTaken: dmgTaken,
             OneShotCount: oneShotCount,
             EndHpFraction: endHpFrac,
-            MinHpFraction: minHpFrac);
+            MinHpFraction: minHpFrac,
+            BossMaxHp: bossMaxHp,
+            BossTotalDamage: bossTotalDamage,
+            BossBreakDamage: bossBreakDamage,
+            BreakCount: breakCount,
+            PeakWindowDamage: peakWindowDamage);
 
         return new RunResult(summary, kills);
     }

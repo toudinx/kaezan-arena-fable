@@ -172,9 +172,10 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
   e dissolve por pixels na morte. A intensidade vem sempre do dado do servidor, nunca de RNG no front.
 - Monstros desviam de bloqueios e aglomerações, perdem aggro após distância/LOS prolongados e
   respeitam `staticAttackChance` para sustentar posições de ataque.
-- **Painel HELPER — controle de autoplay (estilo on/off de gacha).** O painel fica sempre visível no
-  HUD, em seções claras (UI em inglês), com um *readout* em linguagem natural no topo ("Exploring &
-  looting · hitting the nearest foe · auto-healing.") pra você "ler" a config num relance:
+- **Painel HELPER — controle de autoplay (estilo on/off de gacha).** Fica ancorado no **canto
+  inferior esquerdo** e é **minimizável** (começa recolhido; o botão 🤖 no HUD abre/fecha, e um "–"
+  no cabeçalho recolhe), em seções claras (UI em inglês), com um *readout* em linguagem natural no
+  topo ("Exploring & looting · hitting the nearest foe · auto-healing.") pra você "ler" a config num relance:
   - **Combat:** on/off de **Target**, **Skills**, **Ultimate**; e prioridade de alvo **Nearest** ou
     **Lowest HP**. Skills/ult só disparam quando a área/linha alcançaria um mob; a escolha manual
     de alvo prevalece até ele morrer/sair.
@@ -216,7 +217,7 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
 - **Postura (Echo Break).** Todo boss tem uma segunda barra (dourada, sob o HP). Acertá-lo enche
   a postura — *skills* pressionam mais que auto-attack, e bater no **elemento fraco** (resist < 0)
   quebra mais rápido. Cheia → **Echo Break**: o boss fica atordoado e o dano recebido é
-  multiplicado por ciclo (`2.5× → 3.5× → 5× → 6.5×`), com um bônus por hit de % do HP máx do boss
+  multiplicado por ciclo (`1.8× → 2.1× → 2.4× → 2.8×`), com um bônus por hit de % do HP máx do boss
   (com cooldown interno anti multi-hit). Ao fim do stagger o ciclo sobe e a postura volta maior;
   parar de bater faz a postura **decair**, então é preciso pressão sustentada. A janela de break é
   o momento de despejar o burst (guardar a ultimate vale a pena).
@@ -247,9 +248,11 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
    a rota antecipável. Cada tier tem um **bioma visual próprio** (`Domain/Biomes.cs`): caverna de terra
    (1), forte gramado (2), cripta de pedra com ossos (3), covil escuro com poças de lava (4) e abismo
    (5), cada um com uma **atmosfera** distinta (color-grade + névoa + vinheta + partículas, em
-   `BiomeAtmosphere`, renderizada client-side). As paredes escolhem a peça por vizinhança
-   (horizontal/vertical/canto), e os acentos de lava ficam na camada de decoração — nunca
-   bloqueiam o caminho.
+   `BiomeAtmosphere`, renderizada client-side). As paredes escolhem a peça por **vizinhança-8**
+   (horizontal/vertical/junção/canto, usando a peça sólida nos cantos para não deixar "dentes"), e o
+   miolo de rocha sem chão vizinho é preenchido com **bedrock** (rocha opaca, `biome.Bedrock`) — o
+   negativo do mapa lê como maciço, não buraco preto. Decor e lava são **agrupados em clusters dentro
+   das salas** (nunca em corredor) e ficam na camada de decoração, então nunca bloqueiam o caminho.
 3. Durante a run (cadência G-06): **level-up dá um status pequeno automático** (sorteia uma carta
    comum e aplica na hora, sem abrir tela). As **escolhas pesadas** (1 de 3, max 3 stacks) ficam
    reservadas a **beats antecipáveis** — derrotar um **elite**, limpar um **andar** e a sala
@@ -367,14 +370,13 @@ docs/FABLE_TRACK.md   fila de features complexas/cross-cutting (track Claude Fab
 - **[docs/FABLE_TRACK.md](docs/FABLE_TRACK.md)** — fila do **Claude Fable 5**: 5 features
   grandes, cross-cutting e sensíveis a determinismo (Echo Team, Maestria, Determinismo+Desafio
   Diário, Geração v2, Postura+Reações) — onde vale pagar o modelo premium.
-- **[docs/roadmap_image_pipeline.md](docs/roadmap_image_pipeline.md)** — frente do **pipeline de
-  imagem**: pós-processo local grátis (ComfyUI) de **todos os tipos de asset** (Kaelis, items,
-  monstros, backgrounds, logos) — GPT Image 2.0 gera, o ComfyUI faz upscale/remoção de fundo/crop
-  em lote; inclui MCP do Comfy p/ agentes e uma frente de **vídeo (reels)** marketing-first. Só
-  mexe em `tools/` e nos PNGs de asset.
-- **[docs/roadmap_custom_sprites.md](docs/roadmap_custom_sprites.md)** — R&D de **sprites in-game
-  autorais** (híbrido: só Kaelis + bosses; mobs genéricos seguem no Tibia). Spike de técnica
-  primeiro; toca o renderer/`AssetsService`. É o maior ganho de identidade e o item mais difícil.
+- **[docs/roadmap_producao_visual.md](docs/roadmap/not%20started/roadmap_producao_visual.md)** —
+  **produção visual** em 3 etapas: **(1) imagem estática** (GPT Image 2.0 gera → ComfyUI pós-processa
+  todos os tipos de asset: Kaelis, items, monstros, backgrounds, logos; upscale/removebg/crop em lote
+  + MCP do Comfy p/ agentes); **(2) movimento & cutscenes** (idle breathing, summon/reveal via Remotion,
+  FX de skill, reels); **(3) sprites in-game autorais** (híbrido Kaelis + bosses; toca o
+  renderer/`AssetsService`). Metodologia PC↔celular em
+  **[docs/WORKFLOW_imagem_e_cutscenes.md](docs/WORKFLOW_imagem_e_cutscenes.md)**.
 - **[docs_web/](docs_web/README.md)** — trilha do **Claude Code Web**: trabalho de **texto** que
   mantém o projeto andando quando o desktop está indisponível (design, pesquisa de franquias,
   lore, copy, prompts de skin/social e roadmaps de implementação prontos). **Nenhum código** — o

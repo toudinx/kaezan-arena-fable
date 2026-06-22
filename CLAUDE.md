@@ -39,6 +39,9 @@ Instruções para assistentes de IA trabalhando neste repo.
 - Assets novos: edite `tools/AssetExtractor/content-config.json` e re-rode o extractor
   (instruções no README). Monstros novos: adicione o `.lua` em `tools/convert-monsters/config.json`
   e re-rode `node convert.mjs` (o extractor puxa lookTypes/loot do monsters.json sozinho).
+- Arte de Kaeli (GPT Image + ComfyUI), cutscenes (idle/summon/skill/reels via Remotion/ComfyUI) e
+  sprites autorais: metodologia PC↔celular em `docs/WORKFLOW_imagem_e_cutscenes.md`; roadmap único em
+  `docs/roadmap_producao_visual.md` (3 etapas: imagem estática · movimento · sprites).
 
 ## Após implementar
 

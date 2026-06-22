@@ -40,6 +40,10 @@ Cada roadmap web declara no topo a sua **etiqueta**. Escolha pelo seu acesso do 
   (`roadmap_web_specs`, `roadmap_web_research`, `roadmap_web_lore`, `roadmap_web_marketing`)
 - 🟡 **Precisa GPT Image + seu tempo** — a saída é um conjunto de prompts que **você** ainda vai
   colar no GPT Image 2.0 / DALL·E para gerar as imagens. (`roadmap_web_skins`, `roadmap_web_social`)
+- 🟠 **Brief de movimento (render no PC)** — a skill `kaeli-motion-prompts` escreve em
+  `docs_web/motion/<slug>-<tipo>.md` o brief de cutscene (prompt image-to-video / spec Remotion). É só
+  texto (roda no celular); o **render** é desktop, via `docs/roadmap_producao_visual.md` (Etapa 2).
+  Metodologia completa em `docs/WORKFLOW_imagem_e_cutscenes.md`.
 
 ## Como disparar
 

@@ -93,10 +93,21 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
             <b>{{ elementLabel(s.player.stanceElement) }}</b>
             @if (s.player.canToggleStance) { <small>TAB</small> }
           </button>
+        }
+        <button class="btn secondary leave" (click)="leave()">Sair</button>
+        <button class="btn secondary bag-toggle" [class.on]="showBag()" (click)="toggleBag()" title="Mochila da caçada (B)">🎒</button>
+        <button class="btn secondary snd-toggle" [class.muted]="sound.muted()" (click)="sound.toggleMute()" [title]="sound.muted() ? 'Som desligado (M)' : 'Som ligado (M)'">{{ sound.muted() ? '🔇' : '🔊' }}</button>
+        <button class="btn secondary helper-toggle" [class.on]="showHelper()" (click)="toggleHelper()" title="Helper de combate">🤖</button>
+      </div>
+
+      <!-- helper panel (canto inferior esquerdo, minimizável) -->
+      @if (snapshot(); as s) {
+        @if (showHelper()) {
           <div class="helper-panel" title="Combat helper — set it and watch">
             <div class="hp-head">
               <span class="hp-title">Helper</span>
               <span class="hp-readout">{{ helperReadout(s.player.autoHelper) }}</span>
+              <button class="hp-min" (click)="toggleHelper()" title="Minimizar">–</button>
             </div>
 
             <div class="hp-group">
@@ -119,7 +130,7 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
 
             <div class="hp-group">
               <span class="hp-label">Movement</span>
-              <div class="seg">
+              <div class="seg" [class.muted]="s.player.autoHelper.navMode === 'loot'">
                 <button [class.on]="s.player.autoHelper.movementMode === 'none'"
                         (click)="setAutoHelperMovement('none')">Stand</button>
                 <button [class.on]="s.player.autoHelper.movementMode === 'follow'"
@@ -127,6 +138,9 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
                 <button [class.on]="s.player.autoHelper.movementMode === 'avoid'"
                         (click)="setAutoHelperMovement('avoid')">Avoid</button>
               </div>
+              @if (s.player.autoHelper.navMode === 'loot') {
+                <span class="hp-hint">Auto-loot está pilotando o movimento — Follow/Avoid voltam ao desligá-lo.</span>
+              }
             </div>
 
             <div class="hp-group">
@@ -164,10 +178,7 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
             </div>
           </div>
         }
-        <button class="btn secondary leave" (click)="leave()">Sair</button>
-        <button class="btn secondary bag-toggle" [class.on]="showBag()" (click)="toggleBag()" title="Mochila da caçada (B)">🎒</button>
-        <button class="btn secondary snd-toggle" [class.muted]="sound.muted()" (click)="sound.toggleMute()" [title]="sound.muted() ? 'Som desligado (M)' : 'Som ligado (M)'">{{ sound.muted() ? '🔇' : '🔊' }}</button>
-      </div>
+      }
 
       <!-- minimap -->
       <canvas #mini class="minimap" width="160" height="160"></canvas>
@@ -364,15 +375,23 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
 
     /* G-10: combat helper — autoplay control panel. Teal = on, echo-purple = identity, aurum = saved. */
     .helper-panel {
-      pointer-events: auto; width: 270px; border-radius: 12px;
+      position: absolute; left: 14px; bottom: 16px; z-index: 16;
+      pointer-events: auto; width: 270px; max-height: 70vh; overflow-y: auto; border-radius: 12px;
       border: 1px solid rgba(196,125,255,0.18);
       background: linear-gradient(180deg, rgba(20,17,29,0.96), rgba(13,12,19,0.96));
       box-shadow: 0 12px 30px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);
       color: #d8d6e4; padding: 11px 12px 12px; display: flex; flex-direction: column; gap: 11px;
     }
-    .hp-head { display: flex; flex-direction: column; gap: 3px; }
-    .hp-title { font-size: 10px; font-weight: 900; letter-spacing: 0.22em; text-transform: uppercase; color: #c47dff; }
-    .hp-readout { font-size: 10.5px; line-height: 1.3; color: #9a98ae; min-height: 14px; }
+    .hp-head { display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 0 8px; }
+    .hp-title { grid-column: 1; font-size: 10px; font-weight: 900; letter-spacing: 0.22em; text-transform: uppercase; color: #c47dff; }
+    .hp-readout { grid-column: 1; font-size: 10.5px; line-height: 1.3; color: #9a98ae; min-height: 14px; }
+    .hp-min {
+      grid-column: 2; grid-row: 1 / span 2; align-self: center; width: 22px; height: 22px; border-radius: 7px;
+      border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: #9594a8;
+      font-size: 15px; font-weight: 800; line-height: 1; cursor: pointer; transition: border-color 110ms, color 110ms;
+    }
+    .hp-min:hover { border-color: rgba(45,212,191,0.5); color: #8bfff1; }
+    .helper-toggle.on { border-color: #c47dff; color: #d9b6ff; }
     .hp-group { display: flex; flex-direction: column; gap: 6px; }
     .hp-label { font-size: 8.5px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: #6f6e84; }
     .hp-pills { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
@@ -449,7 +468,7 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
     .skill.potion.ready { border-color: #ff6b8b; box-shadow: 0 0 10px rgba(255,107,139,0.4); }
     .skill.potion:disabled { opacity: 0.45; cursor: default; }
     .skill.potion .charges { font-size: 11px; font-weight: 800; color: #ffd1dc; }
-    .bag-toggle, .snd-toggle { pointer-events: auto; font-size: 16px; padding: 4px 9px; }
+    .bag-toggle, .snd-toggle, .helper-toggle { pointer-events: auto; font-size: 16px; padding: 4px 9px; }
     .bag-toggle.on { border-color: #2dd4bf; color: #8bfff1; }
     .snd-toggle.muted { opacity: 0.5; }
     .bagpanel {
@@ -519,6 +538,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   readonly busyChoosing = signal(false);
   readonly resumeToast = signal(false);
   readonly showBag = signal(false);
+  readonly showHelper = signal(false);
 
   // G-10: feedback do botão "Save as default" do painel HELPER.
   readonly helperSaved = signal(false);
@@ -611,11 +631,26 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     this.moveHeartbeat = window.setInterval(this.resendMoveDir, MOVE_HEARTBEAT_MS);
 
     const loop = (now: number) => {
-      this.renderer?.draw(now);
-      if (this.mini?.nativeElement) this.renderer?.drawMinimap(this.mini.nativeElement);
+      // Um frame ruim NUNCA pode matar o loop: se draw() lançasse, o requestAnimationFrame abaixo não
+      // era reagendado e o canvas congelava de vez (enquanto backend/helper seguiam jogando — a "tela
+      // travada controlada pelo helper"). Isolamos o frame: logamos a 1ª falha (com stack) e seguimos.
+      try {
+        this.renderer?.draw(now);
+        if (this.mini?.nativeElement) this.renderer?.drawMinimap(this.mini.nativeElement);
+      } catch (err) {
+        this.onRenderError(err);
+      }
       this.raf = requestAnimationFrame(loop);
     };
     this.raf = requestAnimationFrame(loop);
+  }
+
+  // Render loop é best-effort: um erro de desenho degrada para um frame perdido, não para o jogo.
+  private renderErrorLogged = false;
+  private onRenderError(err: unknown): void {
+    if (this.renderErrorLogged) return; // não floodar o console a 60fps
+    this.renderErrorLogged = true;
+    console.error('[game] erro no render loop (mantendo o loop vivo):', err);
   }
 
   // ---- input ----
@@ -724,6 +759,10 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
 
   toggleBag(): void {
     this.showBag.update((v) => !v);
+  }
+
+  toggleHelper(): void {
+    this.showHelper.update((v) => !v);
   }
 
   potionTitle(healPct: number): string {

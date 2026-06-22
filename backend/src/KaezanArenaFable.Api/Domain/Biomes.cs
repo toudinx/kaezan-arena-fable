@@ -8,18 +8,21 @@ namespace KaezanArenaFable.Api.Domain;
 /// </summary>
 /// <param name="Ground">Walkable floor variants, rng-picked per cell.</param>
 /// <param name="BossGround">Floor of the boss hall, a distinct material.</param>
+/// <param name="Bedrock">LM-07: opaque rock tile painted under enclosed blocked cells (those touching no
+/// floor). The map's negative then reads as a solid rock massif instead of a hard-edged black void.</param>
 /// <param name="WallH">Wall cell with open floor to the N/S only (the wall runs E–W).</param>
 /// <param name="WallV">Wall cell with open floor to the E/W only (the wall runs N–S).</param>
 /// <param name="WallPole">Wall cell with open floor on both axes (a junction nub).</param>
-/// <param name="WallCorner">Outer corner: blocked on all four sides, open only on a diagonal.</param>
-/// <param name="Decor">Ambient props scattered inside rooms.</param>
-/// <param name="DecorChance">Per room-cell chance of a decor prop.</param>
+/// <param name="WallCorner">Outer corner: blocked on all four sides, open only on a diagonal. Also the
+/// solid piece used for concave L-corners and for the bedrock massif (it fills the cell flush).</param>
+/// <param name="Decor">Ambient props clustered inside rooms.</param>
+/// <param name="DecorChance">Density of decor props per room (clustered, not per-cell scattered).</param>
 /// <param name="Accent">Themed accent tiles (e.g. lava pools); empty = none.</param>
-/// <param name="AccentChance">Per room-cell chance of an accent tile (evaluated before decor).</param>
+/// <param name="AccentChance">Density of accent pools per room (clustered).</param>
 /// <param name="Atmosphere">G-07: per-stratum color-grade/light/fog/particle palette. Purely cosmetic
 /// data the frontend renders as a post-process; the engine never reads it.</param>
 public sealed record BiomeDef(
-    ushort[] Ground, ushort[] BossGround,
+    ushort[] Ground, ushort[] BossGround, ushort Bedrock,
     ushort WallH, ushort WallV, ushort WallPole, ushort WallCorner,
     ushort[] Decor, double DecorChance,
     ushort[] Accent, double AccentChance,
@@ -65,6 +68,9 @@ public static class Biomes
     private const ushort DirtH = 356, DirtV = 358, DirtPole = 360, DirtCorner = 356;
     // stone walls (64px alpha) — solid corner/junction via 1116 to avoid corner gaps.
     private const ushort StoneH = 1113, StoneV = 1112, StonePole = 1116, StoneCorner = 1116;
+    // LM-07: bedrock backing for the interior massif. Opaque tiles so an enclosed cell never shows black
+    // even where its wall sprite has alpha — the dirt body for cave, plain grey stone for the rest.
+    private const ushort DirtBedrock = 356, StoneBedrock = 416;
 
     // G-07: one color-grade + light/fog/particle palette per stratum. A strong grade + drifting motes
     // is the cheapest way to make each estrato read as a distinct place while reusing the same tiles.
@@ -86,27 +92,27 @@ public static class Biomes
 
     /// <summary>Tier 1 — Toca Ecoante: brown dirt cavern with boulders.</summary>
     public static readonly BiomeDef Cave = new(
-        CaveGround, StoneGround, DirtH, DirtV, DirtPole, DirtCorner,
+        CaveGround, StoneGround, DirtBedrock, DirtH, DirtV, DirtPole, DirtCorner,
         CaveRocks, 0.025, [], 0, CaveAtmo);
 
     /// <summary>Tier 2 — Forte Uruk: grassy orc camp ringed by stone ruins.</summary>
     public static readonly BiomeDef Fort = new(
-        GrassGround, StoneGround, StoneH, StoneV, StonePole, StoneCorner,
+        GrassGround, StoneGround, StoneBedrock, StoneH, StoneV, StonePole, StoneCorner,
         CaveRocks, 0.02, [], 0, FortAtmo);
 
     /// <summary>Tier 3 — Cripta Sombria: mossy stone crypt strewn with bones.</summary>
     public static readonly BiomeDef Crypt = new(
-        MossStone, StoneGround, StoneH, StoneV, StonePole, StoneCorner,
+        MossStone, StoneGround, StoneBedrock, StoneH, StoneV, StonePole, StoneCorner,
         Bones, 0.03, [], 0, CryptAtmo);
 
     /// <summary>Tier 4 — Covil Escamado: dark stone lair with decorative lava pools.</summary>
     public static readonly BiomeDef Lair = new(
-        DarkStone, StoneGround, StoneH, StoneV, StonePole, StoneCorner,
+        DarkStone, StoneGround, StoneBedrock, StoneH, StoneV, StonePole, StoneCorner,
         CaveRocks, 0.02, Lava, 0.05, LairAtmo);
 
     /// <summary>Tier 5 — Abismo Ecoante: stone abyss flooded with lava and bone.</summary>
     public static readonly BiomeDef Abyss = new(
-        DarkStone, StoneGround, StoneH, StoneV, StonePole, StoneCorner,
+        DarkStone, StoneGround, StoneBedrock, StoneH, StoneV, StonePole, StoneCorner,
         Bones, 0.02, Lava, 0.055, AbyssAtmo);
 
     public static BiomeDef ForTier(int tier) => tier switch
@@ -118,4 +124,24 @@ public static class Biomes
         5 => Abyss,
         _ => Cave,
     };
+
+    /// <summary>
+    /// LM-08: os 5 biomas canônicos como linhas chaveadas por tier — a fonte do seed do
+    /// <c>ContentStore</c> (igual ao bloco de tiers). Editar um bioma no admin muda runs ao vivo, nunca
+    /// estes defaults: a rede-ouro (LM-01) mede <see cref="ForTier"/> e fica verde sem rebaseline.
+    /// </summary>
+    public static IReadOnlyList<BiomeRow> AllDefaults() =>
+    [
+        new(1, "Toca Ecoante", Cave),
+        new(2, "Forte Uruk", Fort),
+        new(3, "Cripta Sombria", Crypt),
+        new(4, "Covil Escamado", Lair),
+        new(5, "Abismo Ecoante", Abyss),
+    ];
 }
+
+/// <summary>
+/// LM-08: um bioma serializável chaveado por tier, para o <c>ContentStore</c> persistir/editar.
+/// <see cref="BiomeDef"/>/<see cref="BiomeAtmosphere"/> já serializam em System.Text.Json.
+/// </summary>
+public sealed record BiomeRow(int Tier, string Name, BiomeDef Def);

@@ -74,9 +74,11 @@ public sealed class GameHub(
             skin);
 
         var equipmentStats = EquipmentStatAggregator.Aggregate(equipment, items.All);
+        // LM-08: bioma resolvido do ContentStore (editável no admin); fallback aos defaults canônicos.
+        var biome = content.Biome(tierDef.Tier) ?? Biomes.ForTier(tierDef.Tier);
         var world = new GameWorld(
             runSeed, tierDef, waifu, ascension, data, monsters, bestiary, equipmentStats, kaeliLoadout, items,
-            helperProfile, content.RoleTunings, mode);
+            helperProfile, content.RoleTunings, mode, biome);
         runs.StartRun(Context.ConnectionId, world);
         return new { seed = runSeed, tier = tierDef.Tier, tierName = tierDef.Name, waifuId = waifu.Id, mode, resumed = false };
     }

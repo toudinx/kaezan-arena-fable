@@ -18,6 +18,8 @@
 - **Voz das captions:** a personalidade da Kaeli em 1ª pessoa quando fizer sentido (ver digest);
   curta, com gancho na 1ª linha. PT primário + EN.
 - **Formatos:** feed **1:1** e **4:5**; **carrossel** para reveals/lore; **reels/story 9:16** quando houver clipe.
+  - Clipes em vídeo (reels/teaser) são produzidos no PC — ver `docs/roadmap_producao_visual.md`
+    (Etapa 2, CUT-06) e o brief de movimento da skill `kaeli-motion-prompts`. Aqui o foco é imagem + copy.
 
 ## Pilares de conteúdo (o que postar)
 

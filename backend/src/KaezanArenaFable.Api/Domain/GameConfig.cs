@@ -320,6 +320,16 @@ public static class GameConfig
     public const int SpawnBudgetBase = 14;
     public const double SpawnBudgetTierGrowth = 0.55;
 
+    // ---- LM-07: qualidade de geração (decor agrupado em vez de pontilhado) ----
+    /// <summary>Raio (Chebyshev) do agrupamento de props ambientais (decor) dentro de uma sala.</summary>
+    public const int DecorClusterRadius = 1;
+    /// <summary>Raio das poças de accent (ex. lava) — maiores que o decor para lerem como ambiente.</summary>
+    public const int AccentClusterRadius = 2;
+    /// <summary>Queda de chance por anel a partir do centro do cluster (0 = sólido, 1 = só o centro).</summary>
+    public const double ClusterFalloff = 0.45;
+    /// <summary>Escala o nº de clusters por sala (área × chance do bioma × isto). Mantém o decor esparso.</summary>
+    public const double DecorDensityScale = 0.5;
+
     // ---- G-07: tipos de sala (grafo + bifurcação risco/recompensa) ----
     /// <summary>Sala de elite (detour de risco) força elites até este teto; o resto do orçamento vira comum.</summary>
     public const int EliteRoomMaxElites = 2;
@@ -761,10 +771,17 @@ public static class GameConfig
     public const double PostureDecayFractionPerSec = 0.12;
     /// <summary>Stagger (Echo Break) window where the boss is stunned and amplified.</summary>
     public const int PostureStaggerMs = 4000;
-    /// <summary>Raw-damage multiplier during stagger, one entry per cycle (caps at the last).</summary>
-    public static readonly double[] PostureDamageMultipliers = [2.5, 3.5, 5.0, 6.5];
-    /// <summary>Each valid hit during stagger also adds this fraction of the boss max HP...</summary>
-    public const double PostureMaxHpBonusPct = 0.015;
+    /// <summary>Raw-damage multiplier during stagger, one entry per cycle (caps at the last).
+    /// F-E rebalance: achatado de [2.5, 3.5, 5.0, 6.5]. O multiplicador alto foi desenhado para os
+    /// bosses-monstro do Tibia (paredes de carne); com bosses próprios isso virava "delete" nos
+    /// ciclos tardios. A quebra continua recompensadora sem apagar o boss. (Calibrar contra o pivô
+    /// ECHO BREAK do BalanceSim — alvo: quebras ≲ 40% da barra do boss.)</summary>
+    public static readonly double[] PostureDamageMultipliers = [1.8, 2.1, 2.4, 2.8];
+    /// <summary>Each valid hit during stagger also adds this fraction of the boss max HP...
+    /// F-E rebalance: 0.015 → 0.006. Esse adicional ignora a tankiness (fração fixa da vida) e procca
+    /// ~7×/janela, então com AOE/helper somava ~10%+ da barra por quebra. Reduzido para a quebra
+    /// pesar pelo multiplicador, não por um dreno fixo de %vida.</summary>
+    public const double PostureMaxHpBonusPct = 0.006;
     /// <summary>...but no more than once per this internal cooldown (anti multi-hit exploit).</summary>
     public const int PostureMaxHpBonusCooldownMs = 600;
 

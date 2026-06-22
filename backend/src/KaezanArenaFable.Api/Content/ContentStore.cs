@@ -19,6 +19,7 @@ public sealed class ContentStore
     };
 
     private readonly string _tiersPath;
+    private readonly string _biomesPath;
     private readonly string _monstersPath;
     private readonly string _kaeliSkinsPath;
     private readonly string _authoredItemsPath;
@@ -26,6 +27,7 @@ public sealed class ContentStore
     private readonly string _roleTuningPath;
     private readonly object _lock = new();
     private List<DungeonTier> _tiers;
+    private List<BiomeRow> _biomes;
     private List<MonsterDefinition> _monsters;
     private List<KaeliSkinDefinition> _kaeliSkins;
     private List<AuthoredItemDefinition> _authoredItems;
@@ -37,12 +39,14 @@ public sealed class ContentStore
         var dir = Path.Combine(env.ContentRootPath, ".data", "content");
         Directory.CreateDirectory(dir);
         _tiersPath = Path.Combine(dir, "tiers.json");
+        _biomesPath = Path.Combine(dir, "biomes.json");
         _monstersPath = Path.Combine(dir, "monsters.json");
         _kaeliSkinsPath = Path.Combine(dir, "kaeli-skins.json");
         _authoredItemsPath = Path.Combine(dir, "authored-items.json");
         _bannersPath = Path.Combine(dir, "banners.json");
         _roleTuningPath = Path.Combine(dir, "role-tuning.json");
         _tiers = LoadTiers();
+        _biomes = LoadBiomes();
         _monsters = LoadMonsters();
         _kaeliSkins = LoadKaeliSkins();
         _authoredItems = LoadAuthoredItems();
@@ -73,6 +77,37 @@ public sealed class ContentStore
 
     private void WriteTiers(List<DungeonTier> tiers) =>
         File.WriteAllText(_tiersPath, JsonSerializer.Serialize(tiers, JsonOpts));
+
+    // ---- LM-08: biomas data-driven (mesmo padrão dos tiers; defaults canônicos em Domain.Biomes) ----
+
+    private List<BiomeRow> LoadBiomes()
+    {
+        if (File.Exists(_biomesPath))
+        {
+            try
+            {
+                var loaded = JsonSerializer.Deserialize<List<BiomeRow>>(
+                    File.ReadAllText(_biomesPath), JsonOpts);
+                if (loaded is not null && !ShouldSeedBiomes(loaded)) return loaded;
+            }
+            catch (JsonException)
+            {
+                // arquivo corrompido: cai pro seed dos defaults em vez de derrubar o boot
+            }
+        }
+
+        var seed = KaezanContentSeed.Biomes.ToList();
+        WriteBiomes(seed);
+        return seed;
+    }
+
+    private void WriteBiomes(List<BiomeRow> biomes) =>
+        File.WriteAllText(_biomesPath, JsonSerializer.Serialize(biomes, JsonOpts));
+
+    /// <summary>Re-seed quando o arquivo não traz exatamente os 5 estratos (1–5) — defaults são canônicos.</summary>
+    private static bool ShouldSeedBiomes(IReadOnlyList<BiomeRow> biomes) =>
+        biomes.Count != KaezanContentSeed.Biomes.Count
+        || biomes.Select(b => b.Tier).OrderBy(t => t).SequenceEqual([1, 2, 3, 4, 5]) == false;
 
     private List<MonsterDefinition> LoadMonsters()
     {
@@ -225,6 +260,19 @@ public sealed class ContentStore
     public DungeonTier? Tier(int tier)
     {
         lock (_lock) return _tiers.FirstOrDefault(t => t.Tier == tier);
+    }
+
+    // ---- LM-08: biomas (a Hub resolve o bioma da run daqui; o admin lê/edita pelos 3 endpoints LM-09) ----
+
+    public IReadOnlyList<BiomeRow> Biomes
+    {
+        get { lock (_lock) return _biomes.ToList(); }
+    }
+
+    /// <summary>O <see cref="BiomeDef"/> vigente do tier, ou null se ausente (a Hub cai em Biomes.ForTier).</summary>
+    public BiomeDef? Biome(int tier)
+    {
+        lock (_lock) return _biomes.FirstOrDefault(b => b.Tier == tier)?.Def;
     }
 
     public IReadOnlyList<MonsterDefinition> Monsters
@@ -537,6 +585,21 @@ public sealed class ContentStore
             _tiers = next;
             WriteTiers(_tiers);
             return _tiers.ToList();
+        }
+    }
+
+    /// <summary>
+    /// LM-08: substitui o conjunto inteiro de biomas (o editor envia os 5 de uma vez) e persiste.
+    /// A validação de conteúdo (paletas não vazias) é feita no endpoint (LM-09).
+    /// </summary>
+    public IReadOnlyList<BiomeRow> ReplaceBiomes(IEnumerable<BiomeRow> biomes)
+    {
+        var next = biomes.OrderBy(b => b.Tier).ToList();
+        lock (_lock)
+        {
+            _biomes = next;
+            WriteBiomes(_biomes);
+            return _biomes.ToList();
         }
     }
 }

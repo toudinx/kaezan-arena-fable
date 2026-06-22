@@ -244,7 +244,10 @@ public static class DungeonGenerator
     private static void PaintTiles(DungeonFloor floor, Rng rng, BiomeDef biome)
     {
         var size = floor.W;
-        var reserved = ReservedCells(floor);
+
+        // Pass 1: ground + walls. A blocked cell that borders walkable area is an edge wall (oriented
+        // sprite via ClassifyWall); a fully-enclosed blocked cell is bedrock — opaque rock + the solid
+        // corner piece — so the map's negative reads as a massif instead of a hard-edged black void.
         for (var y = 0; y < size; y++)
         {
             for (var x = 0; x < size; x++)
@@ -252,53 +255,107 @@ public static class DungeonGenerator
                 var i = y * size + x;
                 if (!floor.Blocked[i])
                 {
-                    var inRoom = floor.Rooms.FirstOrDefault(r => r.Contains(x, y));
-                    var bossRoom = inRoom is { Role: "boss" };
+                    var bossRoom = floor.Rooms.Any(r => r.Role == "boss" && r.Contains(x, y));
                     floor.Ground[i] = bossRoom ? rng.Pick(biome.BossGround) : rng.Pick(biome.Ground);
-
-                    // accent (e.g. lava) then ambient decor — both purely cosmetic (Decor layer
-                    // never blocks), and skipped on entry/ladder/chest tiles so POIs stay readable.
-                    var accentRoll = rng.Chance(biome.AccentChance);
-                    var decorRoll = rng.Chance(biome.DecorChance);
-                    if (inRoom is not null && !reserved.Contains((x, y)))
-                    {
-                        if (biome.Accent.Length > 0 && accentRoll) floor.Decor[i] = rng.Pick(biome.Accent);
-                        else if (biome.Decor.Length > 0 && decorRoll) floor.Decor[i] = rng.Pick(biome.Decor);
-                    }
                     continue;
                 }
 
-                // blocked cell: draw a wall sprite only when bordering walkable area
                 var touchesFloor = false;
                 for (var dy = -1; dy <= 1 && !touchesFloor; dy++)
                     for (var dx = -1; dx <= 1 && !touchesFloor; dx++)
                         if (floor.InBounds(x + dx, y + dy) && !floor.Blocked[(y + dy) * size + x + dx])
                             touchesFloor = true;
-                if (!touchesFloor) continue;
 
-                floor.Ground[i] = rng.Pick(biome.Ground); // shows through alpha (stone) walls
-                floor.Wall[i] = ClassifyWall(floor, x, y, biome);
+                if (touchesFloor)
+                {
+                    floor.Ground[i] = rng.Pick(biome.Ground); // shows through alpha (stone) walls
+                    floor.Wall[i] = ClassifyWall(floor, x, y, biome);
+                }
+                else
+                {
+                    // bedrock fill — no rng (a fixed massif tile keeps the rock reading uniform/solid).
+                    floor.Ground[i] = biome.Bedrock;
+                    floor.Wall[i] = biome.WallCorner;
+                }
+            }
+        }
+
+        // Pass 2: ambient decor/accent, clustered inside rooms only (corridors stay clean). Accent (e.g.
+        // lava) pools first so it reads as terrain, then ambient props — both on the non-blocking Decor
+        // layer, skipping POI tiles so chests/altars/ladder stay legible.
+        var reserved = ReservedCells(floor);
+        foreach (var room in floor.Rooms)
+        {
+            PaintClusters(floor, room, rng, biome.Accent, biome.AccentChance, GameConfig.AccentClusterRadius, reserved);
+            PaintClusters(floor, room, rng, biome.Decor, biome.DecorChance, GameConfig.DecorClusterRadius, reserved);
+        }
+    }
+
+    /// <summary>
+    /// Scatters <paramref name="palette"/> tiles into a room as a few blobs instead of per-cell noise:
+    /// the cluster count scales with room area × <paramref name="chance"/>, each blob stamps a radius
+    /// with a chance falloff from its centre. Deterministic (run rng only). Skips blocked, reserved
+    /// (POI) and already-decorated cells so props read as grouped ambience, never as obstacles.
+    /// </summary>
+    private static void PaintClusters(
+        DungeonFloor floor, Room room, Rng rng, ushort[] palette, double chance, int radius,
+        HashSet<(int X, int Y)> reserved)
+    {
+        if (palette.Length == 0 || chance <= 0) return;
+        var size = floor.W;
+        var clusters = (int)Math.Round(room.W * room.H * chance * GameConfig.DecorDensityScale);
+        for (var c = 0; c < clusters; c++)
+        {
+            var cx = rng.Range(room.X, room.X + room.W - 1);
+            var cy = rng.Range(room.Y, room.Y + room.H - 1);
+            for (var dy = -radius; dy <= radius; dy++)
+            {
+                for (var dx = -radius; dx <= radius; dx++)
+                {
+                    var x = cx + dx;
+                    var y = cy + dy;
+                    if (!room.Contains(x, y)) continue;
+                    var i = y * size + x;
+                    if (floor.Blocked[i] || floor.Decor[i] != 0 || reserved.Contains((x, y))) continue;
+                    var ring = Math.Max(Math.Abs(dx), Math.Abs(dy));
+                    if (ring > 0 && !rng.Chance(1.0 - ring * GameConfig.ClusterFalloff)) continue;
+                    floor.Decor[i] = rng.Pick(palette);
+                }
             }
         }
     }
 
     /// <summary>
-    /// Picks the wall piece from the 4-neighbourhood of open floor: floor on the N/S axis means an
-    /// E–W wall (WallH), floor on the E/W axis means an N–S wall (WallV), floor on both axes is a
-    /// junction (WallPole), and a cell with floor only on a diagonal is an outer corner (WallCorner).
-    /// The corner case is what removes the "teeth" at room quoins that a flat H/V choice leaves.
+    /// Picks the wall piece from the 8-neighbourhood of open floor. Floor on the N/S axis only means an
+    /// E–W wall (WallH); on the E/W axis only an N–S wall (WallV). Both axes open is either a straight
+    /// pass-through / T- / cross-junction (WallPole) or, when it's a single perpendicular pair, a concave
+    /// L-corner — there the solid corner piece fills the cell flush where a pole would leave a "tooth".
+    /// A cell open only on a diagonal is an outer (convex) corner: the solid corner again. With bedrock
+    /// fill the truly-enclosed cells never reach here, so every classified cell is a real edge wall.
     /// </summary>
     private static ushort ClassifyWall(DungeonFloor floor, int x, int y, BiomeDef biome)
     {
         var size = floor.W;
-        var openN = floor.InBounds(x, y - 1) && !floor.Blocked[(y - 1) * size + x];
-        var openS = floor.InBounds(x, y + 1) && !floor.Blocked[(y + 1) * size + x];
-        var openE = floor.InBounds(x + 1, y) && !floor.Blocked[y * size + x + 1];
-        var openW = floor.InBounds(x - 1, y) && !floor.Blocked[y * size + x - 1];
+        bool Open(int dx, int dy)
+        {
+            var nx = x + dx;
+            var ny = y + dy;
+            return floor.InBounds(nx, ny) && !floor.Blocked[ny * size + nx];
+        }
+        var openN = Open(0, -1);
+        var openS = Open(0, 1);
+        var openE = Open(1, 0);
+        var openW = Open(-1, 0);
         var vertAxis = openN || openS;   // floor above/below → wall runs horizontally
         var horizAxis = openE || openW;  // floor left/right  → wall runs vertically
 
-        if (vertAxis && horizAxis) return biome.WallPole;
+        if (vertAxis && horizAxis)
+        {
+            // straight corridor through or a 3-/4-way junction → pole; a lone perpendicular pair (an L)
+            // is a concave corner → solid corner so no nub/tooth protrudes into the opening.
+            var straight = (openN && openS) || (openE && openW);
+            return straight ? biome.WallPole : biome.WallCorner;
+        }
         if (vertAxis) return biome.WallH;
         if (horizAxis) return biome.WallV;
         return biome.WallCorner; // only a diagonal neighbour is open → outer corner

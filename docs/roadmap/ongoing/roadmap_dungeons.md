@@ -78,10 +78,17 @@ fina**. A abstração de modos amadurece quando tivermos 2–3 modos — nada de
 | LM-01 ✅ | Teste-ouro de determinismo (rede de segurança) | GPT-5.5 (Codex) | medium | — | 1 |
 | LM-02 ✅ | Doc de estudo de design do Tibia | Opus 4.8 | medium | — | 1 |
 | LM-03 ✅ | Costura mínima de modo/mapa (⭐ fundação) | Opus 4.8 | high | LM-01 | 2 |
-| LM-07 | Qualidade de geração (bedrock fill + auto-tiling + regras de decor) | Opus 4.8 | medium | LM-03 | 3 |
+| LM-07 ✅ | Qualidade de geração (bedrock fill + auto-tiling + regras de decor) | Opus 4.8 | medium | LM-03 | 3 |
 | LM-04 | Modo Arena — backend (mapa + waves + fim) | Opus 4.8 | high | LM-07, LM-02* | 4 |
 | LM-05 | Modo Arena — frontend (HUD + entrada) | GPT-5.5 (Codex) | medium | LM-04 | 5 |
 | LM-06 | Skill `map-mode-author` (scaffold de modo novo) | Opus 4.8 | medium | LM-05 | 6 |
+| — | **Sub-trilha: Editor de Biomas/Tiles** (detalhes na seção própria) | — | — | — | 7–10 |
+| LM-08 ✅ | Biomas data-driven no `ContentStore` (fundação) | Opus 4.8 | high | LM-07 | 7 |
+| LM-13 | Enriquecer catálogo de tiles (semantic + extractor) | GPT-5.5 (Codex) | medium | LM-07 | 7 |
+| LM-09 | Endpoints admin de bioma (GET/PUT + preview) | Opus 4.8 | medium | LM-08 | 8 |
+| LM-10 | Frontend: tipos + api + aba "Biomes" | GPT-5.5 (Codex) | medium | LM-09 | 9 |
+| LM-11 | Tile picker visual (semantic + busca) | GPT-5.5 (Codex) | medium | LM-10, LM-13* | 10 |
+| LM-12 | Preview de andar gerado no editor | GPT-5.5 (Codex) | medium | LM-10, LM-09 | 10 |
 
 > O `*` em LM-04 marca dependência **branda**: LM-02 *informa* o design da arena (spec de "layout de
 > arena"), mas não bloqueia o código. Se o doc não estiver pronto, use o padrão sugerido no próprio LM-04.
@@ -130,6 +137,9 @@ Onda 6   LM-06 (Opus · skill map-mode-author, solo — só após o padrão esta
 
 **Caminho crítico:** LM-01 → LM-03 → LM-07 → LM-04 → LM-05 (→ LM-06). LM-02 "sai de graça" em paralelo
 na Onda 1 e já entrega valor sozinho (é o aprendizado visual que motivou a trilha).
+
+> **Sub-trilha "Editor de Biomas/Tiles" (LM-08…LM-13):** cadeia própria nas Ondas 7–10, independente do
+> caminho crítico acima — diagrama e conflitos no apêndice da sub-trilha (logo após o LM-07).
 
 ---
 
@@ -395,6 +405,18 @@ acionável por um agente frio e respeita as convenções; nenhum build (a skill 
 # LM-07 — Qualidade de Geração de Dungeon (vem antes da arena)
 
 - **Modelo:** Claude Code Opus 4.8 · **Effort:** medium · **Skill:** nenhuma · **Depende de:** LM-03 · **Paraleliza com:** — (solo, Onda 3)
+- **[x] Concluído.** Três correções em `DungeonGenerator.PaintTiles`, todas server-side e determinísticas
+  (só o `Rng` da run): **(1) bedrock fill** — células bloqueadas sem chão vizinho recebem `biome.Bedrock`
+  (rocha opaca, novo campo do `BiomeDef`) + a peça sólida `WallCorner`, então a negativa do mapa lê como
+  maciço de rocha em vez de buraco preto; **(2) auto-tiling vizinhança-8** — `ClassifyWall` passa a usar
+  a peça sólida para cantos côncavos (L) além dos convexos, eliminando os "dentes" que o pole deixava, e
+  reservando `WallPole` só para junções retas/T/cruz; **(3) decor/accent agrupado** — `PaintClusters`
+  estampa blobs (raio + falloff) só dentro de sala, nunca em corredor, com contagem ∝ área×chance×
+  `DecorDensityScale`; lava (accent, raio 2) lê como poça. Constantes novas em `GameConfig` (`DecorClusterRadius`,
+  `AccentClusterRadius`, `ClusterFalloff`, `DecorDensityScale`). **Verificado:** `dotnet build` + `ng build`
+  limpos; LM-01 rebaselinado de propósito (`docs/balance/golden_dungeon.txt`, 70 andares) e `--golden-check`
+  VERDE 2× (determinismo). Inspeção de dados do mapa renderizado: tier 2 boss (30×30) e tier 5 (40×40)
+  com **0 voids**, paredes em peças orientadas + maciço, decor em clusters dentro de sala, lava em poças.
 
 **Objetivo:** arrumar os defeitos visíveis de geração que tornam alguns mapas "estranhos" (vazios pretos
 de borda dura, "dentes" nos cantos das paredes, lava/decor solta em corredor) **antes** de a arena
@@ -435,6 +457,292 @@ server-side, determinístico e reusando tiles do Tibia atuais (zero arte nova).
 **Verificação:** `dotnet build` + `npx ng build` limpos. Rodar a mesma seed do print (tier 2, `?waifu:gaia`)
 e, via preview MCP, comparar screenshots antes/depois — sem vazios pretos, paredes limpas, decor contextual.
 `tools/BalanceSim --golden-check` verde contra a baseline nova.
+
+---
+
+## Sub-trilha — Editor de Biomas/Tiles no Admin (LM-08…LM-13)
+
+> Apêndice à trilha de Lugares & Modos. **Tema:** tornar os tiles de cada bioma **editáveis visualmente no
+> admin** em vez de hardcoded em `Domain/Biomes.cs`. A estrutura procedural está boa; o que lê estranho é a
+> *curadoria de tiles* (ex.: grama dentro do forte de pedra no T2). Biomas viram conteúdo data-driven no
+> `ContentStore` (mesmo padrão de tiers/monstros), com uma aba no `/admin` para escolher tiles, **prever um
+> andar gerado** e salvar para a próxima run.
+>
+> **Invariante-chave:** `Biomes.Cave/Fort/Crypt/Lair/Abyss` + `Biomes.ForTier` **permanecem os defaults
+> canônicos** e são a fonte do seed do `ContentStore`. O teste-ouro (LM-01, `tools/BalanceSim/Golden.cs:87`
+> usa `Biomes.ForTier`) mede os **defaults** → **fica verde sem rebaseline**. Editar um bioma no admin muda
+> runs ao vivo, nunca a rede-ouro. O bioma é resolvido **uma vez** na construção do `GameWorld` (como o
+> `RoleTunings`), jamais dentro do tick — determinismo preservado.
+>
+> **Assets:** os 2483 objects do Tibia já estão extraídos (disco + `manifest.json`, todos com PNG) — o picker
+> funciona sem re-extração. O análogo à migração de mobs/itens aqui **não é re-extrair tudo**, e sim curar/
+> expandir os grupos `semantic` do `content-config.json` (hoje só 60 dos 2483 ids são tile; o resto são
+> ícones de item). Re-rodar o extractor só é preciso para um tile específico ausente (LM-13).
+
+| Prompt | Tema | Modelo | Effort | Depende de | Onda |
+|---|---|---|---|---|---|
+| LM-08 ✅ | Biomas data-driven no `ContentStore` (fundação) | Opus 4.8 | high | LM-07 | 7 |
+| LM-09 | Endpoints admin de bioma (GET/PUT + preview) | Opus 4.8 | medium | LM-08 | 8 |
+| LM-10 | Frontend: tipos + api + aba "Biomes" (editor de campos) | GPT-5.5 (Codex) | medium | LM-09 | 9 |
+| LM-11 | Tile picker visual reusável (semantic + busca) | GPT-5.5 (Codex) | medium | LM-10, LM-13* | 10 |
+| LM-12 | Preview de andar gerado no editor (canvas) | GPT-5.5 (Codex) | medium | LM-10, LM-09 | 10 |
+| LM-13 | Enriquecer catálogo de tiles (semantic + extractor) | GPT-5.5 (Codex) | medium | LM-07 | 7 |
+
+```
+Onda 7    LM-08 (Opus · biomas data-driven)   ‖   LM-13 (Codex · enriquecer catálogo de tiles)
+              │            arquivos disjuntos: backend C# vs tools/AssetExtractor + assets gerados
+              ▼
+Onda 8    LM-09 (Opus · endpoints + preview, solo)
+              │                 MetaEndpoints + entrada de geração (DungeonGenerator) — precisa de LM-08
+              ▼
+Onda 9    LM-10 (Codex · frontend base, solo)
+              │                 types.ts + api.service.ts + admin.ts + biome-editor.ts (novo)
+              ▼
+Onda 10   LM-11 (Codex · tile picker)  →  LM-12 (Codex · preview de andar)
+                                 ambos editam biome-editor.ts → SEQUENCIAIS entre si (conflito de arquivo)
+```
+
+> O `*` em LM-11 marca dependência **branda** de LM-13: o picker funciona com o catálogo atual (60 tiles),
+> mas fica muito melhor com os grupos `semantic` enriquecidos. LM-13 não bloqueia o código da LM-11.
+
+**Conflitos que forçam sequencial:**
+- **LM-08 → LM-09** — o preview e o GET/PUT precisam de `ContentStore.Biomes`/`Biome(tier)` e de `MapDto.FromFloor` (extraído na LM-08).
+- **LM-09 → LM-10** — o frontend consome os 3 endpoints novos.
+- **LM-10 → LM-11 → LM-12** — todos editam `pages/admin/biome-editor.ts`; LM-11 e LM-12 entram em cima do esqueleto da LM-10.
+
+**Caminho crítico:** LM-08 → LM-09 → LM-10 → LM-11 → LM-12. LM-13 sai de graça em paralelo na Onda 7 (toca só o extractor/assets) e enriquece o picker.
+
+---
+
+# LM-08 — Biomas data-driven no ContentStore  ⭐ fundação
+
+- **Modelo:** Claude Code Opus 4.8 · **Effort:** high · **Skill:** nenhuma · **Depende de:** LM-07 · **Paraleliza com:** LM-13 (Onda 7)
+- **[x] Concluído.** Biomas movidos para conteúdo editável no `ContentStore`: `BiomeRow(Tier, Name, Def)` +
+  `Biomes.AllDefaults()` (defaults canônicos `Cave…Abyss`), seed em `KaezanContentSeed.Biomes`, e o bloco
+  `ContentStore` espelhando os tiers (`_biomesPath = .data/content/biomes.json`, `LoadBiomes`/`WriteBiomes`/
+  `ShouldSeedBiomes` re-seed se ≠ 5 estratos, getter `Biomes`, `Biome(tier)`, `ReplaceBiomes`). `MapDto.FromFloor(...)`
+  extraído de `BuildMap` (compartilhado com o preview admin da LM-09). `GameWorld` recebe o `BiomeDef` resolvido
+  no construtor (`_biome`, fallback `Biomes.ForTier`), usado em `BuildFloors` e na atmosfera do snapshot — nunca
+  relido no tick. `GameHub` resolve `content.Biome(tier) ?? Biomes.ForTier(tier)`. **Verificado:** `dotnet build`
+  limpo; `tools/BalanceSim --golden-check` VERDE sem rebaseline (70 andares idênticos — mede os defaults).
+
+**Objetivo:** mover os biomas de constantes hardcoded em `Domain/Biomes.cs` para **conteúdo editável em
+runtime** no `ContentStore` (mesmo padrão dos tiers), de modo que o `GameWorld` resolva o bioma da run a
+partir do store. Sem mudança de comportamento por default (o seed == código atual). Habilita os endpoints
+admin (LM-09) e a edição visual (LM-10+).
+
+**Contexto técnico / Arquivos prováveis:**
+- `backend/src/KaezanArenaFable.Api/Domain/Biomes.cs` — `record BiomeDef` (`ushort[] Ground, BossGround;
+  ushort Bedrock; WallH/V/Pole/Corner; ushort[] Decor; double DecorChance; ushort[] Accent; double
+  AccentChance; BiomeAtmosphere Atmosphere`) e `Biomes.ForTier(tier)` (linhas 24–29, 94–126). Os 5 biomas
+  (`Cave/Fort/Crypt/Lair/Abyss`) ficam como **defaults canônicos**.
+- `backend/src/KaezanArenaFable.Api/Content/ContentStore.cs` — espelhar o bloco de tiers (`_tiersPath`,
+  `LoadTiers`, `WriteTiers`, `ShouldSeedTiers`, getter `Tiers`, `Tier(int)`, `ReplaceTiers`).
+- `backend/src/KaezanArenaFable.Api/Content/KaezanContentSeed.cs` — onde vive `Tiers` (seed). Adicionar `Biomes`.
+- `backend/src/KaezanArenaFable.Api/Engine/GameWorld.cs:358` (`Biomes.ForTier(tier.Tier)` na construção) e
+  `:4055-4077` (`BuildMap()` monta o `MapDto`; usa `Biomes.ForTier(...).Atmosphere` em `:4058`).
+- `backend/src/KaezanArenaFable.Api/Hubs/GameHub.cs` — onde constrói `new GameWorld(...)` (já injeta
+  `RoleTunings` do `ContentStore`; o store já está disponível aqui).
+- Rede-ouro: `tools/BalanceSim/Golden.cs:87` usa `Biomes.ForTier(tier)` — **não mexer** (mede defaults).
+
+**Tarefas:**
+- Tornar o bioma serializável **com chave de tier**: adicionar um record `BiomeRow(int Tier, string Name,
+  BiomeDef Def)` (ou achatar campos) e `Biomes.AllDefaults()` → `[(1, Cave) … (5, Abyss)]`. (`BiomeDef`/
+  `BiomeAtmosphere` já serializam em System.Text.Json.)
+- `KaezanContentSeed.Biomes` construído de `Biomes.AllDefaults()` (idêntico ao código → golden verde).
+- `ContentStore`: `_biomesPath = .data/content/biomes.json`, `LoadBiomes()` (seed se ausente/corrompido/
+  contagem ≠ 5), `WriteBiomes()`, getter `Biomes`, `Biome(int tier)`, `ReplaceBiomes(...)`. Mesmos `_lock`/`JsonOpts`.
+- **Extrair** a montagem do `MapDto` de `BuildMap()` para um helper estático reusável — ex.
+  `MapDto FromFloor(DungeonFloor floor, BiomeAtmosphere atmo, int floorIndex, IReadOnlyList<PoiDto> pois)`
+  (em `GameDtos.cs` ou um helper de mapa) — para snapshot ao vivo **e** preview admin (LM-09) compartilharem.
+- `GameWorld`: receber o `BiomeDef` resolvido **no construtor** (com fallback `Biomes.ForTier`), substituindo
+  os usos em `:358` e em `BuildMap` (`:4058`). Resolver o bioma **uma vez** (nunca no tick).
+- `GameHub`: resolver `content.Biome(tier) ?? Biomes.ForTier(tier)` e passar ao `GameWorld`.
+
+**Aceite:**
+- Run de dungeon roda **idêntica** ao comportamento atual (defaults inalterados).
+- `.data/content/biomes.json` é seedado dos defaults na primeira execução; editá-lo afeta a próxima run.
+- Bioma resolvido na construção do `GameWorld`; determinismo preservado (só `Rng` da run no tick).
+- `BuildMap` usa o helper `MapDto.FromFloor` compartilhável.
+
+**Verificação:** `cd backend/src/KaezanArenaFable.Api && dotnet build` limpo. `tools/BalanceSim --golden-check`
+**VERDE sem rebaseline**. Subir e jogar uma run de dungeon no preview — comportamento inalterado, console limpo.
+
+---
+
+# LM-09 — Endpoints admin de bioma (GET/PUT + preview de andar)
+
+- **Modelo:** Claude Code Opus 4.8 · **Effort:** medium · **Skill:** nenhuma (`use context7` p/ ASP.NET minimal API) · **Depende de:** LM-08 · **Paraleliza com:** — (solo, Onda 8)
+
+**Objetivo:** expor os biomas para o admin: ler/salvar (espelhando `/content/tiers`) e um endpoint de
+**preview** que gera um andar real com o bioma enviado (edições não salvas) e devolve um `MapDto` para o
+canvas do editor. É o que fecha o loop visual "mudei o tile → vi o andar".
+
+**Contexto técnico / Arquivos prováveis:**
+- `backend/src/KaezanArenaFable.Api/Api/MetaEndpoints.cs:392-396` — padrão do grupo `admin`:
+  `admin.MapGet("/content/tiers", (ContentStore content) => Results.Ok(content.Tiers));` e o `MapPut`
+  correspondente com validação antes de `ReplaceTiers`.
+- `ContentStore.Biomes`/`Biome(int)`/`ReplaceBiomes(...)` (criados na LM-08).
+- Geração de andar: a mesma entrada que `DungeonModeStrategy.BuildFloors(rng, biome)` usa internamente
+  (`Engine/DungeonGenerator.cs` `Generate(...)`); tamanho do andar vem do tier.
+- `Engine/Rng.cs` (xorshift seedado) — `new Rng((ulong)seed)`.
+- `MapDto.FromFloor(...)` (extraído na LM-08) para converter o `DungeonFloor` gerado em `MapDto`.
+
+**Tarefas:**
+- `GET /admin/content/biomes` → `content.Biomes`.
+- `PUT /admin/content/biomes` (body: lista de `BiomeRow`) → validação leve (5 tiers; `Ground` e as 4 peças
+  de parede não vazias) → `content.ReplaceBiomes(...)` → devolve a lista persistida.
+- `POST /admin/content/biomes/preview` (body: `{ biome: BiomeRow, tier: int, seed: long }`) → `new Rng(seed)`
+  + `DungeonGenerator.Generate(...)` com o **bioma do body** → `MapDto.FromFloor(...)`. POIs podem ser
+  derivados do andar (entry/ladder/chests) ou lista vazia — o preview foca em ground/wall/decor lendo juntos.
+- Manter os endpoints no mesmo grupo `admin` (mesma autorização/prefixo dos demais `/content/*`).
+
+**Aceite:**
+- `GET` devolve os 5 biomas; `PUT` valida e persiste (rejeita corpo malformado com mensagem legível).
+- `POST .../preview` devolve um `MapDto` determinístico (mesma seed+bioma → mesmo mapa), refletindo o bioma do body, **sem** salvar nada.
+- Nenhuma mudança no fluxo de run ao vivo.
+
+**Verificação:** `dotnet build` limpo. `curl`/REST: `GET` lista; `PUT` persiste em `.data/content/biomes.json`;
+`POST .../preview` com a mesma seed 2× devolve `ground/wall/decor` idênticos. Golden ainda verde.
+
+---
+
+# LM-10 — Frontend: tipos + api + aba "Biomes" (editor de campos)
+
+- **Modelo:** GPT-5.5 (Codex) · **Effort:** medium · **Skill:** nenhuma (`use context7` p/ Angular signals) · **Depende de:** LM-09 · **Paraleliza com:** — (solo, Onda 9)
+
+**Objetivo:** dar a base de UI: espelhar os tipos, ligar as chamadas REST e criar a aba **Biomes** no
+`/admin` com edição dos campos do bioma (paletas como listas de ids editáveis + atmosfera) e salvar. Sem o
+tile picker visual (LM-11) nem o preview de andar (LM-12) ainda — só o esqueleto funcional.
+
+**Contexto técnico / Arquivos prováveis:**
+- `frontend/src/app/core/types.ts` — espelhar `BiomeRow` + `BiomeAtmosphereDto` (campos da LM-08). `MapDto` já existe (~linhas 616-631).
+- `frontend/src/app/core/api.service.ts:46-54` — padrão `getAdminTiers()`/`saveAdminTiers()` via `request<T>`
+  em `/api/v1`. Adicionar `getAdminBiomes()`, `saveAdminBiomes(rows)`, `previewBiomeFloor(row, tier, seed): Promise<MapDto>`.
+- `frontend/src/app/pages/admin/admin.ts:12` (`type AdminMode = …`), header de abas (~30-37), render condicional (~41-111).
+- Convenção: standalone + template inline + signals (ver `role-tuning-editor.ts`, `item-editor.ts`).
+
+**Tarefas:**
+- `types.ts`: adicionar `BiomeRow`/`BiomeAtmosphereDto`.
+- `api.service.ts`: 3 métodos novos (get/save/preview).
+- `admin.ts`: acrescentar modo `'biomes'` ao `AdminMode`, botão de aba e `@if (pageMode()==='biomes') { <app-biome-editor/> }`.
+- Criar `pages/admin/biome-editor.ts` (standalone): seletor de tier (1–5) carrega o `BiomeRow`; campos
+  editáveis para cada slot de paleta (lista de ids por enquanto como input numérico/chips), chances (Decor/
+  Accent) e atmosfera (color pickers + sliders). Botão **Salvar** → `saveAdminBiomes`. Deixar um placeholder
+  `<canvas>` de preview e um `<ng-container>` reservado para o tile picker (preenchidos em LM-12/LM-11).
+
+**Aceite:**
+- Aba "Biomes" aparece no `/admin`; selecionar um tier carrega seus valores reais do backend.
+- Editar campos + Salvar persiste (recarregar a página mostra os valores salvos).
+- Nenhuma regressão nas outras abas; console limpo.
+
+**Verificação:** `cd frontend && npx ng build` limpo. Via preview MCP: abrir `/admin` → Biomes, editar o
+`DecorChance` do Tier 2, salvar, recarregar e confirmar persistência.
+
+---
+
+# LM-11 — Tile picker visual reusável (grupos semantic + busca)
+
+- **Modelo:** GPT-5.5 (Codex) · **Effort:** medium · **Skill:** nenhuma · **Depende de:** LM-10, LM-13 (branda) · **Paraleliza com:** — (solo, Onda 10; sequencial vs LM-12 — mesmo arquivo)
+
+**Objetivo:** trocar a edição textual de ids por uma **escolha visual**: tiles rendados agrupados pelas
+categorias `semantic` (ground.*/wall.*/decor.*/accent.*), com busca livre em todos os objects para
+descoberta, onde clicar adiciona/remove o tile do slot de paleta ativo. É o coração do "escolher os tiles"
+do print. **Crítico:** mostrar os 2483 objects num grid plano é inútil (≈2420 são ícones de item); os grupos
+`semantic` são o filtro que torna a curadoria viável.
+
+**Contexto técnico / Arquivos prováveis:**
+- `frontend/src/app/core/assets.service.ts` — `assets.ids('objects'): number[]` (todos os ids),
+  `assets.entry('objects', id)` (metadata/null) e `assets.drawObject(ctx, id, dx, dy, scale, tileX, tileY, phaseMs)` (~401-420). `await assets.load()` antes de rendar.
+- **Grupos `semantic` no manifest** (`frontend/public/assets/tibia/manifest.json` → `m.semantic`): hoje
+  `ground.cave/stone/grass`, `wall.cave/stone`, `decor.cave`, `accent.lava`, `poi.*` (60 ids). Verificar como
+  o `AssetsService` expõe isso (o manifest já carrega `semantic`); se não houver getter, adicionar um
+  `semanticGroups()` simples.
+- `pages/admin/biome-editor.ts` (criado na LM-10) — plugar o picker nos slots de paleta.
+- Referência de render de sprite em canvas: `pages/admin/creature-preview.ts`.
+
+**Tarefas:**
+- Criar um sub-componente/modal `tile-picker` (standalone): **abas/seletor por grupo `semantic`** (mostra só
+  os tiles do grupo, rendados em mini-canvas com o id) + uma aba "Todos" com **busca por id** e
+  paginação/virtualização (não rendar 2483 de uma vez).
+- Integrar no `biome-editor.ts`: cada slot de paleta (Ground/BossGround/Decor/Accent etc.) abre o picker
+  pré-filtrado pelo grupo `semantic` compatível (ex.: slot Ground → `ground.*`); clicar adiciona ao slot;
+  tiles do slot mostram thumbnail + remover. Slots de id único (Bedrock, WallH/V/Pole/Corner) recebem 1 tile.
+
+**Aceite:**
+- O picker agrupa tiles por `semantic` e filtra por busca sem travar (paginado/virtualizado).
+- Slots abrem pré-filtrados pelo grupo compatível; adicionar/remover reflete no `BiomeRow`; Salvar persiste.
+- Sprites desenhados só via `AssetsService` (nenhum caminho de arquivo hardcoded).
+
+**Verificação:** `npx ng build` limpo. Via preview MCP: no Tier 2, abrir o picker do slot Ground (filtrado em
+`ground.*`), trocar grama por um chão de pedra, salvar; confirmar no `BiomeRow` salvo.
+
+---
+
+# LM-13 — Enriquecer o catálogo de tiles (semantic + re-extractor)
+
+- **Modelo:** GPT-5.5 (Codex) · **Effort:** medium · **Skill:** nenhuma · **Depende de:** LM-07 · **Paraleliza com:** LM-08 (Onda 7)
+
+**Objetivo:** ampliar a variedade de tiles disponíveis para curadoria de bioma. Hoje só 60 dos 2483 objects
+estão marcados como tile (3 famílias de chão, 2 de parede) — magro para fazer estratos visualmente
+distintos. Esta unidade enriquece os grupos `semantic` do `content-config.json` (re-taguear objects já
+extraídos e/ou puxar tiles novos do Tibia via extractor), **espelhando o fluxo de migração de mobs/itens**.
+É a resposta ao "precisamos puxar tiles do Tibia como fizemos antes": sim, mas como curadoria incremental,
+não populando do zero.
+
+**Contexto técnico / Arquivos prováveis:**
+- `tools/AssetExtractor/content-config.json` — `objectIds` (pull direto) e `semantic` (grupos nomeados de
+  tile). Hoje: `ground.cave/stone/grass`, `wall.cave/stone`, `accent.lava`, `decor.cave`, `poi.*`.
+- Extractor: instruções de re-rodar no `README.md` (gera `frontend/public/assets/tibia/{objects/*.png,manifest.json}`).
+- Os 2483 objects já em disco: muitos decorativos servem de decor/chão sem re-extração (basta re-taguear no `semantic`).
+- Fonte Tibia (ids de object novos), se for puxar tiles ausentes: mesma origem usada na extração inicial (ver README/content-config).
+
+**Tarefas:**
+- Definir as famílias de tile que faltam para biomas distintos (ex.: areia, tijolo/alvenaria, mármore, gelo,
+  madeira; mais variantes de parede; decor temático por estrato) e mapear seus ids de object do Tibia.
+- Para tiles **já presentes** nos 2483: adicionar seus ids aos grupos `semantic` apropriados (re-tag, sem extração).
+- Para tiles **ausentes**: adicioná-los a `objectIds`/`semantic` no `content-config.json` e **re-rodar o
+  extractor** (conforme README) para gerar os PNGs + atualizar o `manifest.json`.
+- Não renomear grupos existentes (o picker e os defaults de bioma os referenciam); só **adicionar**.
+
+**Aceite:**
+- Os grupos `semantic` cobrem variedade suficiente para ≥1 família de chão/parede própria por estrato (não reusar a mesma em T4/T5).
+- Todos os ids citados nos grupos têm PNG em disco e entry no `manifest.json` (sem tile quebrado no picker).
+- Grupos antigos preservados (add-only); nada de gameplay/engine alterado (só assets + config do extractor).
+
+**Verificação:** re-rodar o extractor sem erro; `node` checa que todo id de `m.semantic` tem PNG em disco
+(como na sondagem do plano). `npx ng build` limpo. Abrir o picker (após LM-11) e ver os grupos novos populados.
+
+---
+
+# LM-12 — Preview de andar gerado no editor (canvas)
+
+- **Modelo:** GPT-5.5 (Codex) · **Effort:** medium · **Skill:** nenhuma · **Depende de:** LM-10, LM-09 · **Paraleliza com:** — (solo, Onda 10; sequencial vs LM-11 — mesmo arquivo)
+
+**Objetivo:** fechar o loop visual: um canvas no editor que chama o endpoint de preview com o bioma **em
+edição** e desenha o andar gerado, para o usuário ver ground+parede+decor **lendo juntos** — que é onde o
+"estranho" aparece.
+
+**Contexto técnico / Arquivos prováveis:**
+- `api.service.ts` `previewBiomeFloor(row, tier, seed)` (criado na LM-10) → `MapDto`.
+- `pages/admin/biome-editor.ts` — o `<canvas>` reservado na LM-10.
+- Render do `MapDto`: reusar `frontend/src/app/core/renderer.ts` (`GameRenderer`) se prático; senão um loop
+  estático com `assets.drawObject` sobre `map.ground/wall/decor` (índice `i = y*map.w + x`) — basta para ler como combinam.
+- Atmosfera (tint/fog/vinheta) do `MapDto.biome` pode ser aplicada como post-process leve, opcional.
+
+**Tarefas:**
+- Botão "Pré-visualizar"/"Regenerar" (muda o `seed`) que chama `previewBiomeFloor(rowEmEdicao, tier, seed)`.
+- Desenhar o `MapDto` retornado no canvas do editor (ground + decor + wall). Atualizar quando a paleta muda
+  (ou sob demanda no botão, para não martelar o backend).
+- Tratar erro/loading do fetch sem quebrar a UI.
+
+**Aceite:**
+- O preview desenha um andar com os tiles **em edição** (antes de salvar) e atualiza ao regenerar/editar.
+- Mesma seed → mesmo andar (determinístico, vindo do backend).
+- Nenhuma regressão; console limpo.
+
+**Verificação:** `npx ng build` limpo. Via preview MCP: editar Ground do Tier 2 para pedra, regenerar o
+preview e ver pedra+pedra coerente; salvar e iniciar `/game/2` confirmando que a run usa os tiles editados.
 
 ---
 

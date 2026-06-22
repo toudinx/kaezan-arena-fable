@@ -139,6 +139,10 @@ public static class KaezanContentSeed
     public static IReadOnlyList<AuthoredItemDefinition> AuthoredItems =>
         BuildItems().Select(item => ItemAuthoring.Normalize(item, item.ItemId)).ToList();
 
+    /// <summary>LM-08: seed dos 5 biomas a partir dos defaults canônicos em <see cref="Domain.Biomes"/>
+    /// (idêntico ao código → golden verde sem rebaseline).</summary>
+    public static IReadOnlyList<BiomeRow> Biomes => Domain.Biomes.AllDefaults();
+
     public static readonly DungeonTier[] Tiers =
     [
         new(1, "Toca Ecoante", "Cavernas de cristal vivo onde a terra ainda aprende a lutar.",

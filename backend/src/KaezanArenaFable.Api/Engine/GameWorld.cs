@@ -183,6 +183,7 @@ public sealed record Command(CommandKind Kind, int A, int B, string? S);
 public sealed class GameWorld
 {
     public readonly long Seed;
+    public readonly GameMode Mode;
     public readonly DungeonTier Tier;
     public readonly WaifuDef Waifu;
     public readonly ClassDef PlayerClass;
@@ -197,6 +198,8 @@ public sealed class GameWorld
     private readonly ItemRegistry? _items;
     private readonly MonsterRegistry _monsterRegistry;
     private readonly Rng _rng;
+    // LM-03: costura de modo — localiza fonte-de-mapa, povoamento e condição de fim.
+    private readonly GameModeStrategy _modeRules;
     private readonly IReadOnlyDictionary<string, long> _bestiaryKills;
     // MG-05: tabela de tuning por papel vigente nesta run (injetada pela Hub do ContentStore).
     private readonly IReadOnlyDictionary<KaeliRole, RoleTuning> _roles;
@@ -316,9 +319,12 @@ public sealed class GameWorld
     public GameWorld(long seed, DungeonTier tier, WaifuDef waifu, int ascension,
         GameData data, MonsterRegistry monsterRegistry, IReadOnlyDictionary<string, long> bestiaryKills,
         EquipmentStats? equipmentStats = null, KaeliLoadout? loadout = null, ItemRegistry? items = null,
-        string? helperProfile = null, IReadOnlyDictionary<KaeliRole, RoleTuning>? roleTuning = null)
+        string? helperProfile = null, IReadOnlyDictionary<KaeliRole, RoleTuning>? roleTuning = null,
+        GameMode mode = GameMode.Dungeon)
     {
         Seed = seed;
+        Mode = mode;
+        _modeRules = GameModeStrategy.For(mode);
         Tier = tier;
         Waifu = waifu;
         // MG-05: a run lê a tabela vigente injetada (editável no admin); cai nos defaults de
@@ -350,7 +356,8 @@ public sealed class GameWorld
         if (!string.IsNullOrWhiteSpace(helperProfile)) ApplyHelperProfile(helperProfile);
 
         var biome = Biomes.ForTier(tier.Tier);
-        _floors = [DungeonGenerator.Generate(_rng, 0, false, biome), DungeonGenerator.Generate(_rng, 1, true, biome)];
+        // LM-03 (1) fonte de mapa: o modo decide como o lugar é produzido (mesma seq. de Rng no Dungeon).
+        _floors = _modeRules.BuildFloors(_rng, biome);
 
         var hp = (int)(waifu.BaseHp * (1 + ascension * GameConfig.AscensionAtkBonus)
                        * (1 + _affinityStatBonus) * Loadout.Mastery.HpMult)
@@ -368,14 +375,13 @@ public sealed class GameWorld
             MaxHp = hp
         };
 
-        SpawnFloorMonsters(0);
-        SpawnFloorMonsters(1);
-        SpawnPois();
+        // LM-03 (2) povoamento: o modo decide o pré-spawn (salas no Dungeon; waves na Arena).
+        _modeRules.Populate(this);
     }
 
     // ================= spawn =================
 
-    private void SpawnFloorMonsters(int floorIndex)
+    internal void SpawnFloorMonsters(int floorIndex)
     {
         var floor = _floors[floorIndex];
         foreach (var room in floor.Rooms)
@@ -491,7 +497,7 @@ public sealed class GameWorld
     private int SpawnCostFor(string speciesName) =>
         GameConfig.BehaviorProfile(_monsterRegistry.Get(speciesName).BehaviorId)?.SpawnCost ?? 2;
 
-    private void SpawnPois()
+    internal void SpawnPois()
     {
         var nextPoi = 1;
         for (var f = 0; f < _floors.Length; f++)
@@ -636,6 +642,8 @@ public sealed class GameWorld
                     TickPlayerRegen();
                     TickPlayerConditions();
                     TickMonsters();
+                    // LM-03 (2b) povoamento contínuo: agendador de waves do modo (no-op no Dungeon).
+                    _modeRules.OnTick(this);
                     TickPlayerSummons();
                     TickFields();
                     TickPendingStrikes();
@@ -2711,8 +2719,8 @@ public sealed class GameWorld
         // G-06: derrotar um elite de sala comum é um beat — concede uma escolha de carta pesada.
         if (monster.IsElite && !monster.IsSummon) OfferCardBeat();
 
-        if (monster.IsBossActor)
-            EndRun(true, $"{monster.Species.Name} derrotado");
+        // LM-03 (3) condição de fim: o modo decide o que uma morte significa (Dungeon: boss = vitória).
+        _modeRules.OnMonsterKilled(this, monster);
     }
 
     /// <summary>G-08B: estouro do bomber ao morrer — pinta a área e fere o player se estiver no raio.
@@ -3922,7 +3930,7 @@ public sealed class GameWorld
 
     // ---- run end ----
 
-    private void EndRun(bool victory, string reason)
+    internal void EndRun(bool victory, string reason)
     {
         if (Ended is not null) return;
         var goldEarned = victory ? _gold : (long)(_gold * GameConfig.DefeatGoldKeptFraction);

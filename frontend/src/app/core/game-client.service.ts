@@ -2,11 +2,18 @@ import { Injectable, signal } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { MapDto, SnapshotDto } from './types';
 
+/** LM-03: modo de jogo (espelha o enum GameMode do backend). Default Dungeon. */
+export const enum GameMode {
+  Dungeon = 0,
+  Arena = 1,
+}
+
 export interface JoinRunResult {
   seed: number;
   tier: number;
   tierName: string;
   waifuId: string;
+  mode: GameMode;
   resumed: boolean;
 }
 
@@ -33,11 +40,19 @@ export class GameClientService {
     this.connected.set(true);
   }
 
-  async joinRun(tier: number, waifuId?: string, seed?: number, resume = false): Promise<JoinRunResult> {
+  async joinRun(
+    tier: number,
+    waifuId?: string,
+    seed?: number,
+    resume = false,
+    mode: GameMode = GameMode.Dungeon,
+  ): Promise<JoinRunResult> {
     this.snapshot.set(null);
     this.map.set(null);
     await this.connect();
-    return this.connection!.invoke<JoinRunResult>('JoinRun', tier, waifuId ?? null, seed ?? null, resume);
+    // O hub exige aridade exata (SignalR não suporta argumento opcional faltante): sempre enviamos o
+    // modo. Default Dungeon mantém o fluxo legado idêntico; a Arena (LM-04/05) passará GameMode.Arena.
+    return this.connection!.invoke<JoinRunResult>('JoinRun', tier, waifuId ?? null, seed ?? null, resume, mode);
   }
 
   async leave(abandon = false): Promise<void> {

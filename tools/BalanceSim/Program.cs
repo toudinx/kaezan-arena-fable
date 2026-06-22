@@ -26,11 +26,16 @@ internal static class Program
         var cards = true;
         var maxTicks = 12000;
         int? tierFilter = null;
+        bool golden = false, goldenCheck = false;
+        string? goldenOut = null;
 
         for (var i = 0; i < args.Length; i++)
         {
             switch (args[i])
             {
+                case "--golden": golden = true; break;
+                case "--golden-check": golden = true; goldenCheck = true; break;
+                case "--golden-out": goldenOut = args[++i]; break;
                 case "--out": outPath = args[++i]; break;
                 case "--seeds": seeds = int.Parse(args[++i], CultureInfo.InvariantCulture); break;
                 case "--seed-start": seedStart = long.Parse(args[++i], CultureInfo.InvariantCulture); break;
@@ -44,6 +49,11 @@ internal static class Program
                     return 1;
             }
         }
+
+        // LM-01: modo-ouro de determinismo do gerador. Independe de conteúdo/DB — só Rng + bioma —
+        // então roda antes de carregar o ambiente e sai.
+        if (golden)
+            return Golden.Run(goldenCheck, goldenOut);
 
         var root = SimHostEnvironment.ResolveContentRoot(contentRoot);
         Console.WriteLine($"content-root: {root}");

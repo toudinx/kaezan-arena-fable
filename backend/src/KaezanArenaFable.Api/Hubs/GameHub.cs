@@ -16,7 +16,10 @@ public sealed class GameHub(
     AccountStore store,
     ContentStore content) : Hub
 {
-    public object JoinRun(int tier, string? waifuId = null, long? seed = null, bool resume = false)
+    // LM-03: `mode` é opcional e default Dungeon — o cliente atual (que envia 4 args) entra no modo
+    // legado sem mudança. A Arena (LM-04) passará GameMode.Arena por aqui.
+    public object JoinRun(int tier, string? waifuId = null, long? seed = null, bool resume = false,
+        GameMode mode = GameMode.Dungeon)
     {
         var tierDef = content.Tier(tier)
                       ?? throw new HubException("tier desconhecido");
@@ -73,9 +76,9 @@ public sealed class GameHub(
         var equipmentStats = EquipmentStatAggregator.Aggregate(equipment, items.All);
         var world = new GameWorld(
             runSeed, tierDef, waifu, ascension, data, monsters, bestiary, equipmentStats, kaeliLoadout, items,
-            helperProfile, content.RoleTunings);
+            helperProfile, content.RoleTunings, mode);
         runs.StartRun(Context.ConnectionId, world);
-        return new { seed = runSeed, tier = tierDef.Tier, tierName = tierDef.Name, waifuId = waifu.Id, resumed = false };
+        return new { seed = runSeed, tier = tierDef.Tier, tierName = tierDef.Name, waifuId = waifu.Id, mode, resumed = false };
     }
 
     public void Move(int dx, int dy) =>

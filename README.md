@@ -367,6 +367,14 @@ docs/FABLE_TRACK.md   fila de features complexas/cross-cutting (track Claude Fab
 - **[docs/FABLE_TRACK.md](docs/FABLE_TRACK.md)** — fila do **Claude Fable 5**: 5 features
   grandes, cross-cutting e sensíveis a determinismo (Echo Team, Maestria, Determinismo+Desafio
   Diário, Geração v2, Postura+Reações) — onde vale pagar o modelo premium.
+- **[docs/roadmap_image_pipeline.md](docs/roadmap_image_pipeline.md)** — frente do **pipeline de
+  imagem**: pós-processo local grátis (ComfyUI) de **todos os tipos de asset** (Kaelis, items,
+  monstros, backgrounds, logos) — GPT Image 2.0 gera, o ComfyUI faz upscale/remoção de fundo/crop
+  em lote; inclui MCP do Comfy p/ agentes e uma frente de **vídeo (reels)** marketing-first. Só
+  mexe em `tools/` e nos PNGs de asset.
+- **[docs/roadmap_custom_sprites.md](docs/roadmap_custom_sprites.md)** — R&D de **sprites in-game
+  autorais** (híbrido: só Kaelis + bosses; mobs genéricos seguem no Tibia). Spike de técnica
+  primeiro; toca o renderer/`AssetsService`. É o maior ganho de identidade e o item mais difícil.
 - **[docs_web/](docs_web/README.md)** — trilha do **Claude Code Web**: trabalho de **texto** que
   mantém o projeto andando quando o desktop está indisponível (design, pesquisa de franquias,
   lore, copy, prompts de skin/social e roadmaps de implementação prontos). **Nenhum código** — o

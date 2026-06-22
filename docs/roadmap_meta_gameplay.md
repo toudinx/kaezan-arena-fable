@@ -224,6 +224,7 @@ range por papel. A dicotomia melee/ranged deixa de dirigir design — `Weapon` f
 # MG-03 — Conversão da Lunara → Arqueira de Gelo
 
 - **Modelo:** Opus 4.8 · **Effort:** medium · **Skill:** nenhuma · **Depende de:** MG-02 · **Paraleliza com:** MG-05 (Onda 3) — ⚠ **não** com MG-04 (conflito em `GameWorld.cs` indireto via teste)
+- **[x] Concluído.** `waifu:lunara` agora é arqueira de gelo: `Weapon "melee" → "bow"` (auto vira arco, missile 3), `Role=Archer` confirmado. Classe `cryomancer` puxada p/ ranged — `cut`/`frost-leap`/`garden`/`crescent` todas a range 5 com missile de gelo (29); `frost-leap` ChainRange 3→4; `crescent` virou `area` no alvo (raio 2→1) p/ single-target; `new-moon` intacta (ScaledRadius do MG-04 a leva a ~2). Id/trait `shatter`/elemento `ice` e `BaseHp 205` preservados (HP decide no MG-06). Builds verdes, canário de determinismo PASS, sim confirma kite a range 5 com hunt time perto da Gaia e zero mortes melee.
 
 **Objetivo:** tornar a Lunara uma arqueira de gelo (single-target ranged + algum AOE), mantendo id
 `waifu:lunara`, trait `shatter` e elemento `ice`. Padrão idêntico à Gaia (`Weapon="bow"` + classe
@@ -252,6 +253,7 @@ de `WaifuDef.Weapon` — `cryomancer` já está no grupo wand, então **não** p
 # MG-04 — Resize de AOE
 
 - **Modelo:** Opus 4.8 · **Effort:** medium · **Skill:** nenhuma · **Depende de:** MG-02 (e MG-03 se rodarem juntos) · **Paraleliza com:** MG-05 (Onda 3)
+- **[x] Concluído.** `GameWorld.ScaledRadius(raw)` (raio×`AoeScale` do papel, piso 1, raio 0 preservado) + `SkillRadius(raw, isUlt)` (ult capa em `GameConfig.UltimateRadiusCap=3` antes do scale, piso 2 — "ainda estoura"). Aplicado nos call sites de emissão `area/nova/cone/ring/barrage` **e** nos espelhos de predição do piloto (`SkillWouldAffectMonster`/`ConeWouldHitMonster`, agora com `isUlt`) p/ footprint coerente. `*1.5` de `CircleTiles`/`RingTiles` → `GameConfig.AoeRoundingFactor=1.25` (diamante honesto, sem tocar call sites); `ConeTiles` já usava bound Chebyshev honesto. Trait/echo/reação (`Echo/Card/Eloa…Radius`) já são raio 1 — nada a cortar. Cobertura (tiles em chão aberto): raw2 21→ mage/knight 13, archer 5; raw3 37→ mage 25, knight 13, archer 13 — reduzida e diferenciada (mage>knight>archer), fantasia de mage preservada. Ult nova raw3: mage R3, archer/knight R2. Build verde, canário de determinismo PASS.
 
 **Objetivo:** acabar com AOEs gigantes. Hoje `CircleTiles/ConeTiles/RingTiles` inflam a área com um
 corte `raio * 1.5` (vira quase quadrado) e toda ultimate é `nova/barrage` raio 3.
@@ -274,6 +276,7 @@ corte `raio * 1.5` (vira quase quadrado) e toda ultimate é `nova/barrage` raio 
 # MG-05 — Tuning Por Papel Editável No Admin
 
 - **Modelo:** GPT-5.5 (Codex) · **Effort:** medium · **Skill:** nenhuma · **Depende de:** MG-02 · **Paraleliza com:** MG-03/MG-04 (Onda 3 — arquivos disjuntos: Content/Api/front)
+- **[x] Concluído.** `RoleTuning` agora é editável em runtime: `ContentStore` persiste em `.data/content/role-tuning.json` (seedado de `GameConfig.Roles`, papel ausente completado do default, arquivo corrompido cai no seed sem derrubar o boot) com getters `RoleTunings`/`RoleTuningTable` + `ReplaceRoleTunings`. `GET/PUT /admin/content/role-tuning` (novo `RoleTuningRow` com papel-string) espelham `/content/tiers`, com validação (3 papéis, sem duplicata, dano>0, auto≥400ms, range≥1, aoe>0). `GameWorld` recebe a tabela vigente no ctor (`roleTuning` opcional → `_roles`, default `GameConfig.Roles`) e a Hub injeta `content.RoleTunings`; o BalanceSim segue nos defaults. Nova aba **Papéis** no admin (`role-tuning-editor.ts`). Builds verdes; GET/PUT/persistência/rejeições verificados via API.
 
 **Objetivo:** permitir rebalancear a tabela `RoleTuning` em runtime, sem recompilar — exatamente como
 tiers/monstros/itens já são editáveis. Persistir no `ContentStore`, seedar dos defaults de `GameConfig`,
@@ -297,6 +300,7 @@ expor em `/admin/content/*` e dar uma página de edição no admin.
 # MG-06 — Tuning Por-Kaeli (Paridade Intra-Papel)
 
 - **Modelo:** Opus 4.8 · **Effort:** high · **Skill:** nenhuma · **Depende de:** MG-03, MG-04 · **Paraleliza com:** — (solo, Onda 4)
+- **[x] Concluído.** O BalanceSim ganhou `PrintParityPivot` (hunt/dmg por Kaeli por papel × desvio/spread) e passou a medir **dano efetivo** (capado na vida do alvo) — antes o overkill inflava kits de crit (a `discipline` da Seren parecia +44% vs Rynna; era artefato). Com a métrica honesta, **dano dado já fica ≤ ±10% intra-papel em todo tier viável** nos 3 papéis. Única constante mexida: `gaia:arrow` cooldown 2200→1800 (a archer mais lenta; cadência fora do padrão) → hunt T3 spread 15%→10%, T4 34%→8% (FORA→OK), sem regressão de dano/deaths. Decisões de **não-mudar** validadas pelo sim: Lunara BaseHp fica 205 (a 205 já morre ≥ Gaia@170 — baixar regrediria deaths); Rynna sem buff (paridade real após a métrica); Rin sem nerf (lead de hunt é da trait `contagion`, Power-resistente). Resíduos (hunt do Mage no T3+; archer/knight no T5) são crossover de trait + distorção de death de tier alto = MG-07/MG-08. Canário PASS; build verde; `mg06_before.csv`/`mg06_after.csv` commitados.
 
 **Objetivo:** dentro de cada papel, ajustar `skill.Power`/`BaseAtk`/cooldowns individuais p/ que as
 Kaelis do mesmo papel fiquem próximas em tempo de hunt e dano dado (sem dominador óbvio), preservando
@@ -320,6 +324,7 @@ a assinatura de cada trait.
 # MG-07 — Normalização Entre Papéis
 
 - **Modelo:** Opus 4.8 · **Effort:** high · **Skill:** nenhuma · **Depende de:** MG-06 · **Paraleliza com:** — (Onda 5) — ⚠ sequencial antes do MG-08 (ambos em `GameConfig`)
+- **[x] Concluído.** O BalanceSim ganhou `PrintRolePivot` (hunt/dmg dado/sofrido/deaths por **papel** × tier, com `spread%` calculado **só entre papéis viáveis** — win-rate ≥ 40% — pra a métrica não ser envenenada por survivorship-bias de papel que vence 6/60). Medido: **entre os papéis que de fato limpam o tier, o tempo de hunt já fica dentro de ±15% em todo tier mensurável** (T1 6%, T2 15%, T3 6%, T4 12%; no T2 o par confiável Mage/Archer dá 82s/82s idêntico) e as **5 ordens-alvo do MG-02 seguem de pé** (estruturais no `RoleTuning` + realizadas no dmg: T3 dmgDealt Mage 17390 > Archer 16640 > Knight 14527 = ordem de skill). **Decisão (validada pelo sim, no padrão de não-mudança do MG-06): `RoleTuning` fica nos valores SEED — forçar número contra a evidência seria "balancear no olho".** O único gap cross-papel persistente é **survival** (Knight despenca de viabilidade no T3+: win 15/100; maior `dmgTaken` em todo tier; e Archer/Rin no T5) — e `RoleTuning` **não tem alavanca de HP/defesa**: isso é mob HP/dano = **MG-08** (deaths~0). Pré-compensar com auto-speed aqui sobreporia o MG-08 e seria desfeito quando ele baixar o dano de mob. `GameConfig` intacto (nada a sincronizar no seed do MG-05). Build verde, canário PASS, `mg07_before.csv` commitado (pós-MG-07 idêntico — sem mudança de constante).
 
 **Objetivo:** afinar os multiplicadores de `RoleTuning` p/ que o **tempo total de hunt** seja
 comparável entre os 3 papéis, preservando a identidade (mage não vira melhor auto-attacker, etc.).
@@ -340,6 +345,7 @@ comparável entre os 3 papéis, preservando a identidade (mage não vira melhor 
 # MG-08 — Calibração de Mobs / Itens / Cartas (5 Tiers)
 
 - **Modelo:** Opus 4.8 · **Effort:** high · **Skill:** nenhuma · **Depende de:** MG-06 (idealmente após MG-07) · **Paraleliza com:** — (Onda 5, sequencial)
+- **[x] Concluído.** Calibração dirigida pelo BalanceSim (`mg08_before.csv`→`mg08_after.csv`, 1750 runs cada). `MonsterStatLines` reescalado por célula. **Health** sobe forte (boss T1 260→8200 … T5 6200→68000; comuns 30→580 … 1400→3800) p/ bater TTK em ciclos de ação — **13/15 células dentro de ±1 ciclo** (comum~3·elite~6·boss~12); todas as medianas de boss ≥8 (9.6–12.2 = **sem hit-kill**), **zero one-shot de boss em todo tier**. **Damage** baixado por célula (T5 360→85 etc.) → **deaths ~0 com gear do mesmo tier nas 5 Kaelis mage+archer** (mage 0–4, archer 2–6 por 100–150 runs). Boss damage segurado (ameaça) e common/elite cortado mais (alivia o pacote que cerca melee). Itens/cartas **intactos** — TTK foi resolvido por HP e cartas não empurram one-shot de boss (non-change validado). Único toque novo no engine: accessor read-only `GameWorld.IsSummonedMonster` (o sim exclui adds conjurados — o summoner cospe Ecoídes T1 em qualquer tier — da calibração de TTK). **Resíduos documentados, fora da alavanca mob/item/carta:** (1) **survival de Knight** (Seren/Rynna, 11–65 deaths T3–T5) — em melee sob o piloto, morrem por spike de pacote, não atrito (minHp nas vitórias 71–86% > ranged); a alavanca global de dano de mob não separa melee de ranged sem trivializar ranged → fix é defesa por papel (campo novo em `RoleTuning`), exatamente o gap que o MG-07 antecipou. (2) **T3 elite ~7.2 ciclos** (alvo 6) — o pool T3 são casters undead que kitam, então o TTK carrega tempo de perseguição, não HP (baixar HP quebraria comum<elite sem resolver o chase). (3) **spread de boss por-Kaeli** (Eloa burst ~5.5–8 vs Velvet/Lunara DoT-kite ~14–17) — questão de kit single-target (MG-06), mutuamente exclusiva com manter as medianas das células em ±1. Canário de determinismo PASS; `dotnet build` + `npx ng build` verdes; before/after CSVs commitados.
 
 **Objetivo:** bater os alvos de TTK (comum ~3, elite ~6, boss ~12 ciclos, gear×mob no mesmo tier)
 **sem hit-kill** — boss nunca < 8 ciclos. Calibrar mobs, itens e cartas (as alavancas globais), não salas/dungeons.

@@ -198,6 +198,8 @@ public sealed class GameWorld
     private readonly MonsterRegistry _monsterRegistry;
     private readonly Rng _rng;
     private readonly IReadOnlyDictionary<string, long> _bestiaryKills;
+    // MG-05: tabela de tuning por papel vigente nesta run (injetada pela Hub do ContentStore).
+    private readonly IReadOnlyDictionary<KaeliRole, RoleTuning> _roles;
 
     public long TickCount { get; private set; }
     private long _simulationMs;
@@ -303,14 +305,25 @@ public sealed class GameWorld
             ? m.IsBossActor ? "boss" : m.IsElite ? "elite" : "common"
             : null;
 
+    /// <summary>
+    /// MG-08 (tools/BalanceSim): true se o monstro foi conjurado por outro (OwnerId != 0). O simulador
+    /// exclui conjurados da calibração de TTK — são adds transitórios (ex.: o summoner gera Ecoídes T1
+    /// em qualquer tier), não o comum/elite/boss daquela célula, e poluiriam a mediana. Leitura pura.
+    /// </summary>
+    public bool IsSummonedMonster(int monsterId) =>
+        _monsters.FirstOrDefault(m => m.Id == monsterId) is { IsSummon: true };
+
     public GameWorld(long seed, DungeonTier tier, WaifuDef waifu, int ascension,
         GameData data, MonsterRegistry monsterRegistry, IReadOnlyDictionary<string, long> bestiaryKills,
         EquipmentStats? equipmentStats = null, KaeliLoadout? loadout = null, ItemRegistry? items = null,
-        string? helperProfile = null)
+        string? helperProfile = null, IReadOnlyDictionary<KaeliRole, RoleTuning>? roleTuning = null)
     {
         Seed = seed;
         Tier = tier;
         Waifu = waifu;
+        // MG-05: a run lê a tabela vigente injetada (editável no admin); cai nos defaults de
+        // GameConfig.Roles quando nada é passado (ex.: simulador, que mede contra a baseline estável).
+        _roles = roleTuning ?? GameConfig.Roles;
         PlayerClass = Classes.ById.GetValueOrDefault(waifu.ClassId)
                       ?? throw new InvalidOperationException($"classe desconhecida: {waifu.ClassId}");
         _stanceId = PlayerClass.InitialStance(waifu.Element).Id;
@@ -328,7 +341,7 @@ public sealed class GameWorld
         _bestiaryKills = bestiaryKills;
         _rng = new Rng((ulong)seed);
         // MG-02: o default de movimento (seguir vs kitar) segue o range do papel, não mais a arma.
-        var isMelee = GameConfig.Roles[Waifu.Role].AutoRange <= GameConfig.MeleeRange;
+        var isMelee = _roles[Waifu.Role].AutoRange <= GameConfig.MeleeRange;
         _autoHelperTargetPreference = GameConfig.AutoHelperTargetPreferenceNearest;
         _defaultAutoHelperMovementMode = isMelee
             ? GameConfig.AutoHelperMovementModeFollow
@@ -819,12 +832,21 @@ public sealed class GameWorld
     }
 
     // MG-02: tuning do papel da Kaeli (dano de auto vs skill, velocidade, range, AOE).
-    private RoleTuning RoleTuning => GameConfig.Roles[Waifu.Role];
+    private RoleTuning RoleTuning => _roles[Waifu.Role];
     // MG-02: a separação auto/skill é feita NOS CALL SITES, nunca dentro de PlayerAttack() (aplicaria
     // duas vezes). Auto-hit usa * RoleAutoMult(); skill-dmg e todos os procs de trait/echo/carta usam
     // * RoleSkillMult(). PlayerAttack() devolve o ataque "puro" (sem multiplicador de papel).
     private double RoleAutoMult() => RoleTuning.AutoDmgMult;
     private double RoleSkillMult() => RoleTuning.SkillDmgMult;
+
+    // MG-04: tamanho de AOE escalado pelo papel (mage > knight > archer). Raio 0 (golpe de tile
+    // único) é preservado; positivos arredondam pelo AoeScale com piso 1. Math.Round é determinístico.
+    private int ScaledRadius(int raw) =>
+        raw <= 0 ? 0 : Math.Max(1, (int)Math.Round(raw * RoleTuning.AoeScale, MidpointRounding.AwayFromZero));
+    // Raio efetivo de uma skill no momento do cast. Ultimates capam em UltimateRadiusCap antes do
+    // AoeScale e nunca caem abaixo de 2 — ainda "estouram" (mage 3, archer/knight ~2).
+    private int SkillRadius(int raw, bool isUlt) =>
+        isUlt ? Math.Max(2, ScaledRadius(Math.Min(raw, GameConfig.UltimateRadiusCap))) : ScaledRadius(raw);
 
     private double PlayerAttack()
     {
@@ -1233,7 +1255,7 @@ public sealed class GameWorld
         if (slot == 4 && _gauge < GameConfig.UltimateGaugeMax) return;
 
         var skill = CurrentSkillBar()[slot];
-        if (!ShouldAutoHelperCast(skill, out var target)) return;
+        if (!ShouldAutoHelperCast(skill, slot == 4, out var target)) return;
 
         if (_autoHelperTargeting && _manualTargetId == 0 && target is not null)
             Player.TargetId = target.Id;
@@ -1241,7 +1263,7 @@ public sealed class GameWorld
         TryCastSkill(slot);
     }
 
-    private bool ShouldAutoHelperCast(SkillDef skill, out Actor? target)
+    private bool ShouldAutoHelperCast(SkillDef skill, bool isUlt, out Actor? target)
     {
         target = null;
 
@@ -1252,15 +1274,15 @@ public sealed class GameWorld
         if (currentTarget is not null)
         {
             target = currentTarget;
-            return SkillWouldAffectMonster(skill, currentTarget);
+            return SkillWouldAffectMonster(skill, currentTarget, isUlt);
         }
 
         if (skill.Shape is "nova" or "ring" or "summon")
-            return SkillWouldAffectMonster(skill, null);
+            return SkillWouldAffectMonster(skill, null, isUlt);
 
         if (!_autoHelperTargeting) return false;
 
-        target = BestAutoHelperTarget(GameConfig.AutoHelperTargetRange, m => SkillWouldAffectMonster(skill, m));
+        target = BestAutoHelperTarget(GameConfig.AutoHelperTargetRange, m => SkillWouldAffectMonster(skill, m, isUlt));
         return target is not null;
     }
 
@@ -1284,7 +1306,7 @@ public sealed class GameWorld
             : null;
     }
 
-    private bool SkillWouldAffectMonster(SkillDef skill, Actor? target)
+    private bool SkillWouldAffectMonster(SkillDef skill, Actor? target, bool isUlt)
     {
         switch (skill.Shape)
         {
@@ -1294,18 +1316,20 @@ public sealed class GameWorld
             case "area":
             case "barrage":
                 if (target is null || !CanSkillReachTarget(skill, target)) return false;
-                return AnyMonsterOnTiles(CircleTiles(target.X, target.Y, skill.Radius));
+                return AnyMonsterOnTiles(CircleTiles(target.X, target.Y, SkillRadius(skill.Radius, isUlt)));
 
             case "field":
                 if (target is null || !CanSkillReachTarget(skill, target)) return false;
                 return AnyMonsterOnTiles(CircleTiles(target.X, target.Y, Math.Max(skill.SummonRadius, 0)));
 
             case "nova":
-                return AnyMonsterOnTiles(CircleTiles(Player.X, Player.Y, skill.Radius),
+                return AnyMonsterOnTiles(CircleTiles(Player.X, Player.Y, SkillRadius(skill.Radius, isUlt)),
                     skipPlayerTile: true, requiredMonsterId: target?.Id ?? 0);
 
             case "ring":
-                return AnyMonsterOnTiles(RingTiles(Player.X, Player.Y, skill.RingInner, Math.Max(skill.Radius, 1)),
+                return AnyMonsterOnTiles(
+                    RingTiles(Player.X, Player.Y, skill.RingInner,
+                        Math.Max(SkillRadius(skill.Radius, isUlt), skill.RingInner + 1)),
                     requiredMonsterId: target?.Id ?? 0);
 
             case "summon":
@@ -1316,7 +1340,7 @@ public sealed class GameWorld
                 return BeamWouldHitMonster(skill, target);
 
             case "cone":
-                return ConeWouldHitMonster(skill, target);
+                return ConeWouldHitMonster(skill, target, isUlt);
 
             case "chain":
                 return target is not null && CanSkillReachTarget(skill, target);
@@ -1356,10 +1380,10 @@ public sealed class GameWorld
         return false;
     }
 
-    private bool ConeWouldHitMonster(SkillDef skill, Actor? target)
+    private bool ConeWouldHitMonster(SkillDef skill, Actor? target, bool isUlt)
     {
         var (dx, dy) = DirDelta(Player.Facing, target);
-        foreach (var (tx, ty) in ConeTiles(Player.X, Player.Y, dx, dy, Math.Max(skill.Radius, 1)))
+        foreach (var (tx, ty) in ConeTiles(Player.X, Player.Y, dx, dy, Math.Max(SkillRadius(skill.Radius, isUlt), 1)))
         {
             var victim = MonsterAt(tx, ty);
             if (victim is not null && IsTargetableByPlayer(victim, Math.Max(skill.Radius, 1)))
@@ -1492,7 +1516,7 @@ public sealed class GameWorld
             case "area":
             {
                 if (skill.MissileId > 0) Emit("projectile", Player.X, Player.Y, aimX, aimY, skill.MissileId);
-                foreach (var (tx, ty) in CircleTiles(aimX, aimY, skill.Radius))
+                foreach (var (tx, ty) in CircleTiles(aimX, aimY, SkillRadius(skill.Radius, isUlt)))
                 {
                     Emit("effect", tx, ty, 0, 0, skill.EffectId);
                     var victim = MonsterAt(tx, ty);
@@ -1503,7 +1527,7 @@ public sealed class GameWorld
 
             case "nova":
             {
-                foreach (var (tx, ty) in CircleTiles(Player.X, Player.Y, skill.Radius))
+                foreach (var (tx, ty) in CircleTiles(Player.X, Player.Y, SkillRadius(skill.Radius, isUlt)))
                 {
                     if (tx == Player.X && ty == Player.Y) continue;
                     Emit("effect", tx, ty, 0, 0, skill.EffectId);
@@ -1534,7 +1558,7 @@ public sealed class GameWorld
             case "cone":
             {
                 var (dx, dy) = DirDelta(Player.Facing, target);
-                var reach = Math.Max(skill.Radius, 1);
+                var reach = Math.Max(SkillRadius(skill.Radius, isUlt), 1);
                 foreach (var (tx, ty) in ConeTiles(Player.X, Player.Y, dx, dy, reach))
                 {
                     Emit("effect", tx, ty, 0, 0, skill.EffectId);
@@ -1589,7 +1613,9 @@ public sealed class GameWorld
 
             case "ring":
             {
-                foreach (var (tx, ty) in RingTiles(Player.X, Player.Y, skill.RingInner, Math.Max(skill.Radius, 1)))
+                // raio externo escalado, mas nunca colapsa sobre o buraco central (mantém anel válido).
+                var outer = Math.Max(SkillRadius(skill.Radius, isUlt), skill.RingInner + 1);
+                foreach (var (tx, ty) in RingTiles(Player.X, Player.Y, skill.RingInner, outer))
                 {
                     Emit("effect", tx, ty, 0, 0, skill.EffectId);
                     var victim = MonsterAt(tx, ty);
@@ -1630,7 +1656,7 @@ public sealed class GameWorld
                         Floor = _currentFloor, X = aimX, Y = aimY,
                         AtMs = NowMs + skill.StrikeDelayMs + (long)k * interval,
                         Element = skill.Element, Fx = skill.EffectId, Damage = damage,
-                        Radius = Math.Max(skill.Radius, 0), RingInner = skill.RingInner,
+                        Radius = SkillRadius(skill.Radius, isUlt), RingInner = skill.RingInner,
                         StunMs = skill.StunMs, SlowFactor = skill.SlowFactor, SlowMs = skill.SlowMs,
                         DotTicks = skill.DotTicks, DotTickMs = skill.DotTickMs, DotPower = dotPerTick,
                     });
@@ -1768,7 +1794,7 @@ public sealed class GameWorld
             for (var dx = -outer; dx <= outer; dx++)
             {
                 var dist = Math.Abs(dx) + Math.Abs(dy);
-                if (dist > outer * 1.5 || dist <= inner) continue;
+                if (dist > outer * GameConfig.AoeRoundingFactor || dist <= inner) continue;
                 var x = cx + dx;
                 var y = cy + dy;
                 if (!Floor.IsBlocked(x, y)) yield return (x, y);
@@ -4013,7 +4039,7 @@ public sealed class GameWorld
             {
                 var x = cx + dx;
                 var y = cy + dy;
-                if (Math.Abs(dx) + Math.Abs(dy) > radius * 1.5) continue; // rounded square
+                if (Math.Abs(dx) + Math.Abs(dy) > radius * GameConfig.AoeRoundingFactor) continue; // rounded diamond (MG-04)
                 if (!Floor.IsBlocked(x, y)) yield return (x, y);
             }
     }

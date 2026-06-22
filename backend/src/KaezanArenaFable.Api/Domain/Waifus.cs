@@ -268,7 +268,7 @@ public static class Waifus
                     150, 86, 5, 38, 86, "affinity", 6),
             ]),
 
-        new("waifu:lunara", "Lunara", "Lebre Lunar", 5, "ice", "melee", KaeliRole.Archer,
+        new("waifu:lunara", "Lunara", "Lebre Lunar", 5, "ice", "bow", KaeliRole.Archer,
             20, 205, Classes.CryomancerId,
             "Rápida como uma decisão e fria como a noite que a fez. Lunara dança pelo gelo que " +
             "ela mesma cria, e quando você percebe que ela passou, já está mais lento que ela.",

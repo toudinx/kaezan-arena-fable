@@ -189,6 +189,16 @@ export interface DungeonTier {
   statMultiplier: number;
 }
 
+/** MG-05: linha de tuning por papel editável no admin (espelha RoleTuningRow do backend). */
+export interface RoleTuningRow {
+  role: string;
+  autoDmgMult: number;
+  skillDmgMult: number;
+  baseAutoAttackMs: number;
+  autoRange: number;
+  aoeScale: number;
+}
+
 export interface BannerDef {
   id: string;
   name: string;

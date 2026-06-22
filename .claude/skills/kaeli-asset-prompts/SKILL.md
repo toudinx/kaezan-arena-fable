@@ -40,6 +40,11 @@ metadados dela. Os metadados já existem no backend em `Domain/Waifus.cs` — co
 revelar detalhes visuais que o texto não captura (cor de cabelo/olhos, estilo da roupa), descreva
 o que você vê.
 
+> **Modo web (Claude Code Web).** Quando rodando no web (sob a doutrina `docs_web/CLAUDE_WEB.md`),
+> **não leia `Domain/Waifus.cs`** (é código). Pegue os metadados e a identidade visual em
+> `docs_web/roster_digest.md`, e escreva a saída em `docs_web/skins/<slug>-<tema>.md` (skin) ou
+> no destino que o prompt do roadmap indicar.
+
 Pergunte ao usuário **só o que faltar**. O mínimo necessário:
 
 - **`waifu:id`** e **nome** (ex: `waifu:velvet`, "Velvet")
@@ -202,6 +207,35 @@ stockings, black lace heels.
 Cenário ancorado: catedral gótica noturna, lustres de cristal roxo, correntes, runas roxas no
 chão, vitrais violeta, névoa rasa. Acento: roxo. Mood: dark, ethereal, melancholic.
 → Esse bloco + cenário entram nos 6 templates acima para gerar os 8 arquivos da pasta `velvet/`.
+
+## Modo Skin (roupa/tema alternativo de uma Kaeli existente)
+
+Uma **skin** é o mesmo set de 8 assets, mas com a Kaeli vestindo outra roupa e em outro cenário
+(ex. "Eloa de verão", "Velvet noiva"). O objetivo é que ela continue **reconhecível** como a mesma
+personagem. Disparada pelos prompts `SK-*` do `docs_web/roadmap_web_skins.md`.
+
+A única diferença em relação ao fluxo normal está no **bloco de identidade**: em vez de congelar
+roupa+acessórios, você congela só os traços **imutáveis** da personagem e **substitui** o resto
+pelo tema.
+
+1. **Preserve (do digest):** rosto/feições, cor e comprimento de cabelo, cor dos olhos, raça/silhueta
+   (orelhas, asas, chifres, cauda — o que for da personagem, não da roupa).
+2. **Substitua pelo tema:** roupa, acessórios, calçado, e **cenário ancorado** (o tema manda agora —
+   praia ensolarada para "verão", salão natalino para "natal", etc.).
+
+Formato do bloco de identidade no modo skin:
+
+```
+Using this character as reference, keep her face, hair and eyes EXACTLY:
+[cor + comprimento de cabelo], [cor dos olhos], [traços de raça imutáveis se houver].
+NEW outfit for a [tema] skin: [roupa nova detalhada com cores], [acessórios do tema], [calçado].
+Keep it the same person — only the outfit and setting change.
+```
+
+Depois siga os **mesmos 6 templates** dos Passos 2 (idles, wallpaper, bg-landscape, bg-portrait,
+banner, thumb), trocando o cenário ancorado pelo cenário do tema. Salve em
+`docs_web/skins/<slug>-<tema>.md` (no web) e lembre que tornar a skin **jogável** (entrar como
+`SkinDef` em `Waifus.cs`) é um passo de **desktop**.
 
 ## Notas
 

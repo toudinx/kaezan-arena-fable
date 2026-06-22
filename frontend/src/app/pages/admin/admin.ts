@@ -5,10 +5,11 @@ import { CreaturePreview } from './creature-preview';
 import { MonsterEditor } from './monster-editor';
 import { KaeliManager } from './kaeli-manager';
 import { ItemEditor } from './item-editor';
+import { RoleTuningEditor } from './role-tuning-editor';
 import { KaeliArtService } from '../../core/kaeli-art.service';
 import { OutfitPreview } from '../../core/outfit-preview';
 
-type AdminMode = 'dungeons' | 'monsters' | 'kaelis' | 'items' | 'banners';
+type AdminMode = 'dungeons' | 'monsters' | 'kaelis' | 'items' | 'banners' | 'roles';
 type CatalogMode = 'monsters' | 'elites' | 'bosses';
 type MobKind = 'commonMobs' | 'eliteMobs';
 type DropZone = MobKind | 'boss';
@@ -16,7 +17,7 @@ type DropZone = MobKind | 'boss';
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CreaturePreview, MonsterEditor, KaeliManager, ItemEditor, OutfitPreview],
+  imports: [CreaturePreview, MonsterEditor, KaeliManager, ItemEditor, RoleTuningEditor, OutfitPreview],
   template: `
     <div class="page">
       <header class="titlebar">
@@ -31,6 +32,7 @@ type DropZone = MobKind | 'boss';
             <button type="button" [class.active]="pageMode() === 'items'" (click)="pageMode.set('items')">Items</button>
             <button type="button" [class.active]="pageMode() === 'dungeons'" (click)="pageMode.set('dungeons')">Dungeons</button>
             <button type="button" [class.active]="pageMode() === 'kaelis'" (click)="pageMode.set('kaelis')">Skins</button>
+            <button type="button" [class.active]="pageMode() === 'roles'" (click)="pageMode.set('roles')">Papéis</button>
             <button type="button" [class.active]="pageMode() === 'banners'" (click)="openBanners()">Banners</button>
           </div>
         </div>
@@ -42,6 +44,8 @@ type DropZone = MobKind | 'boss';
         <app-kaeli-manager />
       } @else if (pageMode() === 'items') {
         <app-item-editor />
+      } @else if (pageMode() === 'roles') {
+        <app-role-tuning-editor />
       } @else if (pageMode() === 'banners') {
         <section class="banners-editor">
           @if (bannerStatus(); as st) {

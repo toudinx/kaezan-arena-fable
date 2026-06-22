@@ -100,27 +100,33 @@ public static class GameConfig
     public const int AuthoredResistanceMax = 100;
 
     /// <summary>
-    /// Direct arena-scale baselines. Authored bosses use these values and never receive the
-    /// legacy BossHpScale multiplier.
+    /// Direct arena-scale baselines (Health, Damage, Armor, Speed, Experience). Authored bosses use
+    /// these values and never receive the legacy BossHpScale multiplier; <see cref="MonsterDamageTuning"/>
+    /// is inert for them (eles têm <c>StatMult=1</c>), então a alavanca real de dano de mob é a coluna
+    /// <c>Damage</c> aqui.
+    /// MG-08 (calibração por simulador, tools/BalanceSim): a coluna <c>Health</c> foi reescalada para
+    /// bater os alvos de TTK em ciclos de ação (comum ~3 · elite ~6 · boss ~12) com gear do mesmo tier,
+    /// e <c>Damage</c> foi baixado para deaths ~0 (mage/archer) — boss nunca &lt; 8 ciclos, sem one-shot
+    /// de boss/elite. Cada número justificado pelo sweep (docs/balance/mg08_before.csv→mg08_after.csv).
     /// </summary>
     public static readonly IReadOnlyDictionary<string, MonsterStatLine> MonsterStatLines =
         new Dictionary<string, MonsterStatLine>
         {
-            ["1:common"] = new(30, 8, 2, 80, 15),
-            ["1:elite"] = new(75, 13, 4, 84, 38),
-            ["1:boss"] = new(260, 18, 6, 82, 120),
-            ["2:common"] = new(85, 18, 6, 85, 45),
-            ["2:elite"] = new(210, 29, 9, 90, 110),
-            ["2:boss"] = new(650, 42, 13, 88, 350),
-            ["3:common"] = new(220, 40, 12, 90, 120),
-            ["3:elite"] = new(520, 64, 18, 95, 300),
-            ["3:boss"] = new(1450, 90, 24, 94, 850),
-            ["4:common"] = new(550, 85, 22, 100, 320),
-            ["4:elite"] = new(1250, 132, 32, 105, 800),
-            ["4:boss"] = new(3100, 185, 42, 102, 1900),
-            ["5:common"] = new(1400, 175, 36, 110, 850),
-            ["5:elite"] = new(3100, 270, 52, 116, 2100),
-            ["5:boss"] = new(6200, 360, 66, 112, 4800),
+            ["1:common"] = new(580, 5, 2, 80, 15),
+            ["1:elite"] = new(650, 8, 4, 84, 38),
+            ["1:boss"] = new(8200, 12, 6, 82, 120),
+            ["2:common"] = new(840, 9, 6, 85, 45),
+            ["2:elite"] = new(1100, 14, 9, 90, 110),
+            ["2:boss"] = new(9700, 22, 13, 88, 350),
+            ["3:common"] = new(1200, 15, 12, 90, 120),
+            ["3:elite"] = new(1300, 25, 18, 95, 300),
+            ["3:boss"] = new(19800, 35, 24, 94, 850),
+            ["4:common"] = new(2050, 26, 22, 100, 320),
+            ["4:elite"] = new(2600, 40, 32, 105, 800),
+            ["4:boss"] = new(33600, 52, 42, 102, 1900),
+            ["5:common"] = new(3800, 30, 36, 110, 850),
+            ["5:elite"] = new(6000, 45, 52, 116, 2100),
+            ["5:boss"] = new(68000, 85, 66, 112, 4800),
         };
 
     public static readonly MonsterStatPreset[] MonsterStatPresets =
@@ -339,6 +345,14 @@ public static class GameConfig
             [KaeliRole.Archer] = new(1.15,   0.95,    1400,  5,    0.65),
             [KaeliRole.Knight] = new(1.05,   0.80,    1700,  1,    0.80),
         };
+
+    // ---- MG-04: resize de AOE ----
+    // Footprint dos shapes de área. Antes CircleTiles/RingTiles cortavam em raio*1.5 (quase um
+    // quadrado); 1.25 dá um diamante mais honesto. Aplicado dentro dos helpers, sem tocar call sites.
+    public const double AoeRoundingFactor = 1.25;
+    // Raio máximo de uma ultimate ANTES do AoeScale do papel: a ult ainda "estoura" (piso 2 garantido
+    // em GameWorld.SkillRadius), mas nenhuma vira tela inteira. Mage ult fica 3, archer/knight ~2.
+    public const int UltimateRadiusCap = 3;
 
     // ---- player damage ----
     /// <summary>Multiplicador global do dano do player (autos + skills). MVP/dificuldade: dávamos pouco dano.</summary>
@@ -900,6 +914,14 @@ public static class GameConfig
 /// </summary>
 public sealed record RoleTuning(
     double AutoDmgMult, double SkillDmgMult, int BaseAutoAttackMs, int AutoRange, double AoeScale);
+
+/// <summary>
+/// MG-05: linha serializável de <see cref="RoleTuning"/> para persistência/edição no admin. O papel
+/// vai como string (legível no JSON e no front); o ContentStore converte de/para o dicionário tipado.
+/// </summary>
+public sealed record RoleTuningRow(
+    string Role, double AutoDmgMult, double SkillDmgMult,
+    int BaseAutoAttackMs, int AutoRange, double AoeScale);
 
 public sealed record DungeonTier(
     int Tier, string Name, string Description,

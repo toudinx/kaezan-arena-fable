@@ -75,7 +75,7 @@ public static class Classes
     public const string SentinelId    = "sentinel";    // reserva (distance/shield) — sem Kaeli
     public const string OracleId      = "oracle";      // Eloa — Serafim (holy ranged)
     public const string ShamanId      = "shaman";      // Gaia — Arqueira dos Monólitos (earth ranged)
-    public const string CryomancerId  = "cryomancer";  // Lunara — Bailarina Lunar (ice melee)
+    public const string CryomancerId  = "cryomancer";  // Lunara — Arqueira de Gelo (ice ranged, arco)
     public const string PyromancerId  = "pyromancer";  // Rin — Súcubus do Pacto (fire ranged)
     public const string StormcallerId = "stormcaller"; // Rynna — Dragoa do Trovão (energy melee)
     public const string BarbarianId   = "barbarian";   // reserva (fist) — sem Kaeli
@@ -189,27 +189,27 @@ public static class Classes
             2.70, 0, 0, 3, 0, 41, 0, null, 0,
             "Faz o céu descer junto: descarrega a tempestade ao redor da dragoa."),
 
-        // Lunara — Bailarina Lunar (ice melee). Mobilidade e slow: corte lunar que desacelera,
-        // saltos de geada em cadeia, jardim congelado no chão, crescente em anel e a lua nova.
-        // O trait Geada Lunar empilha slow em cima do gelo do kit.
+        // Lunara — Arqueira de Gelo (ice ranged, arco). Single-target à distância com algum AOE:
+        // lasca lunar que desacelera, saltos de geada em cadeia, jardim congelado no chão para kite,
+        // crescente que corta o alvo e a lua nova. O trait Geada Lunar empilha slow em cima do gelo do kit.
         new SkillDef("skill:lunara:cut", "Corte Lunar", "single", "ice",
-            1.30, 1800, 1, 0, 0, 42, 0, null, 0,
-            "Um corte de luar gelado que fere e desacelera o alvo.",
+            1.30, 1800, 5, 0, 29, 42, 0, null, 0,
+            "Dispara uma lasca de luar gelado que fere e desacelera o alvo à distância.",
             SlowFactor: 0.7, SlowMs: 1500),
         new SkillDef("skill:lunara:frost-leap", "Saltos de Geada", "chain", "ice",
-            1.30, 7000, 2, 0, 0, 42, 0, null, 0,
+            1.30, 7000, 5, 0, 29, 42, 0, null, 0,
             "Salta entre os inimigos deixando geada em cada um.",
-            ChainJumps: 3, ChainRange: 3, ChainFalloff: 0.25,
+            ChainJumps: 3, ChainRange: 4, ChainFalloff: 0.25,
             SlowFactor: 0.7, SlowMs: 1200),
         new SkillDef("skill:lunara:garden", "Jardim Congelado", "field", "ice",
-            0, 10000, 4, 0, 37, 44, 0, null, 0,
+            0, 10000, 5, 0, 37, 44, 0, null, 0,
             "Faz florescer um jardim de gelo no chão, desacelerando e ferindo quem permanece nele.",
             SummonMs: 5000, SummonPulseMs: 1000, SummonPower: 0.35, SummonRadius: 1,
             SlowFactor: 0.5, SlowMs: 1500),
-        new SkillDef("skill:lunara:crescent", "Crescente", "ring", "ice",
-            1.45, 7000, 0, 2, 0, 44, 0, null, 0,
-            "Desenha um crescente de gelo ao redor de si, fatiando e desacelerando em volta.",
-            SlowFactor: 0.7, SlowMs: 1200, RingInner: 1),
+        new SkillDef("skill:lunara:crescent", "Crescente", "area", "ice",
+            1.45, 7000, 5, 1, 29, 44, 0, null, 0,
+            "Arremessa um crescente de gelo sobre o alvo, fatiando e desacelerando em volta dele.",
+            SlowFactor: 0.7, SlowMs: 1200),
         new SkillDef("skill:lunara:new-moon", "Lua Nova", "nova", "ice",
             2.50, 0, 0, 3, 0, 44, 0, null, 0,
             "Invoca a lua nova: uma onda de frio absoluto que congela o passo de todos em volta.",
@@ -218,8 +218,12 @@ public static class Classes
         // Gaia — Arqueira dos Monólitos (earth ranged, arco). Ranger mineral: flecha de pedra,
         // queda de monólito em área que atordoa, raízes que prendem no chão, estilhaços em cone e
         // a chuva tectônica. O trait Olho Mineral premia manter distância — raízes ajudam nisso.
+        // MG-06: Gaia era a archer consistentemente mais lenta em hunt (Lunara kita mais rápido em
+        // todo tier; gap cresce T3 +8% → T4 +17%). Sua cadência single-target era a fora-do-padrão
+        // (2200ms vs 1800 do resto): arrow 2200→1800 acelera a hunt dela sem mexer no dano efetivo
+        // (capado pela vida do mob) nem na trait `prey`.
         new SkillDef("skill:gaia:arrow", "Flecha Mineral", "single", "earth",
-            1.30, 2200, 5, 0, 30, 46, 0, null, 0,
+            1.30, 1800, 5, 0, 30, 46, 0, null, 0,
             "Dispara uma flecha de pedra petrificada, certeira de longe."),
         new SkillDef("skill:gaia:monolith", "Queda de Monólito", "area", "earth",
             1.45, 4000, 7, 2, 30, 46, 300, null, 0,
@@ -321,8 +325,8 @@ public static class Classes
                     ],
                     "skill:sentinel:aegis")
             ]),
-        new ClassDef(CryomancerId, "Bailarina Lunar",
-            "Lutadora de gelo corpo a corpo, toda mobilidade e slow: corte lunar, saltos de geada, jardim congelado e crescente — encerra na lua nova que prende todos em volta.",
+        new ClassDef(CryomancerId, "Arqueira de Gelo",
+            "Arqueira de gelo à distância, toda mobilidade e slow: lasca lunar, saltos de geada em cadeia, jardim congelado para kite e crescente sobre o alvo — encerra na lua nova que prende todos em volta.",
             "ice",
             [
                 new ClassStanceDef("ice", "Ice", "ice",

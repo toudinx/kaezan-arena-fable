@@ -418,6 +418,38 @@ public static class MetaEndpoints
             return Results.Ok(content.ReplaceTiers(tiers));
         });
 
+        // ---- admin: tuning por papel (MG-05) ----
+        admin.MapGet("/content/role-tuning", (ContentStore content) => Results.Ok(content.RoleTuningTable));
+
+        admin.MapPut("/content/role-tuning", (List<RoleTuningRow> rows, ContentStore content) =>
+        {
+            if (rows is null || rows.Count == 0)
+                return Results.BadRequest(new { error = "envie a tabela de papéis" });
+
+            var known = Enum.GetNames<KaeliRole>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var row in rows)
+            {
+                if (string.IsNullOrWhiteSpace(row.Role) || !known.Contains(row.Role.Trim()))
+                    return Results.BadRequest(new { error = $"papel desconhecido: '{row.Role}'" });
+                if (!seen.Add(row.Role.Trim()))
+                    return Results.BadRequest(new { error = $"papel duplicado: '{row.Role}'" });
+                if (row.AutoDmgMult <= 0 || row.SkillDmgMult <= 0)
+                    return Results.BadRequest(new { error = $"{row.Role}: multiplicadores de dano devem ser > 0" });
+                if (row.BaseAutoAttackMs < 400)
+                    return Results.BadRequest(new { error = $"{row.Role}: velocidade de auto deve ser >= 400ms (piso do engine)" });
+                if (row.AutoRange < 1)
+                    return Results.BadRequest(new { error = $"{row.Role}: alcance deve ser >= 1" });
+                if (row.AoeScale <= 0)
+                    return Results.BadRequest(new { error = $"{row.Role}: escala de AOE deve ser > 0" });
+            }
+            if (!known.All(seen.Contains))
+                return Results.BadRequest(new { error = "envie os 3 papéis (Mage, Archer, Knight)" });
+
+            try { return Results.Ok(content.ReplaceRoleTunings(rows)); }
+            catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+        });
+
         // ---- admin: Outfit Studio (skins autorais de Kaeli) ----
 
         // metadados de apoio: roster (pra atribuir a skin), regras de desbloqueio e tamanho da paleta

@@ -10,6 +10,7 @@ import {
   MonsterAuthoringMetadata,
   MonsterDefinition,
   PullResponse,
+  RoleTuningRow,
 } from './types';
 
 /** REST client for meta systems (account, gacha, dailies, inventory). */
@@ -50,6 +51,15 @@ export class ApiService {
     const saved = await this.request<DungeonTier[]>('PUT', '/admin/content/tiers', tiers);
     await this.reloadCatalog(); // /hunt e dailies passam a refletir a edição
     return saved;
+  }
+
+  // ---- MG-05: tuning por papel ----
+  async getAdminRoleTuning(): Promise<RoleTuningRow[]> {
+    return this.request<RoleTuningRow[]>('GET', '/admin/content/role-tuning');
+  }
+
+  async saveAdminRoleTuning(rows: RoleTuningRow[]): Promise<RoleTuningRow[]> {
+    return this.request<RoleTuningRow[]>('PUT', '/admin/content/role-tuning', rows);
   }
 
   async getMonsterAuthoringMetadata(): Promise<MonsterAuthoringMetadata> {

@@ -45,9 +45,11 @@ Abra `http://localhost:4200`. Sem configuração de banco, a conta local é cria
 em `backend/src/KaezanArenaFable.Api/.data/account.json` com uma Kaeli inicial e 4000 Kaeros.
 
 O painel `http://localhost:4200/admin` traz o editor de conteúdo Kaezan com abas **Monstros**,
-**Items**, **Dungeons** e **Skins**. Cada tier de dungeon pode receber mobs comuns, elites e um
-boss autorais; salvar persiste a composição em `.data/content/tiers.json` e afeta somente as
-próximas runs.
+**Items**, **Dungeons**, **Skins**, **Papéis** e **Banners**. Cada tier de dungeon pode receber
+mobs comuns, elites e um boss autorais; salvar persiste a composição em `.data/content/tiers.json`
+e afeta somente as próximas runs. A aba **Papéis** edita a tabela de tuning por papel (Knight ·
+Mage · Archer): dano de auto/skill, velocidade de auto, alcance e escala de AOE, persistida em
+`.data/content/role-tuning.json` (seedada dos defaults em `GameConfig.Roles`) e aplicada na próxima run.
 Quando `.data/content` ainda está vazio ou contém só o conteúdo legado/de teste, o backend faz seed
 do catálogo Kaezan versionado: **50 monstros autorais** (6 comuns, 3 elites e 1 boss por tier),
 **135 equipamentos/armas autorais** (130 normais + 5 relíquias de boss) e 5 dungeons que
@@ -365,6 +367,12 @@ docs/FABLE_TRACK.md   fila de features complexas/cross-cutting (track Claude Fab
 - **[docs/FABLE_TRACK.md](docs/FABLE_TRACK.md)** — fila do **Claude Fable 5**: 5 features
   grandes, cross-cutting e sensíveis a determinismo (Echo Team, Maestria, Determinismo+Desafio
   Diário, Geração v2, Postura+Reações) — onde vale pagar o modelo premium.
+- **[docs_web/](docs_web/README.md)** — trilha do **Claude Code Web**: trabalho de **texto** que
+  mantém o projeto andando quando o desktop está indisponível (design, pesquisa de franquias,
+  lore, copy, prompts de skin/social e roadmaps de implementação prontos). **Nenhum código** — o
+  web só escreve markdown em `docs_web/`. Cada roadmap tem uma **etiqueta de dependência**: 🟢
+  Claude-only (specs, research, lore, marketing) roda em qualquer dia; 🟡 GPT Image (skins, social)
+  precisa de tempo + gerador de imagem. Regras em [docs_web/CLAUDE_WEB.md](docs_web/CLAUDE_WEB.md).
 
 ## Pipeline de assets (re-rodar quando quiser mais conteúdo)
 

@@ -23,12 +23,14 @@ public sealed class ContentStore
     private readonly string _kaeliSkinsPath;
     private readonly string _authoredItemsPath;
     private readonly string _bannersPath;
+    private readonly string _roleTuningPath;
     private readonly object _lock = new();
     private List<DungeonTier> _tiers;
     private List<MonsterDefinition> _monsters;
     private List<KaeliSkinDefinition> _kaeliSkins;
     private List<AuthoredItemDefinition> _authoredItems;
     private List<string> _activeBannerWaifuIds;
+    private Dictionary<KaeliRole, RoleTuning> _roleTunings;
 
     public ContentStore(IWebHostEnvironment env)
     {
@@ -39,11 +41,13 @@ public sealed class ContentStore
         _kaeliSkinsPath = Path.Combine(dir, "kaeli-skins.json");
         _authoredItemsPath = Path.Combine(dir, "authored-items.json");
         _bannersPath = Path.Combine(dir, "banners.json");
+        _roleTuningPath = Path.Combine(dir, "role-tuning.json");
         _tiers = LoadTiers();
         _monsters = LoadMonsters();
         _kaeliSkins = LoadKaeliSkins();
         _authoredItems = LoadAuthoredItems();
         _activeBannerWaifuIds = LoadActiveBanners();
+        _roleTunings = LoadRoleTunings();
     }
 
     private List<DungeonTier> LoadTiers()
@@ -434,6 +438,90 @@ public sealed class ContentStore
             _activeBannerWaifuIds = next;
             WriteActiveBanners(_activeBannerWaifuIds);
             return _activeBannerWaifuIds.ToList();
+        }
+    }
+
+    // ---- MG-05: tuning por papel (RoleTuning editável no admin) ----
+
+    private Dictionary<KaeliRole, RoleTuning> LoadRoleTunings()
+    {
+        if (File.Exists(_roleTuningPath))
+        {
+            try
+            {
+                var loaded = JsonSerializer.Deserialize<List<RoleTuningRow>>(
+                    File.ReadAllText(_roleTuningPath), JsonOpts);
+                if (ParseRoleTuningRows(loaded) is { } parsed) return parsed;
+            }
+            catch (JsonException)
+            {
+                // arquivo corrompido: cai pro seed dos defaults em vez de derrubar o boot
+            }
+        }
+
+        var seed = new Dictionary<KaeliRole, RoleTuning>(GameConfig.Roles);
+        WriteRoleTunings(seed);
+        return seed;
+    }
+
+    private void WriteRoleTunings(IReadOnlyDictionary<KaeliRole, RoleTuning> tunings) =>
+        File.WriteAllText(_roleTuningPath, JsonSerializer.Serialize(ToRoleTuningRows(tunings), JsonOpts));
+
+    /// <summary>
+    /// Converte as linhas serializadas no dicionário tipado. Papel desconhecido invalida tudo
+    /// (retorna null → reseed); papel ausente é completado a partir do default em código, pra que a
+    /// run nunca encontre um papel sem tuning.
+    /// </summary>
+    private static Dictionary<KaeliRole, RoleTuning>? ParseRoleTuningRows(List<RoleTuningRow>? rows)
+    {
+        if (rows is null || rows.Count == 0) return null;
+        var result = new Dictionary<KaeliRole, RoleTuning>();
+        foreach (var row in rows)
+        {
+            if (!Enum.TryParse<KaeliRole>(row.Role, ignoreCase: true, out var role)) return null;
+            result[role] = new RoleTuning(
+                row.AutoDmgMult, row.SkillDmgMult, row.BaseAutoAttackMs, row.AutoRange, row.AoeScale);
+        }
+        foreach (var (role, tuning) in GameConfig.Roles)
+            result.TryAdd(role, tuning);
+        return result;
+    }
+
+    /// <summary>Linhas em ordem estável de papel (a ordem dos defaults), legíveis no JSON/admin.</summary>
+    private static List<RoleTuningRow> ToRoleTuningRows(IReadOnlyDictionary<KaeliRole, RoleTuning> tunings) =>
+        GameConfig.Roles.Keys
+            .Where(tunings.ContainsKey)
+            .Select(role => new RoleTuningRow(
+                role.ToString(),
+                tunings[role].AutoDmgMult, tunings[role].SkillDmgMult,
+                tunings[role].BaseAutoAttackMs, tunings[role].AutoRange, tunings[role].AoeScale))
+            .ToList();
+
+    /// <summary>Tabela vigente para a run (a Hub injeta isto no <see cref="GameWorld"/>).</summary>
+    public IReadOnlyDictionary<KaeliRole, RoleTuning> RoleTunings
+    {
+        get { lock (_lock) return new Dictionary<KaeliRole, RoleTuning>(_roleTunings); }
+    }
+
+    /// <summary>Linhas para o editor admin (GET /admin/content/role-tuning).</summary>
+    public IReadOnlyList<RoleTuningRow> RoleTuningTable
+    {
+        get { lock (_lock) return ToRoleTuningRows(_roleTunings); }
+    }
+
+    /// <summary>
+    /// Substitui a tabela inteira de papéis (o editor envia os 3 de uma vez) e persiste.
+    /// A validação de faixas é feita no endpoint; aqui só recusa papel desconhecido.
+    /// </summary>
+    public IReadOnlyList<RoleTuningRow> ReplaceRoleTunings(IEnumerable<RoleTuningRow> rows)
+    {
+        var parsed = ParseRoleTuningRows(rows.ToList())
+                     ?? throw new InvalidOperationException("papel desconhecido na tabela de tuning");
+        lock (_lock)
+        {
+            _roleTunings = parsed;
+            WriteRoleTunings(_roleTunings);
+            return ToRoleTuningRows(_roleTunings);
         }
     }
 

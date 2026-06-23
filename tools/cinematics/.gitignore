@@ -1,3 +1,7 @@
 node_modules/
 out/
 .remotion/
+
+# Synced Kaeli assets (derivatives of frontend/public/assets/kaelis/, copied in
+# by sync-assets.mjs). Regenerated on demand — keep them out of the repo.
+public/*/

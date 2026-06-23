@@ -9,7 +9,9 @@ description: >-
   uma Kaeli nova (Mirai, Aurora, Ember, Neva, Sage, Mira, Kaela, Wren, etc.), ou disser
   algo como "quero fazer o mesmo que a Velvet para a Kaeli X", "preciso dos prompts de
   imagem da personagem", ou "gera as artes da [nome]". Também use ao montar o character
-  sheet visual de uma Kaeli. Não é para sprites do Tibia (esses vêm do AssetExtractor).
+  sheet visual de uma Kaeli, e para gerar o prompt da BASE NEUTRA (segunda pele) — a
+  imagem-base canônica usada como entrada do img2img de skins (IMG-07 / subcomando skinvar).
+  Não é para sprites do Tibia (esses vêm do AssetExtractor).
 ---
 
 # Kaeli Asset Prompts
@@ -236,6 +238,113 @@ Depois siga os **mesmos 6 templates** dos Passos 2 (idles, wallpaper, bg-landsca
 banner, thumb), trocando o cenário ancorado pelo cenário do tema. Salve em
 `docs_web/skins/<slug>-<tema>.md` (no web) e lembre que tornar a skin **jogável** (entrar como
 `SkinDef` em `Waifus.cs`) é um passo de **desktop**.
+
+## Modo Base Neutra (segunda pele) — base canônica para img2img de skins
+
+Gerar skins por img2img local (subcomando `skinvar` do `tools/comfyui_batch.py`, IMG-07) fica
+**muito melhor** com uma **base neutra** em vez do idle premium. O idle premium atrapalha: a roupa
+elaborada ocupa a silhueta (o openpose não vê as pernas sob a saia) e a paleta forte "vaza" pelo
+IPAdapter, puxando a cor antiga de volta.
+
+A **base neutra** é a Kaeli numa **segunda pele** (bodysuit colado neutro), pose frontal limpa,
+fundo liso. Assim:
+- o **openpose** extrai uma pose de corpo inteiro limpa (a roupa nova "veste" certo);
+- o **IPAdapter** referencia uma personagem de cor neutra → quase não contamina a roupa nova;
+- **proporção de corpo + rosto** ficam explícitos, então qualquer roupa cai bem.
+
+É a mesma ideia de um *model sheet*/base-mesh de pipeline de personagem. Gere **uma vez por Kaeli**
+(no ChatGPT/gerador), salve em `output/inbox/kaeli/<slug>/base.png`, e use como entrada do skinvar:
+
+```
+python tools/comfyui_batch.py skinvar -p "<roupa em tags booru>" \
+  --input output/inbox/kaeli/<slug> --glob base.png \
+  --control-type openpose --max-mp 1.0 --denoise 0.85
+```
+
+### Regra do bloco de identidade (base neutra)
+
+Congele **só o imutável biológico**: rosto, cor+comprimento de cabelo, cor dos olhos, tom de pele e
+traços de raça (orelhas, asas, chifres, cauda, escamas). **Remova** roupa, joias, tiaras, coroas e
+adereços de moda — eles voltam só nas skins. Asas/chifres/orelhas/cauda **não** são cobertos pela
+segunda pele.
+
+### Template (base neutra)
+
+Cole o bloco de identidade imutável da Kaeli (abaixo) no topo deste corpo:
+
+```
+[BLOCO DE IDENTIDADE IMUTÁVEL]
+
+Full-body character reference base (model sheet), front view, standing straight in a neutral
+relaxed A-pose: arms slightly away from the body, hands open, legs together, facing the viewer,
+calm neutral expression. Whole body visible from head to feet, centered, small margin.
+
+Outfit: ONLY a plain matte light-grey form-fitting full-body bodysuit (second skin) — smooth, no
+logos, no patterns, no jewelry, no accessories. It exists only to reveal accurate body proportions.
+Keep all her natural/biological features visible and uncovered (ears, horns, wings, tail, scales).
+
+Lighting: soft, even, flat studio light, no harsh shadows. Background: plain flat light-grey studio
+backdrop, empty, no props, no scenery.
+
+Style: high-quality anime art, same as the reference image, clean line work, accurate anatomy.
+Aspect ratio: portrait (~2:3).
+```
+
+### Blocos de identidade imutável — as 7 Kaelis
+
+Cada bloco abaixo entra no `[BLOCO DE IDENTIDADE IMUTÁVEL]` do template acima (identidade do
+`roster_digest.md`, só o imutável; roupa/adereços removidos).
+
+```
+# eloa
+Using this character as reference, keep her exact identity:
+very long straight black hair, glowing pink eyes, fair skin, and her large black-and-white
+feathered angel wings. No outfit accessories.
+```
+
+```
+# seren
+Using this character as reference, keep her exact identity:
+very long silver-white hair in a high ponytail, blue eyes, fair skin. Human, no non-human features.
+```
+
+```
+# velvet
+Using this character as reference, keep her exact identity:
+very long dark purple hair, glowing red eyes, fair skin. Human, no non-human features.
+```
+
+```
+# rin
+Using this character as reference, keep her exact identity:
+succubus with very long wavy crimson-red hair, glowing pink-magenta eyes, fair skin, pointed ears,
+curved black spiky demon horns ringed in gold, large bat wings, and a long demon tail with a
+heart-shaped tip.
+```
+
+```
+# rynna
+Using this character as reference, keep her exact identity:
+dark-skinned dragon-girl with very long electric-blue hair, glowing violet eyes, pointed ears,
+ridged blue dragon horns ringed in gold, blue scale patches on her skin, large purple membranous
+dragon wings, and a long scaled dragon tail.
+```
+
+```
+# lunara
+Using this character as reference, keep her exact identity:
+moon-hare girl with long silver-lavender hair, blue eyes, fair skin, and large white rabbit ears.
+```
+
+```
+# gaia
+Using this character as reference, keep her exact identity:
+dark-skinned ranger with very long wavy black hair, green eyes, and a green face-paint stripe under
+one eye.
+```
+
+> Depois de pronta a base, as skins se geram com o **Modo Skin** (bloco que preserva
+> rosto/cabelo/olhos/raça + roupa nova) rodando o `skinvar` sobre `base.png`.
 
 ## Notas
 

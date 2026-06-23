@@ -39,6 +39,11 @@ const RETICLE_SPAN = 0.92;         // target-reticle bracket span (tiles)
 const INTENT_DASH = 14;            // intention-line dash period (px)
 const TELE_DEFAULT_RANGE = 4;      // fallback skill range (tiles) when the shape lookup is missing
 const TELE_DEFAULT_RADIUS = 1.4;   // fallback skill radius (tiles)
+// ---- CUT-05 skill-cast FX (cosmetic; reads the engine's `skill_cast` visual event only) ----
+const SKILL_FX_MS = 440;           // base lifetime of a shape-keyed cast flourish
+const SKILL_FX_ULT_MS = 700;       // ultimates linger a touch longer and read heavier
+const ULT_FLASH_MS = 380;          // brief element-tinted screen bloom on an ultimate cast
+const SKILL_FX_MAX = 24;           // hard cap so a burst of casts can't grow the layer unbounded
 const ECHO_FLASH_MS = 540;         // full-screen flash + banner on the break instant
 const ECHO_WARP_MS = 240;          // slow-mo window (visual time-dilation only)
 const ECHO_WARP_SCALE = 0.28;      // interpolation playback speed during the slow-mo
@@ -124,6 +129,17 @@ interface Corpse { x: number; y: number; itemId: number; start: number; }
 interface SkillShape { shape: string; range: number; radius: number; }
 /** Expanding ring spawned at the boss tile when an Echo Break fires. */
 interface Shockwave { x: number; y: number; start: number; }
+/**
+ * CUT-05: a transient, shape-keyed flourish stamped when the Kaeli casts a skill. Built purely from
+ * the engine's `skill_cast` visual event (origin tile, aim tile, skill id, ultimate flag) plus the
+ * footprint catalog already loaded via `setSkillShapes` — it never touches the simulation. Tile
+ * coordinates are resolved against the camera each frame, like the other effect layers.
+ */
+interface SkillFx {
+  fromX: number; fromY: number; aimX: number; aimY: number;
+  shape: string; range: number; radius: number;
+  ult: boolean; color: string; start: number;
+}
 interface MotionSample {
   fromX: number;
   fromY: number;
@@ -158,6 +174,10 @@ export class GameRenderer {
 
   // G-03 helper legibility + Echo Break climax
   private skillShapes = new Map<string, SkillShape>();
+  // CUT-05 skill-cast FX layer (cosmetic): per-cast flourishes + an ultimate screen bloom.
+  private skillFx: SkillFx[] = [];
+  private ultFlashStart = -1;
+  private ultFlashColor = '#ffe6a0';
   private shockwaves: Shockwave[] = [];
   private echoFlashStart = -1;
   private echoBreakCount = 0;
@@ -201,6 +221,8 @@ export class GameRenderer {
     this.deathLookup.clear();
     this.motionHistory.clear();
     this.shockwaves = [];
+    this.skillFx = [];
+    this.ultFlashStart = -1;
     this.echoFlashStart = -1;
     this.warpAccum = 0;
     this.warpUntil = 0;
@@ -278,6 +300,9 @@ export class GameRenderer {
       case 'effect':
         this.effects.push({ x: ev.x, y: ev.y, id: ev.value, start: now });
         break;
+      case 'skill_cast':
+        this.ingestSkillCast(ev, now);
+        break;
       case 'projectile': {
         const dist = Math.max(Math.abs(ev.toX - ev.x), Math.abs(ev.toY - ev.y), 1);
         this.projectiles.push({
@@ -338,6 +363,32 @@ export class GameRenderer {
         this.corpses.push({ x: ev.x, y: ev.y, itemId: ev.value, start: now });
         this.spawnDissolve(ev.actorId, ev.x, ev.y, now);
         break;
+    }
+  }
+
+  /**
+   * CUT-05: turn the engine's `skill_cast` visual event into a shape-keyed flourish. The skill id
+   * (in `ev.text`) is resolved against the footprint catalog for the shape/range/radius, and the
+   * accent colour comes from the caster's current stance element — so the cast reads on-brand
+   * without the engine ever sending colour. Ultimates (`ev.crit`) also bloom the screen + shake.
+   */
+  private ingestSkillCast(ev: EventDto, now: number): void {
+    const cat = this.skillShapes.get(ev.text);
+    const shape = cat?.shape ?? 'single';
+    if (shape === 'summon' && !cat) return; // unknown id with no footprint → nothing meaningful
+    const element = this.snapshot?.player.stanceElement ?? '';
+    const color = DAMAGE_TYPE_COLORS[element] ?? '#9dffe0';
+    const ult = ev.crit;
+    this.skillFx.push({
+      fromX: ev.x, fromY: ev.y, aimX: ev.toX, aimY: ev.toY,
+      shape, range: cat?.range || TELE_DEFAULT_RANGE, radius: cat?.radius || TELE_DEFAULT_RADIUS,
+      ult, color, start: now,
+    });
+    if (this.skillFx.length > SKILL_FX_MAX) this.skillFx.shift();
+    if (ult) {
+      this.ultFlashStart = now;
+      this.ultFlashColor = color;
+      this.triggerShake(now, 0.95);
     }
   }
 
@@ -772,6 +823,8 @@ export class GameRenderer {
     this.dissolves = this.dissolves.filter((d) => this.drawDissolve(ctx, d, nowPerf, cam));
     // 6.6 Echo Break shockwaves bursting from the boss tile
     this.drawShockwaves(ctx, cam, nowPerf);
+    // 6.7 CUT-05 skill-cast flourishes (shape-keyed, over the effect sprites)
+    this.drawSkillFx(ctx, cam, nowPerf);
     // prune expired impact state so the map can't grow unbounded
     for (const [id, hit] of this.hits) {
       if (nowPerf - hit.start > Math.max(HIT_PUNCH_MS, HIT_FLASH_MS)) this.hits.delete(id);
@@ -912,7 +965,8 @@ export class GameRenderer {
       ctx.fillText(b.text, bx, by);
     }
 
-    // 11. Echo Break flash + banner (screen-space, drawn on top of everything)
+    // 11. Echo Break flash + banner (screen-space, drawn on top of everything); CUT-05 ult bloom
+    this.drawUltFlash(ctx, nowPerf);
     this.drawEchoFlash(ctx, nowPerf);
   }
 
@@ -1206,6 +1260,154 @@ export class GameRenderer {
       ctx.restore();
       return true;
     });
+  }
+
+  // ---- CUT-05 skill-cast FX ----
+
+  /**
+   * Renders the active skill-cast flourishes: a bright origin spark on every cast, plus a
+   * shape-specific stamp (beam lance, cone wedge, expanding nova/area ring, summon pillar, buff
+   * halo, single/chain spark). All additive, eased and faded — purely cosmetic, prunes on expiry.
+   */
+  private drawSkillFx(ctx: CanvasRenderingContext2D, cam: { x: number; y: number }, now: number): void {
+    this.skillFx = this.skillFx.filter((fx) => {
+      const life = fx.ult ? SKILL_FX_ULT_MS : SKILL_FX_MS;
+      const age = now - fx.start;
+      if (age >= life) return false;
+      const t = age / life;                       // 0..1
+      const grow = 1 - (1 - t) * (1 - t);         // easeOutQuad — the stamp expands then settles
+      const fade = t < 0.5 ? 1 : Math.max(0, 1 - (t - 0.5) / 0.5);
+      const wide = fx.ult ? 1.5 : 1;
+      const core = fx.ult ? '#ffffff' : fx.color;
+      const ocx = fx.fromX * TS - cam.x + TS / 2;
+      const ocy = fx.fromY * TS - cam.y + TS / 2;
+      const acx = fx.aimX * TS - cam.x + TS / 2;
+      const acy = fx.aimY * TS - cam.y + TS / 2;
+      const dx = acx - ocx;
+      const dy = acy - ocy;
+      const len = Math.hypot(dx, dy);
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.shadowColor = fx.color;
+
+      // origin spark — gives every cast a sense of "weight" leaving the Kaeli
+      const sparkR = TS * (0.18 + 0.5 * grow) * wide;
+      const sg = ctx.createRadialGradient(ocx, ocy, 0, ocx, ocy, sparkR);
+      sg.addColorStop(0, this.rgba(core, fade * 0.8));
+      sg.addColorStop(0.5, this.rgba(fx.color, fade * 0.35));
+      sg.addColorStop(1, this.rgba(fx.color, 0));
+      ctx.fillStyle = sg;
+      ctx.beginPath(); ctx.arc(ocx, ocy, sparkR, 0, Math.PI * 2); ctx.fill();
+
+      switch (fx.shape) {
+        case 'beam': {
+          // a tapering lance from the Kaeli through the aim, extended to the skill's reach
+          const reach = Math.max(len, fx.range * TS, TS * 2);
+          const nx = len > 1 ? dx / len : 0;
+          const ny = len > 1 ? dy / len : 0;
+          if (nx === 0 && ny === 0) break; // no facing this frame (self-aimed) → spark only
+          const ex = ocx + nx * reach;
+          const ey = ocy + ny * reach;
+          const w = TS * (0.16 + 0.16 * (1 - t)) * wide;
+          ctx.shadowBlur = 18 * wide;
+          ctx.strokeStyle = this.rgba(fx.color, fade * 0.32);
+          ctx.lineWidth = w * 2.4;
+          ctx.beginPath(); ctx.moveTo(ocx, ocy); ctx.lineTo(ex, ey); ctx.stroke();
+          ctx.strokeStyle = this.rgba(core, fade * 0.95);
+          ctx.lineWidth = w;
+          ctx.beginPath(); ctx.moveTo(ocx, ocy); ctx.lineTo(ex, ey); ctx.stroke();
+          break;
+        }
+        case 'cone': {
+          if (len < 1) break;
+          const ang = Math.atan2(dy, dx);
+          const half = Math.PI / 6;
+          const reach = Math.max(fx.radius, 1) * TS * (0.6 + 0.4 * grow);
+          ctx.shadowBlur = 10 * wide;
+          ctx.fillStyle = this.rgba(fx.color, fade * 0.26);
+          ctx.beginPath();
+          ctx.moveTo(ocx, ocy);
+          ctx.arc(ocx, ocy, reach, ang - half, ang + half);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = this.rgba(core, fade * 0.7);
+          ctx.lineWidth = 2 * wide;
+          ctx.stroke();
+          break;
+        }
+        case 'nova': case 'ring': case 'summon': {
+          // expanding ring centred on the caster (summon also gets a brief rising pillar)
+          const r = Math.max(fx.radius, 1) * TS * grow;
+          ctx.shadowBlur = 12 * wide;
+          ctx.strokeStyle = this.rgba(core, fade * 0.85);
+          ctx.lineWidth = (1 - t) * 5 * wide + 1.5;
+          ctx.beginPath(); ctx.arc(ocx, ocy, r, 0, Math.PI * 2); ctx.stroke();
+          if (fx.shape === 'summon') {
+            const ph = TS * (1.1 + 0.6 * wide) * (1 - t);
+            ctx.strokeStyle = this.rgba(core, fade * 0.6);
+            ctx.lineWidth = TS * 0.18 * wide;
+            ctx.beginPath(); ctx.moveTo(ocx, ocy); ctx.lineTo(ocx, ocy - ph); ctx.stroke();
+          }
+          break;
+        }
+        case 'area': case 'field': case 'barrage': {
+          // expanding ring at the aimed tile (where the strike lands)
+          const r = Math.max(fx.radius, 1) * TS * grow;
+          ctx.shadowBlur = 12 * wide;
+          ctx.strokeStyle = this.rgba(core, fade * 0.85);
+          ctx.lineWidth = (1 - t) * 5 * wide + 1.5;
+          ctx.beginPath(); ctx.arc(acx, acy, r, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = this.rgba(fx.color, fade * 0.12);
+          ctx.beginPath(); ctx.arc(acx, acy, r, 0, Math.PI * 2); ctx.fill();
+          break;
+        }
+        case 'buff': {
+          // a rising halo + upward shimmer around the Kaeli (no aim)
+          const r = TS * (0.5 + 0.35 * grow) * wide;
+          ctx.shadowBlur = 14 * wide;
+          ctx.strokeStyle = this.rgba(core, fade * 0.8);
+          ctx.lineWidth = 2.2 * wide;
+          ctx.beginPath();
+          ctx.ellipse(ocx, ocy + TS * 0.2, r, r * 0.5, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          break;
+        }
+        default: {
+          // single / chain — a converging ring and a spark on the struck tile
+          const r = Math.max(fx.radius, 0.5) * TS * (1.2 - 0.7 * grow);
+          ctx.shadowBlur = 10 * wide;
+          ctx.strokeStyle = this.rgba(core, fade * 0.85);
+          ctx.lineWidth = 2 * wide;
+          ctx.beginPath(); ctx.arc(acx, acy, r, 0, Math.PI * 2); ctx.stroke();
+        }
+      }
+      ctx.restore();
+      return true;
+    });
+  }
+
+  /** Brief element-tinted screen bloom on an ultimate cast (cosmetic; pairs with the cast shake). */
+  private drawUltFlash(ctx: CanvasRenderingContext2D, now: number): void {
+    if (this.ultFlashStart < 0) return;
+    const age = now - this.ultFlashStart;
+    if (age >= ULT_FLASH_MS) { this.ultFlashStart = -1; return; }
+    const t = age / ULT_FLASH_MS;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = this.rgba(this.ultFlashColor, (1 - t) * 0.26);
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.restore();
+  }
+
+  /** Parse a `#rgb`/`#rrggbb` hex into an `rgba(...)` string at the given alpha (for FX gradients). */
+  private rgba(hex: string, alpha: number): string {
+    let h = hex.replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return `rgba(${r},${g},${b},${clamp(alpha, 0, 1)})`;
   }
 
   /** Full-screen gold flash + punchy "ECHO BREAK ×N" banner on the break instant. */

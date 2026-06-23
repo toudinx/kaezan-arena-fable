@@ -1,0 +1,115 @@
+{
+  "_comment": "CUT-03 ALT (Wan I2V) — 'busto vivo' de uma Kaeli a partir da THUMB: respiração sutil, peito subindo/descendo e cabelo balançando (o que o LivePortrait NÃO faz — ele só dirige o rosto). Kijai ComfyUI-WanVideoWrapper + Wan2.1 I2V QUANTIZADO (fp8/GGUF) p/ caber em 8 GB (RTX 4070). Roda via comfyui_batch.py wanbust ou carregado no ComfyUI.",
+  "_status": "⚠️ NAO-VALIDADO NO RIG. Diferente do idle_loop_liveportrait.json (validado 2026-06-23), os nodes do WanVideoWrapper e os pesos Wan2.1 I2V AINDA NAO estao instalados aqui (ver memoria img2vid-wan + tools/README.md CUT-03 ALT). Os nomes de node/inputs abaixo seguem a API do WanVideoWrapper (Kijai) de inicio de 2026; quando instalar, monte o grafo no ComfyUI, exporte com Save (API Format) e reconcilie qualquer divergencia de schema. O subcomando 'wanbust' faz override por class_type, entao pequenas diferencas de inputs nao quebram os overrides de prompt/frames/fps.",
+  "_8gb_notes": "fp8/GGUF + WanVideoBlockSwap (blocks_to_swap alto) + VAE tiling + ~49-81 frames + ~480-512p. Wan2.1 e treinado a 16 fps. Saida e RGB (sem alpha): p/ compor sobre bg-portrait, keyar/removebg por frame (a thumb tem fundo gradiente simples, facilita).",
+  "blockswap": {
+    "class_type": "WanVideoBlockSwap",
+    "_meta": { "title": "Block swap — offload p/ caber em 8 GB (aumente blocks_to_swap se faltar VRAM)" },
+    "inputs": { "blocks_to_swap": 30, "offload_img_emb": true, "offload_txt_emb": true }
+  },
+  "model": {
+    "class_type": "WanVideoModelLoader",
+    "_meta": { "title": "Wan2.1 I2V (fp8). Troque por GGUF se preferir (WanVideoModelLoader aceita .gguf em alguns forks)" },
+    "inputs": {
+      "model": "wan2.1_i2v_480p_14B_fp8_e4m3fn.safetensors",
+      "base_precision": "fp16",
+      "quantization": "fp8_e4m3fn",
+      "load_device": "offload_device",
+      "attention_mode": "sdpa",
+      "block_swap_args": ["blockswap", 0]
+    }
+  },
+  "vae": {
+    "class_type": "WanVideoVAELoader",
+    "_meta": { "title": "Wan2.1 VAE" },
+    "inputs": { "model_name": "Wan2_1_VAE_bf16.safetensors", "precision": "bf16" }
+  },
+  "t5": {
+    "class_type": "LoadWanVideoT5TextEncoder",
+    "_meta": { "title": "UMT5-XXL text encoder (offload p/ VRAM)" },
+    "inputs": {
+      "model_name": "umt5-xxl-enc-bf16.safetensors",
+      "precision": "bf16",
+      "load_device": "offload_device",
+      "quantization": "disabled"
+    }
+  },
+  "textencode": {
+    "class_type": "WanVideoTextEncode",
+    "_meta": { "title": "Prompt de MOVIMENTO (camera estatica)" },
+    "inputs": {
+      "positive_prompt": "subtle idle breathing, chest rising and falling slowly, hair swaying gently, slight blink, static camera, soft ambient motion",
+      "negative_prompt": "big movement, walking, camera pan, zoom, warping, morphing, extra limbs, distorted face, flicker, blurry, low quality",
+      "t5": ["t5", 0],
+      "force_offload": true
+    }
+  },
+  "clipvision": {
+    "class_type": "CLIPVisionLoader",
+    "_meta": { "title": "CLIP-Vision H (guia de imagem do I2V)" },
+    "inputs": { "clip_name": "clip_vision_h.safetensors" }
+  },
+  "loadimage": {
+    "class_type": "LoadImage",
+    "_meta": { "title": "THUMB da Kaeli (busto). Copie p/ ComfyUI/input/ — ex: kz_velvet_thumb.png" },
+    "inputs": { "image": "kz_velvet_thumb.png", "upload": "image" }
+  },
+  "imgencode": {
+    "class_type": "WanVideoImageClipEncode",
+    "_meta": { "title": "Encode da imagem inicial (I2V). width/height/num_frames mandam no custo de VRAM" },
+    "inputs": {
+      "clip_vision": ["clipvision", 0],
+      "image": ["loadimage", 0],
+      "vae": ["vae", 0],
+      "width": 512,
+      "height": 512,
+      "num_frames": 49,
+      "force_offload": true,
+      "noise_aug_strength": 0.0,
+      "latent_strength": 1.0
+    }
+  },
+  "sampler": {
+    "class_type": "WanVideoSampler",
+    "_meta": { "title": "Sampler Wan (unipc; steps/cfg/shift). seed sobrescrito pelo wanbust" },
+    "inputs": {
+      "model": ["model", 0],
+      "image_embeds": ["imgencode", 0],
+      "text_embeds": ["textencode", 0],
+      "steps": 25,
+      "cfg": 6.0,
+      "shift": 5.0,
+      "seed": 0,
+      "scheduler": "unipc",
+      "force_offload": true,
+      "denoise_strength": 1.0,
+      "riflex_freq_index": 0
+    }
+  },
+  "decode": {
+    "class_type": "WanVideoDecode",
+    "_meta": { "title": "Decode com VAE tiling (8 GB-safe)" },
+    "inputs": {
+      "vae": ["vae", 0],
+      "samples": ["sampler", 0],
+      "enable_vae_tiling": true,
+      "tile_x": 272,
+      "tile_y": 272,
+      "tile_stride_x": 144,
+      "tile_stride_y": 128
+    }
+  },
+  "save": {
+    "class_type": "VHS_VideoCombine",
+    "_meta": { "title": "Salva o clipe (h264-mp4 cru; pingpong = loop costurado). wanbust transcoda p/ VP9 webm" },
+    "inputs": {
+      "images": ["decode", 0],
+      "frame_rate": 16,
+      "loop_count": 0,
+      "filename_prefix": "kaeli_bust_wan",
+      "format": "video/h264-mp4",
+      "pingpong": true,
+      "save_output": true
+    }
+  }
+}

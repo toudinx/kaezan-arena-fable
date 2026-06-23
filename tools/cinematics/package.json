@@ -4,11 +4,12 @@
   "private": true,
   "description": "Remotion cutscenes for Kaezan Arena Fable (5★ summon reveals). Not part of the Angular bundle.",
   "scripts": {
-    "dev": "remotion studio",
-    "studio": "remotion studio",
-    "render": "remotion render GachaSummon out/gacha-5star.webm --codec=vp8",
-    "deploy": "npm run render && node -e \"require('fs').copyFileSync('out/gacha-5star.webm','../../frontend/public/assets/cinematics/gacha-5star.webm')\"",
-    "still": "remotion still GachaSummon out/frame.png"
+    "dev": "node sync-assets.mjs && remotion studio",
+    "studio": "node sync-assets.mjs && remotion studio",
+    "sync": "node sync-assets.mjs",
+    "render": "node render-all.mjs velvet",
+    "deploy": "node render-all.mjs",
+    "still": "node sync-assets.mjs && remotion still summon-velvet out/frame.png"
   },
   "dependencies": {
     "@remotion/cli": "4.0.481",

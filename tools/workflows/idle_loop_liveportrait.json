@@ -1,0 +1,61 @@
+{
+  "_comment": "CUT-03 idle loop (LivePortraitKJ). VALIDATED against ComfyUI-LivePortraitKJ node schemas on the project rig (2026-06-23). API format: run via /prompt or load in ComfyUI. Source = a Kaeli idle-1 (in ComfyUI/input/); driving = a short subtle-motion face clip (the node ships assets/examples/driving/d0.mp4). Models must live in ComfyUI/models/liveportrait/ (see tools/README.md CUT-03) BEFORE running, because this rig's venv OpenSSL is broken (HF auto-download crashes). MediaPipe cropper avoids the InsightFace/buffalo_l download (mediapipe is pip-installed).",
+  "pipe": {
+    "class_type": "DownloadAndLoadLivePortraitModels",
+    "_meta": { "title": "LivePortrait models (fp16). Pre-place in models/liveportrait/ — skips DL if present" },
+    "inputs": { "precision": "fp16" }
+  },
+  "cropper": {
+    "class_type": "LivePortraitLoadMediaPipeCropper",
+    "_meta": { "title": "MediaPipe cropper (no InsightFace/buffalo_l download)" },
+    "inputs": { "landmarkrunner_onnx_device": "CUDA", "keep_model_loaded": true }
+  },
+  "src": {
+    "class_type": "LoadImage",
+    "_meta": { "title": "Source — Kaeli idle-1 (copy into ComfyUI/input/)" },
+    "inputs": { "image": "kz_velvet_idle1.png", "upload": "image" }
+  },
+  "drive": {
+    "class_type": "VHS_LoadVideoPath",
+    "_meta": { "title": "Driving — short subtle face-motion clip" },
+    "inputs": {
+      "video": "C:/Kaezan/StabilityMatrix/Data/Packages/ComfyUI/custom_nodes/ComfyUI-LivePortraitKJ/assets/examples/driving/d0.mp4",
+      "force_rate": 0, "custom_width": 0, "custom_height": 0,
+      "frame_load_cap": 0, "skip_first_frames": 0, "select_every_nth": 1
+    }
+  },
+  "crop": {
+    "class_type": "LivePortraitCropper",
+    "_meta": { "title": "Crop source face" },
+    "inputs": {
+      "pipeline": ["pipe", 0], "cropper": ["cropper", 0], "source_image": ["src", 0],
+      "dsize": 512, "scale": 2.3, "vx_ratio": 0.0, "vy_ratio": -0.125,
+      "face_index": 0, "face_index_order": "large-small", "rotate": true
+    }
+  },
+  "proc": {
+    "class_type": "LivePortraitProcess",
+    "_meta": { "title": "Drive source by the clip (subtle = breathing/blink)" },
+    "inputs": {
+      "pipeline": ["pipe", 0], "crop_info": ["crop", 1], "source_image": ["src", 0],
+      "driving_images": ["drive", 0],
+      "lip_zero": false, "lip_zero_threshold": 0.03, "stitching": true,
+      "delta_multiplier": 1.0, "mismatch_method": "constant",
+      "relative_motion_mode": "relative", "driving_smooth_observation_variance": 0.000003
+    }
+  },
+  "composite": {
+    "class_type": "LivePortraitComposite",
+    "_meta": { "title": "Paste animated face back onto the full figure" },
+    "inputs": { "source_image": ["src", 0], "cropped_image": ["proc", 0], "liveportrait_out": ["proc", 1] }
+  },
+  "save": {
+    "class_type": "VHS_VideoCombine",
+    "_meta": { "title": "Save loopable webm (av1-webm; pingpong = seamless loop)" },
+    "inputs": {
+      "images": ["composite", 0], "frame_rate": 25, "loop_count": 0,
+      "filename_prefix": "kaeli_idle_loop", "format": "video/av1-webm",
+      "pingpong": true, "save_output": true
+    }
+  }
+}

@@ -332,8 +332,11 @@ com decisão de gameplay e **estado vivo visível no HUD** (chip da passiva + ma
 Os cooldowns pertencem aos slots 1-4. A página Kaelis (abas Perfil / Skins / Maestria /
 Equipamento / Informação) permite visualizar o kit, presentear, trocar skins e gastar pontos de
 maestria. Visualmente é um "ateliê": rail de roster à esquerda, alcova de arte central com a Kaeli
-em idle rotativo (`<app-kaeli-idle>`, 3 poses/7s) sobre seu `bg-portrait` quando há arte autoral —
-senão o sprite da skin selecionada — e o dossiê de abas em vidro à direita.
+em idle rotativo (`<app-kaeli-idle>`, 3 poses/7s + respiração CSS senoidal sutil ancorada nos pés,
+desligada sob `prefers-reduced-motion`; e, **opt-in**, um `idle-loop.webm` premium que toca no lugar
+do breathing quando registrado no manifest, com fallback automático pro breathing CSS) sobre seu
+`bg-portrait` quando há arte autoral — senão o sprite da skin selecionada — e o dossiê de abas em
+vidro à direita.
 
 ## Estrutura
 

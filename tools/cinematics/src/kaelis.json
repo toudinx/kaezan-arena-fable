@@ -1,0 +1,9 @@
+[
+  { "slug": "eloa",   "name": "ELOA",   "element": "holy",     "title": "Serafim do Julgamento" },
+  { "slug": "seren",  "name": "SEREN",  "element": "physical", "title": "Cavaleira Astral" },
+  { "slug": "velvet", "name": "VELVET", "element": "death",    "title": "Arauto do Pesadelo" },
+  { "slug": "rin",    "name": "RIN",    "element": "fire",     "title": "Súcubus do Pacto" },
+  { "slug": "rynna",  "name": "RYNNA",  "element": "energy",   "title": "Dragoa do Trovão" },
+  { "slug": "lunara", "name": "LUNARA", "element": "ice",      "title": "Lebre Lunar" },
+  { "slug": "gaia",   "name": "GAIA",   "element": "earth",    "title": "Arqueira dos Monólitos" }
+]

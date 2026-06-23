@@ -55,6 +55,18 @@ export class KaeliArtService {
       .map((n) => this.url(id, n));
   }
 
+  /**
+   * CUT-03: loop premium de idle (`.webm`, gerado no ComfyUI/LivePortrait a partir do
+   * `idle-1`). Presente só quando `idle-loop` está no manifest E o arquivo foi dropado —
+   * caso contrário `null` e o `<app-kaeli-idle>` cai no breathing CSS (CUT-02). É o único
+   * asset `.webm` (os demais são `.png`), por isso não passa pelo `url()`/`asset()` genéricos.
+   */
+  idleLoop(id: string): string | null {
+    return this.has(id, 'idle-loop')
+      ? `/assets/kaelis/${this.folder(id)}/idle-loop.webm`
+      : null;
+  }
+
   wallpaper(id: string): string | null { return this.asset(id, 'wallpaper'); }
   bgLandscape(id: string): string | null { return this.asset(id, 'bg-landscape'); }
   bgPortrait(id: string): string | null { return this.asset(id, 'bg-portrait'); }

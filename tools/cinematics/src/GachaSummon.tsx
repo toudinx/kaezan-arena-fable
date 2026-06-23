@@ -22,9 +22,9 @@ export const SUMMON_DURATION = 450; // 15s
 
 // Design tokens mirrored from frontend/src/styles.css ("Cathedral Ink + Aurum").
 const INK = "#07070d";
-const IRIS = "#7b6bf2"; // UI / anticipation
+const IRIS = "#7b6bf2"; // default anticipation accent (UI accent)
 const IRIS_DEEP = "#4a2a9e";
-const AURUM = "#e8a93c"; // 5★ reward — the climax color
+const AURUM = "#e8a93c"; // 5★ reward — the climax color (shared across all Kaelis)
 const AURUM_HOT = "#ffe6a8";
 
 export type GachaSummonProps = {
@@ -32,6 +32,11 @@ export type GachaSummonProps = {
   title: string;
   thumbSrc: string;
   bgSrc: string;
+  // Element accent for the build-up layers (arcane circle, energy column,
+  // converging dust + halo). Derived per Kaeli from the --el-* tokens in
+  // kaelis.ts. The 5★ climax (burst, frame, stars) stays AURUM gold regardless.
+  accent?: string;
+  accentDeep?: string;
 };
 
 // ----------------------------------------------------------------------------
@@ -73,7 +78,7 @@ const Backdrop: React.FC<{ bgSrc: string }> = ({ bgSrc }) => {
 // ----------------------------------------------------------------------------
 // Layer 1 — arcane summoning circle (build-up). Iris purple, two rings rotating.
 // ----------------------------------------------------------------------------
-const ArcaneCircle: React.FC = () => {
+const ArcaneCircle: React.FC<{ accent: string }> = ({ accent }) => {
   const frame = useCurrentFrame();
 
   // Grow + glow while charging, then blow out at the burst.
@@ -106,18 +111,18 @@ const ArcaneCircle: React.FC = () => {
         style={{
           opacity,
           transform: `scale(${grow * blowout}) rotateX(68deg)`,
-          filter: `drop-shadow(0 0 ${18 * charge}px ${IRIS})`,
+          filter: `drop-shadow(0 0 ${18 * charge}px ${accent})`,
         }}
       >
         <g transform="translate(450 450)">
-          <circle r="400" fill="none" stroke={IRIS} strokeWidth="2" opacity="0.5" />
+          <circle r="400" fill="none" stroke={accent} strokeWidth="2" opacity="0.5" />
           <g transform={`rotate(${frame * 0.7})`}>
-            <circle r="360" fill="none" stroke={IRIS} strokeWidth="3" opacity="0.85" strokeDasharray="6 26" />
+            <circle r="360" fill="none" stroke={accent} strokeWidth="3" opacity="0.85" strokeDasharray="6 26" />
           </g>
           <g transform={`rotate(${-frame * 1.1})`}>
             <circle r="300" fill="none" stroke={AURUM} strokeWidth="2" opacity="0.55" strokeDasharray="2 18" />
-            <polygon points="0,-300 260,150 -260,150" fill="none" stroke={IRIS} strokeWidth="2" opacity="0.6" />
-            <polygon points="0,300 260,-150 -260,-150" fill="none" stroke={IRIS} strokeWidth="2" opacity="0.6" />
+            <polygon points="0,-300 260,150 -260,150" fill="none" stroke={accent} strokeWidth="2" opacity="0.6" />
+            <polygon points="0,300 260,-150 -260,-150" fill="none" stroke={accent} strokeWidth="2" opacity="0.6" />
           </g>
           <g transform={`rotate(${frame * 1.6})`}>
             {ticks.map((_, i) => {
@@ -134,7 +139,7 @@ const ArcaneCircle: React.FC = () => {
               );
             })}
           </g>
-          <circle r="180" fill="none" stroke={IRIS} strokeWidth="1.5" opacity="0.4" />
+          <circle r="180" fill="none" stroke={accent} strokeWidth="1.5" opacity="0.4" />
         </g>
       </svg>
     </AbsoluteFill>
@@ -144,7 +149,7 @@ const ArcaneCircle: React.FC = () => {
 // ----------------------------------------------------------------------------
 // Layer 2 — vertical energy column gathering at center during charge
 // ----------------------------------------------------------------------------
-const EnergyColumn: React.FC = () => {
+const EnergyColumn: React.FC<{ accent: string }> = ({ accent }) => {
   const frame = useCurrentFrame();
   const w = interpolate(frame, [70, 150, 168], [4, 90, 320], {
     extrapolateLeft: "clamp",
@@ -156,7 +161,7 @@ const EnergyColumn: React.FC = () => {
     extrapolateRight: "clamp",
   });
   const hue = interpolate(frame, [70, 168], [0, 1], { extrapolateRight: "clamp" });
-  const color = hue > 0.7 ? AURUM_HOT : IRIS;
+  const color = hue > 0.7 ? AURUM_HOT : accent;
   return (
     <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
       <div
@@ -216,11 +221,13 @@ const Burst: React.FC = () => {
 // that rises out of the burst with a glow + shimmer sweep. Self-contained
 // nameplate, so it reads as a gacha "result" card.
 // ----------------------------------------------------------------------------
-const SummonCard: React.FC<{ thumbSrc: string; name: string; title: string }> = ({
-  thumbSrc,
-  name,
-  title,
-}) => {
+const SummonCard: React.FC<{
+  thumbSrc: string;
+  name: string;
+  title: string;
+  accent: string;
+  accentDeep: string;
+}> = ({ thumbSrc, name, title, accent, accentDeep }) => {
   const frame = useCurrentFrame(); // local to its Sequence
   const { fps } = useVideoConfig();
 
@@ -255,7 +262,7 @@ const SummonCard: React.FC<{ thumbSrc: string; name: string; title: string }> = 
           width: 900,
           height: 900,
           opacity: opacity * 0.85 * glow,
-          background: `radial-gradient(circle, ${AURUM} 0%, ${IRIS_DEEP} 30%, transparent 60%)`,
+          background: `radial-gradient(circle, ${AURUM} 0%, ${accentDeep} 30%, transparent 60%)`,
           filter: "blur(40px)",
           mixBlendMode: "screen",
           transform: `translateY(${float * 0.5}px)`,
@@ -324,7 +331,7 @@ const SummonCard: React.FC<{ thumbSrc: string; name: string; title: string }> = 
               opacity: nameOpacity,
               transform: `translateY(${(1 - nameSpring) * 18}px)`,
               letterSpacing: "0.03em",
-              textShadow: "0 0 30px rgba(123,107,242,0.5)",
+              textShadow: `0 0 30px ${accent}80`,
             }}
           >
             {name}
@@ -454,7 +461,14 @@ const RarityStars: React.FC<{ progress: number }> = ({ progress }) => {
 // ----------------------------------------------------------------------------
 // Composition
 // ----------------------------------------------------------------------------
-export const GachaSummon: React.FC<GachaSummonProps> = ({ name, title, thumbSrc, bgSrc }) => {
+export const GachaSummon: React.FC<GachaSummonProps> = ({
+  name,
+  title,
+  thumbSrc,
+  bgSrc,
+  accent = IRIS,
+  accentDeep = IRIS_DEEP,
+}) => {
   const frame = useCurrentFrame();
 
   // final cinematic fade in/out
@@ -469,13 +483,13 @@ export const GachaSummon: React.FC<GachaSummonProps> = ({ name, title, thumbSrc,
 
       {/* build-up: converging dust + arcane circle + energy column */}
       <Sequence durationInFrames={180}>
-        <Particles count={70} mode="converge" color={IRIS} seed="charge" />
+        <Particles count={70} mode="converge" color={accent} seed="charge" />
       </Sequence>
       <Sequence durationInFrames={180}>
-        <ArcaneCircle />
+        <ArcaneCircle accent={accent} />
       </Sequence>
       <Sequence durationInFrames={180}>
-        <EnergyColumn />
+        <EnergyColumn accent={accent} />
       </Sequence>
 
       {/* the 5★ burst */}
@@ -490,7 +504,7 @@ export const GachaSummon: React.FC<GachaSummonProps> = ({ name, title, thumbSrc,
 
       {/* reveal: the summon card (portrait + 5★ frame + nameplate) */}
       <Sequence from={166}>
-        <SummonCard thumbSrc={thumbSrc} name={name} title={title} />
+        <SummonCard thumbSrc={thumbSrc} name={name} title={title} accent={accent} accentDeep={accentDeep} />
       </Sequence>
     </AbsoluteFill>
   );

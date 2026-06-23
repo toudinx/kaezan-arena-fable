@@ -68,10 +68,11 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------
-DEFAULT_INPUT = Path(__file__).parent.parent / "frontend/public/assets/kaelis"
-DEFAULT_OUTPUT = Path(__file__).parent.parent / "frontend/public/assets/kaelis_nobg"
+DEFAULT_INPUT = Path(__file__).parent.parent / "output/upscaled"
+DEFAULT_OUTPUT = Path(__file__).parent.parent / "output/upscaled"
 DEFAULT_GLOB = "idle-*.png"
 DEFAULT_MODEL = "isnet-anime"
+BACKUP_SUBDIR = "_originais"
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -103,8 +104,9 @@ class ProcessResult:
 # ---------------------------------------------------------------------------
 
 def collect_images(input_dir: Path, glob_pattern: str) -> list[Path]:
-    """Return all matching images under input_dir, sorted."""
-    return sorted(input_dir.rglob(glob_pattern))
+    """Return all matching images under input_dir, sorted. Excludes backup dirs."""
+    return sorted(p for p in input_dir.rglob(glob_pattern)
+                  if BACKUP_SUBDIR not in p.parts)
 
 
 def validate_alpha(alpha_arr: np.ndarray) -> AlphaStats:
@@ -324,6 +326,11 @@ def parse_args() -> argparse.Namespace:
         help="Overwrite originals instead of writing to --output",
     )
     p.add_argument(
+        "--yes", "-y",
+        action="store_true",
+        help="Skip confirmation prompt for --inplace (non-interactive / script use)",
+    )
+    p.add_argument(
         "--preview",
         action="store_true",
         help="Save a 3-panel before/after/mask image next to each output",
@@ -358,11 +365,14 @@ def main() -> int:
 
     if args.inplace:
         output_dir = None
-        print(f"\n  !! --inplace will OVERWRITE {len(images)} original file(s) !!")
-        confirm = input("  Type 'yes' to continue: ").strip().lower()
-        if confirm != "yes":
-            print("Aborted.")
-            return 0
+        if args.yes:
+            print(f"\n  --inplace: overwriting {len(images)} file(s) (--yes confirmed)\n")
+        else:
+            print(f"\n  !! --inplace will OVERWRITE {len(images)} original file(s) !!")
+            confirm = input("  Type 'yes' to continue: ").strip().lower()
+            if confirm != "yes":
+                print("Aborted.")
+                return 0
     else:
         output_dir = args.output.resolve()
 

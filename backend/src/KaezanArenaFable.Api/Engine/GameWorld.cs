@@ -1500,9 +1500,12 @@ public sealed class GameWorld
             * Loadout.Mastery.CooldownMult
             * (1 - EquipmentStats.CooldownReduction));
 
-        Emit("skill_cast", Player.X, Player.Y, 0, 0, 0, skill.Name);
         if (target is not null)
             Player.Facing = FacingFrom(target.X - Player.X, target.Y - Player.Y);
+        // CUT-05: visual-only cast cue. Carries the skill id + aim point (+ isUlt via Crit) so the
+        // client can stamp shape-keyed FX from its own skill-footprint catalog. Pure cosmetics — this
+        // event is only appended to the outgoing stream; it never feeds the simulation.
+        Emit("skill_cast", Player.X, Player.Y, aimX, aimY, 0, skill.Id, Player.Id, isUlt);
 
         // maestria: slots 1-4 multiplicam o Power; a ultimate amplifica duração/cura (ultmod)
         var ultScale = isUlt ? Loadout.Mastery.UltimatePowerMult : 1.0;

@@ -43,6 +43,24 @@ Instruções para assistentes de IA trabalhando neste repo.
   sprites autorais: metodologia PC↔celular em `docs/WORKFLOW_imagem_e_cutscenes.md`; roadmap único em
   `docs/roadmap_producao_visual.md` (3 etapas: imagem estática · movimento · sprites).
 
+## ComfyUI — geração de imagens e vídeos via Claude Code
+
+O Claude Code consegue gerar imagens, criar vídeos e ajustar workflows do ComfyUI **diretamente**,
+sem MCP. O mecanismo é `tools/comfyui_batch.py`, que fala com a API REST do ComfyUI em
+`http://localhost:8188` via Bash tool.
+
+**Pré-requisito:** ComfyUI precisa estar rodando localmente antes de pedir qualquer geração.
+
+O que o Claude pode fazer quando o ComfyUI está ligado:
+- Gerar imagens: executar qualquer workflow JSON em `tools/workflows/`
+- Criar vídeos idle (busto vivo): via skill `kaeli-idle-video` ou direto com `wanbust`
+- Ajustar parâmetros de workflow (seed, steps, cfg, LoRA weights, denoise, etc.)
+- Criar ou editar arquivos `.json` de workflow em `tools/workflows/`
+- Enviar imagem de input, aguardar o resultado e reportar o caminho do arquivo gerado
+
+Receitas validadas e lições aprendidas estão em `docs/KNOWLEDGE_wan_idle_bust.md`.
+Para geração de imagem estática (skin variants, etc.): ver skill `kaeli-asset-prompts`.
+
 ## Após implementar
 
 - Atualize o `README.md` se o comportamento visível mudou.

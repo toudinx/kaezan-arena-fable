@@ -1,0 +1,144 @@
+{
+  "blockswap": {
+    "class_type": "WanVideoBlockSwap",
+    "_meta": { "title": "Block swap (8 GB) — blocks_to_swap 40; só mexa se faltar VRAM" },
+    "inputs": {
+      "blocks_to_swap": 40,
+      "offload_img_emb": true,
+      "offload_txt_emb": true,
+      "use_non_blocking": false,
+      "vace_blocks_to_swap": 0,
+      "prefetch_blocks": 0,
+      "block_swap_debug": false
+    }
+  },
+  "loraselect": {
+    "class_type": "WanVideoLoraSelect",
+    "_meta": { "title": "👉 JIGGLE — strength: 0.0 desliga · 0.3 sutil · 0.4 padrão · 0.55 forte" },
+    "inputs": {
+      "lora": "gameb.safetensors",
+      "strength": 0.4,
+      "low_mem_load": true,
+      "merge_loras": false
+    }
+  },
+  "model": {
+    "class_type": "WanVideoModelLoader",
+    "_meta": { "title": "Wan2.1 I2V 480p fp8 (não mexer)" },
+    "inputs": {
+      "model": "wan2.1_i2v_480p_14B_fp8_e4m3fn.safetensors",
+      "base_precision": "fp16",
+      "quantization": "fp8_e4m3fn",
+      "load_device": "offload_device",
+      "attention_mode": "sdpa",
+      "block_swap_args": ["blockswap", 0],
+      "lora": ["loraselect", 0]
+    }
+  },
+  "vae": {
+    "class_type": "WanVideoVAELoader",
+    "_meta": { "title": "Wan2.1 VAE (não mexer)" },
+    "inputs": { "model_name": "wan_2.1_vae.safetensors", "precision": "bf16" }
+  },
+  "t5": {
+    "class_type": "LoadWanVideoT5TextEncoder",
+    "_meta": { "title": "UMT5-XXL (não mexer)" },
+    "inputs": {
+      "model_name": "umt5-xxl-enc-bf16.safetensors",
+      "precision": "bf16",
+      "load_device": "offload_device",
+      "quantization": "disabled"
+    }
+  },
+  "poscat": {
+    "class_type": "StringConcatenate",
+    "_meta": { "title": "PROMPT+ : string_a = BASE (fixo, não mexer) · 👉 string_b = ESPECÍFICO da Kaeli" },
+    "inputs": {
+      "string_a": "subtle idle breathing, chest rising and falling slowly, breasts jiggling gently, shaking breasts, hair swaying gently, slight blink, static camera, soft ambient motion",
+      "string_b": "",
+      "delimiter": ", "
+    }
+  },
+  "negcat": {
+    "class_type": "StringConcatenate",
+    "_meta": { "title": "NEG+ : string_a = BASE (fixo) · 👉 string_b = ESPECÍFICO da Kaeli (ex: 'sleepy, drowsy')" },
+    "inputs": {
+      "string_a": "moving hands, hand gesture, raising hand, big movement, walking, camera pan, zoom, warping, morphing, extra limbs, distorted face, brightness flicker, exposure change, flicker, blurry, low quality",
+      "string_b": "",
+      "delimiter": ", "
+    }
+  },
+  "textencode": {
+    "class_type": "WanVideoTextEncode",
+    "_meta": { "title": "Text encode (prompt vem dos nós PROMPT+/NEG+ — edite lá, não aqui)" },
+    "inputs": {
+      "positive_prompt": ["poscat", 0],
+      "negative_prompt": ["negcat", 0],
+      "t5": ["t5", 0],
+      "force_offload": true
+    }
+  },
+  "loadimage": {
+    "class_type": "LoadImage",
+    "_meta": { "title": "👉 THUMB da Kaeli — suba a imagem aqui (busto)" },
+    "inputs": { "image": "kz_thumb.png", "upload": "image" }
+  },
+  "imgencode": {
+    "class_type": "WanVideoImageToVideoEncode",
+    "_meta": { "title": "👉 MOVIMENTO — start_latent_strength: 1.0 calmo · 0.9 ativo · MENOR=mais. num_frames=duração" },
+    "inputs": {
+      "width": 512,
+      "height": 512,
+      "num_frames": 49,
+      "noise_aug_strength": 0.02,
+      "start_latent_strength": 1.0,
+      "end_latent_strength": 1.0,
+      "force_offload": true,
+      "tiled_vae": true,
+      "vae": ["vae", 0],
+      "start_image": ["loadimage", 0]
+    }
+  },
+  "sampler": {
+    "class_type": "WanVideoSampler",
+    "_meta": { "title": "👉 seed (varia a piscada/realização) · steps 25 (12 = preview rápido) · cfg 6 · shift 5" },
+    "inputs": {
+      "model": ["model", 0],
+      "image_embeds": ["imgencode", 0],
+      "text_embeds": ["textencode", 0],
+      "steps": 25,
+      "cfg": 6.0,
+      "shift": 5.0,
+      "seed": 242472,
+      "force_offload": true,
+      "scheduler": "unipc",
+      "riflex_freq_index": 0
+    }
+  },
+  "decode": {
+    "class_type": "WanVideoDecode",
+    "_meta": { "title": "Decode VAE tiling (não mexer)" },
+    "inputs": {
+      "vae": ["vae", 0],
+      "samples": ["sampler", 0],
+      "enable_vae_tiling": true,
+      "tile_x": 272,
+      "tile_y": 272,
+      "tile_stride_x": 144,
+      "tile_stride_y": 128
+    }
+  },
+  "save": {
+    "class_type": "VHS_VideoCombine",
+    "_meta": { "title": "Salva (pingpong=loop 6s; troque format p/ h264-mp4 se av1 falhar)" },
+    "inputs": {
+      "images": ["decode", 0],
+      "frame_rate": 16,
+      "loop_count": 0,
+      "filename_prefix": "kaeli_bust_ui",
+      "format": "video/h264-mp4",
+      "pingpong": true,
+      "save_output": true
+    }
+  }
+}

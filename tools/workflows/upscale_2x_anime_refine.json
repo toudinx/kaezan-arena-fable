@@ -1,0 +1,278 @@
+{
+  "last_node_id": 16,
+  "last_link_id": 16,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "Note",
+      "pos": [20, 20],
+      "size": {"0": 620, "1": 200},
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "properties": {"text": ""},
+      "widgets_values": ["KAEZAN — Upscale 2x Anime + REFINE (recupera o traço)\n\nPor que: o AnimeSharp sozinho só afia pixel, não redesenha. Aqui o\ncheckpoint anime (WAI Illustrious) REDESENHA a lineart em img2img\ncom denoise baixo, e SO DEPOIS o AnimeSharp amplia o resultado já-anime.\n\nRig 8GB: o refine roda em ~1.2MP (cabe na VRAM). Se der OOM, baixe\nmegapixels do node 'ScaleToTotalPixels' pra 1.0.\n\nDENOISE (node KSampler):\n  0.25-0.30 = reafia o traço sem mudar o desenho (comece aqui)\n  0.35-0.45 = bem anime, mas mexe em mãos/joias\n\nDICA: cole no prompt POSITIVO as MESMAS tags booru que geraram a imagem\noriginal, pra a cara ficar idêntica.\n\nPré-req: waiIllustriousSDXL_v160.safetensors em models/checkpoints/\n         4x-AnimeSharp.pth em models/upscale_models/"]
+    },
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "pos": [20, 260],
+      "size": {"0": 315, "1": 314},
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [1], "shape": 3, "slot_index": 0},
+        {"name": "MASK", "type": "MASK", "links": null, "shape": 3}
+      ],
+      "properties": {"Node name for S&R": "LoadImage"},
+      "widgets_values": ["idle-1.png", "image"]
+    },
+    {
+      "id": 3,
+      "type": "CheckpointLoaderSimple",
+      "pos": [20, 620],
+      "size": {"0": 315, "1": 98},
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [
+        {"name": "MODEL", "type": "MODEL", "links": [4], "shape": 3, "slot_index": 0},
+        {"name": "CLIP", "type": "CLIP", "links": [8, 9], "shape": 3, "slot_index": 1},
+        {"name": "VAE", "type": "VAE", "links": [2, 11], "shape": 3, "slot_index": 2}
+      ],
+      "properties": {"Node name for S&R": "CheckpointLoaderSimple"},
+      "widgets_values": ["waiIllustriousSDXL_v160.safetensors"]
+    },
+    {
+      "id": 6,
+      "type": "ImageScaleToTotalPixels",
+      "pos": [380, 260],
+      "size": {"0": 280, "1": 82},
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {"name": "image", "type": "IMAGE", "link": 1}
+      ],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [3], "shape": 3, "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "ImageScaleToTotalPixels"},
+      "widgets_values": ["lanczos", 1.2]
+    },
+    {
+      "id": 4,
+      "type": "CLIPTextEncode",
+      "pos": [380, 400],
+      "size": {"0": 360, "1": 120},
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {"name": "clip", "type": "CLIP", "link": 8}
+      ],
+      "outputs": [
+        {"name": "CONDITIONING", "type": "CONDITIONING", "links": [5], "shape": 3, "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "CLIPTextEncode"},
+      "widgets_values": ["masterpiece, best quality, amazing quality, very aesthetic, absurdres, anime, sharp focus, clean lineart, cel shading, 1girl"]
+    },
+    {
+      "id": 5,
+      "type": "CLIPTextEncode",
+      "pos": [380, 560],
+      "size": {"0": 360, "1": 120},
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {"name": "clip", "type": "CLIP", "link": 9}
+      ],
+      "outputs": [
+        {"name": "CONDITIONING", "type": "CONDITIONING", "links": [6], "shape": 3, "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "CLIPTextEncode"},
+      "widgets_values": ["lowres, blurry, worst quality, low quality, jpeg artifacts, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, signature, watermark, 3d, realistic, photo"]
+    },
+    {
+      "id": 7,
+      "type": "VAEEncode",
+      "pos": [700, 260],
+      "size": {"0": 210, "1": 46},
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {"name": "pixels", "type": "IMAGE", "link": 3},
+        {"name": "vae", "type": "VAE", "link": 2}
+      ],
+      "outputs": [
+        {"name": "LATENT", "type": "LATENT", "links": [7], "shape": 3, "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "VAEEncode"}
+    },
+    {
+      "id": 8,
+      "type": "KSampler",
+      "pos": [700, 360],
+      "size": {"0": 300, "1": 262},
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {"name": "model", "type": "MODEL", "link": 4},
+        {"name": "positive", "type": "CONDITIONING", "link": 5},
+        {"name": "negative", "type": "CONDITIONING", "link": 6},
+        {"name": "latent_image", "type": "LATENT", "link": 7}
+      ],
+      "outputs": [
+        {"name": "LATENT", "type": "LATENT", "links": [10], "shape": 3, "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "KSampler"},
+      "widgets_values": [0, "fixed", 22, 6.0, "dpmpp_2m", "karras", 0.30]
+    },
+    {
+      "id": 9,
+      "type": "VAEDecode",
+      "pos": [1030, 360],
+      "size": {"0": 210, "1": 46},
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {"name": "samples", "type": "LATENT", "link": 10},
+        {"name": "vae", "type": "VAE", "link": 11}
+      ],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [13, 16], "shape": 3, "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "VAEDecode"}
+    },
+    {
+      "id": 10,
+      "type": "UpscaleModelLoader",
+      "pos": [1030, 460],
+      "size": {"0": 280, "1": 58},
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "outputs": [
+        {"name": "UPSCALE_MODEL", "type": "UPSCALE_MODEL", "links": [12], "shape": 3, "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "UpscaleModelLoader"},
+      "widgets_values": ["4x-AnimeSharp.pth"]
+    },
+    {
+      "id": 11,
+      "type": "ImageUpscaleWithModel",
+      "pos": [1030, 560],
+      "size": {"0": 280, "1": 46},
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {"name": "upscale_model", "type": "UPSCALE_MODEL", "link": 12},
+        {"name": "image", "type": "IMAGE", "link": 13}
+      ],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [14], "shape": 3, "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "ImageUpscaleWithModel"}
+    },
+    {
+      "id": 12,
+      "type": "ImageScaleBy",
+      "pos": [1030, 660],
+      "size": {"0": 210, "1": 82},
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {"name": "image", "type": "IMAGE", "link": 14}
+      ],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [15], "shape": 3, "slot_index": 0}
+      ],
+      "properties": {"Node name for S&R": "ImageScaleBy"},
+      "widgets_values": ["lanczos", 0.5]
+    },
+    {
+      "id": 13,
+      "type": "SaveImage",
+      "pos": [1360, 260],
+      "size": {"0": 320, "1": 320},
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 15}
+      ],
+      "properties": {"Node name for S&R": "SaveImage"},
+      "widgets_values": ["kaezan_refined"]
+    },
+    {
+      "id": 14,
+      "type": "PreviewImage",
+      "pos": [1360, 620],
+      "size": {"0": 320, "1": 250},
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 16}
+      ],
+      "properties": {"Node name for S&R": "PreviewImage"}
+    },
+    {
+      "id": 15,
+      "type": "Note",
+      "pos": [700, 660],
+      "size": {"0": 300, "1": 120},
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "properties": {"text": ""},
+      "widgets_values": ["KSampler = o refine que devolve o traço.\nMexa SO no denoise.\nPreview (nó à direita-baixo) mostra o resultado\nANTES do AnimeSharp — use pra calibrar o denoise\nsem esperar o upscale toda vez."]
+    }
+  ],
+  "links": [
+    [1, 2, 0, 6, 0, "IMAGE"],
+    [2, 3, 2, 7, 1, "VAE"],
+    [3, 6, 0, 7, 0, "IMAGE"],
+    [4, 3, 0, 8, 0, "MODEL"],
+    [5, 4, 0, 8, 1, "CONDITIONING"],
+    [6, 5, 0, 8, 2, "CONDITIONING"],
+    [7, 7, 0, 8, 3, "LATENT"],
+    [8, 3, 1, 4, 0, "CLIP"],
+    [9, 3, 1, 5, 0, "CLIP"],
+    [10, 8, 0, 9, 0, "LATENT"],
+    [11, 3, 2, 9, 1, "VAE"],
+    [12, 10, 0, 11, 0, "UPSCALE_MODEL"],
+    [13, 9, 0, 11, 1, "IMAGE"],
+    [14, 11, 0, 12, 0, "IMAGE"],
+    [15, 12, 0, 13, 0, "IMAGE"],
+    [16, 9, 0, 14, 0, "IMAGE"]
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "title": "1. Refine (redesenha o traço) — SDXL img2img",
+      "bounding": [360, 200, 660, 600],
+      "color": "#3a2060",
+      "font_size": 20,
+      "locked": false
+    },
+    {
+      "id": 2,
+      "title": "2. Upscale do anime já limpo — AnimeSharp",
+      "bounding": [1020, 420, 320, 340],
+      "color": "#206040",
+      "font_size": 20,
+      "locked": false
+    }
+  ],
+  "config": {},
+  "extra": {"ds": {"scale": 0.7, "offset": [0, 0]}},
+  "version": 0.4
+}

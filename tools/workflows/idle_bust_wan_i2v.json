@@ -1,15 +1,24 @@
 {
-  "_comment": "CUT-03 ALT (Wan I2V) — 'busto vivo' de uma Kaeli a partir da THUMB: respiração sutil, peito subindo/descendo e cabelo balançando (o que o LivePortrait NÃO faz — ele só dirige o rosto). Kijai ComfyUI-WanVideoWrapper + Wan2.1 I2V QUANTIZADO (fp8/GGUF) p/ caber em 8 GB (RTX 4070). Roda via comfyui_batch.py wanbust ou carregado no ComfyUI.",
-  "_status": "⚠️ NAO-VALIDADO NO RIG. Diferente do idle_loop_liveportrait.json (validado 2026-06-23), os nodes do WanVideoWrapper e os pesos Wan2.1 I2V AINDA NAO estao instalados aqui (ver memoria img2vid-wan + tools/README.md CUT-03 ALT). Os nomes de node/inputs abaixo seguem a API do WanVideoWrapper (Kijai) de inicio de 2026; quando instalar, monte o grafo no ComfyUI, exporte com Save (API Format) e reconcilie qualquer divergencia de schema. O subcomando 'wanbust' faz override por class_type, entao pequenas diferencas de inputs nao quebram os overrides de prompt/frames/fps.",
-  "_8gb_notes": "fp8/GGUF + WanVideoBlockSwap (blocks_to_swap alto) + VAE tiling + ~49-81 frames + ~480-512p. Wan2.1 e treinado a 16 fps. Saida e RGB (sem alpha): p/ compor sobre bg-portrait, keyar/removebg por frame (a thumb tem fundo gradiente simples, facilita).",
+  "_comment": "CUT-03 ALT (Wan I2V) — 'busto vivo' de uma Kaeli a partir da THUMB: respiração sutil, peito subindo/descendo e cabelo balançando (o que o LivePortrait NÃO faz — ele só dirige o rosto). Kijai ComfyUI-WanVideoWrapper + Wan2.1 I2V 480p QUANTIZADO (fp8_e4m3fn) p/ caber em 8 GB (RTX 4070). Roda via comfyui_batch.py wanbust ou carregado no ComfyUI.",
+  "_status": "VALIDADO contra os schemas reais do ComfyUI-WanVideoWrapper instalado no rig (2026-06-23): nomes de node e inputs lidos de nodes.py / nodes_model_loading.py / nodes_sampler.py. Versão VAE-only: o clip_vision é OPCIONAL no WanVideoImageToVideoEncode (só o vae é obrigatório), então omitimos o LoadWanVideoClipTextEncoder — evita baixar o 'open-clip-xlm-roberta-large-vit-huge-14' (o sigclip_vision_patch14_384 baixado é p/ outro pipeline e NÃO serve aqui). Pra identidade mais fiel no futuro, dá pra plugar clip_embeds (ver tools/README.md CUT-03 ALT).",
+  "_8gb_notes": "fp8_e4m3fn + WanVideoBlockSwap (blocks_to_swap 30/40 — suba se faltar VRAM) + VAE tiling no encode e no decode + 49 frames + 512x512 + 16 fps + pingpong. Saida e RGB (sem alpha): p/ compor sobre bg-portrait, keyar/removebg por frame (a thumb tem fundo gradiente simples).",
   "blockswap": {
     "class_type": "WanVideoBlockSwap",
-    "_meta": { "title": "Block swap — offload p/ caber em 8 GB (aumente blocks_to_swap se faltar VRAM)" },
-    "inputs": { "blocks_to_swap": 30, "offload_img_emb": true, "offload_txt_emb": true }
+    "_meta": { "title": "Block swap — offload p/ 8 GB (14B tem 40 blocos; suba blocks_to_swap se faltar VRAM)" },
+    "_note": "Os opcionais (vace_blocks_to_swap etc.) PRECISAM estar aqui: o setargs só repassa o que foi enviado, e o init_blockswap lê vace_blocks_to_swap sem default → None > 0 crasha.",
+    "inputs": {
+      "blocks_to_swap": 30,
+      "offload_img_emb": true,
+      "offload_txt_emb": true,
+      "use_non_blocking": false,
+      "vace_blocks_to_swap": 0,
+      "prefetch_blocks": 0,
+      "block_swap_debug": false
+    }
   },
   "model": {
     "class_type": "WanVideoModelLoader",
-    "_meta": { "title": "Wan2.1 I2V (fp8). Troque por GGUF se preferir (WanVideoModelLoader aceita .gguf em alguns forks)" },
+    "_meta": { "title": "Wan2.1 I2V 480p (fp8). Em models/diffusion_models/" },
     "inputs": {
       "model": "wan2.1_i2v_480p_14B_fp8_e4m3fn.safetensors",
       "base_precision": "fp16",
@@ -21,12 +30,12 @@
   },
   "vae": {
     "class_type": "WanVideoVAELoader",
-    "_meta": { "title": "Wan2.1 VAE" },
-    "inputs": { "model_name": "Wan2_1_VAE_bf16.safetensors", "precision": "bf16" }
+    "_meta": { "title": "Wan2.1 VAE. Em models/vae/" },
+    "inputs": { "model_name": "wan_2.1_vae.safetensors", "precision": "bf16" }
   },
   "t5": {
     "class_type": "LoadWanVideoT5TextEncoder",
-    "_meta": { "title": "UMT5-XXL text encoder (offload p/ VRAM)" },
+    "_meta": { "title": "UMT5-XXL text encoder. Em models/text_encoders/" },
     "inputs": {
       "model_name": "umt5-xxl-enc-bf16.safetensors",
       "precision": "bf16",
@@ -38,16 +47,11 @@
     "class_type": "WanVideoTextEncode",
     "_meta": { "title": "Prompt de MOVIMENTO (camera estatica)" },
     "inputs": {
-      "positive_prompt": "subtle idle breathing, chest rising and falling slowly, hair swaying gently, slight blink, static camera, soft ambient motion",
-      "negative_prompt": "big movement, walking, camera pan, zoom, warping, morphing, extra limbs, distorted face, flicker, blurry, low quality",
+      "positive_prompt": "subtle idle breathing, chest rising and falling slowly, breasts jiggling gently, shaking breasts, hair swaying gently, slight blink, static camera, soft ambient motion",
+      "negative_prompt": "moving hands, hand gesture, raising hand, big movement, walking, camera pan, zoom, warping, morphing, extra limbs, distorted face, brightness flicker, exposure change, flicker, blurry, low quality",
       "t5": ["t5", 0],
       "force_offload": true
     }
-  },
-  "clipvision": {
-    "class_type": "CLIPVisionLoader",
-    "_meta": { "title": "CLIP-Vision H (guia de imagem do I2V)" },
-    "inputs": { "clip_name": "clip_vision_h.safetensors" }
   },
   "loadimage": {
     "class_type": "LoadImage",
@@ -55,18 +59,19 @@
     "inputs": { "image": "kz_velvet_thumb.png", "upload": "image" }
   },
   "imgencode": {
-    "class_type": "WanVideoImageClipEncode",
-    "_meta": { "title": "Encode da imagem inicial (I2V). width/height/num_frames mandam no custo de VRAM" },
+    "class_type": "WanVideoImageToVideoEncode",
+    "_meta": { "title": "Encode I2V da imagem inicial (VAE-only). width/height/num_frames mandam no custo de VRAM" },
     "inputs": {
-      "clip_vision": ["clipvision", 0],
-      "image": ["loadimage", 0],
-      "vae": ["vae", 0],
       "width": 512,
       "height": 512,
       "num_frames": 49,
+      "noise_aug_strength": 0.02,
+      "start_latent_strength": 1.0,
+      "end_latent_strength": 1.0,
       "force_offload": true,
-      "noise_aug_strength": 0.0,
-      "latent_strength": 1.0
+      "tiled_vae": true,
+      "vae": ["vae", 0],
+      "start_image": ["loadimage", 0]
     }
   },
   "sampler": {
@@ -80,15 +85,14 @@
       "cfg": 6.0,
       "shift": 5.0,
       "seed": 0,
-      "scheduler": "unipc",
       "force_offload": true,
-      "denoise_strength": 1.0,
+      "scheduler": "unipc",
       "riflex_freq_index": 0
     }
   },
   "decode": {
     "class_type": "WanVideoDecode",
-    "_meta": { "title": "Decode com VAE tiling (8 GB-safe)" },
+    "_meta": { "title": "Decode com VAE tiling (8 GB-safe; tile_x/y > strides)" },
     "inputs": {
       "vae": ["vae", 0],
       "samples": ["sampler", 0],

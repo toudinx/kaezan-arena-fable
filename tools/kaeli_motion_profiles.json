@@ -1,0 +1,57 @@
+{
+  "_comment": "Perfis de movimento por Kaeli p/ o wanbust/emit-ui (CUT-03 ALT). O wanbust acha o perfil pelo slug (--slug ou pasta da thumb) e aplica: positive_extra (anexado ao prompt base / string_b do PROMPT+), negative_extra (string_b do NEG+) e overrides (lora_strength/latent_strength/noise_aug). Flags explícitas na CLI SEMPRE vencem o perfil. Adicionar Kaeli = só editar este JSON. Os valores são pontos de partida — refinar dialando na UI (ver .recipe.json de cada Kaeli).",
+  "_default": {
+    "positive_extra": "",
+    "negative_extra": "",
+    "lora_strength": 0.4
+  },
+  "velvet": {
+    "note": "v8 — olhos normais, sem asa; nada extra",
+    "positive_extra": "",
+    "negative_extra": "",
+    "lora_strength": 0.4,
+    "latent_strength": 1.0
+  },
+  "eloa": {
+    "note": "olhar sultry de base (precisa anti-sono) + asas de anjo; viés de piscada única",
+    "positive_extra": "gentle blink, blinks once, angel wings gently moving, feathers swaying softly",
+    "negative_extra": "sleepy, drowsy",
+    "lora_strength": 0.4,
+    "latent_strength": 0.94
+  },
+  "lunara": {
+    "note": "coelha lunar, cabelo lilás, luas/estrelas; orelhas e fitas se mexem",
+    "positive_extra": "rabbit ears twitching gently, ribbons swaying softly, sparkling stars twinkling, crescent moon charms shimmering",
+    "negative_extra": "ears flapping wildly, fast ear movement",
+    "lora_strength": 0.4,
+    "latent_strength": 1.0
+  },
+  "gaia": {
+    "note": "pele morena, natureza/xamã, penas e folhas; PRESERVAR a pele morena",
+    "positive_extra": "feather earrings swaying gently, leaves rustling, soft breeze through hair, drifting pollen sparkles",
+    "negative_extra": "pale skin, lightened skin, washed out skin",
+    "lora_strength": 0.4,
+    "latent_strength": 1.0
+  },
+  "rin": {
+    "note": "súcubo, cabelo vermelho, chifres + corações; chifres rígidos, fan-service um tom acima. SEM 'wink' no positivo (a base já tem 'slight blink'; wink + blink = piscada dupla/forte). latent 1.0 = olhos firmes (0.95 piscava demais).",
+    "positive_extra": "glowing pink hearts floating softly, hair swaying softly",
+    "negative_extra": "moving horns, wobbling horns, sleepy",
+    "lora_strength": 0.5,
+    "latent_strength": 1.0
+  },
+  "rynna": {
+    "note": "dragoa, cabelo azul, chifres + raios roxos; chifres rígidos, pele morena",
+    "positive_extra": "crackling purple lightning aura, energy flowing around her, hair flowing in the energy, scales shimmering",
+    "negative_extra": "moving horns, wobbling horns, pale skin, lightened skin",
+    "lora_strength": 0.45,
+    "latent_strength": 0.95
+  },
+  "seren": {
+    "note": "cavaleira sacra, cabelo prata rabo-de-cavalo, armadura; jiggle sutil (blindada), estoica",
+    "positive_extra": "high ponytail swaying gently, cape flowing softly, holy light particles drifting, armor gleaming",
+    "negative_extra": "",
+    "lora_strength": 0.25,
+    "latent_strength": 1.0
+  }
+}

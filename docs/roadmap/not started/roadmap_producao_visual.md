@@ -164,33 +164,60 @@ GPT (escolha do projeto, já funciona bem); esta etapa **generaliza o pós-proce
   roupa/cenário mantendo pose e rosto — alternativa **grátis** ao GPT para skins. Só vale se a
   consistência ficar boa; senão, skins seguem no GPT.
 
+## IMG-07b — Consistência sem treino via IPAdapter FaceID / InstantID
+- **Modelo:** Opus · **Effort:** medium · **Skill:** nenhuma · **Depende de:** IMG-07 · (Onda 4, segue IMG-07)
+- **Motivação:** o IMG-07 fechou "skins-herói no GPT", mas na prática o **GPT bloqueia imagem normal por
+  censura** — filtro opaco, fora do nosso controle, base instável pra produção. O rig é Illustrious/Pony
+  (booru) → **sem filtro de conteúdo**: o bloqueio só existe no GPT. **FaceID/InstantID ancoram o ROSTO
+  sem treino** — diferente do IPAdapter **PLUS-FACE** do IMG-07 (que arrastava roupa/paleta da base):
+  FaceID usa embedding ArcFace, então dá **rosto on-model + roupa nova vinda do prompt**, exatamente o
+  caso de skin. **Duplo papel:** desbloqueia skins **já** (grátis, local, sem censura) **e** gera o
+  dataset variado que falta pro IMG-08 — treinar 7 LoRAs hoje, sobre ~8 assets quase iguais por Kaeli,
+  é prematuro. Primeiro FaceID enche o dataset, **depois** LoRA.
+- **Objetivo:** avaliar **IPAdapter FaceID** (ArcFace, ~300 MB) e **InstantID** (ControlNet + IPAdapter
+  próprios, ~2 GB) pra 1 Kaeli (Velvet); expor como flag `--faceid` no `skinvar` (no lugar do PLUS-FACE);
+  produzir N variações (poses/roupas/ângulos) reconhecíveis como a mesma Kaeli.
+- **Tarefas:** baixar checkpoints FaceID/InstantID **fora do ComfyUI** (lição do CUT-03 — sem rede na
+  venv); flag `--faceid` no `skinvar`; gerar um set de variações da Velvet com ≥2 roupas e ≥3
+  enquadramentos (close/busto/corpo); salvar em `output/skins/<slug>/` servindo de **dataset-semente** do
+  IMG-08.
+- **Aceite:** ≥5 imagens da mesma Kaeli (roupas/poses diferentes), rosto reconhecível, **sem GPT / sem
+  censura**; o set serve de dataset inicial pro IMG-08.
+- **Verificação:** comparar rosto entre gerações (consistência on-model); confirmar variedade de
+  enquadramento/roupa suficiente pra augmentar até ~30 imagens.
+
 ## IMG-08 — (Experimental) txt2img de alta qualidade via LoRA das Kaelis
-- **Modelo:** Opus · **Effort:** high · **Skill:** nenhuma · **Depende de:** IMG-07 · (Onda 5)
+- **Modelo:** Opus · **Effort:** high · **Skill:** nenhuma · **Depende de:** IMG-07b · (Onda 5)
 - **Motivação:** o IMG-07 mostrou o dilema — **img2img** (skinvar) dá consistência mas perde
   qualidade/render; **txt2img** local dá qualidade de sobra (comprovado pelo usuário, mesmo sem LoRA)
   mas a identidade vem só do prompt → **deriva entre imagens** → para um *set* de skin o GPT vence
   (coerência). A **hipótese** é fechar os dois: **treinar um LoRA das Kaelis** ancora a identidade no
   txt2img → qualidade de txt2img **+** consistência → poderia **rivalizar/substituir o GPT** para
-  skins, grátis e local.
-- **Objetivo:** avaliar txt2img + LoRA por Kaeli (ou multi-Kaeli com tokens) sobre os assets
-  existentes, e medir se a identidade fica consistente o bastante entre gerações para produzir um set
-  de skin coerente sem GPT.
-- **Tarefas:** montar dataset por Kaeli (idle-1/2/3, thumb, wallpaper, recortes + variações; captions
-  booru); treinar LoRA SDXL (kohya_ss/OneTrainer; 8 GB-aware: batch 1, grad checkpointing, fp16,
-  ~768-1024 px — lento mas viável); gerar txt2img com `<token da Kaeli>` + roupa nova + hires-fix;
-  comparar consistência **e** qualidade vs GPT e vs o skinvar (img2img).
-- **Risco:** dataset pequeno (poucos assets por Kaeli) é o maior risco de overfit/baixa generalização —
-  pode exigir gerar mais dados (mais ângulos via GPT) antes de treinar. Treino em 8 GB é lento.
+  skins, grátis e local — **e sem a censura do GPT** (ver IMG-07b). **Não treinar as 7 de uma vez:** é
+  `Effort: high`, treino em 8 GB é lento e o dataset pequeno é o maior risco. **Spike de 1 Kaeli
+  primeiro**; só escalar pras 7 se provar.
+- **Objetivo:** **spike de 1 Kaeli (Velvet)** — treinar 1 LoRA SDXL **sobre o dataset gerado pelo FaceID
+  (IMG-07b)** + assets existentes, e medir se a identidade fica consistente o bastante entre gerações
+  txt2img para um set de skin coerente sem GPT.
+- **Tarefas:** montar dataset (~30 imagens: idle-1/2/3, thumb, wallpaper, **recortes** close/busto/
+  meio-corpo + **variações do FaceID** com ≥2 roupas; captions **booru** com token único da Kaeli p.ex.
+  `velvetkaeli`, tags só do que varia — roupa/pose — pra fixar identidade no token); treinar LoRA SDXL
+  (kohya_ss/OneTrainer; 8 GB-aware: batch 1, grad checkpointing, fp16, ~768-1024 px — lento mas viável);
+  gerar txt2img com `<token>` + roupa nova + hires-fix; comparar consistência **e** qualidade vs GPT,
+  vs FaceID (IMG-07b) e vs skinvar (img2img).
+- **Risco:** dataset pequeno é o maior risco de overfit/baixa generalização — o IMG-07b mitiga (enche o
+  dataset com variações on-model sem GPT). Treino em 8 GB é lento.
 - **Aceite:** ≥3 imagens txt2img da mesma Kaeli (poses/roupas diferentes) reconhecíveis como a mesma
-  personagem, em qualidade próxima da arte-herói. Se ficar bom, **reabre a decisão "skins → GPT"** do IMG-07.
+  personagem, em qualidade próxima da arte-herói. Se ficar bom, **reabre a decisão "skins → GPT"** do
+  IMG-07 **e libera escalar pras 7 Kaelis**.
 - **Verificação:** comparação lado a lado; checar consistência de rosto/cabelo/olhos entre as gerações.
 
 ## Execução da Etapa 1
 - **Onda 1:** IMG-00 (intake) ‖ IMG-01 (doc) → IMG-02 (conserto do removebg, prioridade).
 - **Onda 2:** IMG-03 (batch genérico, lê do intake).
 - **Onda 3:** IMG-04 + IMG-05 + IMG-06 (todos dependem do batch; tocam partes distintas).
-- **Onda 4:** IMG-07.
-- **Onda 5:** IMG-08 (txt2img + LoRA — tentativa de bater o GPT localmente; só se valer a pena).
+- **Onda 4:** IMG-07 → IMG-07b (FaceID sem treino: desbloqueia skins sem censura **e** gera o dataset).
+- **Onda 5:** IMG-08 (txt2img + LoRA — **spike de 1 Kaeli** sobre o dataset do IMG-07b; só escalar pras 7 se valer).
 
 ---
 ---
@@ -274,9 +301,21 @@ reels. **Remotion é a espinha dorsal**; **ComfyUI-vídeo é apoio** (8 GB → c
   respiração** (look WW-style de summon) há o caminho image-to-video com **Wan2.1 I2V** a partir
   da **thumb**. Tooling pronto: subcomando `comfyui_batch.py wanbust` + scaffold
   `tools/workflows/idle_bust_wan_i2v.json` (Kijai WanVideoWrapper, fp8/GGUF + block-swap + VAE
-  tiling p/ 8 GB; saída RGB sem alpha) + seção *CUT-03 ALT* no `tools/README.md`. ⚠️ **Não-validado:
-  pende baixar nodes WanVideoWrapper + pesos Wan2.1 I2V quantizados** (sem rede no Claude); o
-  subcomando faz override por `class_type`, tolerante a drift de schema.
+  tiling p/ 8 GB; saída RGB sem alpha) + seção *CUT-03 ALT* no `tools/README.md`. **Validado**
+  contra os `INPUT_TYPES` reais do WanVideoWrapper instalado (2026-06-23): nodes
+  `WanVideoModelLoader/VAELoader/T5/TextEncode/ImageToVideoEncode/Sampler/Decode/BlockSwap`.
+  Roda **VAE-only** (clip vision é opcional no I2V encode → dispensa o `open-clip-xlm-roberta`).
+  Subcomando faz override por `class_type`, tolerante a drift de schema. **Validado end-to-end
+  (2026-06-23):** receita "v8" aprovada (jiggle via LoRA `gameb` 0.4 + respiração + cabelo +
+  piscada, pingpong 6s) → `output/cutscenes/velvet/bust.webm`. Conhecimento prático consolidado em
+  `docs/KNOWLEDGE_wan_idle_bust.md`; skill executável **`kaeli-idle-video`** (thumb → bust.webm).
+  Flags novas no `wanbust`: `--lora/--lora-strength/--native-loop/--fast/--noise-aug/--latent-strength`,
+  registro de seed em `.recipe.json`. **Upscale fechado:** subcomando `wanupscale` (vídeo via
+  ESRGAN/DAT, 512²→1024², `4xNomos2`) → `bust-up.webm`. Pipeline completo `wanbust → wanupscale`.
+  **Escala:** workflow `idle_bust_wan_full.json` carregável na **UI do ComfyUI** (afinar ao vivo,
+  sem runs cegas) + presets na skill `kaeli-idle-video`. Roadmap p/ 7 Kaelis × ~3 idles ≈ 21+ anims.
+  Pendência: **integração da cena** no frontend (WW-style summon). **Extensão:** wallpaper/banner
+  **animados** (mesmo pipeline, aspect 832×480 nativo do Wan); gameplay = outra trilha (SPR-*).
 - **Objetivo:** caminho **opt-in** de idle de alta qualidade: `<app-kaeli-idle>` toca um **`.webm`** de
   breathing **quando existir** (registrado no `manifest.json`), com **fallback** pro breathing CSS
   (CUT-02). Gerar **1 loop de teste** no ComfyUI (LivePortrait a partir de `idle-1`) respeitando os

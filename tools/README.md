@@ -374,43 +374,69 @@ clipe curto ─┘   (8 GB: fp16, ~512px, ~2–4 s, loop costurável/pingpong)
 
 ### CUT-03 ALT — Busto vivo (Wan I2V): peito + cabelo + respiração
 
-> ⚠️ **Experimental / NÃO-VALIDADO no rig.** O LivePortrait dirige **só o rosto**. Quando
-> você quer **peito subindo/descendo e cabelo balançando** (look WW-style de summon), o
-> caminho é **image-to-video** com **Wan2.1 I2V**. Entrada é a **thumb** (busto) — concentra
-> o movimento e cabe na resolução baixa dos 8 GB. Saída é **RGB (sem alpha)**: pra compor
+> ⚠️ **Experimental, mas validado contra os schemas reais do WanVideoWrapper no rig
+> (2026-06-23).** O LivePortrait dirige **só o rosto**. Quando você quer **peito
+> subindo/descendo e cabelo balançando** (look WW-style de summon), o caminho é
+> **image-to-video** com **Wan2.1 I2V**. Entrada é a **thumb** (busto) — concentra o
+> movimento e cabe na resolução baixa dos 8 GB. Saída é **RGB (sem alpha)**: pra compor
 > sobre o `bg-portrait`, keyar/removebg por frame (a thumb tem fundo gradiente simples).
 
 ```
-thumb.png ──→ Wan2.1 I2V (fp8/GGUF + block-swap + VAE tiling) ──→ frames ──→ VideoCombine → bust.webm
+thumb.png ──→ Wan2.1 I2V 480p fp8 (block-swap + VAE tiling, VAE-only) ──→ frames ──→ VideoCombine → bust.webm
               (8 GB: ~49–81 frames, ~480–512p, 16 fps, pingpong = loop)
 ```
 
-**Pré-requisitos a baixar** (o auto-download via HF trava neste rig — baixe pelo navegador):
-- nodes **`ComfyUI-WanVideoWrapper`** (Kijai) — `WanVideoModelLoader`, `WanVideoBlockSwap`,
-  `WanVideoTextEncode`, `WanVideoImageClipEncode`, `WanVideoSampler`, `WanVideoDecode`.
-- pesos **Wan2.1 I2V QUANTIZADO** (fp8 `_e4m3fn` ou GGUF) em `models/diffusion_models/`,
-  VAE `Wan2_1_VAE` e o text encoder `umt5-xxl-enc` nas pastas correspondentes, + `clip_vision_h`.
+**Pré-requisitos** (o auto-download via HF trava neste rig — baixe pelo navegador). Os
+arquivos abaixo vão na pasta **compartilhada** do StabilityMatrix `Data\Models\<Pasta>\`,
+que vira junction p/ `ComfyUI/models/<pasta>/`:
 
-> Como os nodes/pesos **ainda não estão instalados**, o `idle_bust_wan_i2v.json` é um
-> **scaffold**: os nomes de node/inputs seguem a API do WanVideoWrapper de início de 2026.
-> Ao instalar, monte o grafo no ComfyUI, exporte com **Save (API Format)** e reconcilie
-> qualquer divergência. O subcomando faz **override por `class_type`**, então pequenas
-> diferenças de inputs não quebram os overrides de prompt/frames/fps.
+| Peça | Status no rig | Arquivo / pasta |
+|---|---|---|
+| `ComfyUI-WanVideoWrapper` (Kijai) | ✅ instalado | `WanVideoModelLoader` · `WanVideoBlockSwap` · `WanVideoTextEncode` · `WanVideoImageToVideoEncode` · `WanVideoSampler` · `WanVideoDecode` |
+| Wan2.1 I2V 480p fp8 | ✅ baixado | `wan2.1_i2v_480p_14B_fp8_e4m3fn.safetensors` → `DiffusionModels/` |
+| Wan2.1 VAE | ✅ baixado | `wan_2.1_vae.safetensors` → `VAE/` |
+| UMT5-XXL text encoder | ✅ baixado | `umt5-xxl-enc-bf16.safetensors` → `TextEncoders/` |
+| CLIP-Vision | ➖ **não precisa** | `clip_embeds` é opcional no `WanVideoImageToVideoEncode` (só o `vae` é obrigatório) — workflow roda **VAE-only** |
+
+> **Por que VAE-only (sem clip vision):** o `LoadWanVideoClipTextEncoder` valida `log_scale`
+> no state dict e exige especificamente o **`open-clip-xlm-roberta-large-vit-huge-14`** — o
+> `sigclip_vision_patch14_384` (ou o `CLIP-ViT-H-14-laion2B`) **não** servem e dão
+> `Invalid CLIP model`. Como o `clip_embeds` é opcional, o workflow omite o clip vision e
+> roda só com o VAE-encode da thumb — ótimo p/ idle sutil (fica fiel à imagem). Pra
+> identidade ainda mais fiel/movimento mais guiado, dá pra baixar o `open-clip-xlm-roberta-
+> large-vit-huge-14-fp16.safetensors` em `ClipVision/`, adicionar `LoadWanVideoClipTextEncoder`
+> + `WanVideoClipVisionEncode` e ligar a saída no `clip_embeds` do encode.
+
+> O `idle_bust_wan_i2v.json` foi **validado lendo os `INPUT_TYPES` dos nodes instalados**
+> (nomes de node/inputs conferidos em `nodes.py`/`nodes_model_loading.py`/`nodes_sampler.py`).
+> O subcomando faz **override por `class_type`**, então atualizações do pacote que mexam em
+> inputs não quebram os overrides de prompt/frames/fps.
+
+**Receita VALIDADA (v8, 2026-06-23)** — único comando que produziu o resultado aprovado (jiggle
+sutil + respiração + cabelo + piscada orgânica):
 
 ```bash
-# básico (thumb da Velvet → output/cutscenes/velvet/bust.webm)
-python tools/comfyui_batch.py wanbust -i frontend/public/assets/kaelis/velvet/thumb.png
-
-# ajustando custo de VRAM / movimento
-python tools/comfyui_batch.py wanbust -i .../velvet/thumb.png \
-  --frames 65 --width 512 --height 512 --blocks-swap 35 \
-  -p "subtle idle breathing, chest rising and falling, hair swaying gently, slight blink, static camera"
+# 1) gerar (512²)
+python tools/comfyui_batch.py wanbust \
+  -i frontend/public/assets/kaelis/velvet/thumb.png \
+  --lora gameb.safetensors --lora-strength 0.4 --blocks-swap 40
+# 2) upscalar p/ 1024² (sem regerar) → bust-up.webm
+python tools/comfyui_batch.py wanupscale -i output/cutscenes/velvet/bust-raw.mp4 --slug velvet
 ```
 
-> **8 GB-aware:** fp8/GGUF, `WanVideoBlockSwap` (suba `--blocks-swap` se faltar VRAM), VAE
-> tiling, clipe curto. Transcode final é VP9 **`yuv420p`** (RGB, sem alpha — Wan não tem canal
-> alpha; é o oposto do idle-loop do LivePortrait). Compare os dois: o Wan entrega peito/cabelo
-> que faltavam, ao custo de mais tempo/VRAM.
+Saída em `output/cutscenes/<slug>/`: `bust-up.webm` (1024² **final**) · `bust.webm` (512² fonte) ·
+`bust-raw.mp4` + `.recipe.json` (seed) · `_experiments/` (versões de iteração).
+
+> 📖 **Lições práticas, alavancas e armadilhas** (block-swap OOM, merge_loras, brightness pump do
+> `--fast`, pingpong vs loop nativo, jiggle por LoRA, piscada = loteria de seed, upscale) estão
+> consolidadas em [`docs/KNOWLEDGE_wan_idle_bust.md`](../docs/KNOWLEDGE_wan_idle_bust.md). Pra
+> renderizar guiado (gerar + upscalar), use a skill **`kaeli-idle-video`**.
+
+> **8 GB-aware:** fp8 + `WanVideoBlockSwap 40` + VAE tiling + `merge_loras=False` (LoRA on-the-fly,
+> senão OOM). Transcode final é VP9 **`yuv420p`** (RGB, sem alpha — Wan não tem canal alpha; é o
+> oposto do idle-loop do LivePortrait). `--fast` (12 steps) só p/ preview de movimento — o final
+> precisa de steps cheios (senão dá brightness pump). Compare com o LivePortrait: o Wan entrega
+> peito/cabelo/jiggle que faltavam, ao custo de mais tempo/VRAM.
 
 ---
 
@@ -446,7 +472,10 @@ completa de nomes de arquivo.
 | `removebg_isnet_anime.json` | Remoção de fundo com ISNet-anime (⚠️ 1 por vez) |
 | `skin_variant_img2img.json` | **IMG-07** img2img + ControlNet (pose) + IPAdapter (rosto) — referência/debug |
 | `idle_loop_liveportrait.json` | **CUT-03** loop de idle (LivePortrait) a partir do `idle-1` → `.webm` — referência/debug |
-| `idle_bust_wan_i2v.json` | **CUT-03 ALT** busto vivo (Wan2.1 I2V) a partir da `thumb` → `.webm` — ⚠️ scaffold não-validado |
+| `idle_bust_wan_i2v.json` | **CUT-03 ALT** busto vivo (Wan2.1 I2V VAE-only) a partir da `thumb` → `.webm` — base que o `wanbust` usa (LoRA injetada por flag) |
+| `idle_bust_wan_full.json` | **CUT-03 ALT** versão **carregável na UI** do ComfyUI (LoRA já ligada + params v8, nós 👉 rotulados p/ tweak ao vivo) |
+| `upscale_video_2x.json` | **CUT-03 ALT** upscale de vídeo **na UI** (ESRGAN/DAT 512²→1024²) — equivalente ao `wanupscale`, p/ rodar no ComfyUI |
+| `idle_bust_<slug>.json` | **CUT-03 ALT** gerados por `comfyui_batch.py emit-ui` — workflow de UI por Kaeli (prompt/params do perfil já embutidos). Fonte: `kaeli_motion_profiles.json` |
 
 Para criar um workflow novo: monte no ComfyUI, ative **Settings → Developer Mode**
 e exporte com **Save (API Format)**. Execute com `comfyui_batch.py run --workflow`.

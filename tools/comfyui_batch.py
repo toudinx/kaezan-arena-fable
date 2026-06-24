@@ -176,11 +176,31 @@ def _has_exec_error(status: dict) -> bool:
               for e in status.get("messages", []))
 
 def wait_done(prompt_id: str, timeout: float = 600.0) -> dict:
-    """Aguarda o job terminar. Retorna o dict de saída do history."""
+    """Aguarda o job terminar. Retorna o dict de saída do history.
+
+    Tolera soluços transientes de HTTP: durante ops pesadas (load/merge de LoRA,
+    VAE tiling em 8 GB) o servidor pode bloquear >timeout do _get por alguns
+    segundos. Em vez de abortar a run inteira no 1º hiccup, conta falhas
+    CONSECUTIVAS e só desiste se o servidor realmente morreu (ex: OOM → conexão
+    recusada por várias tentativas seguidas).
+    """
     deadline = time.time() + timeout
     dots = 0
+    consec_fail = 0
+    MAX_CONSEC_FAIL = 15   # ~15 polls seguidos sem resposta → servidor morto
     while time.time() < deadline:
-        history = _get(f"/history/{prompt_id}")
+        try:
+            history = _get(f"/history/{prompt_id}")
+            consec_fail = 0
+        except Exception as e:
+            consec_fail += 1
+            if consec_fail >= MAX_CONSEC_FAIL:
+                raise RuntimeError(
+                    f"ComfyUI parou de responder ({consec_fail} polls seguidos: "
+                    f"{type(e).__name__}). Provável OOM/crash do servidor — confira "
+                    f"o terminal do ComfyUI e relance.")
+            time.sleep(2.0)
+            continue
         if prompt_id in history:
             job    = history[prompt_id]
             status = job.get("status", {})
@@ -521,6 +541,105 @@ def _wf_skin_variant(
     return wf
 
 
+# Prompt-base p/ outpaint de busto: continua o VESTIDO/torso pra baixo SEM reinventar
+# o rosto (recolado por cima). Foca na ROUPA/cintura — NÃO em "large breasts/cleavage":
+# com denoise alto numa faixa vazia, pedir peito faz o modelo inventar seios gigantes
+# (foi o erro da v2). Estilo glossy/render (combina com a thumb GPT Image). Sobrescreva
+# por Kaeli com -p ou pelo `outpaint_prompt` do perfil. (validado: Eloa v3, 2026-06-24)
+DEFAULT_OUTPAINT_PROMPT = (
+    "1girl, solo, standing, flowing dress covering torso, narrow waist, detailed outfit, "
+    "hands clasped, cowboy shot, intricate detail, soft shading, lustrous skin, "
+    "volumetric lighting, glossy, highly detailed, official art"
+)
+DEFAULT_OUTPAINT_NEGATIVE = (
+    "huge breasts, gigantic breasts, exaggerated breasts, deformed breasts, bare breasts, "
+    "nipples, extra arms, extra legs, duplicate, second person, out of frame, mutated hands, "
+    + DEFAULT_NEGATIVE + ", realistic, 3d, photorealistic, render")
+
+
+def _wf_outpaint(
+    prompt: str,
+    negative: str = DEFAULT_OUTPAINT_NEGATIVE,
+    checkpoint: str = "NetaYumev35_pretrained_all_in_one.safetensors",
+    bottom: int = 360,
+    top: int = 0,
+    left: int = 0,
+    right: int = 0,
+    feather: int = 48,
+    grow_mask: int = 16,
+    denoise: float = 1.0,
+    steps: int = 28,
+    cfg: float = 5.5,
+    sampler: str = "euler_ancestral",
+    scheduler: str = "normal",
+    seed: int = 0,
+    keep_original: bool = True,
+    style_ref: bool = False,
+    style_preset: str = "PLUS (high strength)",
+    style_weight: float = 1.0,
+    style_weight_type: str = "style transfer",
+    filename_prefix: str = "_kzbatch_outpaint",
+) -> dict:
+    """Estende a thumb (anime) p/ baixo e gera SÓ a faixa nova (torso/peito).
+
+    Pra dar amplitude de jiggle/respiração ao Wan I2V sem regerar o rosto que já
+    está bom: pad pra baixo → VAEEncodeForInpaint (mascara só a faixa nova) →
+    KSampler no checkpoint anime → e recola os pixels ORIGINAIS por cima de tudo
+    menos a faixa nova (ImageCompositeMasked), então o rosto fica intacto (sem
+    round-trip de VAE). `keep_original=False` deixa o VAE redecodar tudo (blend
+    mais coeso, rosto levemente mais macio).
+    """
+    wf = {
+        "1": {"class_type": "LoadImage",
+              "inputs": {"image": "PLACEHOLDER", "upload": "image"}},
+        "2": {"class_type": "CheckpointLoaderSimple",
+              "inputs": {"ckpt_name": checkpoint}},
+        "3": {"class_type": "CLIPTextEncode",
+              "inputs": {"text": prompt, "clip": ["2", 1]}},
+        "4": {"class_type": "CLIPTextEncode",
+              "inputs": {"text": negative, "clip": ["2", 1]}},
+        "5": {"class_type": "ImagePadForOutpaint",
+              "inputs": {"image": ["1", 0], "left": left, "top": top,
+                         "right": right, "bottom": bottom, "feathering": feather}},
+        "6": {"class_type": "VAEEncodeForInpaint",
+              "inputs": {"pixels": ["5", 0], "vae": ["2", 2],
+                         "mask": ["5", 1], "grow_mask_by": grow_mask}},
+        "7": {"class_type": "KSampler",
+              "inputs": {"model": ["2", 0], "positive": ["3", 0],
+                         "negative": ["4", 0], "latent_image": ["6", 0],
+                         "seed": seed, "steps": steps, "cfg": cfg,
+                         "sampler_name": sampler, "scheduler": scheduler,
+                         "denoise": denoise}},
+        "8": {"class_type": "VAEDecode",
+              "inputs": {"samples": ["7", 0], "vae": ["2", 2]}},
+    }
+    if style_ref:
+        # IPAdapter (style transfer) usando a PRÓPRIA imagem como referência: força a
+        # faixa nova a herdar o RENDER do topo (GPT Image polido), em vez do look
+        # nativo do checkpoint SD (que dá "traço chapado"/Naruto). Requer CLIP-Vision.
+        wf["20"] = {"class_type": "IPAdapterUnifiedLoader",
+                    "inputs": {"model": ["2", 0], "preset": style_preset}}
+        wf["21"] = {"class_type": "IPAdapter",
+                    "inputs": {"model": ["20", 0], "ipadapter": ["20", 1],
+                               "image": ["1", 0], "weight": style_weight,
+                               "start_at": 0.0, "end_at": 1.0,
+                               "weight_type": style_weight_type}}
+        wf["7"]["inputs"]["model"] = ["21", 0]
+    if keep_original:
+        wf["9"] = {"class_type": "InvertMask",
+                   "inputs": {"mask": ["5", 1]}}
+        wf["10"] = {"class_type": "ImageCompositeMasked",
+                    "inputs": {"destination": ["8", 0], "source": ["5", 0],
+                               "x": 0, "y": 0, "resize_source": False,
+                               "mask": ["9", 0]}}
+        final = ["10", 0]
+    else:
+        final = ["8", 0]
+    wf["11"] = {"class_type": "SaveImage",
+                "inputs": {"images": final, "filename_prefix": filename_prefix}}
+    return wf
+
+
 def _set_image(workflow: dict, filename: str):
     """Substitui o nome da imagem em todos os LoadImage do workflow."""
     for node in workflow.values():
@@ -787,6 +906,50 @@ def parse_args():
     rn.add_argument("--workflow", "-w", type=pathlib.Path, required=True,
                     help="Workflow JSON no formato API (ComfyUI Dev Mode → Save API Format)")
 
+    op = sub.add_parser(
+        "outpaint",
+        help="Estende a thumb p/ baixo (busto p/ jiggle) sem regerar o rosto (Illustrious inpaint)")
+    op.add_argument("--image", "-i", type=pathlib.Path, required=True,
+                    help="Thumb a estender. Ex: frontend/public/assets/kaelis/eloa/thumb.png")
+    op.add_argument("--slug", default=None,
+                    help="Slug da Kaeli (default: nome da pasta da imagem)")
+    op.add_argument("--output", "-o", type=pathlib.Path, default=None,
+                    help="Saída (default: output/thumbs_wide/<slug>/thumb.png). NÃO sobrescreve a original.")
+    op.add_argument("--prompt", "-p", default=None,
+                    help="Descrição da roupa/busto p/ continuar (default: genérico anime). "
+                         "O rosto é recolado, então foque na roupa do colo p/ baixo.")
+    op.add_argument("--negative", default=DEFAULT_OUTPAINT_NEGATIVE,
+                    help="Negativo (default: anti-realismo + anti-duplicação)")
+    op.add_argument("--checkpoint", default="NetaYumev35_pretrained_all_in_one.safetensors",
+                    help="Checkpoint anime SDXL (default: NetaYume — render glossy que casa com o GPT Image; "
+                         "WAI/Animagine ficam 'chapados' e destoam do topo)")
+    op.add_argument("--bottom", type=int, default=260,
+                    help="Pixels a adicionar embaixo (default: 260 = descorta os seios). "
+                         "Maior (360+) = mais torso/meio-corpo, mas arrisca inventar braço/cintura torta.")
+    op.add_argument("--top", type=int, default=0, help="Pixels a adicionar em cima (default: 0)")
+    op.add_argument("--left", type=int, default=0)
+    op.add_argument("--right", type=int, default=0)
+    op.add_argument("--feather", type=int, default=48,
+                    help="Suavização da borda do pad (default: 48). Maior = transição mais macia.")
+    op.add_argument("--grow-mask", type=int, default=16, dest="grow_mask",
+                    help="Cresce a máscara de inpaint p/ blendar a costura (default: 16)")
+    op.add_argument("--denoise", type=float, default=1.0,
+                    help="Força na faixa nova (default: 1.0 = gera do zero ali)")
+    op.add_argument("--steps", type=int, default=28)
+    op.add_argument("--cfg", type=float, default=5.5,
+                    help="Illustrious gosta de CFG baixo ~5-6 (default: 5.5)")
+    op.add_argument("--sampler", default="euler_ancestral")
+    op.add_argument("--scheduler", default="normal")
+    op.add_argument("--seed", type=int, default=0, help="0 = derivado do tempo")
+    op.add_argument("--no-keep-original", action="store_true", dest="no_keep_original",
+                    help="NÃO recola o rosto (deixa o VAE redecodar tudo — blend mais coeso, rosto + macio)")
+    op.add_argument("--style-ref", action="store_true", dest="style_ref",
+                    help="Liga o IPAdapter de estilo (herda o render do topo). REQUER os modelos "
+                         "ip-adapter + CLIP-Vision instalados (ComfyUI Manager). Default: OFF.")
+    op.add_argument("--style-weight", type=float, default=1.0, dest="style_weight",
+                    help="Força do style-transfer (só com --style-ref). Default: 1.0")
+    op.add_argument("--url", default=COMFY_URL)
+
     il = sub.add_parser(
         "idleloop",
         help="CUT-03 (experimental): loop de idle premium via LivePortrait → .webm (VP9 alpha)")
@@ -838,6 +1001,12 @@ def parse_args():
                     help="Largura (8 GB: ~480-512; default: o do workflow)")
     wb.add_argument("--height", type=int, default=None,
                     help="Altura (default: o do workflow)")
+    wb.add_argument("--noise-aug", type=float, default=None, dest="noise_aug",
+                    help="noise_aug_strength do encode: mais alto = mais movimento de corpo "
+                         "(0.02 sutil, 0.05-0.1 forte). Default: o do workflow")
+    wb.add_argument("--latent-strength", type=float, default=None, dest="latent_strength",
+                    help="start_latent_strength do encode: MENOR = MAIS movimento "
+                         "(1.0 preso à imagem, 0.85-0.9 respira mais). Default: o do workflow")
     wb.add_argument("--steps",  type=int, default=None,
                     help="Steps do sampler (default: o do workflow)")
     wb.add_argument("--cfg",    type=float, default=None,
@@ -848,6 +1017,23 @@ def parse_args():
                     help="Seed (0 = derivada do tempo)")
     wb.add_argument("--blocks-swap", type=int, default=None, dest="blocks_swap",
                     help="WanVideoBlockSwap blocks_to_swap (mais alto = menos VRAM, mais lento)")
+    wb.add_argument("--lora", default=None,
+                    help="LoRA de motion (jiggle/breast physics) em models/loras/. Injeta um "
+                         "WanVideoLoraSelect no model loader. Sem ela, roda VAE-only normal. "
+                         "Lembre o trigger word da LoRA no --prompt (ex: 'shaking breasts').")
+    wb.add_argument("--lora-strength", type=float, default=None, dest="lora_strength",
+                    help="Força da LoRA: 0.0 desliga, ~0.4-0.6 sutil, 1.0 cheio. "
+                         "Default: perfil da Kaeli (kaeli_motion_profiles.json) ou 0.4.")
+    wb.add_argument("--no-profile", action="store_true", dest="no_profile",
+                    help="Ignora o perfil de movimento da Kaeli (kaeli_motion_profiles.json); "
+                         "usa só os defaults do workflow + flags explícitas.")
+    wb.add_argument("--native-loop", action="store_true", dest="native_loop",
+                    help="Loop NATIVO (WanVideoLoopArgs/Mobius) + DESLIGA o pingpong: movimento "
+                         "forward-time (jiggle não inverte). Recomendado com --lora p/ idle.")
+    wb.add_argument("--fast", action="store_true",
+                    help="Preview rápido: 12 steps (movimento representativo, detalhe tosco). "
+                         "Use p/ DIAL dos params de movimento; rode sem --fast p/ o final nítido. "
+                         "Mantenha --blocks-swap/--lora fixos p/ o ComfyUI cachear o modelo entre runs.")
     wb.add_argument("--output", "-o", type=pathlib.Path, default=None,
                     help="Caminho do vídeo CRU do VHS (default: output/cutscenes/<slug>/bust-raw.mp4)")
     wb.add_argument("--final", type=pathlib.Path, default=None,
@@ -865,6 +1051,46 @@ def parse_args():
     wb.add_argument("--timeout", type=float, default=1800.0,
                     help="Timeout do job em segundos (default: 1800 — Wan + 1ª run de modelos)")
     wb.add_argument("--url", default=COMFY_URL)
+
+    wu = sub.add_parser(
+        "wanupscale",
+        help="CUT-03 ALT: upscale do busto vivo (bust-raw.mp4 → ~Nx via ESRGAN/DAT, frame-a-frame)")
+    wu.add_argument("--input", "-i", type=pathlib.Path,
+                    default=pathlib.Path("output/cutscenes/velvet/bust-raw.mp4"),
+                    help="Vídeo de entrada (default: output/cutscenes/velvet/bust-raw.mp4). "
+                         "Use o RAW .mp4 (menos compressão que o .webm)")
+    wu.add_argument("--slug", default=None, help="Slug da Kaeli (default: pasta do vídeo)")
+    wu.add_argument("--model", default="4xNomos2_hq_dat2.safetensors",
+                    help="Modelo em models/upscale_models/ (default: 4xNomos2_hq_dat2; "
+                         "troque por um anime, ex: 4x-AnimeSharp / RealESRGAN_x4plus_anime_6B, se baixar)")
+    wu.add_argument("--scale", type=float, default=0.5,
+                    help="Fator após o modelo 4x: 0.5 = net 2x (512→1024), 1.0 = net 4x (default: 0.5)")
+    wu.add_argument("--output", "-o", type=pathlib.Path, default=None,
+                    help="Raw do VHS (default: output/cutscenes/<slug>/bust-up-raw.mp4)")
+    wu.add_argument("--final", type=pathlib.Path, default=None,
+                    help="webm final (default: ao lado do raw, bust-up.webm)")
+    wu.add_argument("--format", default="video/h264-mp4",
+                    help="Formato do VHS_VideoCombine (default: video/h264-mp4)")
+    wu.add_argument("--fps", type=int, default=16, help="frame_rate da saída (default: 16)")
+    wu.add_argument("--crf", type=int, default=28, help="CRF do VP9 final (menor=mais nítido; default: 28)")
+    wu.add_argument("--sharpen", type=float, default=0.0,
+                    help="Unsharp na luma (0=off, ~1.0 encrespa linhas anime que o upscaler deixa moles; "
+                         "realça shimmer, use com parcimônia)")
+    wu.add_argument("--no-transcode", action="store_true", dest="no_transcode",
+                    help="Mantém o mp4 cru do VHS (sem VP9)")
+    wu.add_argument("--timeout", type=float, default=1200.0, help="Timeout do job (s)")
+    wu.add_argument("--url", default=COMFY_URL)
+
+    eu = sub.add_parser(
+        "emit-ui",
+        help="Gera workflows de UI por Kaeli (idle_bust_<slug>.json) a partir dos perfis")
+    eu.add_argument("--slug", default="all",
+                    help="Slug da Kaeli ou 'all' (default: all — gera p/ todas no perfil)")
+    eu.add_argument("--base", type=pathlib.Path,
+                    default=pathlib.Path("tools/workflows/idle_bust_wan_full.json"),
+                    help="Workflow base de UI (default: idle_bust_wan_full.json)")
+    eu.add_argument("--out", type=pathlib.Path, default=pathlib.Path("tools/workflows"),
+                    help="Pasta de saída (default: tools/workflows)")
 
     rs = sub.add_parser("restore", help="Restaurar originais do backup (desfazer processamento)")
     rs.add_argument("--backup-dir",  type=pathlib.Path, required=True,
@@ -1187,23 +1413,93 @@ def do_skinvar(args):
 
 # ── CUT-03: Idle loop premium (LivePortrait → .webm) ──────────────────────
 def _transcode_vp9(src: pathlib.Path, dst: pathlib.Path, crf: int = 34,
-                   pix_fmt: str = "yuva420p") -> None:
+                   pix_fmt: str = "yuva420p", sharpen: float = 0.0) -> None:
     """Transcoda o vídeo do VHS para VP9 via ffmpeg do sistema.
 
     pix_fmt=yuva420p preserva alpha p/ a arte transparente sobrepor o bg-portrait
     (idle-loop do LivePortrait). pix_fmt=yuv420p para fontes RGB sem alpha — caso
     do Wan I2V (busto vivo), cujo decode não tem canal alpha.
+
+    sharpen>0: aplica unsharp na luma (amount ~0.5-1.5) — "encrespa" linhas de anime
+    que o upscaler de foto deixa moles. Cuidado: realça também o shimmer temporal.
     """
     if not shutil.which("ffmpeg"):
         raise RuntimeError("ffmpeg não encontrado no PATH. Instale (winget/Gyan) ou use --no-transcode.")
     dst.parent.mkdir(parents=True, exist_ok=True)
-    cmd = ["ffmpeg", "-y", "-i", str(src),
-           "-c:v", "libvpx-vp9", "-pix_fmt", pix_fmt,
-           "-b:v", "0", "-crf", str(crf), "-an", str(dst)]
+    cmd = ["ffmpeg", "-y", "-i", str(src)]
+    if sharpen and sharpen > 0:
+        cmd += ["-vf", f"unsharp=5:5:{sharpen}:5:5:0.0"]
+    cmd += ["-c:v", "libvpx-vp9", "-pix_fmt", pix_fmt,
+            "-b:v", "0", "-crf", str(crf), "-an", str(dst)]
     res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode != 0:
         tail = (res.stderr or "").strip().splitlines()[-8:]
         raise RuntimeError("ffmpeg falhou:\n  " + "\n  ".join(tail))
+
+
+def do_outpaint(args):
+    """Estende a thumb (anime) p/ baixo, gerando o torso/peito que faltava p/ o jiggle.
+
+    Preserva o rosto original (recola por cima). Saída: uma thumb mais alta com colo
+    visível, pronta p/ alimentar o `wanbust`. NÃO sobrescreve a thumb original — salva
+    em output/thumbs_wide/<slug>/ p/ você revisar antes de promover.
+    """
+    image: pathlib.Path = args.image
+    if not image.exists():
+        print(f"  ERRO: imagem não encontrada: {image}")
+        sys.exit(1)
+
+    slug = args.slug or image.parent.name
+    out  = args.output or pathlib.Path(f"output/thumbs_wide/{slug}/thumb.png")
+    seed = args.seed if args.seed else int(time.time()) % 1_000_000
+    prompt = args.prompt or DEFAULT_OUTPAINT_PROMPT
+
+    print(f"\n  OUTPAINT — estende a thumb p/ baixo (busto p/ jiggle)")
+    print(f"  Kaeli      : {slug}")
+    print(f"  Entrada    : {image}")
+    print(f"  Saída      : {out}")
+    print(f"  Checkpoint : {args.checkpoint}")
+    print(f"  Pad        : bottom={args.bottom}px  feather={args.feather}  grow_mask={args.grow_mask}")
+    print(f"  Sampler    : denoise={args.denoise} steps={args.steps} cfg={args.cfg} "
+          f"{args.sampler}/{args.scheduler}  seed={seed}")
+    print(f"  Rosto      : {'recolado (intacto)' if not args.no_keep_original else 'redecode VAE (mais macio)'}")
+    style_on = args.style_ref
+    print(f"  Estilo     : {('IPAdapter style-transfer w=%.2f (herda o render do topo)' % args.style_weight) if style_on else 'look nativo do checkpoint (NetaYume glossy)'}")
+    print(f"  Prompt     : {prompt}\n")
+
+    t0 = time.time()
+    wf = _wf_outpaint(
+        prompt, negative=args.negative, checkpoint=args.checkpoint,
+        bottom=args.bottom, top=args.top, left=args.left, right=args.right,
+        feather=args.feather, grow_mask=args.grow_mask,
+        denoise=args.denoise, steps=args.steps, cfg=args.cfg,
+        sampler=args.sampler, scheduler=args.scheduler, seed=seed,
+        keep_original=not args.no_keep_original,
+        style_ref=style_on, style_weight=args.style_weight,
+    )
+    uploaded = upload_image(image)
+    _set_image(wf, uploaded)
+    pid = queue_prompt(wf)
+    job = wait_done(pid)
+    download_result(job, out)
+
+    # sidecar p/ reproduzir (igual recipe do wanbust)
+    recipe = {
+        "source": str(image), "slug": slug, "seed": seed,
+        "checkpoint": args.checkpoint, "bottom": args.bottom,
+        "feather": args.feather, "grow_mask": args.grow_mask,
+        "denoise": args.denoise, "steps": args.steps, "cfg": args.cfg,
+        "sampler": args.sampler, "scheduler": args.scheduler,
+        "keep_original": not args.no_keep_original,
+        "style_ref": style_on, "style_weight": args.style_weight,
+        "prompt": prompt, "negative": args.negative,
+    }
+    out.with_suffix(".recipe.json").write_text(
+        json.dumps(recipe, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    print(f"  ✓ {out}  ({time.time()-t0:.1f}s)")
+    print(f"  → revise; se aprovar, copie p/ frontend/public/assets/kaelis/{slug}/thumb.png")
+    print(f"    e rode: python tools/comfyui_batch.py wanbust -i {out} --lora gameb.safetensors --blocks-swap 40\n")
 
 
 def do_idleloop(args):
@@ -1279,6 +1575,87 @@ def do_idleloop(args):
     print(f"\n  Tempo total: {time.time()-t0:.1f}s\n")
 
 
+# ── CUT-03 ALT: Perfis de movimento por Kaeli (data-driven) ───────────────
+MOTION_PROFILES_PATH = pathlib.Path("tools/kaeli_motion_profiles.json")
+
+def load_motion_profile(slug: str) -> dict:
+    """Carrega o perfil de movimento da Kaeli (positive/negative extra + overrides).
+
+    Lookup por slug em tools/kaeli_motion_profiles.json. Sem perfil → dict vazio
+    (usa só os defaults do workflow/flags). Data-driven: nova Kaeli = editar o JSON.
+    """
+    try:
+        data = json.loads(MOTION_PROFILES_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return data.get(slug, {}) if isinstance(data, dict) else {}
+
+
+def _compose_prompt(base: str, extra: str) -> str:
+    """Anexa o complemento do perfil ao prompt base (sem duplicar se já houver)."""
+    extra = (extra or "").strip().strip(",")
+    if not extra or extra in base:
+        return base
+    return f"{base.rstrip().rstrip(',')}, {extra}"
+
+
+def do_emit_ui(args):
+    """Gera workflows de UI por Kaeli a partir do perfil (data-driven).
+
+    Lê o base (idle_bust_wan_full.json) + kaeli_motion_profiles.json e escreve um
+    idle_bust_<slug>.json com o prompt/params daquela Kaeli já embutidos — pronto p/
+    carregar no ComfyUI e só subir a thumb. Adicionar Kaeli = editar o JSON + regerar.
+    """
+    base_path: pathlib.Path = args.base
+    if not base_path.exists():
+        print(f"  ERRO: base não encontrado: {base_path}"); sys.exit(1)
+    base = json.loads(base_path.read_text(encoding="utf-8"))
+    try:
+        profiles = json.loads(MOTION_PROFILES_PATH.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"  ERRO ao ler {MOTION_PROFILES_PATH}: {e}"); sys.exit(1)
+
+    if args.slug == "all":
+        slugs = [s for s in profiles if not s.startswith("_")]
+    else:
+        slugs = [args.slug]
+
+    print(f"\n  Emit UI workflows  —  base: {base_path.name}\n")
+    for slug in slugs:
+        prof = profiles.get(slug, {})
+        wf = copy.deepcopy(base)
+        for nid, n in wf.items():
+            if not isinstance(n, dict):
+                continue
+            ct = n.get("class_type"); ins = n.get("inputs", {})
+            # Estrutura base+específico (StringConcatenate): preenche só o string_b (específico).
+            if nid == "poscat" and ct == "StringConcatenate":
+                ins["string_b"] = prof.get("positive_extra", "")
+            elif nid == "negcat" and ct == "StringConcatenate":
+                ins["string_b"] = prof.get("negative_extra", "")
+            elif ct == "WanVideoTextEncode" and isinstance(ins.get("positive_prompt"), str):
+                # fallback p/ base sem nós concat (prompt em string direta)
+                ins["positive_prompt"] = _compose_prompt(ins.get("positive_prompt", ""),
+                                                         prof.get("positive_extra", ""))
+                ins["negative_prompt"] = _compose_prompt(ins.get("negative_prompt", ""),
+                                                         prof.get("negative_extra", ""))
+            elif ct == "WanVideoImageToVideoEncode":
+                if prof.get("latent_strength") is not None:
+                    ins["start_latent_strength"] = prof["latent_strength"]
+                if prof.get("noise_aug") is not None:
+                    ins["noise_aug_strength"] = prof["noise_aug"]
+            elif ct == "WanVideoLoraSelect":
+                ins["strength"] = prof.get("lora_strength", ins.get("strength", 0.4))
+            elif ct == "LoadImage":
+                n.setdefault("_meta", {})["title"] = f"👉 THUMB da {slug} — suba kaelis/{slug}/thumb.png"
+            elif ct == "VHS_VideoCombine":
+                ins["filename_prefix"] = f"kaeli_bust_{slug}"
+        out = args.out / f"idle_bust_{slug}.json"
+        out.write_text(json.dumps(wf, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"  ✓ {out}  (perfil: {prof.get('note', '— sem perfil')})")
+    print(f"\n  Carregue no ComfyUI, suba a thumb da Kaeli e Queue.\n")
+
+
 # ── CUT-03 ALT: Busto vivo (Wan I2V → .webm) ──────────────────────────────
 def do_wanbust(args):
     """CUT-03 ALT — gera 1 clipe de 'busto vivo' (Wan I2V) a partir da THUMB.
@@ -1308,32 +1685,58 @@ def do_wanbust(args):
     final   = (args.final if args.final
                else raw_dst.with_name("bust.webm"))
 
+    # Perfil de movimento da Kaeli (data-driven). Flags explícitas vencem o perfil,
+    # perfil vence o default. Sem --no-profile e sem flag → usa o perfil do slug.
+    profile = {} if getattr(args, "no_profile", False) else load_motion_profile(slug)
+    eff_lora_strength = (args.lora_strength if args.lora_strength is not None
+                         else profile.get("lora_strength", 0.4))
+    eff_latent = (args.latent_strength if args.latent_strength is not None
+                  else profile.get("latent_strength"))   # None = mantém o do workflow
+    eff_noise  = (args.noise_aug if args.noise_aug is not None
+                  else profile.get("noise_aug"))
+    pos_extra  = "" if args.prompt   else profile.get("positive_extra", "")
+    neg_extra  = "" if args.negative else profile.get("negative_extra", "")
+
+    # Seed efetivo (registrado p/ reprodutibilidade — travar um run bom depois).
+    eff_seed = args.seed if args.seed else int(time.time()) % 1_000_000
+
     # Override por class_type (tolerante a drift de schema do WanVideoWrapper).
-    for node in workflow.values():
+    for nid, node in workflow.items():
         if not isinstance(node, dict):
             continue
         ct = node.get("class_type")
         ins = node.get("inputs", {})
-        if ct == "WanVideoTextEncode":
-            if args.prompt:
-                ins["positive_prompt"] = args.prompt
-            if args.negative:
-                ins["negative_prompt"] = args.negative
-        elif ct == "WanVideoImageClipEncode":
+        if nid == "poscat" and ct == "StringConcatenate":
+            ins["string_b"] = args.prompt or pos_extra
+        elif nid == "negcat" and ct == "StringConcatenate":
+            ins["string_b"] = args.negative or neg_extra
+        elif ct == "WanVideoTextEncode" and isinstance(ins.get("positive_prompt"), str):
+            # prompt direto (base sem concat): --prompt sobrescreve; senão base + perfil
+            ins["positive_prompt"] = _compose_prompt(
+                args.prompt or ins.get("positive_prompt", ""), pos_extra)
+            ins["negative_prompt"] = _compose_prompt(
+                args.negative or ins.get("negative_prompt", ""), neg_extra)
+        elif ct == "WanVideoImageToVideoEncode":
             if args.frames:
                 ins["num_frames"] = args.frames
             if args.width:
                 ins["width"] = args.width
             if args.height:
                 ins["height"] = args.height
+            if eff_noise is not None:
+                ins["noise_aug_strength"] = eff_noise
+            if eff_latent is not None:
+                ins["start_latent_strength"] = eff_latent
         elif ct == "WanVideoSampler":
             if args.steps:
                 ins["steps"] = args.steps
+            elif args.fast:
+                ins["steps"] = 12   # preview rápido (steps = detalhe, não movimento)
             if args.cfg is not None:
                 ins["cfg"] = args.cfg
             if args.shift is not None:
                 ins["shift"] = args.shift
-            ins["seed"] = args.seed if args.seed else int(time.time()) % 1_000_000
+            ins["seed"] = eff_seed
         elif ct == "WanVideoBlockSwap":
             if args.blocks_swap is not None:
                 ins["blocks_to_swap"] = args.blocks_swap
@@ -1345,9 +1748,54 @@ def do_wanbust(args):
             if args.no_pingpong:
                 ins["pingpong"] = False
 
+    # Injeção opcional (feita APÓS o loop p/ não mutar o dict durante a iteração):
+    # LoRA de motion → WanVideoLoraSelect no input `lora` do model loader.
+    if args.lora:
+        model_id = next((nid for nid, n in workflow.items()
+                         if isinstance(n, dict) and n.get("class_type") == "WanVideoModelLoader"), None)
+        if model_id is None:
+            print("  ERRO: workflow sem WanVideoModelLoader p/ plugar a LoRA.")
+            sys.exit(1)
+        # merge_loras=False → carrega on-the-fly (NÃO funde nos pesos). O merge num fp8
+        # 14B em 8 GB estoura a VRAM e derruba o ComfyUI; on-the-fly mantém o modelo no
+        # offload device (transformer_load_device=offload quando lora sem merge).
+        workflow["loraselect"] = {
+            "class_type": "WanVideoLoraSelect",
+            "inputs": {"lora": args.lora, "strength": eff_lora_strength,
+                       "low_mem_load": True, "merge_loras": False},
+        }
+        workflow[model_id]["inputs"]["lora"] = ["loraselect", 0]
+
+    # Loop nativo (Mobius latent-shift) → WanVideoLoopArgs no input `loop_args` do sampler;
+    # desliga o pingpong (que invertia o jiggle). Movimento fica forward-time, loop costurado.
+    if args.native_loop:
+        samp_id = next((nid for nid, n in workflow.items()
+                        if isinstance(n, dict) and n.get("class_type") == "WanVideoSampler"), None)
+        if samp_id is None:
+            print("  ERRO: workflow sem WanVideoSampler p/ o loop nativo.")
+            sys.exit(1)
+        workflow["loopargs"] = {
+            "class_type": "WanVideoLoopArgs",
+            "inputs": {"shift_skip": 6, "start_percent": 0.0, "end_percent": 1.0},
+        }
+        workflow[samp_id]["inputs"]["loop_args"] = ["loopargs", 0]
+        for n in workflow.values():
+            if isinstance(n, dict) and n.get("class_type") == "VHS_VideoCombine":
+                n["inputs"]["pingpong"] = False
+
     print(f"\n  CUT-03 ALT — Busto vivo (Wan I2V)  —  Kaeli '{slug}'")
     print(f"  Workflow   : {wf_path}")
     print(f"  Thumb      : {image}")
+    if profile:
+        extras = []
+        if profile.get("positive_extra") and not args.prompt: extras.append("prompt+")
+        if profile.get("negative_extra") and not args.negative: extras.append("neg+")
+        if eff_latent is not None: extras.append(f"latent={eff_latent}")
+        print(f"  Perfil     : {slug}  ({profile.get('note','')})  [{', '.join(extras) or 'aplicado'}]")
+    if args.lora:
+        print(f"  LoRA       : {args.lora}  (strength {eff_lora_strength})")
+    print(f"  Loop       : {'nativo (WanVideoLoopArgs, sem pingpong)' if args.native_loop else 'pingpong (VHS)'}")
+    print(f"  Seed       : {eff_seed}   (trave com --seed {eff_seed} p/ reproduzir)")
     print(f"  Raw        : {raw_dst}")
     if not args.no_transcode:
         print(f"  Final (VP9): {final}  (yuv420p RGB, crf {args.crf})")
@@ -1364,6 +1812,18 @@ def do_wanbust(args):
     fmt = download_video(job, raw_dst)
     print(f"  ✓ vídeo baixado ({fmt or 'formato desconhecido'})  {raw_dst}  [{time.time()-t0:.1f}s]")
 
+    # Sidecar com a receita exata (reprodutibilidade — qual seed/params geraram este clipe).
+    recipe = {"seed": eff_seed, "lora": args.lora, "lora_strength": eff_lora_strength,
+              "latent_strength": eff_latent, "noise_aug": eff_noise,
+              "profile": slug if profile else None,
+              "native_loop": args.native_loop, "fast": args.fast,
+              "blocks_swap": args.blocks_swap, "thumb": str(image), "slug": slug}
+    try:
+        raw_dst.with_suffix(".recipe.json").write_text(
+            json.dumps(recipe, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
     if not args.no_transcode:
         print(f"  Transcodando → VP9 yuv420p (RGB)…")
         _transcode_vp9(raw_dst, final, args.crf, pix_fmt="yuv420p")
@@ -1375,8 +1835,84 @@ def do_wanbust(args):
     print(f"\n  Tempo total: {time.time()-t0:.1f}s\n")
 
 
+# ── CUT-03 ALT: Upscale de vídeo (Real-ESRGAN/DAT no batch) ────────────────
+def _wf_video_upscale(video_abs: str, model_name: str, scale_by: float,
+                      fps: int, fmt: str) -> dict:
+    """Upscale frame-a-frame de um vídeo num único job ComfyUI.
+
+    VHS_LoadVideoPath (lê o mp4 do disco) → ImageUpscaleWithModel (4x; tem fallback
+    tiled em OOM, então cabe em 8 GB) → ImageScaleBy(scale_by) p/ a resolução final →
+    VHS_VideoCombine. pingpong=False: o loop já está nos frames do raw.
+    """
+    return {
+        "load": {"class_type": "VHS_LoadVideoPath",
+                 "inputs": {"video": video_abs, "force_rate": 0, "custom_width": 0,
+                            "custom_height": 0, "frame_load_cap": 0,
+                            "skip_first_frames": 0, "select_every_nth": 1}},
+        "model": {"class_type": "UpscaleModelLoader",
+                  "inputs": {"model_name": model_name}},
+        "up": {"class_type": "ImageUpscaleWithModel",
+               "inputs": {"upscale_model": ["model", 0], "image": ["load", 0]}},
+        "scale": {"class_type": "ImageScaleBy",
+                  "inputs": {"image": ["up", 0], "upscale_method": "lanczos",
+                             "scale_by": scale_by}},
+        "save": {"class_type": "VHS_VideoCombine",
+                 "inputs": {"images": ["scale", 0], "frame_rate": fps, "loop_count": 0,
+                            "filename_prefix": "kaeli_bust_up", "format": fmt,
+                            "pingpong": False, "save_output": True}},
+    }
+
+
+def do_wanupscale(args):
+    """Upscale do busto vivo (CUT-03 ALT): bust-raw.mp4 (512²) → ~Nx via ESRGAN/DAT.
+
+    Reusa o upscaler de arte do projeto, mas em vídeo (frame-a-frame num job só).
+    Não regenera nada — só amplia o clipe existente. Saída: bust-up.webm.
+    """
+    src: pathlib.Path = args.input
+    if not src.exists():
+        print(f"  ERRO: vídeo de entrada não encontrado: {src}")
+        sys.exit(1)
+    video_abs = str(src.resolve())
+
+    slug    = (args.slug or src.parent.name or "kaeli").strip()
+    raw_dst = args.output if args.output else pathlib.Path(f"output/cutscenes/{slug}/bust-up-raw.mp4")
+    final   = (args.final if args.final else raw_dst.with_name("bust-up.webm"))
+
+    net = 4.0 * args.scale  # modelo é 4x; scale_by ajusta o líquido
+    print(f"\n  CUT-03 ALT — Upscale do busto vivo  —  Kaeli '{slug}'")
+    print(f"  Entrada    : {src}")
+    print(f"  Upscaler   : {args.model}  (4x × {args.scale} = net {net:g}x)")
+    print(f"  Raw        : {raw_dst}")
+    if not args.no_transcode:
+        print(f"  Final (VP9): {final}  (yuv420p RGB, crf {args.crf})")
+    print()
+
+    t0 = time.time()
+    wf = _wf_video_upscale(video_abs, args.model, args.scale, args.fps, args.format)
+    print(f"  Enfileirando… (upscale frame-a-frame; tiled fallback em 8 GB)")
+    pid = queue_prompt(wf)
+    job = wait_done(pid, timeout=args.timeout)
+    fmt = download_video(job, raw_dst)
+    print(f"  ✓ vídeo baixado ({fmt or '?'})  {raw_dst}  [{time.time()-t0:.1f}s]")
+
+    if not args.no_transcode:
+        shp = f", unsharp {args.sharpen}" if args.sharpen else ""
+        print(f"  Transcodando → VP9 yuv420p (RGB{shp})…")
+        _transcode_vp9(raw_dst, final, args.crf, pix_fmt="yuv420p", sharpen=args.sharpen)
+        size_kb = final.stat().st_size / 1024
+        print(f"  ✓ {final}  ({size_kb:.0f} KB)")
+
+    print(f"\n  Tempo total: {time.time()-t0:.1f}s\n")
+
+
 def main():
     args = parse_args()
+
+    # emit-ui é geração de arquivo pura — não precisa do ComfyUI
+    if args.mode == "emit-ui":
+        do_emit_ui(args)
+        return
 
     # restore não precisa do ComfyUI
     if args.mode == "restore":
@@ -1420,6 +1956,12 @@ def main():
         print(f"\n  Tempo total: {time.time()-t_total:.1f}s\n")
         return
 
+    # outpaint — args próprios; estende a thumb p/ baixo
+    if args.mode == "outpaint":
+        do_outpaint(args)
+        print(f"\n  Tempo total: {time.time()-t_total:.1f}s\n")
+        return
+
     # idleloop (CUT-03) também tem args próprios e imprime seu próprio tempo
     if args.mode == "idleloop":
         do_idleloop(args)
@@ -1428,6 +1970,11 @@ def main():
     # wanbust (CUT-03 ALT) — idem
     if args.mode == "wanbust":
         do_wanbust(args)
+        return
+
+    # wanupscale (CUT-03 ALT) — upscale do busto vivo
+    if args.mode == "wanupscale":
+        do_wanupscale(args)
         return
 
     kw = dict(backup=args.backup, dry_run=args.dry_run)

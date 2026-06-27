@@ -1,0 +1,38 @@
+# VELVET — CHARACTER IDENTITY BLOCK (substituível por Kaeli)
+# Contém SÓ identidade: aparência, cabelo, olhos, acessórios, figurino, expressão,
+# paleta e elementos proibidos. NÃO inclui acabamento (isso é o style_anchor).
+
+## IDENTITY (positivo)
+original character,
+adult woman,
+aristocratic gothic sorceress,
+very long flowing dark purple hair,
+black-violet hair with subtle lavender gradients,
+layered bangs,
+long hair framing both sides of her body,
+several fine loose hair strands,
+bright crimson-red eyes,
+fair skin,
+calm reserved slightly aloof expression,
+delicate mature face,
+refined narrow jawline,
+dark ornamental lace tiara,
+small purple flower hair ornament,
+black lace choker,
+faceted violet gemstone at the center of the choker,
+black and deep-violet gothic corset dress,
+structured fitted bodice,
+elegant neckline,
+ornate black lace trim,
+sheer black sleeves,
+layered violet ruffles,
+small black gemstone decorations,
+aristocratic gothic silhouette,
+refined dark elegance
+
+## PALETTE
+black-violet / deep purple / lavender accents, crimson-red eyes, silver-black lace, amethyst violet gemstones, pale fair skin
+
+## PROIBIDO (vai no negativo / nunca no positivo)
+wings, horns, non-human ears, weapon, large crown, red dress, pure black hair,
+purple eyes, childish style, loli, teenager

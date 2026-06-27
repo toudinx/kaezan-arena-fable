@@ -25,6 +25,7 @@ public sealed class Actor
     public long AggroOutOfRangeSinceMs;
     public long ExposedUntilMs;
     public long SappedUntilMs;
+    public long TauntedUntilMs;  // provocado (melee): abandona o kiting e marcha pro corpo-a-corpo
     public bool IsBossActor;
     public bool IsElite;        // G-06: elite de sala comum — derrotá-lo concede um beat de escolha
     public bool IsMimic;        // G-09: baú-Eco corrompido — dropa material de gear ao morrer
@@ -406,8 +407,11 @@ public sealed class GameWorld
             }
 
             // echo-spots style budget spawn: commons cost 2, elites cost 5
-            var sizeFactor = room.W * room.H / 49.0;
-            var budget = (int)(GameConfig.SpawnBudgetBase * (1 + (Tier.Tier - 1) * GameConfig.SpawnBudgetTierGrowth) * Math.Clamp(sizeFactor, 0.6, 1.4));
+            // H-01: o fator de área escala com room.W*room.H sobre a sala-base (SpawnRoomAreaBaseline) e é
+            // clampeado — com as salas grandes da H-01 o teto subiu pra a sala não ler vazia (cabe a pilha).
+            var sizeFactor = room.W * room.H / GameConfig.SpawnRoomAreaBaseline;
+            var budget = (int)(GameConfig.SpawnBudgetBase * (1 + (Tier.Tier - 1) * GameConfig.SpawnBudgetTierGrowth)
+                * Math.Clamp(sizeFactor, GameConfig.SpawnBudgetSizeClampMin, GameConfig.SpawnBudgetSizeClampMax));
             // G-07: tesouro = menos guardas; evento/risco = mais guardas (swarm); elite = pacote de elites.
             if (room.Role == "treasure") budget = budget / 2 + 2;
             else if (room.Role == "hazard") budget = (int)(budget * GameConfig.HazardBudgetMult);
@@ -953,6 +957,25 @@ public sealed class GameWorld
         if (Player.IsMoving(NowMs)) return;
         if (_moveDirX != 0 || _moveDirY != 0 || _hasBufferedMoveDir) return; // input manual tem prioridade
 
+        // Helper, não bot: se há inimigo alcançável "na tela", DERROTA antes de seguir pro loot/saída.
+        // CurrentPlayerTarget só devolve o alvo quando ele está no alcance + linha de visão (mesmo
+        // critério do targeting) — fora disso "não existe inimigo" e a Kaeli vai pro baú/buraco, que o
+        // mapa conexo garante sempre alcançável. Antes o cavebot só pausava com o mob colado (≤1) e
+        // passava reto pelos demais; agora posiciona: aproxima até o alcance de auto-ataque (melee
+        // encosta, ranged assenta no alcance) e o combate do mesmo tick (auto/skills/ult) abate. Se a
+        // aproximação direta travar numa parede côncava, cai no pather BFS. Mob nunca é bloqueio — ao
+        // morrer, CurrentPlayerTarget zera e a navegação volta a fluir.
+        var foe = CurrentPlayerTarget();
+        if (foe is not null)
+        {
+            var combatSpeed = PlayerSpeed();
+            if (Chebyshev(Player, foe) > RoleTuning.AutoRange
+                && !TryStepTowardDistance(foe, RoleTuning.AutoRange, combatSpeed)
+                && NextNavStep(foe.X, foe.Y) is { } chase)
+                TryStep(Player, chase.Dx, chase.Dy, combatSpeed);
+            return;
+        }
+
         var goals = NavGoals();
         if (goals.Count == 0) return;
 
@@ -963,10 +986,6 @@ public sealed class GameWorld
             TryInteract(first.X, first.Y);
             return;
         }
-
-        // pausa pra lutar quando um inimigo encosta (não atravessa o mob tomando dano).
-        if (_monsters.Any(m => m.Hp > 0 && m.Floor == _currentFloor && Chebyshev(Player.X, Player.Y, m.X, m.Y) <= 1))
-            return;
 
         // caminha até o primeiro objetivo ALCANÇÁVEL desviando dos mobs (caminho liso, sem tomar dano).
         // As coordenadas já vêm do servidor (NavGoals lê os POIs direto — não é varredura/fog); um baú
@@ -1698,6 +1717,9 @@ public sealed class GameWorld
         {
             case "taunt":
                 AcquirePlayer(monster);
+                // Provocar: o inimigo (mesmo ranged/kiting) é forçado ao corpo-a-corpo por BuffMs.
+                monster.TauntedUntilMs = NowMs + (long)(skill.BuffMs * buffScale);
+                Emit("text", monster.X, monster.Y, 0, 0, 0, "PROVOCADO!");
                 break;
             case "exposed":
                 monster.ExposedUntilMs = NowMs + (long)(skill.BuffMs * buffScale);
@@ -3306,22 +3328,27 @@ public sealed class GameWorld
 
             if (monster.IsMoving(NowMs)) continue;
 
+            // Provocado (rider "taunt" das melee): abandona o kiting e a fuga, marcha pro corpo-a-corpo.
+            var taunted = NowMs < monster.TauntedUntilMs;
+
             // low-health flight (tibia runHealth: dragons & co. retreat while still attacking)
-            if (species.RunOnHealth > 0 && monster.Hp <= species.RunOnHealth * monster.StatMult)
+            if (!taunted && species.RunOnHealth > 0 && monster.Hp <= species.RunOnHealth * monster.StatMult)
             {
                 StepAway(monster, Player.X, Player.Y);
                 continue;
             }
 
-            // chase: move toward player keeping targetDistance for ranged species
-            if (CanAttackPlayer(monster, dist, hasLos)
+            // chase: move toward player keeping targetDistance for ranged species.
+            // Provocado só pára pra atacar quando já está em melee — senão fecha a distância.
+            if ((!taunted || dist <= GameConfig.MeleeRange)
+                && CanAttackPlayer(monster, dist, hasLos)
                 && _rng.Chance(Math.Clamp(species.StaticAttackChance, 0, 100) / 100.0))
             {
                 monster.Facing = FacingFrom(Player.X - monster.X, Player.Y - monster.Y);
                 continue;
             }
 
-            var desired = Math.Max(species.TargetDistance, 1);
+            var desired = taunted ? 1 : Math.Max(species.TargetDistance, 1);
             if (dist > desired)
                 StepToward(monster, Player.X, Player.Y);
             else if (dist < desired && species.TargetDistance > 1 && _rng.Chance(0.5))

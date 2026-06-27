@@ -1,0 +1,33 @@
+# KAEZAN STYLE ANCHOR — bloco de ACABAMENTO reutilizável (não-identidade)
+# Use este bloco fixo em TODAS as Kaelis. Descreve o traço/render do Kaezan,
+# nunca a identidade da personagem. Trocar a Kaeli = trocar só o character block.
+# Ordem recomendada no prompt final:
+#   [quality tags do checkpoint] + [character block] + [composition] + [environment/lighting] + [STYLE ANCHOR]
+
+premium anime gacha character illustration,
+refined semi-painterly anime rendering,
+delicate clean linework integrated into the painting,
+elegant mature facial proportions,
+highly detailed expressive eyes,
+crisp irises and eyelashes,
+soft volumetric facial shading,
+smooth controlled skin gradients,
+subtle blush and natural skin highlights,
+layered detailed hair rendering,
+individual flowing hair strands,
+silky hair highlights,
+refined fabric rendering,
+intricate lace and jewelry details,
+cinematic character lighting,
+soft colored rim light,
+controlled highlights,
+deep but readable shadows,
+rich color separation,
+atmospheric depth,
+soft shallow depth of field,
+polished promotional game artwork,
+premium character splash art quality,
+clean silhouette,
+balanced visual hierarchy,
+sharp face and eyes,
+high detail without visual noise

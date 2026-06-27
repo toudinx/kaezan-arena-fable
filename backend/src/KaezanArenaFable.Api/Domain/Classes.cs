@@ -117,8 +117,9 @@ public static class Classes
             "Investe contra o alvo e o golpe segue para os inimigos mais próximos.",
             ChainJumps: 3, ChainRange: 3, ChainFalloff: 0.25),
         new SkillDef("skill:seren:arc", "Arco de Espada", "cone", "physical",
-            1.55, 6000, 0, 2, 0, 10, 0, null, 0,
-            "Desenha um arco de lâmina à frente, cortando todos no leque."),
+            1.55, 6000, 0, 2, 0, 10, 0, "taunt", GameConfig.MeleeTauntMs,
+            "Desenha um arco de lâmina à frente, cortando todos no leque e os provocando: "
+            + "inimigos à distância largam o recuo e marcham pro corpo-a-corpo."),
         new SkillDef("skill:seren:stance", "Postura do Zênite", "buff", "support",
             0, 14000, 0, 0, 0, 13, 0, "aegis", 10000,
             "Assume a postura de duelo: aumenta ataque e velocidade de ataque por 10s."),
@@ -176,8 +177,9 @@ public static class Classes
             1.30, 1800, 1, 0, 0, 12, 300, null, 0,
             "Crava a garra carregada no alvo adjacente, paralisando-o brevemente."),
         new SkillDef("skill:rynna:tail", "Cauda Trovejante", "cone", "energy",
-            1.55, 6000, 0, 2, 0, 12, 0, null, 0,
-            "Gira e açoita com a cauda trovejante, atingindo todos no leque."),
+            1.55, 6000, 0, 2, 0, 12, 0, "taunt", GameConfig.MeleeTauntMs,
+            "Gira e açoita com a cauda trovejante, atingindo todos no leque e os provocando: "
+            + "inimigos à distância largam o recuo e marcham pro corpo-a-corpo."),
         new SkillDef("skill:rynna:discharge", "Descarga Curta", "chain", "energy",
             1.30, 7000, 2, 0, 0, 12, 0, null, 0,
             "Libera uma descarga que ricocheteia entre os inimigos próximos.",

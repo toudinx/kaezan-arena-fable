@@ -60,7 +60,7 @@ public static class DungeonGenerator
         Array.Fill(floor.Blocked, true);
 
         // place non-overlapping rooms
-        for (var attempt = 0; attempt < 200 && floor.Rooms.Count < roomCount; attempt++)
+        for (var attempt = 0; attempt < GameConfig.RoomPlacementAttempts && floor.Rooms.Count < roomCount; attempt++)
         {
             var w = rng.Range(GameConfig.RoomMin, GameConfig.RoomMax);
             var h = rng.Range(GameConfig.RoomMin, GameConfig.RoomMax);
@@ -73,11 +73,16 @@ public static class DungeonGenerator
             if (!overlaps) floor.Rooms.Add(candidate);
         }
 
-        // carve rooms
+        // carve rooms, then erode each with a cellular-automata pass (H-02 B1) so the outline reads as an
+        // organic blob instead of a literal rectangle. Erosion runs before ConnectRooms; corridors carve
+        // centre→centre afterwards and punch through the eroded edge, so reachability is never lost.
         foreach (var room in floor.Rooms)
+        {
             for (var yy = room.Y; yy < room.Y + room.H; yy++)
                 for (var xx = room.X; xx < room.X + room.W; xx++)
                     floor.Blocked[yy * size + xx] = false;
+            ErodeRoom(floor, room, rng);
+        }
 
         // G-07: connect rooms as a spatial spanning tree (nearest-neighbour from the entry) instead of
         // a spawn-order chain. A tree has real branches/dead-ends — the seam for risk/reward detours —
@@ -91,6 +96,104 @@ public static class DungeonGenerator
 
     private static int Manhattan(Room a, Room b) =>
         Math.Abs(a.CenterX - b.CenterX) + Math.Abs(a.CenterY - b.CenterY);
+
+    /// <summary>
+    /// H-02 (B1): erodes a freshly-carved rectangular room into an organic blob with a deterministic
+    /// cellular-automata pass. Only a border band is seeded as rock (interior stays open); the classic
+    /// 4-5 smoothing rule rounds the outline (cells outside the rect count as rock, so corners erode
+    /// inward). A flood-fill from the centre then keeps just the connected component and re-opens the
+    /// centre — corridors join centre↔centre, so the room must stay a single reachable blob. Uses only
+    /// the run rng in a fixed scan order; the CA is double-buffered so the result is order-independent.
+    /// </summary>
+    private static void ErodeRoom(DungeonFloor floor, Room room, Rng rng)
+    {
+        int w = room.W, h = room.H;
+        // small rooms stay rectangular — erosion would pinch them shut and there's no box to give back.
+        if (Math.Min(w, h) < GameConfig.OrganicRoomMinSize) return;
+
+        // local rock grid (true = rock). Seed only the border band; the interior is left open so the
+        // centre and a generous core never start blocked.
+        var rock = new bool[w * h];
+        for (var ly = 0; ly < h; ly++)
+            for (var lx = 0; lx < w; lx++)
+            {
+                var edge = Math.Min(Math.Min(lx, w - 1 - lx), Math.Min(ly, h - 1 - ly));
+                if (edge < GameConfig.OrganicSeedBand)
+                    rock[ly * w + lx] = rng.Chance(GameConfig.OrganicFillProb);
+            }
+
+        // CA smoothing (4-5 rule). Out-of-rect neighbours count as rock so the blob pulls away from the
+        // corners. Double-buffered → independent of scan order (no rng here, fully deterministic).
+        var next = new bool[w * h];
+        for (var it = 0; it < GameConfig.OrganicCaIterations; it++)
+        {
+            for (var ly = 0; ly < h; ly++)
+                for (var lx = 0; lx < w; lx++)
+                {
+                    var rocky = 0;
+                    for (var dy = -1; dy <= 1; dy++)
+                        for (var dx = -1; dx <= 1; dx++)
+                        {
+                            if (dx == 0 && dy == 0) continue;
+                            int nx = lx + dx, ny = ly + dy;
+                            if (nx < 0 || nx >= w || ny < 0 || ny >= h || rock[ny * w + nx]) rocky++;
+                        }
+                    var i = ly * w + lx;
+                    next[i] = rocky >= GameConfig.OrganicWallThreshold ? true
+                        : rocky <= GameConfig.OrganicFloorThreshold ? false
+                        : rock[i];
+                }
+            (rock, next) = (next, rock);
+        }
+
+        // connectivity: flood-fill the open cells reachable from the (forced-open) centre using 4-way
+        // steps (matching nav); anything unreached becomes rock so the room is one blob around its centre.
+        int cx = w / 2, cy = h / 2;
+        rock[cy * w + cx] = false;
+        var reached = new bool[w * h];
+        var stack = new Stack<int>();
+        stack.Push(cy * w + cx);
+        reached[cy * w + cx] = true;
+        while (stack.Count > 0)
+        {
+            var idx = stack.Pop();
+            int lx = idx % w, ly = idx / w;
+            Span<(int dx, int dy)> steps = [(-1, 0), (1, 0), (0, -1), (0, 1)];
+            foreach (var (dx, dy) in steps)
+            {
+                int nx = lx + dx, ny = ly + dy;
+                if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+                var ni = ny * w + nx;
+                if (reached[ni] || rock[ni]) continue;
+                reached[ni] = true;
+                stack.Push(ni);
+            }
+        }
+
+        // write back: reached cells open, everything else blocked (organic rock the painter turns to wall).
+        var size = floor.W;
+        for (var ly = 0; ly < h; ly++)
+            for (var lx = 0; lx < w; lx++)
+                floor.Blocked[(room.Y + ly) * size + (room.X + lx)] = !reached[ly * w + lx];
+    }
+
+    /// <summary>Nearest walkable cell to (x,y) within a room (spiral by Chebyshev ring). POIs anchored at
+    /// a corner can land on rock after H-02 erosion; this snaps them onto open ground. Centre is the
+    /// guaranteed fallback (always open).</summary>
+    private static (int X, int Y) OpenCellInRoom(DungeonFloor floor, Room room, int x, int y)
+    {
+        var size = floor.W;
+        var maxR = Math.Max(room.W, room.H);
+        for (var r = 0; r <= maxR; r++)
+            for (var dy = -r; dy <= r; dy++)
+                for (var dx = -r; dx <= r; dx++)
+                {
+                    if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != r) continue;
+                    int nx = x + dx, ny = y + dy;
+                    if (room.Contains(nx, ny) && !floor.Blocked[ny * size + nx]) return (nx, ny);
+                }
+        return (room.CenterX, room.CenterY);
+    }
 
     /// <summary>
     /// Deterministic Prim spanning tree rooted at the entry (room 0): repeatedly carve the shortest
@@ -194,14 +297,14 @@ public static class DungeonGenerator
         foreach (var room in rooms)
         {
             if (room.Role == "treasure") floor.Chests.Add((room.CenterX, room.CenterY));
-            else if (room.Role == "elite") floor.Chests.Add((room.X + 1, room.Y + 1));
+            else if (room.Role == "elite") floor.Chests.Add(OpenCellInRoom(floor, room, room.X + 1, room.Y + 1));
             else if (room.Role == "sanctuary") floor.Sanctuaries.Add((room.CenterX, room.CenterY));
         }
         var mobRooms = rooms.Where(r => r.Role == "mob").ToList();
         for (var i = 0; i < GameConfig.ChestsPerFloor - 1 && mobRooms.Count > 0; i++)
         {
             var room = rng.Pick(mobRooms);
-            floor.Chests.Add((room.X + 1, room.Y + 1));
+            floor.Chests.Add(OpenCellInRoom(floor, room, room.X + 1, room.Y + 1));
         }
     }
 
@@ -230,14 +333,25 @@ public static class DungeonGenerator
     {
         int x = a.CenterX, y = a.CenterY;
         var horizontalFirst = rng.Chance(0.5);
+        // Corridor width is 2 or 3 tiles, never 1: a 1-sqm corridor pinches movement (no side-by-side
+        // passing, reads as a crack). A square brush of `width` tiles per step guarantees that thickness
+        // in every direction, including at the L-bend where a perpendicular-only widen would leave a
+        // single-tile corner. Deterministic (run rng picks the width).
+        var width = rng.Range(GameConfig.CorridorWidthMin, GameConfig.CorridorWidthMax);
+        void Brush(int cx, int cy)
+        {
+            for (var dy = 0; dy < width; dy++)
+                for (var dx = 0; dx < width; dx++)
+                    if (floor.InBounds(cx + dx, cy + dy))
+                        floor.Blocked[(cy + dy) * floor.W + cx + dx] = false;
+        }
+        Brush(x, y);
         while (x != b.CenterX || y != b.CenterY)
         {
             if (horizontalFirst && x != b.CenterX) x += Math.Sign(b.CenterX - x);
             else if (y != b.CenterY) y += Math.Sign(b.CenterY - y);
             else if (x != b.CenterX) x += Math.Sign(b.CenterX - x);
-            floor.Blocked[y * floor.W + x] = false;
-            // widen corridors to 2 tiles for smoother movement
-            if (floor.InBounds(x + 1, y)) floor.Blocked[y * floor.W + x + 1] = false;
+            Brush(x, y);
         }
     }
 

@@ -12,7 +12,7 @@ import {
 } from '../../core/types';
 
 type Region = 'head' | 'body' | 'legs' | 'feet';
-type OutfitCategory = 'feminino' | 'masculino' | 'monster' | 'boss' | 'all';
+type OutfitCategory = 'kaezan' | 'feminino' | 'masculino' | 'monster' | 'boss' | 'all';
 
 /** Pedido vindo do guarda-roupa: editar uma skin existente ou criar uma nova já apontada à Kaeli. */
 export interface StudioSeed {
@@ -32,7 +32,7 @@ interface OutfitOption {
   lookType: number;
   name: string;
   recolorable: boolean;
-  category: 'feminino' | 'masculino' | 'monster' | 'boss' | 'other';
+  category: 'kaezan' | 'feminino' | 'masculino' | 'monster' | 'boss' | 'other';
   bestiaryClass: string;
 }
 
@@ -59,6 +59,7 @@ const PAGE_SIZE = 48;
           <input class="search" type="search" placeholder="Nome, classe ou lookType"
             [value]="outfitSearch()" (input)="setOutfitSearch($any($event.target).value)" />
           <select class="search cat-select" (change)="setOutfitCategory($any($event.target).value)">
+            <option value="kaezan" [selected]="outfitCategory() === 'kaezan'">Kaezan ({{ categoryCounts().kaezan }})</option>
             <option value="feminino" [selected]="outfitCategory() === 'feminino'">Feminino ({{ categoryCounts().feminino }})</option>
             <option value="masculino" [selected]="outfitCategory() === 'masculino'">Masculino ({{ categoryCounts().masculino }})</option>
             <option value="monster" [selected]="outfitCategory() === 'monster'">Monstros ({{ categoryCounts().monster }})</option>
@@ -312,6 +313,7 @@ const PAGE_SIZE = 48;
     .cat-select { margin-top: 0; }
     .row-tags { display: flex; gap: 3px; margin-top: 4px; }
     .row-tags i { border-radius: 3px; font-size: 7px; font-style: normal; font-weight: 900; padding: 2px 4px; }
+    .row-tags i.kaezan { background: #173b35; color: #58dbc9; }
     .row-tags i.feminino { background: #3a1f33; color: #f0a4d4; }
     .row-tags i.masculino { background: #1b2a3b; color: #74c0e8; }
     .row-tags i.monster { background: #2a2438; color: #b79cf0; }
@@ -398,7 +400,7 @@ export class KaeliStudio implements OnInit {
   readonly draft = signal<KaeliSkinDefinition>(this.emptyDraft());
   readonly selectedId = signal('');
 
-  readonly outfitCategory = signal<OutfitCategory>('feminino');
+  readonly outfitCategory = signal<OutfitCategory>('kaezan');
   readonly outfitSearch = signal('');
   readonly outfitPage = signal(1);
   readonly authoredSearch = signal('');
@@ -439,6 +441,7 @@ export class KaeliStudio implements OnInit {
   readonly categoryCounts = computed(() => {
     const list = this.outfitList();
     return {
+      kaezan: list.filter((o) => o.category === 'kaezan').length,
       feminino: list.filter((o) => o.category === 'feminino').length,
       masculino: list.filter((o) => o.category === 'masculino').length,
       monster: list.filter((o) => o.category === 'monster').length,
@@ -508,7 +511,10 @@ export class KaeliStudio implements OnInit {
           let category: OutfitOption['category'];
           let name: string;
           let bestiaryClass = '';
-          if (player) {
+          if (entry?.source === 'kaezan') {
+            category = 'kaezan';
+            name = entry.name || `Kaezan LookType ${lookType}`;
+          } else if (player) {
             category = player.gender === 'male' ? 'masculino' : 'feminino';
             name = player.name;
           } else if (appearance) {
@@ -529,7 +535,7 @@ export class KaeliStudio implements OnInit {
         })
         // skins são recoloríveis: outfits de jogador sempre entram; monstros/bosses só se tiverem
         // camada de máscara de cor (sem isso a paleta não faz nada)
-        .filter((o) => o.category === 'feminino' || o.category === 'masculino' || o.recolorable)
+        .filter((o) => o.category === 'kaezan' || o.category === 'feminino' || o.category === 'masculino' || o.recolorable)
         .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })));
       this.metadata.set(metadata);
       this.authored.set(authored);
@@ -594,7 +600,7 @@ export class KaeliStudio implements OnInit {
   }
   catLabel(category: string): string {
     const labels: Record<string, string> = {
-      feminino: 'Feminino', masculino: 'Masculino', monster: 'Monstro', boss: 'Boss', other: 'Outro',
+      kaezan: 'Kaezan', feminino: 'Feminino', masculino: 'Masculino', monster: 'Monstro', boss: 'Boss', other: 'Outro',
     };
     return labels[category] ?? category;
   }

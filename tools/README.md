@@ -19,6 +19,43 @@ Este pipeline só faz o **pós**: upscale + remoção de fundo.
 
 ---
 
+## Rig StabilityMatrix — caminhos e convenções
+
+ComfyUI roda via **StabilityMatrix** instalado em `C:\Kaezan\StabilityMatrix\`.
+Os modelos ficam numa pasta compartilhada (usada por todos os pacotes SM):
+
+```
+C:\Kaezan\StabilityMatrix\Data\
+  Models\
+    StableDiffusion\   ← checkpoints SDXL (NetaYume, WAI, Animagine …)
+    IpAdapter\         ← modelos IPAdapter (ip-adapter-plus*, ip-adapter-plus-face*)
+    ClipVision\        ← CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors
+    ControlNet\        ← controlnet-openpose-sdxl-xinsir.safetensors + diffusion_pytorch_model
+    Lora\              ← LoRAs SDXL (gameb, character_sheet, ROSprites …)
+    DiffusionModels\   ← Wan2.1 I2V fp8
+    VAE\               ← wan_2.1_vae.safetensors
+    TextEncoders\      ← umt5-xxl-enc-bf16.safetensors
+    ESRGAN\            ← RealESRGAN_x4plus_anime_6B.pth, 4xNomos2_hq_dat2 …
+    Ultralytics\bbox\  ← face_yolov8m.pt
+    Sams\              ← SAM models
+  Packages\
+    ComfyUI\           ← instalação do ComfyUI
+      .venv\Scripts\python.exe   ← Python do ComfyUI (tem torch, safetensors, etc.)
+      extra_model_paths.yaml     ← mapeamento automático das pastas acima
+```
+
+O `extra_model_paths.yaml` é **gerenciado pelo StabilityMatrix** e já mapeia
+`ipadapter`, `clip_vision`, `controlnet`, etc. para as pastas acima.
+**Não edite manualmente** — o SM regenera o arquivo ao atualizar pacotes.
+
+> Quando um script precisa de `torch` ou `safetensors` (ex: `gen00_convert_ipadapter.py`),
+> use o Python do ComfyUI, não o do sistema:
+> ```
+> "C:\Kaezan\StabilityMatrix\Data\Packages\ComfyUI\venv\Scripts\python.exe" tools/<script.py>
+> ```
+
+---
+
 ## Pré-requisitos
 
 ### Python 3.10+
@@ -146,6 +183,128 @@ python tools/comfyui_batch.py restore \
   --restore-to output/upscaled/kaeli/velvet \
   --version 1
 ```
+
+---
+
+## GEN-00 — IPAdapter SDXL (pré-requisito da trilha de geração nativa)
+
+> Pré-requisito do `roadmap_comfyui_geracao.md`. Desbloqueia o `IPAdapterUnifiedLoader`
+> nos presets `PLUS (high strength)` e `PLUS FACE (portraits)` para SDXL.
+
+### Estado do rig (2026-06-24)
+
+| Modelo | Pasta SM | Status |
+|---|---|---|
+| `ip-adapter-plus-face_sdxl_vit-h.safetensors` | `IpAdapter/` | ✅ pronto |
+| `ip-adapter-plus_sdxl_vit-h.safetensors` | `IpAdapter/` | ❌ só .bin existe |
+| `CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors` | `ClipVision/` | ✅ pronto |
+
+O `extra_model_paths.yaml` (gerado pelo StabilityMatrix) já mapeia `ipadapter` →
+`IpAdapter` e `clip_vision` → `ClipVision`. **Não precisa alterar o yaml.**
+
+### Corrigir o .bin → .safetensors
+
+O preset `PLUS (high strength)` procura `ip-adapter-plus_sdxl_vit-h.safetensors`.
+Só o `.bin` está presente — converta com o Python do ComfyUI:
+
+```bat
+"C:\Kaezan\StabilityMatrix\Data\Packages\ComfyUI\venv\Scripts\python.exe" ^
+    tools/gen00_convert_ipadapter.py
+```
+
+O script gera o `.safetensors` na mesma pasta e preserva o `.bin` original.
+Após a conversão, **reinicie o ComfyUI** (recarrega a lista de modelos).
+
+### Verificar o rig
+
+```bash
+python tools/comfyui_batch.py audit-rig
+```
+
+Consulta o ComfyUI em tempo real (`/object_info`) e reporta o status de cada preset
+e modelo. Saída esperada quando OK:
+
+```
+  ✓  IPAdapterUnifiedLoader  (N presets)
+  ✓  PLUS (high strength)
+       ip-adapter-plus_sdxl_vit-h.safetensors
+  ✓  PLUS FACE (portraits)
+       ip-adapter-plus-face_sdxl_vit-h.safetensors
+  ✓  CLIP-Vision: CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors
+  ✅  Rig OK — GEN-00 completo.
+```
+
+### Verificação final (aceite do GEN-00)
+
+Rode o `outpaint --style-ref` da Eloa sem crash — o `--style-ref` usa o preset
+`PLUS (high strength)` do `IPAdapterUnifiedLoader`:
+
+```bash
+python tools/comfyui_batch.py outpaint \
+  -i frontend/public/assets/kaelis/eloa/thumb.png \
+  --slug eloa --style-ref --bottom 260
+```
+
+---
+
+## GEN-01 — Kaeli premium NATIVA (txt2img, sem GPT)
+
+> Primeira onda geradora do `roadmap_comfyui_geracao.md`. Gera arte de Kaeli **do
+> zero** no rig local (NetaYume), com **enquadramento controlado por tipo** — resolve
+> a dor-raiz: a `thumb` 1:1 **não corta os seios** (framing explícito + negativo
+> anti-crop). Sem censura, sem depender do GPT Image. Depende do **GEN-00**.
+
+### Style bible — `tools/kaeli_style_profiles.json`
+
+Fonte única de verdade por Kaeli (igual o `kaeli_motion_profiles.json` é p/ vídeo).
+Nada de prompt solto espalhado. Estrutura:
+
+| Bloco | Papel |
+|---|---|
+| `_base` | checkpoint, `positive_prefix` (quality tags), `style` (style bible), `negative` (negative bible), sampler/cfg/steps |
+| `_frames` | enquadramento por tipo: `thumb` (1:1), `idle` (2:3), `wallpaper` (16:9), `portrait` (9:16), `banner` (2:1), `square`. Cada um traz `width`/`height` (SDXL ~1 MP) + um fragmento `framing` |
+| `<slug>` | por Kaeli: `positive` (identidade booru), `negative_extra`, `seed`, `lora` |
+
+O prompt final é montado como
+`_base.positive_prefix` + `<Kaeli>.positive` + `--prompt` (extra) + `_frames.<tipo>.framing` + `_base.style`.
+Ordem de precedência de params: **flag CLI > perfil da Kaeli > `_base` > default do código**.
+
+### CLI
+
+```bash
+# Dry-run (não precisa do ComfyUI) — mostra o prompt montado e o tamanho do frame
+python tools/comfyui_batch.py gen --kaeli velvet --frame thumb --count 2 --dry-run
+
+# Gera 3 thumbs da Velvet (1:1, busto inteiro no quadro)
+python tools/comfyui_batch.py gen --kaeli velvet --frame thumb --count 3
+
+# Idle 2:3 (corpo inteiro) com refino generativo 2× (detalhe real, tiled, 8 GB-safe)
+python tools/comfyui_batch.py gen --kaeli seren --frame idle --hires 2.0
+
+# Kaeli NOVA ainda fora do JSON: identidade vem do --prompt
+python tools/comfyui_batch.py gen --kaeli mirai --frame thumb \
+  --prompt "1girl, solo, silver twintails, blue eyes, futuristic bodysuit"
+```
+
+Saída: `output/gen/<slug>/<frame>-<i>.png` + um `.recipe.json` ao lado (seed +
+params exatos p/ reproduzir). Aprovou um look? **trave o `seed`** no perfil da Kaeli
+e copie o PNG p/ `frontend/public/assets/kaelis/<slug>/`.
+
+### Parâmetros que importam
+
+| Flag | Efeito |
+|---|---|
+| `--kaeli` / `--slug` | Qual perfil do style bible usar (e a pasta de saída). |
+| `--frame` / `--type` | `thumb` · `idle` · `wallpaper` · `portrait` · `banner` · `square`. Define w×h + framing. |
+| `--prompt` | Identidade/extra anexado (ou usado **sozinho** se a Kaeli não está no JSON). |
+| `--hires` | **Upscale generativo ~N×** (hires-fix tiled — adiciona detalhe; ESRGAN só amplia). |
+| `--seed` / `--count` | Seed base e nº de variações (incrementa por variação). `0` = perfil ou tempo. |
+| `--lora` / `--lora-strength` | LoRA de identidade/estilo (default: do perfil). |
+| `--checkpoint` | Troca o NetaYume por WAI/Animagine/etc. quando quiser outro look. |
+
+> **8 GB-aware:** os frames já ficam perto de 1 MP (SDXL nativo). Pra resolução cheia,
+> use `--hires 2.0` (refino tiled) em vez de rodar o frame gigante — rodar >1.5 MP
+> direto estoura a VRAM (mesma lição do `skinvar`). Um job por vez.
 
 ---
 

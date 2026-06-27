@@ -16,6 +16,14 @@ GPT **não controla** enquadramento/estilo nem deixa gerar fan-service. O remend
 ver `wanbust`/`outpaint` no `comfyui_batch.py`) salva o que já existe, mas a **raiz** é não gerar local.
 Descobrimos que o rig **já tem quase tudo** pra gerar nativo — falta orquestrar.
 
+## Rig StabilityMatrix — paths do projeto
+
+ComfyUI roda via **StabilityMatrix** em `C:\Kaezan\StabilityMatrix\`. Modelos ficam em
+`C:\Kaezan\StabilityMatrix\Data\Models\<Pasta>\`. O `extra_model_paths.yaml` (gerenciado
+pelo SM) já mapeia tudo — `ipadapter` → `IpAdapter`, `clip_vision` → `ClipVision`, etc.
+Para scripts que precisam de `torch`/`safetensors`, use o Python do ComfyUI:
+`"C:\Kaezan\StabilityMatrix\Data\Packages\ComfyUI\venv\Scripts\python.exe"`.
+
 ## Inventário do rig (auditado 2026-06-24 — o que dá pra usar HOJE)
 
 | Categoria | Instalado | Serve p/ |
@@ -47,27 +55,48 @@ Descobrimos que o rig **já tem quase tudo** pra gerar nativo — falta orquestr
 
 A progressão pedida (cada onda reusa a anterior). **Onda 0 desbloqueia tudo.**
 
-## GEN-00 — Desbloquear IPAdapter + auditar/normalizar o rig  ⬅ pré-requisito
+## GEN-00 — Desbloquear IPAdapter + auditar/normalizar o rig  ✅ IMPLEMENTADO 2026-06-24
 - **Modelo:** Codex · **Effort:** low · **Depende de:** —
 - **Problema:** `IPAdapterUnifiedLoader` crasha com *"IPAdapter model not found"* mesmo com os modelos
   presentes — porque (a) a pasta é `IpAdapter`/`ClipVision` (StabilityMatrix) e o node espera
   `ipadapter`/`clip_vision`, e (b) o preset `PLUS (high strength)` procura `..._sdxl_vit-h.safetensors`
   e aqui o "plus" (não-face) só existe como `.bin`.
-- **Tarefas:** mapear as pastas no `extra_model_paths.yaml` do ComfyUI (ou junction `ipadapter`→`IpAdapter`,
-  `clip_vision`→`ClipVision`); converter/baixar o `ip-adapter-plus_sdxl_vit-h.safetensors`; testar
-  `IPAdapterUnifiedLoader` com os presets `PLUS (high strength)` e `PLUS FACE`. Documentar em `tools/README.md`.
+- **Resolução:**
+  - Pasta mapeada pelo StabilityMatrix no `extra_model_paths.yaml` (já estava correto — SM gerencia).
+  - CLIP-Vision (`CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors`) já em `ClipVision/`.
+  - `PLUS FACE` já funciona (`ip-adapter-plus-face_sdxl_vit-h.safetensors` presente).
+  - Converter o `.bin` → `.safetensors` com `tools/gen00_convert_ipadapter.py` (Python do ComfyUI).
+  - Novo subcomando `audit-rig` em `comfyui_batch.py` verifica o rig via `/object_info`.
+  - Documentado em `tools/README.md` §GEN-00 e §Rig StabilityMatrix.
+- **Para completar (1 passo manual):**
+  ```bat
+  "C:\Kaezan\StabilityMatrix\Data\Packages\ComfyUI\venv\Scripts\python.exe" tools/gen00_convert_ipadapter.py
+  ```
+  Depois reinicie o ComfyUI e rode `python tools/comfyui_batch.py audit-rig`.
 - **Aceite:** um workflow com IPAdapter roda sem erro nos dois presets.
 - **Verificação:** re-rodar o `outpaint --style-ref` da Eloa sem crashar.
 
-## GEN-01 — Receita de Kaeli premium NATIVA (txt2img)
+## GEN-01 — Receita de Kaeli premium NATIVA (txt2img)  ✅ IMPLEMENTADO 2026-06-24
 - **Modelo:** Opus · **Effort:** high · **Depende de:** GEN-00
 - **Objetivo:** fórmula reproduzível de geração do **zero** no NetaYume (e quando usar WAI/Animagine):
   quality tags, *style bible* (o look "premium" do projeto), negative bible, sampler/cfg/steps/hires,
   e **enquadramento correto por tipo** (thumb 1:1 sem cortar seio, idle 2:3, etc. — resolve a dor raiz).
 - **Tarefas:** subcomando `gen` (txt2img) no `comfyui_batch.py`; `kaeli_style_profiles.json` (prompt
   base + por-Kaeli); hires-fix tiled (reusa o bloco do `_wf_skin_variant`); grava `.recipe.json`.
+- **Resolução:**
+  - `tools/kaeli_style_profiles.json` — style bible: `_base` (quality prefix + style + negative bible +
+    checkpoint/sampler/steps), `_frames` (thumb 1:1 · idle 2:3 · wallpaper 16:9 · portrait 9:16 ·
+    banner 2:1 · square, cada um com w×h SDXL ~1 MP + `framing`), e um bloco por Kaeli (identidade
+    booru + `negative_extra` + `seed` + `lora`). 7 Kaelis seedadas como ponto de partida.
+  - `_wf_txt2img` em `comfyui_batch.py` — grafo txt2img puro (Checkpoint → CLIP → EmptyLatent(w×h) →
+    KSampler → VAEDecode → Save), LoRA opcional (LoraLoader) e hires-fix tiled (mesmo bloco do skinvar).
+  - Subcomando `gen` (`do_gen`): monta o prompt (prefix + identidade + extra + framing + style),
+    precedência **flag > perfil > _base > default**, grava `.recipe.json` por geração. `--frame` resolve
+    a dor-raiz (thumb sem cortar o seio). Kaeli fora do JSON → identidade via `--prompt`.
+  - Documentado em `tools/README.md` §GEN-01.
 - **Aceite:** gerar 1 Kaeli nova comparável (ou melhor) à arte GPT, no aspecto certo, em 1 comando.
-- **Verificação:** lado a lado vs. a thumb GPT atual; o usuário aprova o look.
+- **Verificação:** lado a lado vs. a thumb GPT atual; o usuário aprova o look. *(render é só no PC com o
+  ComfyUI ligado: `python tools/comfyui_batch.py gen --kaeli velvet --frame thumb`)*
 
 ## GEN-02 — Consistência a partir de 1 imagem (IPAdapter)
 - **Modelo:** Opus · **Effort:** medium · **Depende de:** GEN-00, GEN-01

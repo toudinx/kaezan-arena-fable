@@ -678,6 +678,20 @@ export class GameRenderer {
     const sx = (tx: number) => Math.round(tx * TS - cam.x);
     const sy = (ty: number) => Math.round(ty * TS - cam.y);
 
+    // 0.5 biome backdrop — fill the map region with a darkened wash of the stratum's color-grade
+    //     (tint) so the first frames of a run (atlas sheets still decoding, ~1s) and genuine rock
+    //     voids read as dim biome rock instead of the flat black clear color. The tint is the lit
+    //     palette (cave amber, crypt blue, …) so a fraction of it reads as unlit rock of that place.
+    //     Cosmetic; opaque ground/decor draw straight over it once the atlas is ready.
+    if (map.biome) {
+      const k = 0.42;
+      const br = Math.round(map.biome.tintR * k);
+      const bg = Math.round(map.biome.tintG * k);
+      const bb = Math.round(map.biome.tintB * k);
+      ctx.fillStyle = `rgb(${br},${bg},${bb})`;
+      ctx.fillRect(sx(0), sy(0), map.w * TS, map.h * TS);
+    }
+
     // 1. ground + decor
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {

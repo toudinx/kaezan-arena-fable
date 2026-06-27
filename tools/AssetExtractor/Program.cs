@@ -25,6 +25,7 @@ internal static class Program
         string? thingsDir = null, outDir = null, configPath = null, monstersPath = null, appearancesPath = null, itemsOutPath = null;
         string? itemsXmlPath = null, mountsXmlPath = null, outfitsXmlPath = null, staticItemsDir = null;
         var dumpNames = false;
+        var dumpWalls = false;
         var itemsOnly = false;
         var equipment = false;
         var dryRun = false;
@@ -48,6 +49,7 @@ internal static class Program
                 case "--sprites-only": spritesOnly = true; break;
                 case "--static-items": staticItemsDir = args[++i]; break;
                 case "--dump-names": dumpNames = true; break;
+                case "--dump-walls": dumpWalls = true; break;
             }
         }
 
@@ -58,7 +60,7 @@ internal static class Program
                 "[--config content-config.json] [--monsters monsters.json] [--monster-appearances monster-appearances.json] " +
                 "[--items-out items.json] [--items-xml items.xml] [--mounts-xml mounts.xml] [--outfits-xml outfits.xml] " +
                 "[--items-only] [--equipment] [--dry-run] [--sprites-only] " +
-                "[--static-items <legacy assets dir>] [--dump-names]");
+                "[--static-items <legacy assets dir>] [--dump-names] [--dump-walls]");
             return 1;
         }
 
@@ -107,6 +109,12 @@ internal static class Program
         if (dumpNames)
         {
             DumpNames(appearances, outDir);
+            return 0;
+        }
+
+        if (dumpWalls)
+        {
+            DumpWalls(appearances, sheets, outDir);
             return 0;
         }
 
@@ -799,6 +807,42 @@ internal static class Program
 
         private static int RoundUpToTile(int value) =>
             Math.Max(32, (value + 31) / 32 * 32);
+    }
+
+    /// <summary>
+    /// Curation aid (H-08): lists every wall-like appearance — unpass+unsight, single 32px tile — so a
+    /// human can scan for a contiguous "mountain massif" family (bodies + real concave/convex corners +
+    /// ridge). Nameless border tiles are invisible to --dump-names; this surfaces them with sprite dims
+    /// and the ground/clip/elevation flags that distinguish a wall tile from a big blocking prop.
+    /// </summary>
+    private static void DumpWalls(Appearances appearances, SheetCache sheets, string outDir)
+    {
+        Directory.CreateDirectory(outDir);
+        using var w = new StreamWriter(Path.Combine(outDir, "wall-candidates.txt"));
+        w.WriteLine("id\tname\tcell\tframes\televation\tflags");
+        var count = 0;
+        foreach (var obj in appearances.Object.OrderBy(o => o.Id))
+        {
+            var f = obj.Flags;
+            if (f is null || !f.Unpass || !f.Unsight) continue;
+            var fg = obj.FrameGroup.Count > 0 ? obj.FrameGroup[0].SpriteInfo : null;
+            var frames = fg?.SpriteId.Count ?? 0;
+            var cell = "?";
+            if (frames > 0)
+            {
+                try { var (_, sw, sh, _, _) = sheets.Locate((int)fg!.SpriteId[0]); cell = $"{sw}x{sh}"; }
+                catch { cell = "err"; }
+            }
+            var tags = new List<string>();
+            if (f.Bank is not null) tags.Add("ground");
+            if (f.Clip) tags.Add("clip");
+            if (f.Top) tags.Add("top");
+            if (f.Bottom) tags.Add("bottom");
+            var name = obj.Name?.ToStringUtf8() ?? "";
+            w.WriteLine($"{obj.Id}\t{name}\t{cell}\t{frames}\t{f.Height?.Elevation ?? 0}\t{string.Join(",", tags)}");
+            count++;
+        }
+        Console.WriteLine($"wall candidates dumped: {count} → {Path.Combine(outDir, "wall-candidates.txt")}");
     }
 
     private static void DumpNames(Appearances appearances, string outDir)

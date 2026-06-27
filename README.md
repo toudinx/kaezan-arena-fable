@@ -414,7 +414,14 @@ O extractor decodifica o formato moderno do Tibia (catalog-content.json + appear
 protobuf + sheets BMP comprimidas com LZMA1 raw + header CIP) — mesmo algoritmo do
 `spriteappearances.cpp` do OTClient. O manifest descreve patterns (direções, addons,
 camada de máscara de cor) e o frontend recoloriza outfits em runtime com a paleta HSI
-de 133 cores do Tibia. O mesmo comando cruza `items.xml` para gerar slots e atributos reais,
+de 133 cores do Tibia. Além do pacote extraído de `/assets/tibia`, o frontend também mescla
+`frontend/public/assets/kaezan-outfits/manifest.json`: ali ficam lookTypes autorais altos
+(`900001+`) que não vêm do Tibia e sobrevivem a re-runs do extractor. O Outfit Studio mostra
+esses sprites na categoria **Kaezan**; a primeira vertical slice é a **Velvet Kaezan V1**
+(`lookType 900003`), sem addons, gerada como uma adaptação compacta da referência visual
+`lookType 433` antes de escalar para as outras Kaelis. Rode
+`node tools/generate-kaezan-outfits.mjs` para regenerar esse atlas v1.
+O mesmo comando cruza `items.xml` para gerar slots e atributos reais,
 incluindo dano elemental, crítico, roubo de vida, poder mágico, velocidade e resistências, além dos
 itens sintéticos de montaria usados pelo equipamento. O modo `--equipment` inclui automaticamente
 objetos cujo `clothes.slot` corresponde a helmet, armor, weapon, necklace ou ring **e** itens que

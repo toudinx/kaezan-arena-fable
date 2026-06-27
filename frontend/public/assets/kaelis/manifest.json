@@ -5,5 +5,6 @@
   "waifu:rin": ["idle-1", "idle-2", "idle-3", "wallpaper", "bg-landscape", "bg-portrait", "banner", "thumb"],
   "waifu:rynna": ["idle-1", "idle-2", "idle-3", "wallpaper", "bg-landscape", "bg-portrait", "banner", "thumb"],
   "waifu:lunara": ["idle-1", "idle-2", "idle-3", "wallpaper", "bg-landscape", "bg-portrait", "banner", "thumb"],
-  "waifu:gaia": ["idle-1", "idle-2", "idle-3", "wallpaper", "bg-landscape", "bg-portrait", "banner", "thumb"]
+  "waifu:gaia": ["idle-1", "idle-2", "idle-3", "wallpaper", "bg-landscape", "bg-portrait", "banner", "thumb"],
+  "waifu:sylwen": ["wallpaper", "banner", "thumb"]
 }

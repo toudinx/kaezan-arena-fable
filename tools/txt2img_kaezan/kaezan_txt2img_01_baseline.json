@@ -1,0 +1,107 @@
+{
+  "4": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "animagine-xl-4.0-opt.safetensors"
+    },
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "1girl, original character, adult woman, solo, safe,\naristocratic gothic sorceress,\nvery long flowing dark purple hair,\nblack-violet hair with soft lavender gradients,\nlayered bangs, individual flowing hair strands,\nsilky violet hair highlights,\nbright detailed crimson-red eyes,\ncrisp irises, detailed eyelashes,\nfair skin,\ncalm reserved slightly aloof expression,\ndelicate mature anime face,\nrefined narrow jawline,\ndark ornamental lace tiara,\nsmall purple flower hair ornament,\nblack lace choker,\nfaceted violet gemstone,\nblack and deep-violet gothic corset dress,\nstructured fitted bodice,\nelegant neckline,\nornate black lace trim,\nsheer black sleeves,\nlayered violet ruffles,\nsmall black gemstone decorations,\nupper body portrait,\nhead shoulders and upper bust visible,\nslight three-quarter view,\nlooking at viewer,\nhead nearly upright,\ncomplete tiara visible,\nhair ornaments visible,\ncomfortable headroom,\nno hands,\nmoonlit gothic manor interior,\nsoftly blurred arched windows,\ndark violet curtains,\nsubtle baroque architecture,\nsoft silver-blue moonlight,\nviolet ambient lighting,\npurple rim light around the hair,\nsoft cinematic key light on the face,\ndeep but readable shadows,\npremium anime gacha character illustration,\nrefined semi-painterly anime rendering,\ndelicate clean linework integrated into the painting,\nhighly detailed expressive eyes,\nsoft volumetric facial shading,\nsmooth controlled skin gradients,\nlayered detailed hair rendering,\nintricate lace and jewelry,\natmospheric depth,\nshallow depth of field,\npolished promotional game artwork,\nclean silhouette,\nbalanced composition,\nsharp face,\nsharp eyes,\nmasterpiece, high score, great score, absurdres",
+      "clip": [
+        "4",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "Positive (Velvet)"
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry, blurry face, blurry eyes, unfocused eyes, asymmetrical eyes, uneven eyes, cross-eyed, deformed face, distorted face, bad proportions, deformed anatomy, extra arms, extra limbs, duplicate character, multiple girls, child, young girl, teenager, loli, chibi, super deformed, baby face, oversized head, photorealistic, realistic photo, 3d, cgi, doll, plastic skin, wax skin, flat cel shading, simple shading, flat lighting, harsh flash, overexposed skin, crushed blacks, oversaturated purple, neon purple skin, messy hair mass, solid hair mass, extreme close-up, cropped tiara, cut off head, cut off hair ornament, busy background, crowd, weapon, wings, horns, animal ears, text box, logo, interface, ui",
+      "clip": [
+        "4",
+        1
+      ]
+    },
+    "_meta": {
+      "title": "Negative"
+    }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+    },
+    "_meta": {
+      "title": "Empty Latent"
+    }
+  },
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "4",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "5",
+        0
+      ],
+      "seed": 19473621,
+      "steps": 28,
+      "cfg": 5.0,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "normal",
+      "denoise": 1.0
+    },
+    "_meta": {
+      "title": "KSampler (base)"
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "4",
+        2
+      ]
+    },
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "8",
+        0
+      ],
+      "filename_prefix": "velvet_animagine_eulera_cfg50_s28"
+    },
+    "_meta": {
+      "title": "Save Image"
+    }
+  }
+}

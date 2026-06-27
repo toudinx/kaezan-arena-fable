@@ -289,6 +289,12 @@ def _wf_removebg(model: str = "isnet-anime") -> dict:
     }
 
 
+# Prompt focado em OLHO p/ o passe de rosto (gacha-tier). O olho vítreo é o
+# principal "tell" de qualidade premium — o prompt genérico antigo só dava sharpen.
+DEFAULT_FACE_PROMPT = ("beautiful detailed eyes, gradient iris, glossy reflective eyes, "
+                       "sharp eyelashes, aegyo-sal, detailed face, smooth skin, "
+                       "soft blush, masterpiece, best quality, highly detailed")
+
 def _wf_face_restore(
     checkpoint: str = "v1-5-pruned-emaonly.ckpt",
     bbox_model: str = "face_yolov8m.pt",
@@ -297,7 +303,8 @@ def _wf_face_restore(
     cfg_scale: float = 7.0,
     sampler: str = "euler",
     scheduler: str = "normal",
-    guide_size: int = 256,
+    guide_size: int = 384,
+    face_prompt: str = DEFAULT_FACE_PROMPT,
 ) -> dict:
     """Face detailer via FaceDetailer (ComfyUI-Impact-Pack).
 
@@ -315,8 +322,7 @@ def _wf_face_restore(
         "2": {"class_type": "CheckpointLoaderSimple",
               "inputs": {"ckpt_name": checkpoint}},
         "3": {"class_type": "CLIPTextEncode",
-              "inputs": {"text": "anime face, detailed, sharp, high quality",
-                         "clip": ["2", 1]}},
+              "inputs": {"text": face_prompt, "clip": ["2", 1]}},
         "4": {"class_type": "CLIPTextEncode",
               "inputs": {"text": "blurry, low quality, artifacts, deformed",
                          "clip": ["2", 1]}},
@@ -331,6 +337,9 @@ def _wf_face_restore(
                   "positive":                 ["3", 0],
                   "negative":                 ["4", 0],
                   "bbox_detector":            ["5", 0],
+                  # wildcard: prompt extra por detecção (vazio = usa só o positive).
+                  # Virou input REQUIRED nas versões novas do FaceDetailer (Impact Pack).
+                  "wildcard":                 "",
                   "guide_size":               guide_size,
                   "guide_size_for":           True,
                   "max_size":                 768,
@@ -413,6 +422,110 @@ QUALITY_SUFFIX   = ", masterpiece, best quality, highly detailed, sharp focus"
 DEFAULT_NEGATIVE = ("lowres, bad anatomy, bad hands, text, error, missing fingers, "
                     "extra digit, fewer digits, cropped, worst quality, low quality, "
                     "jpeg artifacts, signature, watermark, blurry, deformed face")
+
+# GEN-00: mapeamento preset SDXL → arquivo de modelo (IPAdapterUnifiedLoader).
+# O IPAdapterUnifiedLoader detecta se o checkpoint é SD15 ou SDXL e escolhe a
+# variante certa do arquivo por preset. Estes são os presets usados pela trilha GEN-*.
+_IPADAPTER_PRESETS_SDXL = {
+    "PLUS (high strength)":  "ip-adapter-plus_sdxl_vit-h.safetensors",
+    "PLUS FACE (portraits)": "ip-adapter-plus-face_sdxl_vit-h.safetensors",
+}
+_CLIP_VISION_NEEDED = "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
+# Caminhos StabilityMatrix deste rig (C:\Kaezan\StabilityMatrix\Data\Models\)
+_SM_IPADAPTER_DIR   = "C:/Kaezan/StabilityMatrix/Data/Models/IpAdapter"
+_SM_CLIP_VISION_DIR = "C:/Kaezan/StabilityMatrix/Data/Models/ClipVision"
+
+
+def do_audit_rig(_args):
+    """GEN-00 — Audita IPAdapter + CLIP-Vision no rig StabilityMatrix/ComfyUI.
+
+    Consulta o ComfyUI (/object_info) para saber quais modelos estão visíveis e
+    cruza com os presets necessários para a trilha GEN-*. Não carrega nenhum modelo
+    — só verifica o que está disponível.
+
+    Aceite: ambos os presets SDXL (PLUS + PLUS FACE) e o CLIP-Vision reportados como OK.
+    """
+    all_ok = True
+    print("\n  GEN-00 — Auditoria do rig: IPAdapter + CLIP-Vision\n")
+
+    # 1. Verifica se o nó IPAdapterUnifiedLoader está instalado
+    presets: list = []
+    try:
+        info = _get("/object_info/IPAdapterUnifiedLoader")
+        node = info.get("IPAdapterUnifiedLoader", {})
+        presets = node.get("input", {}).get("required", {}).get("preset", [[]])[0]
+        print(f"  ✓  IPAdapterUnifiedLoader  ({len(presets)} presets)")
+    except Exception as e:
+        print(f"  ✗  IPAdapterUnifiedLoader: {e}")
+        print("     → ComfyUI Manager → Install: ComfyUI_IPAdapter_plus (cubiq)")
+        all_ok = False
+
+    # 2. Lista arquivos de modelo IPAdapter visíveis (via IPAdapterModelLoader)
+    ipadapter_files: list = []
+    try:
+        ml = _get("/object_info/IPAdapterModelLoader")
+        ipadapter_files = (ml.get("IPAdapterModelLoader", {})
+                             .get("input", {}).get("required", {})
+                             .get("ipadapter_file", [[]])[0])
+        print(f"  ✓  IPAdapterModelLoader    ({len(ipadapter_files)} arquivo(s) visível/veis)")
+    except Exception as e:
+        print(f"  ✗  IPAdapterModelLoader: {e}")
+
+    # 3. Lista CLIP-Vision visíveis (via CLIPVisionLoader)
+    clip_files: list = []
+    try:
+        cl = _get("/object_info/CLIPVisionLoader")
+        clip_files = (cl.get("CLIPVisionLoader", {})
+                        .get("input", {}).get("required", {})
+                        .get("clip_name", [[]])[0])
+        print(f"  ✓  CLIPVisionLoader        ({len(clip_files)} arquivo(s) visível/veis)")
+    except Exception as e:
+        print(f"  ✗  CLIPVisionLoader: {e}")
+
+    # 4. Cruza presets necessários com modelos disponíveis
+    print("\n  Presets SDXL (GEN-*):\n")
+    for preset, required_file in _IPADAPTER_PRESETS_SDXL.items():
+        file_ok   = required_file in ipadapter_files
+        preset_ok = preset in presets
+        if file_ok and preset_ok:
+            print(f"  ✓  {preset}")
+            print(f"       {required_file}")
+        else:
+            all_ok = False
+            bin_name = required_file.replace(".safetensors", ".bin")
+            has_bin  = bin_name in ipadapter_files
+            print(f"  ✗  {preset}")
+            if not preset_ok and presets:
+                print(f"       preset não listado pelo node — verifique versão do ComfyUI_IPAdapter_plus")
+            if has_bin:
+                print(f"       .bin encontrado ({bin_name}) — precisa do .safetensors")
+                print(f"       Converta com o Python do ComfyUI:")
+                print(f'         "<SM>\\Packages\\ComfyUI\\.venv\\Scripts\\python.exe" tools/gen00_convert_ipadapter.py')
+            elif not file_ok:
+                print(f"       {required_file} não encontrado em nenhuma pasta mapeada")
+                print(f"       Baixe de: hf.co/h94/IP-Adapter  (sdxl_models/)")
+                print(f"       Coloque em: {_SM_IPADAPTER_DIR}")
+
+    # 5. CLIP-Vision
+    print("\n  CLIP-Vision:\n")
+    cv_ok = _CLIP_VISION_NEEDED in clip_files
+    if cv_ok:
+        print(f"  ✓  {_CLIP_VISION_NEEDED}")
+    else:
+        all_ok = False
+        print(f"  ✗  {_CLIP_VISION_NEEDED} — não encontrado")
+        print(f"     Baixe de hf.co/h94/IP-Adapter  (models/image_encoder/)")
+        print(f"     Coloque em: {_SM_CLIP_VISION_DIR}")
+
+    # 6. Resultado
+    print()
+    if all_ok:
+        print("  ✅  Rig OK — GEN-00 completo. IPAdapter SDXL pronto nos dois presets.")
+        print("  Verificação final:")
+        print("    python tools/comfyui_batch.py outpaint -i <thumb.png> --slug <kaeli> --style-ref")
+    else:
+        print("  ⚠   Corrija os itens acima e rode audit-rig novamente.")
+    print()
 
 
 def _wf_skin_variant(
@@ -537,6 +650,111 @@ def _wf_skin_variant(
                                "tile_size": 512, "overlap": 64,
                                "temporal_size": 64, "temporal_overlap": 8}}
         wf["13"]["inputs"]["images"] = ["19", 0]   # salva o resultado refinado
+
+    return wf
+
+
+# ── GEN-01: Geração de Kaeli premium NATIVA (txt2img) ──────────────────────
+# Gera do ZERO no NetaYume (sem GPT, sem censura, enquadramento controlado). O
+# "style bible" + identidade por Kaeli vivem em tools/kaeli_style_profiles.json;
+# aqui só o GRAFO. Reusa o bloco de hires-fix tiled do `_wf_skin_variant`
+# (8 GB-safe: TiledDiffusion + VAEEncode/DecodeTiled) p/ detalhe real no passe final.
+def _wf_txt2img(
+    prompt: str,
+    *,
+    negative: str = DEFAULT_NEGATIVE,
+    checkpoint: str = "NetaYumev35_pretrained_all_in_one.safetensors",
+    width: int = 1024,
+    height: int = 1024,
+    steps: int = 30,
+    cfg_scale: float = 5.5,
+    sampler: str = "euler_ancestral",
+    scheduler: str = "normal",
+    seed: int = 0,
+    lora: str | None = None,
+    lora_strength: float = 0.8,
+    loras: list | None = None,
+    hires_scale: float = 0.0,
+    hires_denoise: float = 0.35,
+    hires_steps: int = 16,
+    filename_prefix: str = "_kzbatch_gen",
+) -> dict:
+    """txt2img puro: checkpoint → CLIP encode → EmptyLatent(w×h) → KSampler → VAEDecode.
+
+    `width`/`height` vêm do preset de enquadramento (thumb 1:1, idle 2:3, …) — é o
+    que resolve a dor-raiz (thumb sem cortar o seio). SDXL é treinado em ~1 MP;
+    mantenha o frame perto de 1024². LoRA opcional (LoraLoader) p/ identidade/estilo.
+    hires_scale>1 liga o refino generativo tiled (adiciona detalhe; ESRGAN não cria).
+    """
+    pos_text = (prompt or "").strip()
+    wf = {
+        "2":  {"class_type": "CheckpointLoaderSimple",
+               "inputs": {"ckpt_name": checkpoint}},
+        "3":  {"class_type": "CLIPTextEncode",
+               "inputs": {"text": pos_text, "clip": ["2", 1]}},
+        "4":  {"class_type": "CLIPTextEncode",
+               "inputs": {"text": negative, "clip": ["2", 1]}},
+        "10": {"class_type": "EmptyLatentImage",
+               "inputs": {"width": int(width), "height": int(height), "batch_size": 1}},
+        "11": {"class_type": "KSampler",
+               "inputs": {"model": ["2", 0],
+                          "positive": ["3", 0], "negative": ["4", 0],
+                          "latent_image": ["10", 0],
+                          "seed": seed, "steps": steps, "cfg": cfg_scale,
+                          "sampler_name": sampler, "scheduler": scheduler,
+                          "denoise": 1.0}},
+        "12": {"class_type": "VAEDecode",
+               "inputs": {"samples": ["11", 0], "vae": ["2", 2]}},
+        "13": {"class_type": "SaveImage",
+               "inputs": {"images": ["12", 0], "filename_prefix": filename_prefix}},
+    }
+
+    # LoRA(s) entre o checkpoint e o resto (afetam model + clip). Encadeia N
+    # LoraLoaders em série: cada um recebe o model/clip do anterior. Aceita uma
+    # lista de (nome, peso) via `loras`, ou um único `lora`/`lora_strength`.
+    lora_list = ([(n, w) for n, w in loras if n] if loras
+                 else ([(lora, lora_strength)] if lora else []))
+    model_ref: list = ["2", 0]
+    clip_ref: list  = ["2", 1]
+    nid = 80
+    for lname, lw in lora_list:
+        k = str(nid)
+        wf[k] = {"class_type": "LoraLoader",
+                 "inputs": {"model": model_ref, "clip": clip_ref,
+                            "lora_name": lname,
+                            "strength_model": lw, "strength_clip": lw}}
+        model_ref = [k, 0]; clip_ref = [k, 1]; nid += 1
+    if lora_list:
+        wf["3"]["inputs"]["clip"] = clip_ref
+        wf["4"]["inputs"]["clip"] = clip_ref
+        wf["11"]["inputs"]["model"] = model_ref
+    hires_model: list = model_ref
+
+    # Hires-fix generativo (opcional), mesmo bloco do `_wf_skin_variant`.
+    if hires_scale and hires_scale > 1.0:
+        wf["15"] = {"class_type": "ImageScaleBy",
+                    "inputs": {"image": ["12", 0], "upscale_method": "lanczos",
+                               "scale_by": hires_scale}}
+        wf["16"] = {"class_type": "VAEEncodeTiled",
+                    "inputs": {"pixels": ["15", 0], "vae": ["2", 2],
+                               "tile_size": 512, "overlap": 64,
+                               "temporal_size": 64, "temporal_overlap": 8}}
+        wf["17"] = {"class_type": "TiledDiffusion",
+                    "inputs": {"model": hires_model, "method": "Mixture of Diffusers",
+                               "tile_width": 768, "tile_height": 768,
+                               "tile_overlap": 64, "tile_batch_size": 1}}
+        wf["18"] = {"class_type": "KSampler",
+                    "inputs": {"model": ["17", 0],
+                               "positive": ["3", 0], "negative": ["4", 0],
+                               "latent_image": ["16", 0],
+                               "seed": seed, "steps": hires_steps, "cfg": cfg_scale,
+                               "sampler_name": sampler, "scheduler": scheduler,
+                               "denoise": hires_denoise}}
+        wf["19"] = {"class_type": "VAEDecodeTiled",
+                    "inputs": {"samples": ["18", 0], "vae": ["2", 2],
+                               "tile_size": 512, "overlap": 64,
+                               "temporal_size": 64, "temporal_overlap": 8}}
+        wf["13"]["inputs"]["images"] = ["19", 0]
 
     return wf
 
@@ -840,6 +1058,10 @@ def parse_args():
                     help="Força do inpainting: 0.2=sutil, 0.5=forte (default: 0.35)")
     fr.add_argument("--steps",       type=int,   default=20)
     fr.add_argument("--cfg",         type=float, default=7.0)
+    fr.add_argument("--guide-size",  type=int,   default=384, dest="guide_size",
+                    help="Resolução do recorte de rosto p/ detalhar: maior=mais detalhe/VRAM (default: 384)")
+    fr.add_argument("--face-prompt", default=None, dest="face_prompt",
+                    help="Prompt do passe de rosto (default: foco em olho vítreo/gacha)")
 
     sv = sub.add_parser(
         "skinvar",
@@ -895,6 +1117,55 @@ def parse_args():
     sv.add_argument("--steps",   type=int,   default=28)
     sv.add_argument("--cfg",     type=float, default=6.0)
     sv.add_argument("--dry-run", action="store_true", dest="dry_run")
+
+    gn = sub.add_parser(
+        "gen",
+        help="GEN-01: gera Kaeli premium do ZERO (txt2img nativo, sem GPT). "
+             "Style bible em tools/kaeli_style_profiles.json")
+    gn.add_argument("--kaeli", "--slug", dest="kaeli", default=None,
+                    help="Slug da Kaeli no style bible (kaeli_style_profiles.json). "
+                         "Sem perfil, passe --prompt com a identidade.")
+    gn.add_argument("--frame", "--type", "-t", dest="frame", default="thumb",
+                    help="Enquadramento: thumb (1:1, sem cortar seio), idle (2:3), "
+                         "wallpaper (16:9), portrait (9:16), banner (2:1), square (1:1). "
+                         "Default: thumb")
+    gn.add_argument("--prompt", "-p", default=None,
+                    help="Identidade/extra anexado ao prompt do perfil (ou usado sozinho "
+                         "se a Kaeli não estiver no JSON). Ex: '1girl, solo, silver hair'")
+    gn.add_argument("--output", "-o", type=pathlib.Path, default=None,
+                    help="Saída (default: output/gen/<slug>)")
+    gn.add_argument("--count", type=int, default=1,
+                    help="Quantas variações (seeds incrementais) gerar (default: 1)")
+    gn.add_argument("--seed", type=int, default=0,
+                    help="Seed base (0 = perfil da Kaeli ou derivada do tempo)")
+    gn.add_argument("--checkpoint", default=None,
+                    help="Override do checkpoint (default: _base do JSON = NetaYume)")
+    gn.add_argument("--negative", default=None,
+                    help="Override TOTAL do negativo (default: negative bible + extra da Kaeli)")
+    gn.add_argument("--lora", action="append", default=None,
+                    help="LoRA de estilo/identidade em models/loras/ (REPETÍVEL p/ empilhar). "
+                         "Formato 'nome' ou 'nome:peso'. Ex: --lora wuwa.safetensors:0.7 "
+                         "--lora detailed_eyes.safetensors:0.4. Default: do perfil.")
+    gn.add_argument("--lora-strength", type=float, default=None, dest="lora_strength",
+                    help="Peso padrão das LoRAs sem ':peso' explícito (default: perfil ou 0.8)")
+    gn.add_argument("--steps", type=int, default=None, help="Override de steps (default: 30)")
+    gn.add_argument("--cfg", type=float, default=None, help="Override de CFG (default: 5.5)")
+    gn.add_argument("--sampler", default=None, help="Override do sampler (default: euler_ancestral)")
+    gn.add_argument("--scheduler", default=None, help="Override do scheduler (default: normal)")
+    gn.add_argument("--width", type=int, default=None,
+                    help="Override da largura (default: do preset de frame)")
+    gn.add_argument("--height", type=int, default=None,
+                    help="Override da altura (default: do preset de frame)")
+    gn.add_argument("--hires", type=float, default=0.0, dest="hires_scale",
+                    help="Upscale GENERATIVO ~N× (hires-fix tiled, adiciona detalhe real). "
+                         "Ex: 2.0. 0 = desligado")
+    gn.add_argument("--hires-denoise", type=float, default=0.35, dest="hires_denoise",
+                    help="Denoise do refino: 0.3 conserva, 0.45 reinventa (default 0.35)")
+    gn.add_argument("--hires-steps", type=int, default=16, dest="hires_steps")
+    gn.add_argument("--timeout", type=float, default=600.0,
+                    help="Timeout do job em segundos (default: 600; suba p/ hires pesado)")
+    gn.add_argument("--dry-run", action="store_true", dest="dry_run")
+    gn.add_argument("--url", default=COMFY_URL)
 
     rb = sub.add_parser("removebg", help="Remove fundo em lote (ISNet-anime via comfyui-art-venture)")
     _common(rb, "output/resultado")
@@ -1091,6 +1362,12 @@ def parse_args():
                     help="Workflow base de UI (default: idle_bust_wan_full.json)")
     eu.add_argument("--out", type=pathlib.Path, default=pathlib.Path("tools/workflows"),
                     help="Pasta de saída (default: tools/workflows)")
+
+    ar = sub.add_parser(
+        "audit-rig",
+        help="GEN-00: Audita IPAdapter + CLIP-Vision no rig (pré-requisito da trilha GEN-*)")
+    ar.add_argument("--url", default=COMFY_URL,
+                    help="URL base do ComfyUI (default: http://localhost:8188)")
 
     rs = sub.add_parser("restore", help="Restaurar originais do backup (desfazer processamento)")
     rs.add_argument("--backup-dir",  type=pathlib.Path, required=True,
@@ -1411,6 +1688,160 @@ def do_skinvar(args):
           "Se ficar fraco, mantenha skins no GPT (roadmap IMG-07).")
 
 
+# ── GEN-01: Geração de Kaeli premium NATIVA (txt2img) ──────────────────────
+def _parse_lora_specs(items, default_w: float) -> list:
+    """Converte ['nome', 'nome:0.7', …] em [(nome, peso), …]. Peso ausente → default_w."""
+    out: list = []
+    for it in items or []:
+        it = (it or "").strip()
+        if not it:
+            continue
+        if ":" in it:
+            name, _, w = it.rpartition(":")
+            try:
+                out.append((name, float(w)))
+            except ValueError:
+                out.append((it, default_w))   # ':' fazia parte do nome, não era peso
+        else:
+            out.append((it, default_w))
+    return out
+
+
+def do_gen(args):
+    """GEN-01 — gera arte de Kaeli do ZERO (txt2img) no rig local, sem GPT.
+
+    Monta o prompt a partir do style bible (kaeli_style_profiles.json): prefixo de
+    qualidade + identidade da Kaeli + enquadramento por tipo (thumb 1:1 sem cortar
+    seio, idle 2:3, …) + style bible. Resolve checkpoint/seed/sampler na ordem
+    flag CLI > perfil da Kaeli > _base > default. Grava .recipe.json p/ reproduzir.
+    """
+    profiles = load_style_profiles()
+    base   = profiles.get("_base", {}) if profiles else {}
+    frames = profiles.get("_frames", {}) if profiles else {}
+
+    slug = (args.kaeli or "kaeli").strip().replace(" ", "-").lower() or "kaeli"
+    kp   = profiles.get(slug, {}) if profiles else {}
+
+    if not kp and not args.prompt:
+        print(f"  ERRO: slug '{slug}' não está em {STYLE_PROFILES_PATH} e nenhum --prompt foi dado.")
+        print(f"  → adicione a Kaeli ao JSON OU passe --prompt com a identidade (1girl, ...).")
+        sys.exit(1)
+
+    # Enquadramento (frame). --width/--height sobrescrevem o preset.
+    frame_key = args.frame
+    fr = frames.get(frame_key, {})
+    width  = args.width  or fr.get("width", 1024)
+    height = args.height or fr.get("height", 1024)
+    framing = fr.get("framing", "")
+    if frame_key not in frames and not (args.width and args.height):
+        print(f"  AVISO: frame '{frame_key}' não está em _frames; usando {width}×{height}.")
+
+    # Prompt: prefixo de qualidade + identidade + extra (--prompt) + enquadramento + style.
+    positive = _compose([
+        base.get("positive_prefix", QUALITY_SUFFIX.lstrip(", ")),
+        kp.get("positive", ""),
+        args.prompt or "",
+        framing,
+        base.get("style", ""),
+    ])
+    negative = args.negative if args.negative is not None else _compose([
+        base.get("negative", DEFAULT_NEGATIVE),
+        kp.get("negative_extra", ""),
+    ])
+
+    # Params: flag > perfil > _base > default do código.
+    def pick(flag, key, default):
+        if flag is not None:
+            return flag
+        if key in kp and kp[key] is not None:
+            return kp[key]
+        if key in base and base[key] is not None:
+            return base[key]
+        return default
+
+    checkpoint = pick(args.checkpoint, "checkpoint", "NetaYumev35_pretrained_all_in_one.safetensors")
+    steps      = pick(args.steps,   "steps",   30)
+    cfg        = pick(args.cfg,     "cfg",     5.5)
+    sampler    = pick(args.sampler, "sampler", "euler_ancestral")
+    scheduler  = pick(args.scheduler, "scheduler", "normal")
+    # LoRAs (empilháveis): --lora REPETÍVEL no formato 'nome' ou 'nome:peso'.
+    # Sem flag, cai no perfil da Kaeli (lora único). Peso padrão: --lora-strength
+    # > _base.lora_strength > 0.8.
+    default_w  = (args.lora_strength if args.lora_strength is not None
+                  else base.get("lora_strength", 0.8))
+    loras = _parse_lora_specs(args.lora, default_w)
+    if not loras and kp.get("lora"):
+        loras = [(kp["lora"], kp.get("lora_strength", default_w))]
+    count      = max(1, args.count)
+    base_seed  = args.seed if args.seed else (kp.get("seed") or 0) or int(time.time()) % 1_000_000
+
+    output_dir = args.output or pathlib.Path(f"output/gen/{slug}")
+    hs = getattr(args, "hires_scale", 0.0)
+
+    print(f"\n  GEN-01 — Kaeli premium NATIVA (txt2img)")
+    print(f"  Kaeli      : {slug}  ({kp.get('note', '— sem perfil (só --prompt)') if kp else '— sem perfil (só --prompt)'})")
+    print(f"  Frame      : {frame_key}  →  {width}×{height}")
+    print(f"  Checkpoint : {checkpoint}")
+    print(f"  Sampler    : {sampler}/{scheduler}  steps={steps}  cfg={cfg}")
+    if loras:
+        print(f"  LoRA       : " + ", ".join(f"{n}@{w}" for n, w in loras))
+    if hs and hs > 1.0:
+        print(f"  Hires-fix  : {hs:.2f}x generativo (tiled)  denoise={getattr(args,'hires_denoise',0.35)}")
+    print(f"  Variações  : {count}  (seed base {base_seed})")
+    print(f"  Saída      : {output_dir}")
+    print(f"  Positive   : {positive}")
+    print(f"  Negative   : {negative}\n")
+
+    def _dst(i: int) -> pathlib.Path:
+        return output_dir / f"{frame_key}-{i}.png"
+
+    if args.dry_run:
+        print("  DRY RUN — nada será gerado:\n")
+        for i in range(1, count + 1):
+            print(f"    →  {_dst(i)}  (seed {base_seed + i - 1})")
+        return
+
+    ok = err = 0
+    for i in range(1, count + 1):
+        seed = base_seed + i - 1
+        dst  = _dst(i)
+        print(f"  → {dst.name}  (seed {seed})  ", end="", flush=True)
+        t0 = time.time()
+        try:
+            wf = _wf_txt2img(
+                positive, negative=negative, checkpoint=checkpoint,
+                width=width, height=height, steps=steps, cfg_scale=cfg,
+                sampler=sampler, scheduler=scheduler, seed=seed,
+                loras=loras,
+                hires_scale=hs, hires_denoise=getattr(args, "hires_denoise", 0.35),
+                hires_steps=getattr(args, "hires_steps", 16),
+            )
+            pid = queue_prompt(wf)
+            job = wait_done(pid, timeout=args.timeout)
+            download_result(job, dst)
+            recipe = {
+                "slug": slug, "frame": frame_key, "width": width, "height": height,
+                "seed": seed, "checkpoint": checkpoint, "steps": steps, "cfg": cfg,
+                "sampler": sampler, "scheduler": scheduler,
+                "loras": [{"name": n, "weight": w} for n, w in loras] or None,
+                "hires_scale": hs or None,
+                "hires_denoise": getattr(args, "hires_denoise", 0.35) if hs else None,
+                "positive": positive, "negative": negative,
+            }
+            dst.with_suffix(".recipe.json").write_text(
+                json.dumps(recipe, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"✓  {time.time()-t0:.1f}s")
+            ok += 1
+        except Exception as e:
+            print(f"\n  ✗  ERRO: {e}")
+            err += 1
+
+    print(f"\n  Resultado: {ok} OK, {err} erros")
+    if ok:
+        print(f"  → revise em {output_dir}; aprovou? trave o seed no perfil da Kaeli")
+        print(f"    ({STYLE_PROFILES_PATH}) e copie p/ frontend/public/assets/kaelis/{slug}/")
+
+
 # ── CUT-03: Idle loop premium (LivePortrait → .webm) ──────────────────────
 def _transcode_vp9(src: pathlib.Path, dst: pathlib.Path, crf: int = 34,
                    pix_fmt: str = "yuva420p", sharpen: float = 0.0) -> None:
@@ -1573,6 +2004,29 @@ def do_idleloop(args):
         print(f"  e adicione \"idle-loop\" à lista dessa Kaeli em manifest.json (ver tools/README.md CUT-03).")
 
     print(f"\n  Tempo total: {time.time()-t0:.1f}s\n")
+
+
+# ── GEN-01: Style bible por Kaeli (data-driven) ───────────────────────────
+STYLE_PROFILES_PATH = pathlib.Path("tools/kaeli_style_profiles.json")
+
+
+def load_style_profiles() -> dict:
+    """Carrega o arquivo inteiro de style profiles (GEN-01). {} se ausente/inválido."""
+    try:
+        data = json.loads(STYLE_PROFILES_PATH.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _compose(parts: list[str]) -> str:
+    """Junta pedaços de prompt não-vazios com ', ' (ignora None/vazio/só-espaço)."""
+    seen: list[str] = []
+    for p in parts:
+        p = (p or "").strip().strip(",").strip()
+        if p and p not in seen:
+            seen.append(p)
+    return ", ".join(seen)
 
 
 # ── CUT-03 ALT: Perfis de movimento por Kaeli (data-driven) ───────────────
@@ -1947,12 +2401,27 @@ def main():
         do_skinvar(args)
         return
 
+    # gen em dry-run não precisa do ComfyUI (só monta/mostra o prompt)
+    if args.mode == "gen" and args.dry_run:
+        do_gen(args)
+        return
+
     check_comfy(args.url)
     t_total = time.time()
+
+    if args.mode == "audit-rig":
+        do_audit_rig(args)
+        return
 
     # skinvar tem args próprios (sem --backup) — despacha antes do kw genérico
     if args.mode == "skinvar":
         do_skinvar(args)
+        print(f"\n  Tempo total: {time.time()-t_total:.1f}s\n")
+        return
+
+    # gen (GEN-01) — txt2img nativo; args próprios
+    if args.mode == "gen":
+        do_gen(args)
         print(f"\n  Tempo total: {time.time()-t_total:.1f}s\n")
         return
 
@@ -1992,7 +2461,8 @@ def main():
 
     elif args.mode == "facerestore":
         wf = _wf_face_restore(args.checkpoint, args.bbox_model, args.denoise,
-                               args.steps, args.cfg)
+                               args.steps, args.cfg, guide_size=args.guide_size,
+                               face_prompt=args.face_prompt or DEFAULT_FACE_PROMPT)
         print(f"\n  Face Restore ({args.checkpoint}) -- {args.input}  →  {args.output}\n")
         process_folder(wf, args.input, args.glob, args.output, **kw)
 

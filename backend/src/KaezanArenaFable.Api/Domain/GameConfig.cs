@@ -19,10 +19,23 @@ public static class GameConfig
     public const int MaxStepMs = 1400;
     // G-01: 80→130, suaviza virar/parar (buffer em SetMoveDirection + chain em TickPlayerMovement).
     public const int StepGraceMs = 130;
+    // H-07: aquisição mantida em 8 — define o alcance de PULL (a que distância você "lura"), não a
+    // persistência. Mexer aqui muda balance de todo combate; o overlure se afina no lado do DROP abaixo.
     public const int MonsterAggroRange = 8;
-    public const int AggroDropRange = 12;
-    public const int AggroDropOutOfRangeMs = 4000;
-    public const int AggroDropNoLosMs = 6000;
+    // H-07 (persistência de aggro / overlure). Os três valores abaixo sustentam um train deliberado feito
+    // na volta (overlure) sem virar grude infinito — todo drop continua finito, então uma fuga real
+    // (correr pro ladder / sentar atrás de parede) ainda solta a pilha.
+    // 12→16: a cauda do train pode atrasar mais durante a volta antes de o timer de drop começar. Coerente
+    // com as salas grandes da H-01 (RoomMax 16) e com a caverna aberta da H-06 (Floor1Size 52) — em campo
+    // aberto o tail facilmente fica >12 tiles num pico da volta sem que o jogador tenha escapado de fato.
+    public const int AggroDropRange = 16;
+    // 4000→8000: o player corre ~294ms/tile vs mob ~430–625ms, então no overlure a frente dispara e a cauda
+    // fica pra trás. AggroOutOfRangeSinceMs zera assim que o mob re-entra em AggroDropRange (a cada passagem
+    // da volta), então 8s só dispara quando o jogador some de vez — tempo de sobra pra a pilha reagrupar.
+    public const int AggroDropOutOfRangeMs = 8000;
+    // 6000→8000: virar uma quina na volta quebra a LoS dos mobs do fundo por alguns segundos; 8s aguenta a
+    // curva do loop mas ainda solta quem perde o jogador de verdade atrás de uma parede.
+    public const int AggroDropNoLosMs = 8000;
     public const int MonsterWanderIntervalMs = 1600;
     // MG-02: supersedido por RoleTuning.BaseAutoAttackMs (velocidade de auto agora é por papel).
     // Mantido como referência histórica do baseline pré-papéis; não usar no tick.
@@ -85,6 +98,9 @@ public static class GameConfig
     /// <summary>Canary speedChange is an absolute speed delta; divide by this to get a factor.</summary>
     public const double SpeedChangeReference = 600.0;
     public const double SlowFactorFloor = 0.40;
+    /// <summary>Provocar (rider "taunt"): por quanto tempo um inimigo provocado abandona o kiting e
+    /// marcha pro corpo-a-corpo (ignora TargetDistance e fuga por vida baixa). Skill das melee.</summary>
+    public const int MeleeTauntMs = 2500;
     public const double HasteFactorCap = 1.5;
     public const int SlowDurationCapMs = 6000;
     public const int DefaultHasteDurationMs = 5000;
@@ -310,15 +326,53 @@ public static class GameConfig
     public const double GaugeFillPerDamageTaken = 0.5;
 
     // ---- dungeon generation ----
-    public const int Floor1Size = 40;
-    public const int Floor2Size = 30;
-    public const int RoomMin = 5;
-    public const int RoomMax = 9;
-    public const int RoomsFloor1 = 8;
-    public const int RoomsFloor2 = 4;
+    // H-01 (G2): salas maiores e menos numerosas — espaço pra empilhar uma hunt (overlure/box), como no
+    // Tibia (poucas cavernas grandes em vez de muitas salinhas). Andares cresceram pra comportar as salas
+    // grandes sem o placement falhar.
+    public const int Floor1Size = 52;
+    public const int Floor2Size = 42;
+    public const int RoomMin = 9;
+    public const int RoomMax = 16;
+    public const int RoomsFloor1 = 5;
+    public const int RoomsFloor2 = 3;
+    /// <summary>H-01: tentativas de posicionamento de sala (salas grandes preenchem mais o andar → mais
+    /// rejeições por overlap, então a margem de tentativas sobe pra garantir a contagem-alvo).</summary>
+    public const int RoomPlacementAttempts = 300;
     public const int ChestsPerFloor = 2;
     public const int SpawnBudgetBase = 14;
     public const double SpawnBudgetTierGrowth = 0.55;
+    // H-01: orçamento de spawn escala com a área da sala (room.W*room.H / baseline), clampeado. Com salas
+    // grandes (H-01) o teto subiu pra a sala não nascer vazia — uma caverna grande tem de comportar a pilha.
+    /// <summary>Área de sala (tiles) que vale fator 1.0 no orçamento de spawn (~11×11, a sala-base nova).</summary>
+    public const double SpawnRoomAreaBaseline = 120.0;
+    /// <summary>Piso do fator de área (salas pequenas não viram desertas).</summary>
+    public const double SpawnBudgetSizeClampMin = 0.6;
+    /// <summary>Teto do fator de área (H-01: subiu de 1.4 → 2.2 pra a sala grande encher e dar overlure).</summary>
+    public const double SpawnBudgetSizeClampMax = 2.2;
+
+    // ---- H-02 (B1): salas orgânicas (autômato celular) ----
+    // Depois de carvar o retângulo, erodir a borda com um passe de CA determinístico (regra clássica 4-5)
+    // pra a sala ler como blob irregular em vez de caixa. Só o anel de borda é semeado com rocha; o miolo
+    // fica aberto, e um flood-fill a partir do centro garante que a sala continua um único componente
+    // conectado ao centro (corredores ligam centro↔centro). Tudo no Rng da run → determinístico.
+    /// <summary>Salas com lado menor que isto não são erodidas (pequenas demais — erosão as estrangularia).</summary>
+    public const int OrganicRoomMinSize = 7;
+    /// <summary>Largura (tiles) do anel de borda onde a rocha é semeada; o miolo da sala fica intacto/aberto.</summary>
+    public const int OrganicSeedBand = 3;
+    /// <summary>Probabilidade de uma célula do anel de borda nascer como rocha antes do smoothing.</summary>
+    public const double OrganicFillProb = 0.45;
+    /// <summary>Iterações de smoothing do autômato celular (mais = contorno mais suave/arredondado).</summary>
+    public const int OrganicCaIterations = 4;
+    /// <summary>Regra 4-5: célula vira rocha se tiver ≥ isto vizinhos-8 de rocha (fora do retângulo conta como rocha).</summary>
+    public const int OrganicWallThreshold = 5;
+    /// <summary>Regra 4-5: célula vira chão se tiver ≤ isto vizinhos-8 de rocha.</summary>
+    public const int OrganicFloorThreshold = 3;
+
+    // ---- corredores: largura mínima 2 (nunca 1 sqm) ----
+    /// <summary>Largura mínima de corredor (tiles). Nunca 1 — um corredor de 1 sqm pincha o movimento.</summary>
+    public const int CorridorWidthMin = 2;
+    /// <summary>Largura máxima de corredor (tiles). 2–3 dá passagem larga o bastante pra um train passar.</summary>
+    public const int CorridorWidthMax = 3;
 
     // ---- LM-07: qualidade de geração (decor agrupado em vez de pontilhado) ----
     /// <summary>Raio (Chebyshev) do agrupamento de props ambientais (decor) dentro de uma sala.</summary>

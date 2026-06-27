@@ -14,6 +14,8 @@ export interface SpriteGroup {
 export interface AppearanceEntry {
   name: string;
   file: string;
+  source?: 'tibia' | 'kaezan';
+  tags?: string[];
   cellW: number;
   cellH: number;
   cols: number;
@@ -43,7 +45,8 @@ export interface TibiaManifest {
 export type ThingCategory = 'outfits' | 'objects' | 'effects' | 'missiles';
 
 /**
- * Loads the Tibia sprite atlases produced by tools/AssetExtractor and provides
+ * Loads the Tibia sprite atlases produced by tools/AssetExtractor, then merges
+ * the optional Kaezan-authored package, and provides
  * draw helpers: pattern/phase indexing, outfit mask recoloring (HSI palette),
  * directional missiles, animated effects.
  */
@@ -60,7 +63,9 @@ export class AssetsService {
     if (this.loading) return this.loading;
     this.loading = (async () => {
       const res = await fetch('/assets/tibia/manifest.json');
-      this.manifest = (await res.json()) as TibiaManifest;
+      const tibia = this.withAssetRoot((await res.json()) as TibiaManifest, '/assets/tibia/', 'tibia');
+      const kaezan = await this.loadOptionalManifest('/assets/kaezan-outfits/manifest.json', 'kaezan');
+      this.manifest = kaezan ? this.mergeManifest(tibia, kaezan) : tibia;
     })();
     return this.loading;
   }
@@ -97,7 +102,7 @@ export class AssetsService {
     const cached = this.images.get(file);
     if (cached) return cached;
     const img = new Image();
-    img.src = `/assets/tibia/${file}`;
+    img.src = this.assetUrl(file);
     await new Promise<void>((resolve, reject) => {
       if (img.complete && img.naturalWidth > 0) return resolve();
       img.onload = () => resolve();
@@ -113,6 +118,56 @@ export class AssetsService {
     // kick off async load for next frames
     void this.image(file).catch(() => undefined);
     return null;
+  }
+
+  private async loadOptionalManifest(
+    url: string,
+    source: AppearanceEntry['source'],
+  ): Promise<TibiaManifest | null> {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      return this.withAssetRoot((await res.json()) as TibiaManifest, '/assets/kaezan-outfits/', source);
+    } catch {
+      return null;
+    }
+  }
+
+  private withAssetRoot(manifest: TibiaManifest, root: string, source: AppearanceEntry['source']): TibiaManifest {
+    const patchEntries = (entries: Record<string, AppearanceEntry>): Record<string, AppearanceEntry> =>
+      Object.fromEntries(Object.entries(entries ?? {}).map(([id, entry]) => [
+        id,
+        {
+          ...entry,
+          file: this.assetUrl(entry.file, root),
+          source,
+        },
+      ]));
+
+    return {
+      outfits: patchEntries(manifest.outfits),
+      objects: patchEntries(manifest.objects),
+      effects: patchEntries(manifest.effects),
+      missiles: patchEntries(manifest.missiles),
+      semantic: manifest.semantic ?? {},
+      objectNames: manifest.objectNames ?? {},
+    };
+  }
+
+  private mergeManifest(base: TibiaManifest, extra: TibiaManifest): TibiaManifest {
+    return {
+      outfits: { ...base.outfits, ...extra.outfits },
+      objects: { ...base.objects, ...extra.objects },
+      effects: { ...base.effects, ...extra.effects },
+      missiles: { ...base.missiles, ...extra.missiles },
+      semantic: { ...base.semantic, ...extra.semantic },
+      objectNames: { ...base.objectNames, ...extra.objectNames },
+    };
+  }
+
+  private assetUrl(file: string, root = '/assets/tibia/'): string {
+    if (file.startsWith('/') || /^https?:\/\//.test(file)) return file;
+    return `${root}${file}`;
   }
 
   // ---------- outfit colors (Tibia HSI palette, otclient outfit.cpp) ----------
@@ -188,7 +243,7 @@ export class AssetsService {
     const hasTemplate = entry.groups.some((g) => g.layers >= 2);
     if (!hasTemplate || (head === 0 && body === 0 && legs === 0 && feet === 0)) return img;
 
-    const key = `${lookType}:${head}.${body}.${legs}.${feet}`;
+    const key = `${lookType}:${entry.file}:${head}.${body}.${legs}.${feet}`;
     const cached = this.coloredOutfits.get(key);
     if (cached) return cached;
 

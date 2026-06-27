@@ -1,0 +1,72 @@
+{
+  "_comment": "GEN-01 — Style bible por Kaeli p/ o subcomando `gen` (txt2img nativo). O `gen` acha o perfil pelo slug (--kaeli) e monta o prompt como: _base.positive_prefix + <Kaeli>.positive + (--prompt extra) + _frames.<tipo>.framing + _base.style. O negativo é _base.negative + <Kaeli>.negative_extra. Flags da CLI SEMPRE vencem o perfil; o perfil vence o _base; o _base vence o default do código. Adicionar/ajustar Kaeli = só editar este JSON (nada de prompt solto espalhado). Os valores são PONTOS DE PARTIDA — trave um seed bom depois (ver .recipe.json de cada geração). enquadramento por tipo resolve a dor-raiz: a thumb 1:1 NÃO corta os seios (framing explícito + negativo anti-crop).",
+  "_base": {
+    "checkpoint": "NetaYumev35_pretrained_all_in_one.safetensors",
+    "positive_prefix": "masterpiece, best quality, amazing quality, very aesthetic, absurdres, highly detailed",
+    "style": "gacha game splash art, game cg, official key visual, premium mobile game art, ultra-detailed, intricate details, glossy reflective eyes, detailed iris, glossy render, lustrous skin, subsurface scattering, soft cinematic shading, volumetric lighting, rim light, vibrant rich colors, dramatic high-contrast chiaroscuro lighting, deep shadows, sharp focus, 8k",
+    "negative": "lowres, worst quality, low quality, normal quality, jpeg artifacts, blurry, bad anatomy, bad hands, bad proportions, missing fingers, extra digits, fewer digits, extra arms, extra legs, deformed, mutated, malformed limbs, disfigured, watermark, signature, text, username, artist name, error, cropped, out of frame, head out of frame, cropped breasts, cropped chest, cut off chest, monochrome, greyscale, sketch, loli, child, toddler, baby face, childish, young girl, chibi",
+    "sampler": "euler_ancestral",
+    "scheduler": "normal",
+    "steps": 30,
+    "cfg": 5.5,
+    "seed": 0,
+    "lora_strength": 0.8
+  },
+  "_frames": {
+    "thumb":     {"width": 1024, "height": 1024, "framing": "cowboy shot, upper body, chest and bust fully in frame, breasts not cropped, looking at viewer, slight head tilt, dynamic angle"},
+    "idle":      {"width": 832,  "height": 1216, "framing": "full body, standing, full figure in frame, feet visible, dynamic pose, transparent-friendly plain background"},
+    "wallpaper": {"width": 1344, "height": 768,  "framing": "wide cinematic composition, three-quarter body, epic scenery background, depth of field"},
+    "portrait":  {"width": 768,  "height": 1344, "framing": "vertical composition, three-quarter body, atmospheric background"},
+    "banner":    {"width": 1536, "height": 768,  "framing": "wide banner composition, character to one side, sweeping epic scenery, cinematic"},
+    "square":    {"width": 1024, "height": 1024, "framing": "looking at viewer, simple background"}
+  },
+  "velvet": {
+    "note": "Onda B — vampire princess gótica roxa; foco em olho vítreo/sedutor, cabelo c/ joias, renda densa, coroa gótica (alvo: traço gacha igual/melhor que GPT)",
+    "positive": "1girl, solo, mature female, beautiful adult woman, very long flowing black hair with purple highlights, fine glossy hair strands, intricate hair jewelry chains, beautiful detailed glowing red eyes, gradient red iris, narrow lidded sultry eyes, sharp eyelashes, aegyo-sal, elegant makeup, red lips, seductive expression, pale flawless skin, defined facial features, large breasts, voluptuous curvy figure, ornate gothic silver crown with filigree, purple flower hair ornament, black gothic lace gown, off-shoulder, deep cleavage, intricate beaded lace, sheer lace sleeves, amethyst jewelry, elegant vampire queen",
+    "negative_extra": "pink eyes, magenta eyes, purple eyes, blue eyes, flat chest, childish face",
+    "seed": 0,
+    "lora": null
+  },
+  "eloa": {
+    "note": "anjo de asas brancas + olhar sultry (ver perfil de movimento)",
+    "positive": "1girl, solo, angel, large white feathered wings, glowing halo, long blonde hair, sultry half-lidded eyes, white and gold flowing dress",
+    "negative_extra": "sleepy, drowsy",
+    "seed": 0,
+    "lora": null
+  },
+  "lunara": {
+    "note": "coelha lunar — cabelo lilás, motivos de lua/estrela",
+    "positive": "1girl, solo, bunny girl, long lilac hair, rabbit ears, crescent moon and star ornaments, ribbons, dreamy expression, soft pastel outfit",
+    "negative_extra": "",
+    "seed": 0,
+    "lora": null
+  },
+  "gaia": {
+    "note": "xamã da natureza — PELE MORENA (preservar), penas e folhas",
+    "positive": "1girl, solo, dark skin, tan skin, nature shaman, braided hair, feather accessories, leaf ornaments, tribal jewelry, earthy outfit",
+    "negative_extra": "pale skin, lightened skin, washed out skin",
+    "seed": 0,
+    "lora": null
+  },
+  "rin": {
+    "note": "súcubo — cabelo vermelho, chifres + corações, fan-service um tom acima",
+    "positive": "1girl, solo, succubus, long red hair, demon horns, heart motifs, glowing pink hearts, revealing seductive outfit, mischievous smile",
+    "negative_extra": "",
+    "seed": 0,
+    "lora": null
+  },
+  "rynna": {
+    "note": "dragoa — cabelo azul, chifres + raios roxos, PELE MORENA (preservar)",
+    "positive": "1girl, solo, dragon girl, long blue hair, dragon horns, dark skin, shimmering scales, crackling purple lightning aura, fierce expression",
+    "negative_extra": "pale skin, lightened skin",
+    "seed": 0,
+    "lora": null
+  },
+  "seren": {
+    "note": "cavaleira sacra — cabelo prata rabo-de-cavalo alto, armadura ornada, estoica",
+    "positive": "1girl, solo, holy knight, silver hair, high ponytail, ornate plate armor, flowing cape, holy light particles, stoic noble expression",
+    "negative_extra": "",
+    "seed": 0,
+    "lora": null
+  }
+}

@@ -1,0 +1,220 @@
+{
+  "2": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "waiIllustriousSDXL_v160.safetensors"
+    }
+  },
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "1girl, original character, adult woman, solo, safe,\naristocratic gothic sorceress,\nvery long flowing dark purple hair,\nblack-violet hair with soft lavender gradients,\nlayered bangs, individual flowing hair strands,\nsilky violet hair highlights,\nbright detailed crimson-red eyes,\ncrisp irises, detailed eyelashes,\nfair skin,\ncalm reserved slightly aloof expression,\ndelicate mature anime face,\nrefined narrow jawline,\ndark ornamental lace tiara,\nsmall purple flower hair ornament,\nblack lace choker,\nfaceted violet gemstone,\nblack and deep-violet gothic corset dress,\nstructured fitted bodice,\nelegant neckline,\nornate black lace trim,\nsheer black sleeves,\nlayered violet ruffles,\nsmall black gemstone decorations,\nupper body portrait,\nhead shoulders and upper bust visible,\nslight three-quarter view,\nlooking at viewer,\nhead nearly upright,\ncomplete tiara visible,\nhair ornaments visible,\ncomfortable headroom,\nno hands,\nmoonlit gothic manor interior,\nsoftly blurred arched windows,\ndark violet curtains,\nsubtle baroque architecture,\nsoft silver-blue moonlight,\nviolet ambient lighting,\npurple rim light around the hair,\nsoft cinematic key light on the face,\ndeep but readable shadows,\npremium anime gacha character illustration,\nrefined semi-painterly anime rendering,\ndelicate clean linework integrated into the painting,\nhighly detailed expressive eyes,\nsoft volumetric facial shading,\nsmooth controlled skin gradients,\nlayered detailed hair rendering,\nintricate lace and jewelry,\natmospheric depth,\nshallow depth of field,\npolished promotional game artwork,\nclean silhouette,\nbalanced composition,\nsharp face,\nsharp eyes,\nmasterpiece, high score, great score, absurdres",
+      "clip": [
+        "82",
+        1
+      ]
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digits, fewer digits, cropped, worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry, blurry face, blurry eyes, unfocused eyes, asymmetrical eyes, uneven eyes, cross-eyed, deformed face, distorted face, bad proportions, deformed anatomy, extra arms, extra limbs, duplicate character, multiple girls, child, young girl, teenager, loli, chibi, super deformed, baby face, oversized head, photorealistic, realistic photo, 3d, cgi, doll, plastic skin, wax skin, flat cel shading, simple shading, flat lighting, harsh flash, overexposed skin, crushed blacks, oversaturated purple, neon purple skin, messy hair mass, solid hair mass, extreme close-up, cropped tiara, cut off head, cut off hair ornament, busy background, crowd, weapon, wings, horns, animal ears, text box, logo, interface, ui",
+      "clip": [
+        "82",
+        1
+      ]
+    }
+  },
+  "10": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+    }
+  },
+  "11": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "82",
+        0
+      ],
+      "positive": [
+        "3",
+        0
+      ],
+      "negative": [
+        "4",
+        0
+      ],
+      "latent_image": [
+        "10",
+        0
+      ],
+      "seed": 19473621,
+      "steps": 28,
+      "cfg": 5.5,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "normal",
+      "denoise": 1.0
+    }
+  },
+  "12": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "11",
+        0
+      ],
+      "vae": [
+        "2",
+        2
+      ]
+    }
+  },
+  "13": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "19",
+        0
+      ],
+      "filename_prefix": "velvet_final"
+    }
+  },
+  "80": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": [
+        "2",
+        0
+      ],
+      "clip": [
+        "2",
+        1
+      ],
+      "lora_name": "DetailedEyes_V3.safetensors",
+      "strength_model": 0.45,
+      "strength_clip": 0.45
+    }
+  },
+  "81": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": [
+        "80",
+        0
+      ],
+      "clip": [
+        "80",
+        1
+      ],
+      "lora_name": "StS-Illustrious-Detail-Slider-v1.0.safetensors",
+      "strength_model": 0.4,
+      "strength_clip": 0.4
+    }
+  },
+  "82": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": [
+        "81",
+        0
+      ],
+      "clip": [
+        "81",
+        1
+      ],
+      "lora_name": "GachaSplash.safetensors",
+      "strength_model": 0.4,
+      "strength_clip": 0.4
+    }
+  },
+  "15": {
+    "class_type": "ImageScaleBy",
+    "inputs": {
+      "image": [
+        "12",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "scale_by": 1.5
+    }
+  },
+  "16": {
+    "class_type": "VAEEncodeTiled",
+    "inputs": {
+      "pixels": [
+        "15",
+        0
+      ],
+      "vae": [
+        "2",
+        2
+      ],
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 8
+    }
+  },
+  "17": {
+    "class_type": "TiledDiffusion",
+    "inputs": {
+      "model": [
+        "82",
+        0
+      ],
+      "method": "Mixture of Diffusers",
+      "tile_width": 768,
+      "tile_height": 768,
+      "tile_overlap": 64,
+      "tile_batch_size": 1
+    }
+  },
+  "18": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "17",
+        0
+      ],
+      "positive": [
+        "3",
+        0
+      ],
+      "negative": [
+        "4",
+        0
+      ],
+      "latent_image": [
+        "16",
+        0
+      ],
+      "seed": 19473621,
+      "steps": 18,
+      "cfg": 5.5,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "normal",
+      "denoise": 0.4
+    }
+  },
+  "19": {
+    "class_type": "VAEDecodeTiled",
+    "inputs": {
+      "samples": [
+        "18",
+        0
+      ],
+      "vae": [
+        "2",
+        2
+      ],
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 8
+    }
+  }
+}

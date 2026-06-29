@@ -4,10 +4,10 @@ using System.Text;
 namespace KaezanArenaFable.Api.Domain;
 
 /// <summary>
-/// Uma skin autoral criada no Outfit Studio do painel admin: pertence a uma Kaeli do roster
-/// (<see cref="WaifuId"/>) e descreve o visual (outfit + recolor das 4 regiões + addons + montaria)
-/// junto da regra de desbloqueio. Persistida em <c>.data/content/kaeli-skins.json</c> e mesclada
-/// ao roster estático pelo <see cref="KaeliRegistry"/>. IDs <c>skin:*</c> são estáveis.
+/// An authored skin created in the admin Outfit Studio: belongs to a roster Kaeli
+/// (<see cref="WaifuId"/>) and describes the visual (outfit + four-region recolor + addons + mount)
+/// alongside its unlock rule. Persisted in <c>.data/content/kaeli-skins.json</c> and merged into
+/// the static roster by <see cref="KaeliRegistry"/>. IDs <c>skin:*</c> are stable.
 /// </summary>
 public sealed record KaeliSkinDefinition(
     string WaifuId,
@@ -28,7 +28,7 @@ public static class KaeliAuthoring
 {
     public static readonly string[] UnlockKinds = ["default", "affinity", "gold", "kaeros"];
 
-    /// <summary>Faixa de cor HSI do Tibia: 7 bandas SI × 19 matizes = 133 cores (0..132).</summary>
+    /// <summary>Tibia HSI color range: 7 SI bands × 19 hues = 133 colors (0..132).</summary>
     public const int OutfitColorCount = 133;
 
     public static KaeliSkinDefinition Normalize(KaeliSkinDefinition def, string? forcedId = null)
@@ -55,13 +55,13 @@ public static class KaeliAuthoring
 
     public static string? Validate(KaeliSkinDefinition def)
     {
-        if (!Waifus.ById.ContainsKey(def.WaifuId)) return "Kaeli desconhecida";
-        if (string.IsNullOrWhiteSpace(def.Name)) return "nome vazio";
-        if (!def.Id.StartsWith("skin:", StringComparison.Ordinal)) return "id deve comecar com 'skin:'";
-        if (def.LookType <= 0) return "lookType invalido";
-        if (!UnlockKinds.Contains(def.Unlock)) return "regra de desbloqueio invalida";
+        if (!Waifus.ById.ContainsKey(def.WaifuId)) return "unknown Kaeli";
+        if (string.IsNullOrWhiteSpace(def.Name)) return "empty name";
+        if (!def.Id.StartsWith("skin:", StringComparison.Ordinal)) return "id must start with 'skin:'";
+        if (def.LookType <= 0) return "invalid lookType";
+        if (!UnlockKinds.Contains(def.Unlock)) return "invalid unlock rule";
         if (def.Unlock == "affinity" && (def.UnlockValue < 1 || def.UnlockValue > GameConfig.AffinityMaxLevel))
-            return $"nivel de afinidade deve estar entre 1 e {GameConfig.AffinityMaxLevel}";
+            return $"affinity level must be between 1 and {GameConfig.AffinityMaxLevel}";
         return null;
     }
 

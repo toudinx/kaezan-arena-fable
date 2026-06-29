@@ -2,7 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { MapDto, SnapshotDto } from './types';
 
-/** LM-03: modo de jogo (espelha o enum GameMode do backend). Default Dungeon. */
+/** LM-03: game mode (mirrors the backend GameMode enum). Defaults to Dungeon. */
 export const enum GameMode {
   Dungeon = 0,
   Arena = 1,
@@ -50,8 +50,8 @@ export class GameClientService {
     this.snapshot.set(null);
     this.map.set(null);
     await this.connect();
-    // O hub exige aridade exata (SignalR não suporta argumento opcional faltante): sempre enviamos o
-    // modo. Default Dungeon mantém o fluxo legado idêntico; a Arena (LM-04/05) passará GameMode.Arena.
+    // The hub requires exact arity (SignalR does not support a missing optional argument), so always
+    // send the mode. Default Dungeon keeps the legacy flow identical; Arena (LM-04/05) passes GameMode.Arena.
     return this.connection!.invoke<JoinRunResult>('JoinRun', tier, waifuId ?? null, seed ?? null, resume, mode);
   }
 
@@ -85,6 +85,11 @@ export class GameClientService {
     void this.connection?.invoke('UsePotion').catch(() => undefined);
   }
 
+  // Dash/Dodge (Shift): sends the current direction (0,0 = engine uses movement/facing direction).
+  dash(dx: number, dy: number): void {
+    void this.connection?.invoke('Dash', dx, dy).catch(() => undefined);
+  }
+
   toggleStance(): void {
     void this.connection?.invoke('ToggleStance').catch(() => undefined);
   }
@@ -106,7 +111,7 @@ export class GameClientService {
       .catch(() => undefined);
   }
 
-  /** G-10: salva a config atual do helper como default da Kaeli da run. */
+  /** G-10: saves the current helper config as the run Kaeli's default. */
   saveHelperProfile(): void {
     void this.connection?.invoke('SaveHelperProfile').catch(() => undefined);
   }

@@ -3,9 +3,9 @@ import { ApiService } from '../../core/api.service';
 import { RoleTuningRow } from '../../core/types';
 
 /**
- * MG-05: editor da tabela de tuning por papel (Knight · Mage · Archer). Lê/grava
- * `/admin/content/role-tuning`; a edição persiste em `.data/content/role-tuning.json` e a
- * próxima run reflete os novos números (a Hub injeta a tabela vigente no GameWorld).
+ * MG-05: role tuning table editor (Knight · Mage · Archer). Reads/writes
+ * `/admin/content/role-tuning`; edits persist in `.data/content/role-tuning.json`, and the
+ * next run reflects the new numbers (the Hub injects the active table into GameWorld).
  */
 @Component({
   selector: 'app-role-tuning-editor',
@@ -19,46 +19,46 @@ import { RoleTuningRow } from '../../core/types';
 
       <div class="rt-head">
         <div>
-          <span class="eyebrow">Balanceamento</span>
-          <h2>Tuning por papel</h2>
+          <span class="eyebrow">Balance</span>
+          <h2>Role tuning</h2>
           <p class="rt-desc">
-            Dano de auto vs skill, velocidade de auto, alcance e tamanho de AOE por papel.
-            Ordens-alvo: auto archer/knight &gt; mage · skill mage &gt; archer &gt; knight ·
+            Auto vs skill damage, auto speed, range, and AOE size by role.
+            Target orders: auto archer/knight &gt; mage · skill mage &gt; archer &gt; knight ·
             spd archer &gt; knight &gt; mage · range archer &gt; mage &gt; knight · aoe mage &gt; knight &gt; archer.
           </p>
         </div>
         <div class="rt-actions">
-          <button class="secondary" type="button" [disabled]="busy()" (click)="reset()">Reverter</button>
+          <button class="secondary" type="button" [disabled]="busy()" (click)="reset()">Revert</button>
           <button class="primary" type="button" [disabled]="busy() || rows().length === 0" (click)="save()">
-            {{ saving() ? 'Salvando...' : 'Salvar tuning' }}
+            {{ saving() ? 'Saving...' : 'Save tuning' }}
           </button>
         </div>
       </div>
 
       @if (loading()) {
-        <div class="empty">Carregando tuning...</div>
+        <div class="empty">Loading tuning...</div>
       } @else {
         <div class="rt-grid">
           @for (row of rows(); track row.role; let i = $index) {
             <article class="rt-card">
               <header><strong>{{ row.role }}</strong></header>
-              <label>Dano de auto (×)
+              <label>Auto damage (×)
                 <input type="number" step="0.01" min="0.01" [value]="row.autoDmgMult"
                   (input)="setNum(i, 'autoDmgMult', $any($event.target).value)" />
               </label>
-              <label>Dano de skill (×)
+              <label>Skill damage (×)
                 <input type="number" step="0.01" min="0.01" [value]="row.skillDmgMult"
                   (input)="setNum(i, 'skillDmgMult', $any($event.target).value)" />
               </label>
-              <label>Velocidade de auto (ms)
+              <label>Auto speed (ms)
                 <input type="number" step="50" min="400" [value]="row.baseAutoAttackMs"
                   (input)="setNum(i, 'baseAutoAttackMs', $any($event.target).value)" />
               </label>
-              <label>Alcance de auto (tiles)
+              <label>Auto range (tiles)
                 <input type="number" step="1" min="1" [value]="row.autoRange"
                   (input)="setNum(i, 'autoRange', $any($event.target).value)" />
               </label>
-              <label>Escala de AOE (×)
+              <label>AOE scale (×)
                 <input type="number" step="0.05" min="0.05" [value]="row.aoeScale"
                   (input)="setNum(i, 'aoeScale', $any($event.target).value)" />
               </label>
@@ -128,7 +128,7 @@ export class RoleTuningEditor implements OnInit {
     this.status.set(null);
     try {
       this.rows.set((await this.api.saveAdminRoleTuning(this.rows())).map((row) => ({ ...row })));
-      this.status.set({ kind: 'ok', msg: 'Tuning salvo. As próximas runs já usam estes números.' });
+      this.status.set({ kind: 'ok', msg: 'Tuning saved. Upcoming runs already use these numbers.' });
     } catch (err) {
       this.status.set({ kind: 'err', msg: (err as Error).message });
     } finally {

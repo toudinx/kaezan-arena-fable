@@ -1,8 +1,8 @@
 import { Component, booleanAttribute, input, output } from '@angular/core';
 
 /**
- * Pílula de moeda: ícone + valor (formatado) + botão "+" opcional.
- * As duas moedas do jogo: Kaeros (✦, premium/aurum) e Ouro (🪙).
+ * Currency pill: icon + formatted value + optional "+" button.
+ * The game's two currencies: Kaeros (✦, premium/aurum) and Gold (🪙).
  *
  *   <currency-pill icon="✦" tone="gold" [value]="acc.kaeros" [plus]="true" (add)="buy()" />
  */
@@ -14,7 +14,7 @@ import { Component, booleanAttribute, input, output } from '@angular/core';
       <span class="ico" aria-hidden="true">{{ icon() }}</span>
       <span class="val">{{ display() }}</span>
       @if (plus()) {
-        <button class="add" type="button" [attr.aria-label]="'Adicionar ' + (label() || 'moeda')" (click)="add.emit()">+</button>
+        <button class="add" type="button" [attr.aria-label]="'Add ' + (label() || 'currency')" (click)="add.emit()">+</button>
       }
     </span>
   `,
@@ -40,14 +40,14 @@ import { Component, booleanAttribute, input, output } from '@angular/core';
 export class CurrencyPill {
   icon = input<string>('✦');
   value = input<number>(0);
-  /** rótulo acessível / tooltip (ex: "Kaeros") */
+  /** Accessible label / tooltip (for example, "Kaeros"). */
   label = input<string>('');
-  /** 'gold' tinge o valor com o aurum (uso para premium) */
+  /** 'gold' tints the value with aurum (used for premium). */
   tone = input<'default' | 'gold'>('default');
   plus = input(false, { transform: booleanAttribute });
   add = output<void>();
 
   display(): string {
-    return new Intl.NumberFormat('pt-BR').format(this.value() ?? 0);
+    return new Intl.NumberFormat('en-US').format(this.value() ?? 0);
   }
 }

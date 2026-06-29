@@ -3,50 +3,50 @@ using KaezanArenaFable.Api.Domain;
 namespace KaezanArenaFable.Api.Engine;
 
 /// <summary>
-/// Identidade do modo de jogo (LM-03). Default <see cref="Dungeon"/> = comportamento legado
-/// (andares procedurais + boss). <see cref="Arena"/> é a sala de sobrevivência por waves (LM-04).
-/// IDs estáveis: o valor numérico é parte do contrato cliente↔hub — não reordenar.
+/// Game mode identity (LM-03). Default <see cref="Dungeon"/> = legacy behavior
+/// (procedural floors + boss). <see cref="Arena"/> is the wave-survival room (LM-04).
+/// Stable IDs: the numeric value is part of the client↔hub contract — do not reorder.
 /// </summary>
 public enum GameMode { Dungeon = 0, Arena = 1 }
 
 /// <summary>
-/// Costura mínima de modo/mapa (LM-03). Localiza as <b>3 únicas diferenças</b> entre modos —
-/// <b>(1)</b> fonte de mapa (como o lugar é produzido), <b>(2)</b> povoamento (pré-spawn vs.
-/// agendador de waves) e <b>(3)</b> condição de fim — mantendo <i>compartilhados</i> no
-/// <see cref="GameWorld"/> o tick, o movimento, o combate, o snapshot e a recompensa.
+/// Minimal mode/map seam (LM-03). Localizes the <b>3 only differences</b> between modes:
+/// <b>(1)</b> map source, <b>(2)</b> population (pre-spawn vs. wave scheduler), and
+/// <b>(3)</b> end condition, while keeping tick, movement, combat, snapshots, and rewards
+/// shared in <see cref="GameWorld"/>.
 ///
-/// Um modo novo pluga aqui (mapa + spawn + fim) sem tocar o pipeline de combate. Determinismo:
-/// implementações usam <b>apenas</b> o <see cref="Rng"/> da run (nada de <c>Random</c>/<c>DateTime</c>).
+/// A new mode plugs in here (map + spawn + end) without touching the combat pipeline.
+/// Determinism: implementations use <b>only</b> the run <see cref="Rng"/>.
 /// </summary>
 public abstract class GameModeStrategy
 {
     public abstract GameMode Id { get; }
 
-    /// <summary>(1) Fonte de mapa: produz os andares/sala da run. Só consome o <paramref name="rng"/> da run.</summary>
+    /// <summary>(1) Map source: produces run floors/rooms. Only consumes the run <paramref name="rng"/>.</summary>
     public abstract DungeonFloor[] BuildFloors(Rng rng, BiomeDef biome);
 
-    /// <summary>(2) Povoamento inicial (pré-spawn). Chamado uma vez na construção da run.</summary>
+    /// <summary>(2) Initial population (pre-spawn). Called once during run construction.</summary>
     public abstract void Populate(GameWorld world);
 
-    /// <summary>(2b) Povoamento contínuo por tick (ex.: agendador de waves da arena). No-op no dungeon.</summary>
+    /// <summary>(2b) Continuous population per tick (for example, arena wave scheduler). No-op in dungeon.</summary>
     public virtual void OnTick(GameWorld world) { }
 
-    /// <summary>(3) Condição de fim disparada na morte de um monstro (ex.: boss derrotado = vitória).
-    /// A morte do jogador é fim compartilhado (vive no <see cref="GameWorld"/>), não aqui.</summary>
+    /// <summary>(3) End condition fired when a monster dies (for example, boss defeated = victory).
+    /// Player death is a shared end path that lives in <see cref="GameWorld"/>, not here.</summary>
     public virtual void OnMonsterKilled(GameWorld world, Actor monster) { }
 
-    /// <summary>Resolve a estratégia a partir do enum público (vindo do <c>JoinRun</c>).</summary>
+    /// <summary>Resolves the strategy from the public enum coming from <c>JoinRun</c>.</summary>
     public static GameModeStrategy For(GameMode mode) => mode switch
     {
-        GameMode.Arena => throw new NotImplementedException("modo Arena chega na LM-04"),
+        GameMode.Arena => throw new NotImplementedException("Arena mode arrives in LM-04"),
         _ => new DungeonModeStrategy()
     };
 }
 
 /// <summary>
-/// Modo legado: 2 andares procedurais (andar 0 normal + andar 1 boss), pré-spawn por sala e POIs;
-/// fim por <b>derrotar o boss</b> (vitória) ou pela morte do jogador (compartilhado). Comportamento
-/// idêntico ao da run original — a costura só reposiciona as mesmas decisões (LM-01 verde).
+/// Legacy mode: 2 procedural floors (floor 0 normal + floor 1 boss), pre-spawn by room and POIs;
+/// ends by <b>defeating the boss</b> or by player death. Behavior is identical to the original run;
+/// the seam only repositions the same decisions (LM-01 green).
 /// </summary>
 public sealed class DungeonModeStrategy : GameModeStrategy
 {
@@ -68,6 +68,6 @@ public sealed class DungeonModeStrategy : GameModeStrategy
     public override void OnMonsterKilled(GameWorld world, Actor monster)
     {
         if (monster.IsBossActor)
-            world.EndRun(true, $"{monster.Species!.Name} derrotado");
+            world.EndRun(true, $"{monster.Species!.Name} defeated");
     }
 }

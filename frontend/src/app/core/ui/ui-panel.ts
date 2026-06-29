@@ -1,12 +1,12 @@
 import { Component, booleanAttribute, input } from '@angular/core';
 
 /**
- * Cartão de vidro do design system, com a "crystal edge" (hairline de luz no topo)
- * e header opcional. Conteúdo via projeção; slot [header] para ações à direita.
+ * Design-system glass card with the "crystal edge" (top light hairline)
+ * and optional header. Content comes through projection; [header] slot is for right-side actions.
  *
- *   <ui-panel header="Contratos Diários">
- *     <span ngProjectAs="actions">reseta 00:00</span>
- *     ...conteúdo...
+ *   <ui-panel header="Daily Contracts">
+ *     <span ngProjectAs="actions">resets 00:00</span>
+ *     ...content...
  *   </ui-panel>
  */
 @Component({
@@ -55,10 +55,10 @@ import { Component, booleanAttribute, input } from '@angular/core';
   `],
 })
 export class UiPanel {
-  /** título principal (display font) */
+  /** Main title (display font). */
   header = input<string>('');
-  /** overline acima do título */
+  /** Overline above the title. */
   eyebrow = input<string>('');
-  /** vidro mais opaco/elevado */
+  /** More opaque/elevated glass. */
   solid = input(false, { transform: booleanAttribute });
 }

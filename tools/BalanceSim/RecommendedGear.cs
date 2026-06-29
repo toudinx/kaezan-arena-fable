@@ -3,10 +3,10 @@ using KaezanArenaFable.Api.Domain;
 namespace BalanceSim;
 
 /// <summary>
-/// Sintetiza o gear "recomendado" de um tier (full set BIS por slot) e o agrega em
-/// <see cref="EquipmentStats"/> — o mesmo caminho do jogo real (<see cref="ItemAuthoring"/> normaliza
-/// os stats recomendados por tier; <see cref="EquipmentStatAggregator.Aggregate"/> soma os slots).
-/// É o equipamento contra o qual o sweep mede TTK (gear × mob no mesmo tier).
+/// Synthesizes the "recommended" gear for a tier (full BIS set by slot) and aggregates it into
+/// <see cref="EquipmentStats"/> — the same path as the real game (<see cref="ItemAuthoring"/>
+/// normalizes recommended stats by tier; <see cref="EquipmentStatAggregator.Aggregate"/> sums slots).
+/// This is the equipment the sweep uses to measure TTK (gear x mob on the same tier).
 /// </summary>
 internal static class RecommendedGear
 {
@@ -19,8 +19,8 @@ internal static class RecommendedGear
         void Add(string slot, string? weaponType, AuthoredItemDefinition flagged)
         {
             var id = nextId++;
-            // Normalize recalcula todos os stats a partir dos valores recomendados do tier conforme
-            // o slot + quais capacidades foram "ligadas" (campo > 0 vira o stat recomendado cheio).
+            // Normalize recomputes every stat from tier recommendations based on slot + enabled
+            // capabilities (field > 0 becomes the full recommended stat).
             var normalized = ItemAuthoring.Normalize(flagged with { Slot = slot, WeaponType = weaponType }, id);
             var source = new ItemType(id, $"sim:{slot}", 0, slot, weaponType);
             items[id] = normalized.Apply(source);

@@ -331,6 +331,7 @@ export class AssetsService {
     ctx: CanvasRenderingContext2D, lookType: number, dx: number, dy: number, scale: number,
     dir: number, moving: boolean, phaseTimeMs: number,
     head = 0, body = 0, legs = 0, feet = 0, addons = 0, mountLookType = 0,
+    walkStride: number | null = null,
   ): void {
     const entry = this.entry('outfits', lookType);
     if (!entry) return;
@@ -342,7 +343,13 @@ export class AssetsService {
 
     const phases = Math.max(group.count / (group.patternX * group.patternY * group.patternZ * group.layers), 1);
     const phaseDur = group.phases[0]?.[0] || (moving ? 110 : 300);
-    const phase = Math.floor(phaseTimeMs / phaseDur) % phases;
+    // While moving, drive the walk frame by STRIDE progress (one stride per tile-step, so half the
+    // cycle plays per tile) — the planted foot grips the ground instead of sliding at a fixed clock
+    // rate. `walkStride` is continuous: completed strides + progress through the current step. Idle
+    // (and any caller that doesn't pass walkStride) stays on the time-based clock.
+    const phase = moving && walkStride != null
+      ? Math.floor(walkStride * Math.max(1, phases / 2)) % phases
+      : Math.floor(phaseTimeMs / phaseDur) % phases;
     const px = Math.min(dir, group.patternX - 1);
 
     if (mountLookType > 0) {
@@ -357,7 +364,9 @@ export class AssetsService {
           1,
         );
         const mountDuration = mountGroup.phases[0]?.[0] || (moving ? 110 : 300);
-        const mountPhase = Math.floor(phaseTimeMs / mountDuration) % mountPhases;
+        const mountPhase = moving && walkStride != null
+          ? Math.floor(walkStride * Math.max(1, mountPhases / 2)) % mountPhases
+          : Math.floor(phaseTimeMs / mountDuration) % mountPhases;
         const mountX = Math.min(dir, mountGroup.patternX - 1);
         const mountIndex = mountGroup.start + this.spriteIndex(mountGroup, mountPhase, mountX, 0, 0, 0);
         this.drawCell(ctx, mountImage, mountEntry, mountIndex, dx, dy, scale);

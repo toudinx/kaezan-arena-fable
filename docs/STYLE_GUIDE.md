@@ -7,6 +7,8 @@ Direção: **"Cathedral Ink + Aurum"** — gacha premium (alvo Wuthering Waves).
 Superfícies de vidro com aresta de luz ("crystal edge"), tipografia editorial-fantasy,
 e **cor com intenção** (não um único teal em tudo).
 
+**Idioma:** strings de UI são em **inglês**; os tokens visuais são agnósticos de idioma.
+
 ---
 
 ## Paleta

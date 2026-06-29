@@ -30,6 +30,13 @@ Instruções para assistentes de IA trabalhando neste repo.
 
 ## Convenções
 
+- **Idioma.** Todo texto que o jogador vê (UI do frontend **e** strings de display do backend que
+  chegam ao cliente: nomes/títulos/descrições/lore de Kaelis, skills, cards, classes, biomas,
+  dailies, banners, erros, mensagens de run-end) e **todo o código** (incluindo comentários) são em
+  **inglês**, sem exceção. Docs de lore/specs/design e o material que o usuário revisa
+  (`docs/**`, `docs_web/**`) **podem permanecer em português**. A migração PT→EN é rastreada em
+  `docs/roadmap_i18n_english_migration.md` (um switch de idioma fica para fase futura). IDs estáveis
+  nunca são renomeados — só o texto de display ao lado muda.
 - Backend: namespaces `Domain` (dados/config), `Engine` (simulação), `Meta` (conta/gacha/dailies),
   `Hubs`, `Api`. Mantenha as fronteiras.
 - Frontend: `core/` (serviços + renderer puro), `pages/` (componentes standalone com template inline),

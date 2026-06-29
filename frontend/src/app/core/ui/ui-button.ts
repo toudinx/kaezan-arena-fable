@@ -1,10 +1,10 @@
 import { Component, booleanAttribute, input, output } from '@angular/core';
 
 /**
- * Botão premium do design system. Variantes: primary (íris/UI), gold (recompensa),
- * ghost (vidro). Estados loading/disabled. Usa os tokens globais de styles.css.
+ * Design-system premium button. Variants: primary (iris/UI), gold (reward),
+ * ghost (glass). Loading/disabled states. Uses the global styles.css tokens.
  *
- *   <ui-button variant="gold" [loading]="busy()" (act)="pull()">Convocar ×10</ui-button>
+ *   <ui-button variant="gold" [loading]="busy()" (act)="pull()">Summon x10</ui-button>
  */
 @Component({
   selector: 'ui-button',
@@ -45,12 +45,12 @@ import { Component, booleanAttribute, input, output } from '@angular/core';
   `],
 })
 export class UiButton {
-  /** primary | gold | ghost (secondary = alias de ghost) */
+  /** primary | gold | ghost (secondary = ghost alias). */
   variant = input<'primary' | 'gold' | 'ghost' | 'secondary'>('primary');
   loading = input(false, { transform: booleanAttribute });
   disabled = input(false, { transform: booleanAttribute });
   type = input<'button' | 'submit'>('button');
-  /** emitido no clique quando não está disabled/loading */
+  /** Emitted on click when not disabled/loading. */
   act = output<MouseEvent>();
 
   cls(): string {

@@ -5,10 +5,10 @@ import { KaeliAuthoringMetadata, KaeliSkinDefinition, RARITY_COLORS, SkinDef, Wa
 import { StudioSeed } from './kaeli-studio';
 
 /**
- * Uma skin no guarda-roupa, com a origem resolvida:
- * - estática pristina (do código, sem override) → só leitura, mas "Editar visual" cria um override;
- * - override (id estático com registro autoral) → editável, "Restaurar padrão" remove o override;
- * - autoral pura (id novo) → editável, re-vinculável e reordenável.
+ * A wardrobe skin with its resolved origin:
+ * - pristine static skin (from code, no override) is read-only, but "Edit visual" creates an override;
+ * - override (static id with authored record) is editable, and "Restore default" removes the override;
+ * - pure authored skin (new id) is editable, rebindable, and reorderable.
  */
 interface WardrobeSkin {
   skin: SkinDef;
@@ -23,10 +23,10 @@ interface WardrobeSkin {
 interface PendingAction { skin: KaeliSkinDefinition; restore: boolean; }
 
 /**
- * Guarda-roupa por Kaeli: a face de gestão de skins da aba Kaelis. Lista o roster, mostra TODAS as
- * skins de cada Kaeli (a padrão/estáticas vindas do código + as autorais do Outfit Studio) e permite
- * gerir as autorais sem redesenhar: regra de desbloqueio, ordem, re-vincular a outra Kaeli e excluir.
- * O design visual continua no Outfit Studio — "Nova skin" / "Editar visual" emitem um StudioSeed.
+ * Per-Kaeli wardrobe: the skin management face of the Kaelis tab. Lists the roster, shows ALL
+ * skins for each Kaeli (default/static skins from code + authored skins from Outfit Studio), and
+ * manages authored data without repainting: unlock rule, order, rebinding to another Kaeli, and deletion.
+ * Visual design stays in Outfit Studio; "New skin" / "Edit visual" emit a StudioSeed.
  */
 @Component({
   selector: 'app-kaeli-wardrobe',
@@ -60,16 +60,16 @@ interface PendingAction { skin: KaeliSkinDefinition; restore: boolean; }
         </div>
       </aside>
 
-      <!-- MAIN: guarda-roupa da Kaeli selecionada -->
+      <!-- MAIN: selected Kaeli wardrobe -->
       <main class="closet panel">
         @if (selected(); as w) {
           <div class="closet-head">
             <div>
-              <span class="eyebrow">Guarda-roupa</span>
+              <span class="eyebrow">Wardrobe</span>
               <h2>{{ w.name }} <i class="star" [style.color]="rarityColor(w.rarity)">{{ w.rarity }}★</i></h2>
-              <small>{{ skinsForSelected().length }} skins · {{ authoredCount(w.id) }} autorais</small>
+              <small>{{ skinsForSelected().length }} skins · {{ authoredCount(w.id) }} authored</small>
             </div>
-            <button type="button" class="primary" (click)="newSkin()">+ Nova skin</button>
+            <button type="button" class="primary" (click)="newSkin()">+ New skin</button>
           </div>
 
           @if (status(); as state) {
@@ -87,16 +87,16 @@ interface PendingAction { skin: KaeliSkinDefinition; restore: boolean; }
                 <div class="meta">
                   <div class="meta-head">
                     <strong [title]="item.skin.name">{{ item.skin.name }}</strong>
-                    @if (item.isDefault) { <i class="origin default">Padrão</i> }
-                    @if (item.isOverride) { <i class="origin editada">Editada</i> }
+                    @if (item.isDefault) { <i class="origin default">Default</i> }
+                    @if (item.isOverride) { <i class="origin edited">Edited</i> }
                     @else if (item.isPureAuthored) { <i class="origin kaezan">Kaezan</i> }
-                    @else if (!item.isDefault) { <i class="origin static">Estática</i> }
+                    @else if (!item.isDefault) { <i class="origin static">Static</i> }
                   </div>
                   <code class="sid">{{ item.skin.id }}</code>
 
                   @if (item.editable && item.record && !item.isDefault) {
                     <div class="row">
-                      <label>Desbloqueio
+                      <label>Unlock
                         <select [value]="item.record.unlock" (change)="setUnlock(item.record, $any($event.target).value)">
                           @for (k of unlockKinds(); track k) { <option [value]="k">{{ unlockLabel(k) }}</option> }
                         </select>
@@ -113,7 +113,7 @@ interface PendingAction { skin: KaeliSkinDefinition; restore: boolean; }
                   }
 
                   @if (item.isPureAuthored && item.record) {
-                    <label class="rebind">Vincular a
+                    <label class="rebind">Bind to
                       <select [value]="item.record.waifuId" (change)="rebind(item.record, $any($event.target).value)">
                         @for (k of roster(); track k.id) { <option [value]="k.id">{{ k.name }}</option> }
                       </select>
@@ -122,19 +122,19 @@ interface PendingAction { skin: KaeliSkinDefinition; restore: boolean; }
 
                   <footer>
                     @if (item.isPureAuthored) {
-                      <button type="button" [disabled]="!canMove(item.skin.id, -1)" (click)="move(item.record!, -1)" title="Mover para cima">↑</button>
-                      <button type="button" [disabled]="!canMove(item.skin.id, 1)" (click)="move(item.record!, 1)" title="Mover para baixo">↓</button>
+                      <button type="button" [disabled]="!canMove(item.skin.id, -1)" (click)="move(item.record!, -1)" title="Move up">↑</button>
+                      <button type="button" [disabled]="!canMove(item.skin.id, 1)" (click)="move(item.record!, 1)" title="Move down">↓</button>
                     }
-                    <button type="button" (click)="editVisual(item)">Editar visual</button>
+                    <button type="button" (click)="editVisual(item)">Edit visual</button>
                     @if (item.isOverride) {
-                      <button type="button" class="danger" (click)="requestRestore(item.record!)">Restaurar padrão</button>
+                      <button type="button" class="danger" (click)="requestRestore(item.record!)">Restore default</button>
                     } @else if (item.isPureAuthored) {
-                      <button type="button" class="danger" (click)="requestDelete(item.record!)">Excluir</button>
+                      <button type="button" class="danger" (click)="requestDelete(item.record!)">Delete</button>
                     }
                   </footer>
 
                   @if (item.isStatic && !item.editable) {
-                    <p class="static-note">Skin do código. “Editar visual” cria um override editável — nada é renomeado.</p>
+                    <p class="static-note">Code skin. "Edit visual" creates an editable override; nothing is renamed.</p>
                   }
                 </div>
               </article>
@@ -142,30 +142,30 @@ interface PendingAction { skin: KaeliSkinDefinition; restore: boolean; }
           </div>
 
           <p class="hint">
-            <b>“Editar visual”</b> funciona em qualquer skin — inclusive na padrão e nas estáticas:
-            a edição vira um override com o mesmo id (nada é renomeado) e ganha <i>Restaurar padrão</i>
-            para voltar ao código. As skins <b>Kaezan</b> (id novo) ainda podem ser re-vinculadas a
-            outra Kaeli e reordenadas (afeta o seletor de skin no Hub). A padrão fica sempre grátis.
+            <b>"Edit visual"</b> works on any skin, including default and static skins:
+            the edit becomes an override with the same id (nothing is renamed) and gains <i>Restore default</i>
+            to return to code. <b>Kaezan</b> skins (new id) can also be rebound to another Kaeli
+            and reordered (affecting the Hub skin selector). The default skin always stays free.
           </p>
         } @else {
-          <div class="loading">Carregando guarda-roupa...</div>
+          <div class="loading">Loading wardrobe...</div>
         }
       </main>
 
       @if (pendingAction(); as action) {
         <div class="modal-backdrop" (click)="cancelDelete()">
           <section class="confirm-modal" (click)="$event.stopPropagation()">
-            <span class="eyebrow">{{ action.restore ? 'Restaurar padrão' : 'Excluir skin' }}</span>
+            <span class="eyebrow">{{ action.restore ? 'Restore default' : 'Delete skin' }}</span>
             <h2>{{ action.skin.name }}</h2>
             @if (action.restore) {
-              <p>Remove o override <code>{{ action.skin.id }}</code> e restaura o visual definido no código.</p>
+              <p>Removes override <code>{{ action.skin.id }}</code> and restores the visual defined in code.</p>
             } @else {
-              <p>Remove definitivamente <code>{{ action.skin.id }}</code> de {{ waifuName(action.skin.waifuId) }}.</p>
+              <p>Permanently removes <code>{{ action.skin.id }}</code> from {{ waifuName(action.skin.waifuId) }}.</p>
             }
             <div class="actions">
-              <button type="button" class="secondary" (click)="cancelDelete()">Cancelar</button>
+              <button type="button" class="secondary" (click)="cancelDelete()">Cancel</button>
               <button type="button" class="danger solid" [disabled]="deleting()" (click)="confirmDelete()">
-                {{ deleting() ? 'Aplicando...' : (action.restore ? 'Restaurar' : 'Excluir') }}
+                {{ deleting() ? 'Applying...' : (action.restore ? 'Restore' : 'Delete') }}
               </button>
             </div>
           </section>
@@ -212,7 +212,7 @@ interface PendingAction { skin: KaeliSkinDefinition; restore: boolean; }
     .meta-head { align-items: center; display: flex; gap: 6px; min-width: 0; }
     .meta-head strong { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .origin { border-radius: 3px; font-size: 7px; font-style: normal; font-weight: 900; margin-left: auto; padding: 2px 5px; }
-    .origin.default { background: #1b2a3b; color: #74c0e8; } .origin.kaezan { background: #173b35; color: #58dbc9; } .origin.static { background: #26262f; color: #a8a6b8; } .origin.editada { background: #3a2b16; color: #e8b86a; }
+    .origin.default { background: #1b2a3b; color: #74c0e8; } .origin.kaezan { background: #173b35; color: #58dbc9; } .origin.static { background: #26262f; color: #a8a6b8; } .origin.edited { background: #3a2b16; color: #e8b86a; }
     .sid { color: #6f6d80; font-size: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .row { display: grid; gap: 6px; grid-template-columns: 1fr 1fr; }
     .rebind { margin-top: 2px; }
@@ -237,11 +237,11 @@ interface PendingAction { skin: KaeliSkinDefinition; restore: boolean; }
   `],
 })
 export class KaeliWardrobe implements OnInit {
-  /** Kaeli selecionada ao montar (o host preserva a seleção entre idas ao Outfit Studio). */
+  /** Kaeli selected on mount (the host preserves selection between Outfit Studio trips). */
   @Input() initialWaifuId = '';
-  /** Pede ao host (KaeliManager) para abrir o Outfit Studio para criar/editar uma skin. */
+  /** Asks the host (KaeliManager) to open Outfit Studio to create/edit a skin. */
   @Output() readonly openStudio = new EventEmitter<StudioSeed>();
-  /** Avisa o host da Kaeli selecionada, para preservá-la entre montagens. */
+  /** Tells the host which Kaeli is selected so it can be preserved across mounts. */
   @Output() readonly waifuSelected = new EventEmitter<string>();
 
   readonly authored = signal<KaeliSkinDefinition[]>([]);
@@ -258,7 +258,7 @@ export class KaeliWardrobe implements OnInit {
   readonly selected = computed(() => this.roster().find((w) => w.id === this.selectedWaifuId()));
   readonly authoredById = computed(() => new Map(this.authored().map((s) => [s.id, s])));
 
-  /** Ids estáticos (do código) + id da padrão da Kaeli selecionada — para classificar cada skin. */
+  /** Static ids (from code) + selected Kaeli default id, used to classify each skin. */
   readonly staticInfo = computed(() => {
     const kaeli = this.meta()?.kaelis.find((k) => k.id === this.selectedWaifuId());
     return { staticIds: new Set(kaeli?.staticSkinIds ?? []), defaultId: kaeli?.defaultSkinId ?? '' };
@@ -284,7 +284,7 @@ export class KaeliWardrobe implements OnInit {
     });
   });
 
-  /** Ordem de exibição só das skins autorais puras (as únicas reordenáveis; estáticas ficam fixas). */
+  /** Display order for pure authored skins only (the only reorderable skins; static ones stay fixed). */
   readonly authoredOrder = computed<string[]>(() =>
     this.skinsForSelected().filter((s) => s.isPureAuthored).map((s) => s.skin.id));
 
@@ -308,7 +308,7 @@ export class KaeliWardrobe implements OnInit {
     }
   }
 
-  /** Recarrega a lista de skins autorais (após cada mutação) sem depender só do catálogo. */
+  /** Reloads the authored skin list after each mutation without relying only on the catalog. */
   async refreshAuthored(): Promise<void> {
     this.authored.set(await this.api.getAuthoredKaeliSkins());
   }
@@ -331,13 +331,13 @@ export class KaeliWardrobe implements OnInit {
 
   unlockLabel(kind: string): string {
     const labels: Record<string, string> = {
-      default: 'Padrão (grátis)', affinity: 'Afinidade', gold: 'Ouro', kaeros: 'Kaeros',
+      default: 'Default (free)', affinity: 'Affinity', gold: 'Gold', kaeros: 'Kaeros',
     };
     return labels[kind] ?? kind;
   }
   unlockValueLabel(kind: string): string {
     const labels: Record<string, string> = {
-      affinity: 'Nível de afinidade', gold: 'Preço (ouro)', kaeros: 'Preço (Kaeros)',
+      affinity: 'Affinity level', gold: 'Price (gold)', kaeros: 'Price (Kaeros)',
     };
     return labels[kind] ?? 'Valor';
   }
@@ -354,7 +354,7 @@ export class KaeliWardrobe implements OnInit {
     if (waifuId) this.openStudio.emit({ mode: 'new', waifuId });
   }
 
-  /** Abre o estúdio para editar o visual. Em skin estática pristina, semeia um override (mesmo id). */
+  /** Opens the studio to edit the visual. For a pristine static skin, seeds an override (same id). */
   editVisual(item: WardrobeSkin): void {
     const waifuId = this.selectedWaifuId();
     const skin: KaeliSkinDefinition = item.record
@@ -377,20 +377,20 @@ export class KaeliWardrobe implements OnInit {
   async setUnlock(record: KaeliSkinDefinition, unlock: string): Promise<void> {
     const kind = unlock as KaeliSkinDefinition['unlock'];
     const unlockValue = kind === 'default' ? 0 : Math.max(kind === 'affinity' ? 1 : 0, record.unlockValue);
-    await this.persist({ ...record, unlock: kind, unlockValue }, `Desbloqueio de ${record.name} atualizado.`);
+    await this.persist({ ...record, unlock: kind, unlockValue }, `${record.name} unlock updated.`);
   }
 
   async setUnlockValue(record: KaeliSkinDefinition, value: string): Promise<void> {
     let unlockValue = Math.max(0, Math.floor(+value || 0));
     if (record.unlock === 'affinity') unlockValue = Math.min(Math.max(1, unlockValue), this.affinityMax());
-    await this.persist({ ...record, unlockValue }, `Desbloqueio de ${record.name} atualizado.`);
+    await this.persist({ ...record, unlockValue }, `${record.name} unlock updated.`);
   }
 
   async rebind(record: KaeliSkinDefinition, waifuId: string): Promise<void> {
     if (waifuId === record.waifuId) return;
     const target = this.waifuName(waifuId);
-    await this.persist({ ...record, waifuId }, `${record.name} agora pertence a ${target}.`);
-    this.selectedWaifuId.set(waifuId); // segue a skin para a nova dona
+    await this.persist({ ...record, waifuId }, `${record.name} now belongs to ${target}.`);
+    this.selectedWaifuId.set(waifuId); // follow the skin to its new owner
     this.waifuSelected.emit(waifuId);
   }
 
@@ -403,7 +403,7 @@ export class KaeliWardrobe implements OnInit {
     try {
       await this.api.reorderKaeliSkins(record.waifuId, order);
       await this.refreshAuthored();
-      this.status.set({ kind: 'ok', msg: 'Ordem das skins atualizada.' });
+      this.status.set({ kind: 'ok', msg: 'Skin order updated.' });
     } catch (error) {
       this.status.set({ kind: 'err', msg: (error as Error).message });
     }
@@ -435,7 +435,7 @@ export class KaeliWardrobe implements OnInit {
       this.pendingAction.set(null);
       this.status.set({
         kind: 'ok',
-        msg: action.restore ? `${skin.name} voltou ao visual padrão.` : `${skin.name} foi excluída.`,
+        msg: action.restore ? `${skin.name} returned to the default visual.` : `${skin.name} was deleted.`,
       });
     } catch (error) {
       this.pendingAction.set(null);

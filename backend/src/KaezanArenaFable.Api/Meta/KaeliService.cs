@@ -3,14 +3,14 @@ using KaezanArenaFable.Api.Domain;
 namespace KaezanArenaFable.Api.Meta;
 
 /// <summary>
-/// Profundidade de Kaeli: presentes (afinidade), skins e maestria.
-/// Tudo meta — nunca roda dentro do tick.
+/// Kaeli depth: gifts (affinity), skins and mastery.
+/// All meta — never runs inside the tick.
 /// </summary>
 public sealed class KaeliService(AccountStore store, KaeliRegistry kaelis, ItemRegistry items)
 {
-    // ---- afinidade ----
+    // ---- affinity ----
 
-    /// <summary>Nível de afinidade (1..max) derivado do XP acumulado.</summary>
+    /// <summary>Affinity level (1..max) derived from accumulated XP.</summary>
     public static int AffinityLevelFor(long xp)
     {
         var level = 1;
@@ -24,7 +24,7 @@ public sealed class KaeliService(AccountStore store, KaeliRegistry kaelis, ItemR
         return level;
     }
 
-    /// <summary>XP já dentro do nível atual e quanto falta para o próximo (0 quando máximo).</summary>
+    /// <summary>XP already within the current level and how much is needed for the next (0 at maximum).</summary>
     public static (long Into, long ToNext) AffinityProgress(long xp)
     {
         var level = 1;
@@ -39,8 +39,8 @@ public sealed class KaeliService(AccountStore store, KaeliRegistry kaelis, ItemR
     }
 
     /// <summary>
-    /// Concede XP de afinidade e aplica marcos de nível (Kaeros, lore). Anota em `notes`.
-    /// Retorna o nível resultante. Usado por presentes e pelo fim de run (RewardService).
+    /// Grants affinity XP and applies level milestones (Kaeros, lore). Appends to `notes`.
+    /// Returns the resulting level. Used by gifts and run-end (RewardService).
     /// </summary>
     public static int GrantAffinityXp(AccountState state, WaifuDef waifu, long xp, List<string> notes)
     {
@@ -51,35 +51,35 @@ public sealed class KaeliService(AccountStore store, KaeliRegistry kaelis, ItemR
 
         for (var level = before + 1; level <= after; level++)
         {
-            notes.Add($"Afinidade de {waifu.Name} subiu para {level}!");
+            notes.Add($"{waifu.Name}'s Affinity rose to {level}!");
             if (GameConfig.AffinityKaerosRewards.TryGetValue(level, out var kaeros))
             {
                 state.Kaeros += kaeros;
-                notes.Add($"Marco de afinidade {level}: +{kaeros} Kaeros");
+                notes.Add($"Affinity milestone {level}: +{kaeros} Kaeros");
             }
             var loreIndex = Array.IndexOf(GameConfig.AffinityLoreLevels, level);
             if (loreIndex >= 0 && loreIndex < waifu.Lore.Count)
-                notes.Add($"Novo eco de memória desbloqueado: \"{waifu.Name} — Eco {loreIndex + 1}\"");
+                notes.Add($"New memory echo unlocked: \"{waifu.Name} — Echo {loreIndex + 1}\"");
             foreach (var skin in waifu.Skins)
                 if (skin.Unlock == "affinity" && skin.UnlockValue == level)
-                    notes.Add($"Skin desbloqueada: {skin.Name}");
+                    notes.Add($"Skin unlocked: {skin.Name}");
         }
         return after;
     }
 
-    // ---- presentes ----
+    // ---- gifts ----
 
     public object Gift(string waifuId, int itemId)
     {
         var waifu = kaelis.Find(waifuId)
-                    ?? throw new ArgumentException("Kaeli desconhecida");
+                    ?? throw new ArgumentException("unknown Kaeli");
         if (items.Get(itemId) is not { } item)
-            throw new ArgumentException("item desconhecido");
+            throw new ArgumentException("unknown item");
 
         return store.Mutate(state =>
         {
             if (!state.OwnedWaifus.Contains(waifuId))
-                throw new InvalidOperationException("Kaeli não recrutada");
+                throw new InvalidOperationException("Kaeli not recruited");
 
             var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
             if (state.GiftsDate != today)
@@ -90,10 +90,10 @@ public sealed class KaeliService(AccountStore store, KaeliRegistry kaelis, ItemR
             var given = state.GiftsToday.GetValueOrDefault(waifuId);
             if (given >= GameConfig.GiftsPerKaeliPerDay)
                 throw new InvalidOperationException(
-                    $"{waifu.Name} já recebeu {GameConfig.GiftsPerKaeliPerDay} presentes hoje");
+                    $"{waifu.Name} has already received {GameConfig.GiftsPerKaeliPerDay} gifts today");
 
             if (!state.Inventory.TryGetValue(itemId, out var stack) || stack.Count <= 0)
-                throw new InvalidOperationException("item não está na Mochila");
+                throw new InvalidOperationException("item not in Backpack");
             stack.Count--;
             if (stack.Count == 0) state.Inventory.Remove(itemId);
 
@@ -125,7 +125,7 @@ public sealed class KaeliService(AccountStore store, KaeliRegistry kaelis, ItemR
 
     // ---- skins ----
 
-    /// <summary>Uma skin está disponível? (default sempre; affinity por nível; gold/kaeros se comprada).</summary>
+    /// <summary>Is a skin available? (default: always; affinity: by level; gold/kaeros: if purchased).</summary>
     public static bool SkinUnlocked(AccountState state, WaifuDef waifu, SkinDef skin) => skin.Unlock switch
     {
         "default" => true,
@@ -136,16 +136,16 @@ public sealed class KaeliService(AccountStore store, KaeliRegistry kaelis, ItemR
     public object SelectSkin(string waifuId, string skinId)
     {
         var waifu = kaelis.Find(waifuId)
-                    ?? throw new ArgumentException("Kaeli desconhecida");
+                    ?? throw new ArgumentException("unknown Kaeli");
         var skin = waifu.Skins.FirstOrDefault(s => s.Id == skinId)
-                   ?? throw new ArgumentException("skin não pertence a esta Kaeli");
+                   ?? throw new ArgumentException("skin does not belong to this Kaeli");
 
         return store.Mutate(state =>
         {
             if (!state.OwnedWaifus.Contains(waifuId))
-                throw new InvalidOperationException("Kaeli não recrutada");
+                throw new InvalidOperationException("Kaeli not recruited");
             if (!SkinUnlocked(state, waifu, skin))
-                throw new InvalidOperationException("skin ainda não desbloqueada");
+                throw new InvalidOperationException("skin not yet unlocked");
 
             if (skin.Id == waifu.DefaultSkin.Id) state.SelectedSkins.Remove(waifuId);
             else state.SelectedSkins[waifuId] = skin.Id;
@@ -156,27 +156,27 @@ public sealed class KaeliService(AccountStore store, KaeliRegistry kaelis, ItemR
     public object BuySkin(string waifuId, string skinId)
     {
         var waifu = kaelis.Find(waifuId)
-                    ?? throw new ArgumentException("Kaeli desconhecida");
+                    ?? throw new ArgumentException("unknown Kaeli");
         var skin = waifu.Skins.FirstOrDefault(s => s.Id == skinId)
-                   ?? throw new ArgumentException("skin não pertence a esta Kaeli");
+                   ?? throw new ArgumentException("skin does not belong to this Kaeli");
         if (skin.Unlock is not ("gold" or "kaeros"))
-            throw new ArgumentException("esta skin não está à venda");
+            throw new ArgumentException("this skin is not for sale");
 
         return store.Mutate(state =>
         {
             if (!state.OwnedWaifus.Contains(waifuId))
-                throw new InvalidOperationException("Kaeli não recrutada");
+                throw new InvalidOperationException("Kaeli not recruited");
             if (state.OwnedSkins.Contains(skin.Id))
-                throw new InvalidOperationException("skin já comprada");
+                throw new InvalidOperationException("skin already purchased");
 
             if (skin.Unlock == "gold")
             {
-                if (state.Gold < skin.UnlockValue) throw new InvalidOperationException("ouro insuficiente");
+                if (state.Gold < skin.UnlockValue) throw new InvalidOperationException("insufficient gold");
                 state.Gold -= skin.UnlockValue;
             }
             else
             {
-                if (state.Kaeros < skin.UnlockValue) throw new InvalidOperationException("Kaeros insuficiente");
+                if (state.Kaeros < skin.UnlockValue) throw new InvalidOperationException("insufficient Kaeros");
                 state.Kaeros -= skin.UnlockValue;
             }
 
@@ -186,32 +186,32 @@ public sealed class KaeliService(AccountStore store, KaeliRegistry kaelis, ItemR
         });
     }
 
-    // ---- maestria ----
+    // ---- mastery ----
 
     public object UnlockMasteryNode(string waifuId, string nodeId)
     {
-        if (!Waifus.ById.ContainsKey(waifuId)) throw new ArgumentException("Kaeli desconhecida");
+        if (!Waifus.ById.ContainsKey(waifuId)) throw new ArgumentException("unknown Kaeli");
         var tree = Mastery.TreeByWaifu[waifuId];
         var node = tree.FirstOrDefault(n => n.Id == nodeId)
-                   ?? throw new ArgumentException("node não pertence a esta Kaeli");
+                   ?? throw new ArgumentException("node does not belong to this Kaeli");
 
         return store.Mutate(state =>
         {
             if (!state.OwnedWaifus.Contains(waifuId))
-                throw new InvalidOperationException("Kaeli não recrutada");
+                throw new InvalidOperationException("Kaeli not recruited");
             if (!state.Mastery.TryGetValue(waifuId, out var mastery))
                 state.Mastery[waifuId] = mastery = new MasteryState();
 
             if (mastery.Nodes.Contains(nodeId))
-                throw new InvalidOperationException("node já destravado");
+                throw new InvalidOperationException("node already unlocked");
             if (node.Order > 1)
             {
                 var previous = tree.First(n => n.Branch == node.Branch && n.Order == node.Order - 1);
                 if (!mastery.Nodes.Contains(previous.Id))
-                    throw new InvalidOperationException($"requer \"{previous.Name}\" antes");
+                    throw new InvalidOperationException($"requires \"{previous.Name}\" first");
             }
             if (mastery.Points < node.Cost)
-                throw new InvalidOperationException($"pontos insuficientes ({mastery.Points}/{node.Cost})");
+                throw new InvalidOperationException($"insufficient points ({mastery.Points}/{node.Cost})");
 
             mastery.Points -= node.Cost;
             mastery.Spent += node.Cost;
@@ -222,13 +222,13 @@ public sealed class KaeliService(AccountStore store, KaeliRegistry kaelis, ItemR
 
     public object RespecMastery(string waifuId)
     {
-        if (!Waifus.ById.ContainsKey(waifuId)) throw new ArgumentException("Kaeli desconhecida");
+        if (!Waifus.ById.ContainsKey(waifuId)) throw new ArgumentException("unknown Kaeli");
         return store.Mutate(state =>
         {
             if (!state.Mastery.TryGetValue(waifuId, out var mastery) || mastery.Spent == 0)
-                throw new InvalidOperationException("nada para resetar");
+                throw new InvalidOperationException("nothing to reset");
             if (state.Gold < GameConfig.MasteryRespecGold)
-                throw new InvalidOperationException($"requer {GameConfig.MasteryRespecGold} de ouro");
+                throw new InvalidOperationException($"requires {GameConfig.MasteryRespecGold} gold");
 
             state.Gold -= GameConfig.MasteryRespecGold;
             mastery.Points += mastery.Spent;

@@ -31,7 +31,7 @@ public sealed class MonsterRegistry(GameData legacy, ContentStore content)
     public MonsterType Get(string reference) =>
         TryGet(reference, out var monster)
             ? monster
-            : throw new KeyNotFoundException($"monstro desconhecido: {reference}");
+            : throw new KeyNotFoundException($"unknown monster: {reference}");
 
     public bool Contains(string reference) => TryGet(reference, out _);
 }

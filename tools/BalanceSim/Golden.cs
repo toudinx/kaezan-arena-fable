@@ -7,30 +7,30 @@ using KaezanArenaFable.Api.Engine;
 namespace BalanceSim;
 
 /// <summary>
-/// LM-01 — rede de segurança de determinismo do gerador. Para uma lista FIXA de seeds e tiers,
-/// re-gera os andares via <see cref="DungeonGenerator.Generate"/> e computa um hash estável (SHA-256)
-/// por andar de tudo que descreve o layout: <c>Ground</c>, <c>Wall</c>, <c>Decor</c>, <c>Blocked</c>,
-/// a sequência de <c>Room{X,Y,W,H,Role}</c>, <c>Entry</c>, <c>LadderDown</c>, <c>Chests</c> e
-/// <c>Sanctuaries</c>. Espelha exatamente o que o <see cref="GameWorld"/> faz no início da run
-/// (mesmo seed → <c>new Rng((ulong)seed)</c>, mesmo bioma, andar 0 normal + andar 1 boss), então
-/// qualquer mexida futura no gerador/RNG que altere o mapa é capturada aqui.
+/// LM-01 — determinism safety net for the generator. For a FIXED list of seeds and tiers, it
+/// regenerates floors via <see cref="DungeonGenerator.Generate"/> and computes a stable SHA-256 hash
+/// per floor over everything that describes the layout: <c>Ground</c>, <c>Wall</c>, <c>Decor</c>,
+/// <c>Blocked</c>, the <c>Room{X,Y,W,H,Role}</c> sequence, <c>Entry</c>, <c>LadderDown</c>,
+/// <c>Chests</c>, and <c>Sanctuaries</c>. It mirrors exactly what <see cref="GameWorld"/> does at run
+/// start (same seed -> <c>new Rng((ulong)seed)</c>, same biome, normal floor 0 + boss floor 1), so
+/// any future generator/RNG change that alters the map is caught here.
 ///
 ///   dotnet run --project tools/BalanceSim -- --golden          # (re)escreve o baseline
 ///   dotnet run --project tools/BalanceSim -- --golden-check     # compara e falha se divergir
 /// </summary>
 internal static class Golden
 {
-    // Lista FIXA — não derivar de relógio/ambiente. Mudar esta lista é uma mudança consciente de baseline.
+    // FIXED list — never derive from clock/environment. Changing this list is a deliberate baseline change.
     private static readonly long[] Seeds = [1, 7, 42, 123, 4242, 99999, 2654435761];
     private static readonly int[] Tiers = [1, 2, 3, 4, 5];
 
-    // Sobe na árvore (ou sai do bin) até achar a raiz do repo (onde existe docs/ e backend/).
+    // Walk upward from bin until the repo root is found.
     private static readonly string DefaultBaselinePath =
         Path.Combine(RepoRoot(), "docs", "balance", "golden_dungeon.txt");
 
     /// <summary>
-    /// Entrada do modo-ouro. <paramref name="check"/>=false grava o baseline; true compara contra ele.
-    /// Retorna o exit code (0 = ok; ≠0 = divergência/erro), consumido pelo <c>Main</c>.
+    /// Golden mode entrypoint. <paramref name="check"/>=false writes the baseline; true compares it.
+    /// Returns the exit code consumed by <c>Main</c>.
     /// </summary>
     public static int Run(bool check, string? outPath)
     {
@@ -40,14 +40,14 @@ internal static class Golden
         if (!check)
         {
             Write(path, current);
-            Console.WriteLine($"baseline-ouro escrito em {path}");
-            Console.WriteLine($"  {current.Count} andares ({Seeds.Length} seeds × {Tiers.Length} tiers × 2 andares)");
+            Console.WriteLine($"golden baseline written to {path}");
+            Console.WriteLine($"  {current.Count} floors ({Seeds.Length} seeds x {Tiers.Length} tiers x 2 floors)");
             return 0;
         }
 
         if (!File.Exists(path))
         {
-            Console.Error.WriteLine($"baseline não encontrado em {path} — rode sem --golden-check primeiro.");
+            Console.Error.WriteLine($"baseline not found at {path} — run without --golden-check first.");
             return 2;
         }
 
@@ -56,29 +56,29 @@ internal static class Golden
         foreach (var (key, hash) in current)
         {
             if (!baseline.TryGetValue(key, out var old))
-                diffs.Add($"  + {key}: ausente no baseline (gerado={hash})");
+                diffs.Add($"  + {key}: missing from baseline (generated={hash})");
             else if (!string.Equals(old, hash, StringComparison.OrdinalIgnoreCase))
-                diffs.Add($"  ~ {key}: baseline={old} != gerado={hash}");
+                diffs.Add($"  ~ {key}: baseline={old} != generated={hash}");
         }
         foreach (var key in baseline.Keys)
             if (!current.ContainsKey(key))
-                diffs.Add($"  - {key}: presente no baseline mas não gerado");
+                diffs.Add($"  - {key}: present in baseline but not generated");
 
         if (diffs.Count == 0)
         {
-            Console.WriteLine($"modo-ouro: VERDE — {current.Count} andares idênticos ao baseline ({path}).");
+            Console.WriteLine($"golden mode: GREEN — {current.Count} floors identical to baseline ({path}).");
             return 0;
         }
 
-        Console.Error.WriteLine($"modo-ouro: FALHA — {diffs.Count} andar(es) divergem do baseline:");
+        Console.Error.WriteLine($"golden mode: FAIL — {diffs.Count} floor(s) diverge from baseline:");
         foreach (var d in diffs) Console.Error.WriteLine(d);
         Console.Error.WriteLine();
-        Console.Error.WriteLine("Se a mudança de geração é INTENCIONAL, rebaseline com:  " +
+        Console.Error.WriteLine("If the generation change is INTENTIONAL, rebaseline with:  " +
                                 "dotnet run --project tools/BalanceSim -- --golden");
         return 3;
     }
 
-    /// <summary>Hashes ordenados por (tier, seed, andar) — chave estável "T{tier} seed{seed} f{floor}".</summary>
+    /// <summary>Hashes ordered by (tier, seed, floor) — stable key "T{tier} seed{seed} f{floor}".</summary>
     private static SortedDictionary<string, string> Compute()
     {
         var result = new SortedDictionary<string, string>(StringComparer.Ordinal);
@@ -87,7 +87,7 @@ internal static class Golden
             var biome = Biomes.ForTier(tier);
             foreach (var seed in Seeds)
             {
-                // Espelha GameWorld: um único Rng((ulong)seed) gera os dois andares em sequência.
+                // Mirrors GameWorld: one Rng((ulong)seed) generates both floors in sequence.
                 var rng = new Rng((ulong)seed);
                 var f0 = DungeonGenerator.Generate(rng, 0, isBossFloor: false, biome);
                 var f1 = DungeonGenerator.Generate(rng, 1, isBossFloor: true, biome);
@@ -102,9 +102,9 @@ internal static class Golden
         string.Create(CultureInfo.InvariantCulture, $"T{tier} seed{seed} f{floor}");
 
     /// <summary>
-    /// SHA-256 sobre uma serialização determinística do andar. Tudo que entra é little-endian via
-    /// <see cref="BinaryWriter"/>, com contagens prefixadas, para que a fronteira entre campos não seja
-    /// ambígua e a ordem das salas/POIs (já determinística no gerador) seja preservada na íntegra.
+    /// SHA-256 over a deterministic floor serialization. Everything is little-endian via
+    /// <see cref="BinaryWriter"/>, with prefixed counts so field boundaries are unambiguous and the
+    /// already deterministic room/POI order is preserved exactly.
     /// </summary>
     private static string HashFloor(DungeonFloor f)
     {
@@ -146,17 +146,17 @@ internal static class Golden
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
 
         var sb = new StringBuilder();
-        sb.AppendLine("# golden_dungeon.txt — baseline de determinismo do gerador (LM-01).");
+        sb.AppendLine("# golden_dungeon.txt — generator determinism baseline (LM-01).");
         sb.AppendLine("#");
-        sb.AppendLine("# Cada linha: tier<TAB>seed<TAB>floor<TAB>sha256. O hash cobre Ground/Wall/Decor/Blocked,");
-        sb.AppendLine("# a sequência de Room{X,Y,W,H,Role}, Entry, LadderDown, Chests e Sanctuaries de cada andar");
-        sb.AppendLine("# (andar 0 = normal, andar 1 = boss), gerados como o GameWorld faz no início da run.");
+        sb.AppendLine("# Each line: tier<TAB>seed<TAB>floor<TAB>sha256. The hash covers Ground/Wall/Decor/Blocked,");
+        sb.AppendLine("# the Room{X,Y,W,H,Role}, Entry, LadderDown, Chests, and Sanctuaries sequence for each floor");
+        sb.AppendLine("# (floor 0 = normal, floor 1 = boss), generated as GameWorld does at run start.");
         sb.AppendLine("#");
-        sb.AppendLine("# Gerar/regenerar:  dotnet run --project tools/BalanceSim -- --golden");
-        sb.AppendLine("# Conferir (CI):    dotnet run --project tools/BalanceSim -- --golden-check");
+        sb.AppendLine("# Generate/regenerate:  dotnet run --project tools/BalanceSim -- --golden");
+        sb.AppendLine("# Check (CI):           dotnet run --project tools/BalanceSim -- --golden-check");
         sb.AppendLine("#");
-        sb.AppendLine("# Se o comparador falhar e a mudança de geração for INTENCIONAL, rebaseline com --golden");
-        sb.AppendLine("# e commite o diff conscientemente. Falha inesperada = regressão de determinismo.");
+        sb.AppendLine("# If the comparator fails and the generation change is INTENTIONAL, rebaseline with --golden");
+        sb.AppendLine("# and commit the diff consciously. Unexpected failure = determinism regression.");
         sb.AppendLine("#");
         foreach (var (key, hash) in hashes)
         {
@@ -204,7 +204,7 @@ internal static class Golden
                 return dir.FullName;
             dir = dir.Parent;
         }
-        // Fallback: diretório atual (o usuário pode passar --golden-out explícito).
+        // Fallback: current directory (the user can pass explicit --golden-out).
         return Directory.GetCurrentDirectory();
     }
 }

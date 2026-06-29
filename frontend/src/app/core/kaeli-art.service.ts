@@ -1,17 +1,16 @@
 import { Injectable, signal } from '@angular/core';
 
 /**
- * Serve a arte autoral de personagem (idle/wallpaper/banner/...), uma preocupação
- * SEPARADA dos sprites do Tibia em-jogo (esses vivem no AssetsService). O mapeamento
- * arte↔id mora no frontend via `assets/kaelis/manifest.json` — WaifuDef não tem
- * campos de arte e não deve ganhar nenhum.
+ * Serves authored character art (idle/wallpaper/banner/...), a SEPARATE concern from in-game
+ * Tibia sprites (those live in AssetsService). The art<->id mapping lives on the frontend through
+ * `assets/kaelis/manifest.json`; WaifuDef has no art fields and should not gain any.
  *
- * Cada getter devolve uma URL pronta ou `null` quando a Kaeli não tem aquele asset;
- * os componentes caem no fallback (sprite Tibia / gradiente do elemento) nesse caso.
+ * Each getter returns a ready URL or `null` when the Kaeli lacks that asset; components fall back
+ * to the Tibia sprite / element gradient in that case.
  */
 @Injectable({ providedIn: 'root' })
 export class KaeliArtService {
-  /** manifest: id da Kaeli → nomes de asset presentes (sem extensão). */
+  /** Manifest: Kaeli id -> present asset names (without extension). */
   private readonly manifest = signal<Record<string, string[]>>({});
   readonly loaded = signal(false);
 
@@ -24,13 +23,13 @@ export class KaeliArtService {
       const res = await fetch('/assets/kaelis/manifest.json');
       if (res.ok) this.manifest.set((await res.json()) as Record<string, string[]>);
     } catch {
-      /* sem manifest = todas as Kaelis caem no fallback; não é erro fatal */
+      /* no manifest = every Kaeli uses fallback art; not a fatal error */
     } finally {
       this.loaded.set(true);
     }
   }
 
-  /** Pasta do asset = id sem o prefixo `waifu:` (ex.: `waifu:velvet` → `velvet`). */
+  /** Asset folder = id without the `waifu:` prefix (for example, `waifu:velvet` -> `velvet`). */
   private folder(id: string): string {
     return id.startsWith('waifu:') ? id.slice('waifu:'.length) : id;
   }
@@ -47,7 +46,7 @@ export class KaeliArtService {
     return this.has(id, name) ? this.url(id, name) : null;
   }
 
-  /** URLs das poses de idle, em ordem (1→2→3). `[]` se a Kaeli não tem arte. */
+  /** Idle pose URLs, in order (1->2->3). `[]` if the Kaeli has no art. */
   idles(id: string): string[] {
     return (this.manifest()[id] ?? [])
       .filter((n) => /^idle-\d+$/.test(n))
@@ -56,10 +55,10 @@ export class KaeliArtService {
   }
 
   /**
-   * CUT-03: loop premium de idle (`.webm`, gerado no ComfyUI/LivePortrait a partir do
-   * `idle-1`). Presente só quando `idle-loop` está no manifest E o arquivo foi dropado —
-   * caso contrário `null` e o `<app-kaeli-idle>` cai no breathing CSS (CUT-02). É o único
-   * asset `.webm` (os demais são `.png`), por isso não passa pelo `url()`/`asset()` genéricos.
+   * CUT-03: premium idle loop (`.webm`, generated in ComfyUI/LivePortrait from `idle-1`). Present
+   * only when `idle-loop` is in the manifest AND the file was dropped in; otherwise `null` and
+   * `<app-kaeli-idle>` falls back to breathing CSS (CUT-02). It is the only `.webm` asset (the
+   * others are `.png`), so it does not go through the generic `url()`/`asset()` path.
    */
   idleLoop(id: string): string | null {
     return this.has(id, 'idle-loop')
@@ -73,7 +72,7 @@ export class KaeliArtService {
   banner(id: string): string | null { return this.asset(id, 'banner'); }
   thumb(id: string): string | null { return this.asset(id, 'thumb'); }
 
-  /** Gradiente de fallback por elemento (SVG do Prompt 0). Sempre devolve uma URL. */
+  /** Fallback gradient by element (Prompt 0 SVG). Always returns a URL. */
   elementGradient(element: string): string {
     const el = ELEMENT_PLACEHOLDERS.has(element) ? element : 'physical';
     return `/assets/kaelis/_placeholder/${el}.svg`;

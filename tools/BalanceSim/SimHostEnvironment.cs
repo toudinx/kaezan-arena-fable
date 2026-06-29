@@ -4,9 +4,9 @@ using Microsoft.Extensions.FileProviders;
 namespace BalanceSim;
 
 /// <summary>
-/// Stub mínimo de <see cref="IWebHostEnvironment"/> para construir <c>GameData</c>/<c>ContentStore</c>
-/// fora do host ASP.NET. Só o <see cref="ContentRootPath"/> importa — é dele que o engine lê
-/// <c>Data/monsters.json</c>+<c>items.json</c> e o conteúdo editável em <c>.data/content/</c>.
+/// Minimal <see cref="IWebHostEnvironment"/> stub for building <c>GameData</c>/<c>ContentStore</c>
+/// outside the ASP.NET host. Only <see cref="ContentRootPath"/> matters; the engine reads
+/// <c>Data/monsters.json</c>+<c>items.json</c> and editable <c>.data/content/</c> from it.
 /// </summary>
 internal sealed class SimHostEnvironment : IWebHostEnvironment
 {
@@ -26,9 +26,9 @@ internal sealed class SimHostEnvironment : IWebHostEnvironment
     public IFileProvider WebRootFileProvider { get; set; }
 
     /// <summary>
-    /// Resolve o content-root do backend (<c>backend/src/KaezanArenaFable.Api</c>): usa <paramref name="explicit"/>
-    /// se fornecido, senão sobe a partir de <see cref="AppContext.BaseDirectory"/> até achar o
-    /// <c>Data/monsters.json</c> do projeto Api.
+    /// Resolves the backend content root (<c>backend/src/KaezanArenaFable.Api</c>): uses
+    /// <paramref name="explicit"/> if provided; otherwise walks upward from
+    /// <see cref="AppContext.BaseDirectory"/> until it finds the Api project's <c>Data/monsters.json</c>.
     /// </summary>
     public static string ResolveContentRoot(string? @explicit)
     {
@@ -45,7 +45,7 @@ internal sealed class SimHostEnvironment : IWebHostEnvironment
         }
 
         throw new DirectoryNotFoundException(
-            "não localizei backend/src/KaezanArenaFable.Api subindo de " + AppContext.BaseDirectory +
-            ". Passe --content-root <caminho do projeto Api>.");
+            "could not locate backend/src/KaezanArenaFable.Api while walking up from " + AppContext.BaseDirectory +
+            ". Pass --content-root <Api project path>.");
     }
 }

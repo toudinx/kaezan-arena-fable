@@ -4,11 +4,11 @@ using KaezanArenaFable.Api.Domain;
 namespace KaezanArenaFable.Api.Content;
 
 /// <summary>
-/// Conteúdo de jogo EDITÁVEL pelo painel admin (tiers, monstros autorais e skins de Kaeli).
-/// Mora em JSON gravável (`.data/content/`), seedado a partir dos defaults em código
-/// (<see cref="GameConfig.Tiers"/>) na primeira execução. Diferente de <see cref="GameData"/>,
-/// que é conteúdo somente-leitura (monsters.json/items.json), e de AccountStore, que é estado de
-/// conta. Singleton: runs novas leem daqui, então editar + salvar afeta a próxima run.
+/// Game content EDITABLE via the admin panel (tiers, authored monsters and Kaeli skins).
+/// Lives in writable JSON (`.data/content/`), seeded from code defaults
+/// (<see cref="GameConfig.Tiers"/>) on first run. Unlike <see cref="GameData"/>,
+/// which is read-only content (monsters.json/items.json), and AccountStore, which is account state.
+/// Singleton: new runs read from here, so editing + saving affects the next run.
 /// </summary>
 public sealed class ContentStore
 {
@@ -62,11 +62,16 @@ public sealed class ContentStore
             {
                 var loaded = JsonSerializer.Deserialize<List<DungeonTier>>(
                     File.ReadAllText(_tiersPath), JsonOpts);
-                if (loaded is { Count: > 0 } && !ShouldSeedTiers(loaded)) return loaded;
+                if (loaded is { Count: > 0 } && !ShouldSeedTiers(loaded))
+                {
+                    var (tiers, changed) = AlignSeedTierDisplay(loaded);
+                    if (changed) WriteTiers(tiers);
+                    return tiers;
+                }
             }
             catch (JsonException)
             {
-                // arquivo corrompido: cai pro seed dos defaults em vez de derrubar o boot
+                // corrupted file: fall back to seeding defaults instead of crashing on boot
             }
         }
 
@@ -78,7 +83,7 @@ public sealed class ContentStore
     private void WriteTiers(List<DungeonTier> tiers) =>
         File.WriteAllText(_tiersPath, JsonSerializer.Serialize(tiers, JsonOpts));
 
-    // ---- LM-08: biomas data-driven (mesmo padrão dos tiers; defaults canônicos em Domain.Biomes) ----
+    // ---- LM-08: data-driven biomes (same pattern as tiers; canonical defaults in Domain.Biomes) ----
 
     private List<BiomeRow> LoadBiomes()
     {
@@ -92,7 +97,7 @@ public sealed class ContentStore
             }
             catch (JsonException)
             {
-                // arquivo corrompido: cai pro seed dos defaults em vez de derrubar o boot
+                // corrupted file: fall back to seeding defaults instead of crashing on boot
             }
         }
 
@@ -104,7 +109,7 @@ public sealed class ContentStore
     private void WriteBiomes(List<BiomeRow> biomes) =>
         File.WriteAllText(_biomesPath, JsonSerializer.Serialize(biomes, JsonOpts));
 
-    /// <summary>Re-seed quando o arquivo não traz exatamente os 5 estratos (1–5) — defaults são canônicos.</summary>
+    /// <summary>Re-seed when the file does not contain exactly the 5 strata (1–5) — defaults are canonical.</summary>
     private static bool ShouldSeedBiomes(IReadOnlyList<BiomeRow> biomes) =>
         biomes.Count != KaezanContentSeed.Biomes.Count
         || biomes.Select(b => b.Tier).OrderBy(t => t).SequenceEqual([1, 2, 3, 4, 5]) == false;
@@ -129,8 +134,8 @@ public sealed class ContentStore
                 WriteMonsters(seed);
                 return seed;
             }
-            // G-08B: add-only — novos monstros do seed (ex. criaturas-assinatura) entram sem clobberar edições.
-            var merged = MergeMissingSeedMonsters(loaded);
+            // G-08B: add-only — new seed monsters (e.g. signature creatures) merge in without clobbering edits.
+            var merged = AlignSeedMonsterDisplay(MergeMissingSeedMonsters(loaded));
             WriteMonsters(merged);
             return merged;
         }
@@ -145,13 +150,50 @@ public sealed class ContentStore
     private void WriteMonsters(List<MonsterDefinition> monsters) =>
         File.WriteAllText(_monstersPath, JsonSerializer.Serialize(monsters, JsonOpts));
 
-    /// <summary>G-08B: anexa monstros do seed cujo id ainda não existe no arquivo (add-only, preserva edições).</summary>
+    /// <summary>G-08B: appends seed monsters whose id does not yet exist in the file (add-only, preserves edits).</summary>
     private static List<MonsterDefinition> MergeMissingSeedMonsters(List<MonsterDefinition> monsters)
     {
         var existing = monsters.Select(m => m.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         monsters.AddRange(KaezanContentSeed.Monsters.Where(m => !existing.Contains(m.Id)));
         return monsters;
     }
+
+    private static (List<DungeonTier> Tiers, bool Changed) AlignSeedTierDisplay(List<DungeonTier> tiers)
+    {
+        var changed = false;
+        var seedByTier = KaezanContentSeed.Tiers.ToDictionary(t => t.Tier);
+        for (var i = 0; i < tiers.Count; i++)
+        {
+            var current = tiers[i];
+            if (!seedByTier.TryGetValue(current.Tier, out var seed)) continue;
+            if (!SameTierReferences(current, seed)) continue;
+            if (current.Name == seed.Name && current.Description == seed.Description) continue;
+            tiers[i] = current with { Name = seed.Name, Description = seed.Description };
+            changed = true;
+        }
+        return (tiers, changed);
+    }
+
+    private static bool SameTierReferences(DungeonTier current, DungeonTier seed) =>
+        current.Boss.Equals(seed.Boss, StringComparison.OrdinalIgnoreCase)
+        && current.CommonMobs.SequenceEqual(seed.CommonMobs, StringComparer.OrdinalIgnoreCase)
+        && current.EliteMobs.SequenceEqual(seed.EliteMobs, StringComparer.OrdinalIgnoreCase);
+
+    private static List<MonsterDefinition> AlignSeedMonsterDisplay(List<MonsterDefinition> monsters)
+    {
+        var seedById = KaezanContentSeed.Monsters.ToDictionary(m => m.Id, StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < monsters.Count; i++)
+        {
+            var current = monsters[i];
+            if (!seedById.TryGetValue(current.Id, out var seed)) continue;
+            if (!LooksLikeLegacySeedDisplay(current)) continue;
+            monsters[i] = current with { Name = seed.Name, Description = seed.Description };
+        }
+        return monsters;
+    }
+
+    private static bool LooksLikeLegacySeedDisplay(MonsterDefinition monster) =>
+        monster.Description.StartsWith("Criatura Kaezan ", StringComparison.OrdinalIgnoreCase);
 
     private List<KaeliSkinDefinition> LoadKaeliSkins()
     {
@@ -233,8 +275,8 @@ public sealed class ContentStore
                 .Any(reference => !reference.StartsWith("monster:", StringComparison.OrdinalIgnoreCase))))
             return true;
 
-        // G-08B: re-seed quando o seed traz mobs novos (criaturas-assinatura) ainda ausentes dos pools
-        // persistidos — mantém os novos arquétipos vivos em runs sem exigir limpar o .data manualmente.
+        // G-08B: re-seed when the seed brings new mobs (signature creatures) not yet in the persisted pools
+        // — keeps new archetypes alive in runs without requiring a manual .data wipe.
         var persisted = tiers
             .SelectMany(tier => tier.CommonMobs.Concat(tier.EliteMobs).Append(tier.Boss))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -262,14 +304,14 @@ public sealed class ContentStore
         lock (_lock) return _tiers.FirstOrDefault(t => t.Tier == tier);
     }
 
-    // ---- LM-08: biomas (a Hub resolve o bioma da run daqui; o admin lê/edita pelos 3 endpoints LM-09) ----
+    // ---- LM-08: biomes (the Hub resolves the run biome from here; admin reads/edits via the 3 LM-09 endpoints) ----
 
     public IReadOnlyList<BiomeRow> Biomes
     {
         get { lock (_lock) return _biomes.ToList(); }
     }
 
-    /// <summary>O <see cref="BiomeDef"/> vigente do tier, ou null se ausente (a Hub cai em Biomes.ForTier).</summary>
+    /// <summary>The current <see cref="BiomeDef"/> for the tier, or null if absent (the Hub falls back to Biomes.ForTier).</summary>
     public BiomeDef? Biome(int tier)
     {
         lock (_lock) return _biomes.FirstOrDefault(b => b.Tier == tier)?.Def;
@@ -285,7 +327,7 @@ public sealed class ContentStore
         lock (_lock)
         {
             if (_monsters.Any(m => m.Id.Equals(definition.Id, StringComparison.OrdinalIgnoreCase)))
-                throw new InvalidOperationException($"id ja existe: {definition.Id}");
+                throw new InvalidOperationException($"id already exists: {definition.Id}");
             _monsters.Add(definition);
             WriteMonsters(_monsters);
             return definition;
@@ -297,7 +339,7 @@ public sealed class ContentStore
         lock (_lock)
         {
             var index = _monsters.FindIndex(m => m.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
-            if (index < 0) throw new KeyNotFoundException($"monstro autoral desconhecido: {id}");
+            if (index < 0) throw new KeyNotFoundException($"unknown authored monster: {id}");
             _monsters[index] = definition;
             WriteMonsters(_monsters);
             return definition;
@@ -309,7 +351,7 @@ public sealed class ContentStore
         lock (_lock)
         {
             var index = _monsters.FindIndex(m => m.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
-            if (index < 0) throw new KeyNotFoundException($"monstro autoral desconhecido: {id}");
+            if (index < 0) throw new KeyNotFoundException($"unknown authored monster: {id}");
 
             var monster = _monsters[index];
             var references = _tiers
@@ -321,7 +363,7 @@ public sealed class ContentStore
                 .ToArray();
             if (references.Length > 0)
                 throw new InvalidOperationException(
-                    $"remova '{monster.Name}' das dungeons antes de excluir: {string.Join(", ", references)}");
+                    $"remove '{monster.Name}' from dungeons before deleting: {string.Join(", ", references)}");
 
             _monsters.RemoveAt(index);
             WriteMonsters(_monsters);
@@ -345,7 +387,7 @@ public sealed class ContentStore
         lock (_lock)
         {
             if (_kaeliSkins.Any(s => s.Id.Equals(definition.Id, StringComparison.OrdinalIgnoreCase)))
-                throw new InvalidOperationException($"id ja existe: {definition.Id}");
+                throw new InvalidOperationException($"id already exists: {definition.Id}");
             _kaeliSkins.Add(definition);
             WriteKaeliSkins(_kaeliSkins);
             return definition;
@@ -357,7 +399,7 @@ public sealed class ContentStore
         lock (_lock)
         {
             var index = _kaeliSkins.FindIndex(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
-            if (index < 0) throw new KeyNotFoundException($"skin autoral desconhecida: {id}");
+            if (index < 0) throw new KeyNotFoundException($"unknown authored skin: {id}");
             _kaeliSkins[index] = definition;
             WriteKaeliSkins(_kaeliSkins);
             return definition;
@@ -369,7 +411,7 @@ public sealed class ContentStore
         lock (_lock)
         {
             var index = _kaeliSkins.FindIndex(s => s.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
-            if (index < 0) throw new KeyNotFoundException($"skin autoral desconhecida: {id}");
+            if (index < 0) throw new KeyNotFoundException($"unknown authored skin: {id}");
             var skin = _kaeliSkins[index];
             _kaeliSkins.RemoveAt(index);
             WriteKaeliSkins(_kaeliSkins);
@@ -378,10 +420,10 @@ public sealed class ContentStore
     }
 
     /// <summary>
-    /// Reordena as skins autorais de uma Kaeli na ordem dos ids recebidos, preservando a posição
-    /// relativa das skins das outras Kaelis (o <see cref="KaeliRegistry"/> anexa as autorais na
-    /// ordem persistida, então isso controla a ordem exibida no guarda-roupa/seletor de skin).
-    /// Ids desconhecidos são ignorados; skins omitidas mantêm a ordem atual ao final.
+    /// Reorders a Kaeli's authored skins to match the received id order, preserving the relative
+    /// position of other Kaelis' skins (the <see cref="KaeliRegistry"/> appends authored skins in
+    /// persisted order, so this controls the display order in the wardrobe/skin selector).
+    /// Unknown ids are ignored; omitted skins retain their current order at the end.
     /// </summary>
     public IReadOnlyList<KaeliSkinDefinition> ReorderKaeliSkins(string waifuId, IReadOnlyList<string> orderedIds)
     {
@@ -393,7 +435,7 @@ public sealed class ContentStore
             var ordered = new List<KaeliSkinDefinition>();
             foreach (var id in orderedIds)
                 if (mine.Remove(id, out var skin)) ordered.Add(skin);
-            // skins não citadas preservam a ordem persistida original
+            // omitted skins preserve the original persisted order
             ordered.AddRange(_kaeliSkins.Where(s => Owns(s) && mine.ContainsKey(s.Id)));
 
             var queue = new Queue<KaeliSkinDefinition>(ordered);
@@ -411,7 +453,7 @@ public sealed class ContentStore
         get { lock (_lock) return _authoredItems.ToList(); }
     }
 
-    /// <summary>Cria um item Kaezan com ID reservado, mantendo a fonte Canary imutavel.</summary>
+    /// <summary>Creates a Kaezan item with a reserved ID, keeping the Canary source immutable.</summary>
     public AuthoredItemDefinition CreateAuthoredItem(AuthoredItemDefinition definition)
     {
         lock (_lock)
@@ -431,7 +473,7 @@ public sealed class ContentStore
         lock (_lock)
         {
             var index = _authoredItems.FindIndex(item => item.ItemId == itemId);
-            if (index < 0) throw new KeyNotFoundException($"item autoral desconhecido: {itemId}");
+            if (index < 0) throw new KeyNotFoundException($"unknown authored item: {itemId}");
             var updated = ItemAuthoring.Normalize(definition with { ItemId = itemId }, itemId);
             _authoredItems[index] = updated;
             WriteAuthoredItems(_authoredItems);
@@ -444,7 +486,7 @@ public sealed class ContentStore
         lock (_lock)
         {
             var index = _authoredItems.FindIndex(item => item.ItemId == itemId);
-            if (index < 0) throw new KeyNotFoundException($"item autoral desconhecido: {itemId}");
+            if (index < 0) throw new KeyNotFoundException($"unknown authored item: {itemId}");
             var removed = _authoredItems[index];
             _authoredItems.RemoveAt(index);
             WriteAuthoredItems(_authoredItems);
@@ -489,7 +531,7 @@ public sealed class ContentStore
         }
     }
 
-    // ---- MG-05: tuning por papel (RoleTuning editável no admin) ----
+    // ---- MG-05: role tuning (RoleTuning editable in admin) ----
 
     private Dictionary<KaeliRole, RoleTuning> LoadRoleTunings()
     {
@@ -503,7 +545,7 @@ public sealed class ContentStore
             }
             catch (JsonException)
             {
-                // arquivo corrompido: cai pro seed dos defaults em vez de derrubar o boot
+                // corrupted file: fall back to seeding defaults instead of crashing on boot
             }
         }
 
@@ -516,9 +558,9 @@ public sealed class ContentStore
         File.WriteAllText(_roleTuningPath, JsonSerializer.Serialize(ToRoleTuningRows(tunings), JsonOpts));
 
     /// <summary>
-    /// Converte as linhas serializadas no dicionário tipado. Papel desconhecido invalida tudo
-    /// (retorna null → reseed); papel ausente é completado a partir do default em código, pra que a
-    /// run nunca encontre um papel sem tuning.
+    /// Converts serialized rows into the typed dictionary. An unknown role invalidates everything
+    /// (returns null → reseed); a missing role is filled from the code default so a run never
+    /// encounters a role without tuning.
     /// </summary>
     private static Dictionary<KaeliRole, RoleTuning>? ParseRoleTuningRows(List<RoleTuningRow>? rows)
     {
@@ -535,7 +577,7 @@ public sealed class ContentStore
         return result;
     }
 
-    /// <summary>Linhas em ordem estável de papel (a ordem dos defaults), legíveis no JSON/admin.</summary>
+    /// <summary>Rows in stable role order (the defaults order), readable in JSON/admin.</summary>
     private static List<RoleTuningRow> ToRoleTuningRows(IReadOnlyDictionary<KaeliRole, RoleTuning> tunings) =>
         GameConfig.Roles.Keys
             .Where(tunings.ContainsKey)
@@ -545,26 +587,26 @@ public sealed class ContentStore
                 tunings[role].BaseAutoAttackMs, tunings[role].AutoRange, tunings[role].AoeScale))
             .ToList();
 
-    /// <summary>Tabela vigente para a run (a Hub injeta isto no <see cref="GameWorld"/>).</summary>
+    /// <summary>Current table for the run (the Hub injects this into <see cref="GameWorld"/>).</summary>
     public IReadOnlyDictionary<KaeliRole, RoleTuning> RoleTunings
     {
         get { lock (_lock) return new Dictionary<KaeliRole, RoleTuning>(_roleTunings); }
     }
 
-    /// <summary>Linhas para o editor admin (GET /admin/content/role-tuning).</summary>
+    /// <summary>Rows for the admin editor (GET /admin/content/role-tuning).</summary>
     public IReadOnlyList<RoleTuningRow> RoleTuningTable
     {
         get { lock (_lock) return ToRoleTuningRows(_roleTunings); }
     }
 
     /// <summary>
-    /// Substitui a tabela inteira de papéis (o editor envia os 3 de uma vez) e persiste.
-    /// A validação de faixas é feita no endpoint; aqui só recusa papel desconhecido.
+    /// Replaces the entire role table (the editor sends all 3 at once) and persists it.
+    /// Range validation is done in the endpoint; here only unknown roles are rejected.
     /// </summary>
     public IReadOnlyList<RoleTuningRow> ReplaceRoleTunings(IEnumerable<RoleTuningRow> rows)
     {
         var parsed = ParseRoleTuningRows(rows.ToList())
-                     ?? throw new InvalidOperationException("papel desconhecido na tabela de tuning");
+                     ?? throw new InvalidOperationException("unknown role in tuning table");
         lock (_lock)
         {
             _roleTunings = parsed;
@@ -574,8 +616,8 @@ public sealed class ContentStore
     }
 
     /// <summary>
-    /// Substitui o conjunto inteiro de tiers (o editor envia os 5 de uma vez) e persiste.
-    /// A validação de conteúdo (mobs/boss existem) é feita no endpoint, que tem o GameData.
+    /// Replaces the entire tier set (the editor sends all 5 at once) and persists it.
+    /// Content validation (mobs/boss exist) is done in the endpoint, which has GameData.
     /// </summary>
     public IReadOnlyList<DungeonTier> ReplaceTiers(IEnumerable<DungeonTier> tiers)
     {
@@ -589,8 +631,8 @@ public sealed class ContentStore
     }
 
     /// <summary>
-    /// LM-08: substitui o conjunto inteiro de biomas (o editor envia os 5 de uma vez) e persiste.
-    /// A validação de conteúdo (paletas não vazias) é feita no endpoint (LM-09).
+    /// LM-08: replaces the entire biome set (the editor sends all 5 at once) and persists it.
+    /// Content validation (non-empty palettes) is done in the endpoint (LM-09).
     /// </summary>
     public IReadOnlyList<BiomeRow> ReplaceBiomes(IEnumerable<BiomeRow> biomes)
     {

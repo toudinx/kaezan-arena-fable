@@ -16,13 +16,13 @@ public sealed class GameHub(
     AccountStore store,
     ContentStore content) : Hub
 {
-    // LM-03: `mode` é opcional e default Dungeon — o cliente atual (que envia 4 args) entra no modo
-    // legado sem mudança. A Arena (LM-04) passará GameMode.Arena por aqui.
+    // LM-03: `mode` is optional, defaulting to Dungeon — the current client (sending 4 args) enters
+    // legacy mode unchanged. Arena (LM-04) will pass GameMode.Arena here.
     public object JoinRun(int tier, string? waifuId = null, long? seed = null, bool resume = false,
         GameMode mode = GameMode.Dungeon)
     {
         var tierDef = content.Tier(tier)
-                      ?? throw new HubException("tier desconhecido");
+                      ?? throw new HubException("unknown tier");
 
         if (resume && runs.TryResumeRun(Context.ConnectionId, out var resumedWorld) && resumedWorld is not null)
         {
@@ -36,8 +36,8 @@ public sealed class GameHub(
             };
         }
 
-        // A Kaeli da run é explícita: o cliente manda quem entra (tela de pré-run). Sem waifuId
-        // (compat), cai na fixada (ActiveWaifuId) e por fim na starter.
+        // The run's Kaeli is explicit: the client sends who enters (pre-run screen). Without waifuId
+        // (compat), falls back to the active one (ActiveWaifuId) and finally to the starter.
         var (accountLevel, runWaifuId, ascension, bestiary, equipment, affinityXp, masteryNodes, skinId, helperProfile) =
             store.Read(s =>
             {
@@ -45,7 +45,7 @@ public sealed class GameHub(
                     ? waifuId
                     : s.OwnedWaifus.Contains(s.ActiveWaifuId) ? s.ActiveWaifuId : Waifus.StarterWaifuId;
                 if (waifuId is { Length: > 0 } && !s.OwnedWaifus.Contains(waifuId))
-                    throw new HubException("Kaeli não recrutada");
+                    throw new HubException("Kaeli not recruited");
                 s.Equipment.TryGetValue(AccountState.EquipKey(target, tierDef.Tier), out var loadout);
                 return (
                     s.AccountLevel,
@@ -60,7 +60,7 @@ public sealed class GameHub(
             });
 
         if (accountLevel < tierDef.RequiredAccountLevel)
-            throw new HubException($"requer conta nível {tierDef.RequiredAccountLevel}");
+            throw new HubException($"requires account level {tierDef.RequiredAccountLevel}");
 
         var waifu = kaelis.Find(runWaifuId) ?? kaelis.ById[Waifus.StarterWaifuId];
         var runSeed = seed ?? Random.Shared.NextInt64(1, long.MaxValue);
@@ -74,7 +74,7 @@ public sealed class GameHub(
             skin);
 
         var equipmentStats = EquipmentStatAggregator.Aggregate(equipment, items.All);
-        // LM-08: bioma resolvido do ContentStore (editável no admin); fallback aos defaults canônicos.
+        // LM-08: biome resolved from ContentStore (editable in admin); falls back to canonical defaults.
         var biome = content.Biome(tierDef.Tier) ?? Biomes.ForTier(tierDef.Tier);
         var world = new GameWorld(
             runSeed, tierDef, waifu, ascension, data, monsters, bestiary, equipmentStats, kaeliLoadout, items,
@@ -95,6 +95,10 @@ public sealed class GameHub(
     public void UsePotion() =>
         runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.UsePotion, 0, 0, null));
 
+    // Dash/Dodge (Shift): dx/dy = desired direction (0,0 = uses movement/facing direction in the engine).
+    public void Dash(int dx, int dy) =>
+        runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.Dash, dx, dy, null));
+
     public void ToggleStance() =>
         runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.ToggleStance, 0, 0, null));
 
@@ -111,12 +115,12 @@ public sealed class GameHub(
             GameConfig.AutoHelperMovementModeAvoid => GameConfig.AutoHelperMovementModeAvoidCode,
             _ => GameConfig.AutoHelperMovementModeNoneCode
         };
-        // S = "targetPreference|navMode|healPct" (um único campo de string no comando).
+        // S = "targetPreference|navMode|healPct" (a single string field in the command).
         var payload = $"{targetPreference}|{GameConfig.NormalizeAutoHelperNav(navMode)}|{GameConfig.ClampHealPct(autoHealPct)}";
         runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.ToggleAutoHelper, flags, movement, payload));
     }
 
-    // G-10: persiste a config do helper como default da Kaeli da run (carregado no próximo JoinRun).
+    // G-10: persists the helper config as the default for the run's Kaeli (loaded on the next JoinRun).
     public void SaveHelperProfile()
     {
         var run = runs.GetRun(Context.ConnectionId);

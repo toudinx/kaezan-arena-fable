@@ -8,7 +8,7 @@ import { OutfitPreview } from '../../core/outfit-preview';
 import { tierBiome } from '../../core/tier-biomes';
 import { MonsterCatalogEntry } from '../../core/types';
 
-/** Tela de selecao interna de um modo. Por enquanto so "dungeon" (descida em 5 tiers). */
+/** Internal mode selection screen. For now only "dungeon" (5-tier descent). */
 @Component({
   selector: 'app-mode',
   standalone: true,
@@ -22,11 +22,11 @@ import { MonsterCatalogEntry } from '../../core/types';
         <div class="biome-bg" aria-hidden="true"></div>
         <div class="wash" aria-hidden="true"></div>
 
-        <button class="back" (click)="back()">‹ Modos de jogo</button>
+        <button class="back" (click)="back()">‹ Game Modes</button>
 
         @if (m.id === 'dungeon') {
           <div class="layout">
-            <aside class="rail" aria-label="Tiers da caçada">
+            <aside class="rail" aria-label="Hunt tiers">
               @for (t of tiers(); track t.tier) {
                 <button class="rail-item tier"
                         [class.active]="selectedNum() === t.tier"
@@ -68,35 +68,35 @@ import { MonsterCatalogEntry } from '../../core/types';
                 </div>
 
                 <div class="facts">
-                  <span><b>×{{ t.statMultiplier }}</b><small>Multiplicador</small></span>
+                  <span><b>×{{ t.statMultiplier }}</b><small>Multiplier</small></span>
                   <span><b>{{ t.commonMobs.length }}</b><small>Mobs</small></span>
                   <span><b>{{ t.eliteMobs.length }}</b><small>Elites</small></span>
-                  <span><b>{{ clears(t.tier) }}</b><small>Limpezas</small></span>
+                  <span><b>{{ clears(t.tier) }}</b><small>Clears</small></span>
                 </div>
 
                 <div class="mob-lines">
-                  <span>Mobs comuns</span>
+                  <span>Common mobs</span>
                   <p>{{ nameList(t.commonMobs) }}</p>
                   <span class="elite">Elites</span>
                   <p>{{ nameList(t.eliteMobs) }}</p>
                 </div>
 
                 <div class="rewards">
-                  <span>Recompensas do boss</span>
+                  <span>Boss rewards</span>
                   <div class="reward-strip">
                     @for (loot of bossLoot(); track loot.itemId) {
                       <div class="reward-cell" [title]="loot.name + ' · ' + loot.chance + '%'">
                         <app-item-icon [itemId]="loot.itemId" [size]="34" />
                       </div>
                     } @empty {
-                      <small class="muted">Loot nao catalogado.</small>
+                      <small class="muted">Loot not cataloged.</small>
                     }
                   </div>
                 </div>
 
                 <div class="farm-plan" [class.multi]="runCount() > 1">
                   <div class="farm-head">
-                    <span>Tentativas</span>
+                    <span>Attempts</span>
                     <b>{{ runCount() }}x</b>
                   </div>
                   <div class="farm-controls">
@@ -107,16 +107,16 @@ import { MonsterCatalogEntry } from '../../core/types';
                     <button class="farm-step" (click)="adjustRunCount(1)" [disabled]="runCount() >= farmMax()">+</button>
                   </div>
                   <div class="farm-cost">
-                    <span>{{ farmEnergyPerRun() }} energia por run</span>
+                    <span>{{ farmEnergyPerRun() }} energy per run</span>
                     <b>{{ plannedEnergy() }} / {{ farmEnergyCap() }}</b>
                   </div>
                 </div>
 
                 <div class="actions">
                   @if (locked(t.requiredAccountLevel)) {
-                    <span class="lock-msg">Desbloqueia no nivel de conta {{ t.requiredAccountLevel }}</span>
+                    <span class="lock-msg">Unlocks at account level {{ t.requiredAccountLevel }}</span>
                   } @else {
-                    <button class="pill-btn" (click)="start(t.tier)">Escolher Kaeli</button>
+                    <button class="pill-btn" (click)="start(t.tier)">Choose Kaeli</button>
                   }
                 </div>
               </aside>
@@ -125,12 +125,12 @@ import { MonsterCatalogEntry } from '../../core/types';
         } @else {
           <div class="soon">
             <span class="soon-icon">{{ m.icon }}</span>
-            <p>Este modo ainda esta em desenvolvimento.</p>
+            <p>This mode is still in development.</p>
           </div>
         }
       </section>
     } @else {
-      <p class="muted">Modo desconhecido.</p>
+      <p class="muted">Unknown mode.</p>
     }
   `,
   styles: [`
@@ -400,15 +400,15 @@ export class ModeSelectPage {
     return tiers.find((t) => t.tier === this.selectedNum()) ?? tiers[0] ?? null;
   });
 
-  /** id→entrada do catálogo: os tiers referenciam monstros por id (monster:*) desde as criaturas
-   *  autorais Kaezan (G-08), então resolvemos o id no nome de exibição em vez de mostrar o id cru. */
+  /** id-to-catalog entry: tiers reference monsters by id (monster:*) since the authored
+   *  Kaezan creatures (G-08), so resolve ids to display names instead of showing raw ids. */
   private readonly monsterById = computed(() => {
     const map = new Map<string, MonsterCatalogEntry>();
     for (const m of this.api.catalog()?.monsters ?? []) map.set(m.id, m);
     return map;
   });
 
-  /** Boss do tier selecionado: sprite real do Tibia, casado por id (ou nome legado) no catálogo. */
+  /** Selected tier boss: real Tibia sprite, matched by id (or legacy name) in the catalog. */
   readonly bossMonster = computed<MonsterCatalogEntry | null>(() => {
     const t = this.selectedTier();
     if (!t) return null;
@@ -427,9 +427,9 @@ export class ModeSelectPage {
     this.modeId.set(this.route.snapshot.paramMap.get('modeId') ?? 'dungeon');
   }
 
-  /** Nome de exibição de um id/nome de monstro do tier (cai no valor cru se não estiver no catálogo). */
+  /** Display name for a tier monster id/name (falls back to the raw value if missing from the catalog). */
   monsterName(idOrName: string): string { return this.monsterById().get(idOrName)?.name ?? idOrName; }
-  /** Lista de ids de monstro do tier resolvida em nomes legíveis, já formatada pra exibição. */
+  /** Tier monster ids resolved to readable names, formatted for display. */
   nameList(ids: readonly string[]): string { return ids.map((id) => this.monsterName(id)).join(' · '); }
   biome(tier: number) { return tierBiome(tier); }
   locked(required: number): boolean { return (this.api.account()?.accountLevel ?? 1) < required; }

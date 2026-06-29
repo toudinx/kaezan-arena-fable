@@ -3,19 +3,19 @@ using KaezanArenaFable.Api.Engine;
 
 namespace BalanceSim;
 
-/// <summary>Uma morte de monstro medida: TTK em ticks/ms/ciclos + flag de one-shot.</summary>
+/// <summary>A measured monster death: TTK in ticks/ms/cycles + one-shot flag.</summary>
 internal sealed record KillRow(
     string Kaeli, int Tier, long Seed,
     string Species, string Rank, int MaxHp,
     long TtkTicks, long TtkMs, double TtkCycles, bool OneShot);
 
-/// <summary>Resumo de uma run inteira: vitória, duração, dano dado/sofrido, mortes, one-shots.</summary>
-/// <remarks>MG-08: EndHpFraction = vida do player no fim da run (pós-boss em vitória → "termina com
-/// 30-60% HP"); MinHpFraction = menor vida vista na run (pressão de survival, menos mascarada pelo
-/// auto-heal). Ambos lidos do snapshot — reporting puro, não tocam o engine (determinismo intacto).</remarks>
-/// <remarks>F-E posture calibration: BossMaxHp + BossBreakDamage/BossTotalDamage isolam quanto da
-/// morte do boss vem das janelas de Echo Break (BreakCount = nº de quebras; PeakWindowDamage = maior
-/// dano efetivo causado numa única janela). Tudo lido do snapshot — reporting puro, determinismo intacto.</remarks>
+/// <summary>Whole-run summary: victory, duration, damage dealt/taken, deaths, one-shots.</summary>
+/// <remarks>MG-08: EndHpFraction = player HP at run end (post-boss on victory -> "ends with
+/// 30-60% HP"); MinHpFraction = lowest HP seen during the run (survival pressure, less masked by
+/// auto-heal). Both are read from snapshots only — pure reporting, no engine changes.</remarks>
+/// <remarks>F-E posture calibration: BossMaxHp + BossBreakDamage/BossTotalDamage isolate how much
+/// of the boss death comes from Echo Break windows (BreakCount = number of breaks; PeakWindowDamage
+/// = largest effective damage dealt in one window). Snapshot-only reporting.</remarks>
 internal sealed record RunRow(
     string Kaeli, int Tier, long Seed,
     bool Victory, bool PlayerDied, bool Unfinished,
@@ -26,41 +26,41 @@ internal sealed record RunRow(
 internal sealed record RunResult(RunRow Summary, List<KillRow> Kills);
 
 /// <summary>
-/// Roda uma run headless do <see cref="GameWorld"/> com o piloto-automático ligado e mede tudo a
-/// partir do snapshot por tick (sem hooks no engine, preservando o determinismo). TTK vem do par
-/// "primeiro dano" → "evento de morte"; one-shot = um hit único ≥ HP do alvo no início do tick.
+/// Runs a headless <see cref="GameWorld"/> with autopilot enabled and measures everything from
+/// per-tick snapshots (no engine hooks, preserving determinism). TTK comes from the pair
+/// "first damage" -> "death event"; one-shot = a single hit >= target HP at tick start.
 /// </summary>
 internal static class Simulator
 {
     public static RunResult Run(GameWorld world, string kaeli, int tier, long seed, bool cards, int maxTicks)
     {
         var playerId = world.Player.Id;
-        // MG-02: ciclo de ação = o intervalo-base de auto-attack do PAPEL da Kaeli (archer 1400 <
-        // knight 1700 < mage 2000). Medir TTK em ciclos por papel mantém a comparação justa.
+        // MG-02: action cycle = the base auto-attack interval of the Kaeli role (archer 1400 <
+        // knight 1700 < mage 2000). Measuring TTK in role cycles keeps comparisons fair.
         var cycleMs = (double)GameConfig.Roles[world.Waifu.Role].BaseAutoAttackMs;
 
-        // Liga o piloto: mira + skills + ult + auto-heal (+auto-cards se cards=full), navegação por loot
-        // (anda sozinho coletando e indo até a saída/boss). Mira no mais próximo, cura a 50% de vida.
+        // Enable autopilot: targeting + skills + ult + auto-heal (+auto-cards when cards=full),
+        // loot navigation (walks to collect and then to exit/boss). Targets nearest, heals at 50% HP.
         var flags = 1 | 2 | 4 | GameConfig.AutoHelperAutoHealFlag
                     | (cards ? GameConfig.AutoHelperAutoCardsFlag : 0);
         var payload = $"{GameConfig.AutoHelperTargetPreferenceNearest}|{GameConfig.AutoHelperNavLoot}|50";
         world.Enqueue(new Command(CommandKind.ToggleAutoHelper, flags, GameConfig.AutoHelperMovementModeAvoidCode, payload));
 
         var firstDmgTick = new Dictionary<int, long>();
-        var prevHp = new Dictionary<int, int>();   // HP no fim do tick anterior = início do tick atual
+        var prevHp = new Dictionary<int, int>();   // HP at previous tick end = current tick start
         var maxHp = new Dictionary<int, int>();
         var species = new Dictionary<int, string>();
-        // MG-06: dmgDealt = dano EFETIVO (capado na vida restante do alvo). O engine emite o golpe cheio
-        // mesmo em overkill, então kits de crit/burst (a `discipline` da Seren no auto) inflavam o número
-        // e distorciam a paridade. Capar aqui é reporting puro — não toca o engine (determinismo intacto).
-        var effHp = new Dictionary<int, int>();    // vida efetiva restante (ressincronizada por snapshot)
+        // MG-06: dmgDealt = EFFECTIVE damage (capped to target remaining HP). The engine emits the
+        // full hit even on overkill, so crit/burst kits inflated the number and distorted parity.
+        // Capping here is pure reporting and does not touch the engine.
+        var effHp = new Dictionary<int, int>();    // remaining effective HP, resynced from snapshots
 
         var kills = new List<KillRow>();
         long dmgDealt = 0, dmgTaken = 0;
         var oneShotCount = 0;
 
-        // F-E posture: contribuição das janelas de Echo Break à morte do boss (dano EFETIVO, capado na
-        // vida restante — overkill não infla). bossId vem do MonsterDto.IsBoss (ignora posture-tank comum).
+        // F-E posture: Echo Break window contribution to boss death (EFFECTIVE damage, capped to
+        // remaining HP so overkill does not inflate it). bossId comes from MonsterDto.IsBoss.
         int bossId = 0, bossMaxHp = 0, breakCount = 0, prevPostureCycle = 0;
         long bossTotalDamage = 0, bossBreakDamage = 0, peakWindowDamage = 0, currentWindowDamage = 0;
         var prevStaggered = false;
@@ -76,7 +76,7 @@ internal static class Simulator
             tick++;
             lastElapsedMs = snap.Run.ElapsedMs;
 
-            // MG-08: vida do player neste tick (fração) — última = fim da run; mínima = pior momento.
+            // MG-08: player HP fraction this tick — last = run end; minimum = worst moment.
             if (snap.Player.MaxHp > 0)
             {
                 endHpFrac = (double)snap.Player.Hp / snap.Player.MaxHp;
@@ -95,12 +95,12 @@ internal static class Simulator
                     {
                         var id = e.ActorId;
                         firstDmgTick.TryAdd(id, tick);
-                        // dano efetivo: nunca conta mais que a vida que o alvo ainda tinha.
+                        // Effective damage: never count more than the target still had.
                         var rem = effHp.TryGetValue(id, out var r) ? r : maxHp.GetValueOrDefault(id, e.Value);
                         var eff = Math.Min(e.Value, Math.Max(0, rem));
                         dmgDealt += eff;
                         effHp[id] = rem - e.Value;
-                        // F-E: dano EFETIVO causado ao boss; o que cair numa janela de stagger conta como quebra.
+                        // F-E: EFFECTIVE damage dealt to the boss; stagger-window damage counts as break damage.
                         if (id == bossId)
                         {
                             bossTotalDamage += eff;
@@ -116,12 +116,12 @@ internal static class Simulator
                 else if (e.Kind == "death" && e.ActorId != playerId && maxHp.ContainsKey(e.ActorId)
                          && !world.IsSummonedMonster(e.ActorId))
                 {
-                    // MG-08: conjurados (Ecoídes do summoner, etc.) são adds transitórios de HP fixo
-                    // que não pertencem à célula tier×rank — excluí-los limpa a calibração de TTK.
+                    // MG-08: summoned units are transient fixed-HP adds that do not belong to the
+                    // tier x rank cell; excluding them keeps TTK calibration clean.
                     var id = e.ActorId;
                     var ttkTicks = tick - firstDmgTick.GetValueOrDefault(id, tick) + 1;
                     var ttkMs = ttkTicks * GameConfig.TickMs;
-                    // one-shot da morte: caiu de HP cheio no mesmo tick em que tomou o 1º dano.
+                    // Death one-shot: dropped from full HP in the same tick as the first damage.
                     var died = prevHp.GetValueOrDefault(id, maxHp[id]);
                     var oneShot = firstDmgTick.GetValueOrDefault(id, tick) == tick
                                   && died >= maxHp[id];
@@ -133,18 +133,18 @@ internal static class Simulator
                 }
             }
 
-            // pós-tick: registra HP/maxHp/espécie dos vivos no andar atual (base p/ o próximo tick).
+            // Post-tick: record HP/maxHp/species for live monsters on the current floor.
             foreach (var m in snap.Monsters)
             {
                 prevHp[m.Id] = m.Hp;
                 maxHp[m.Id] = m.MaxHp;
-                effHp[m.Id] = m.Hp;   // ressincroniza a vida efetiva com o snapshot (cobre regen/cura)
+                effHp[m.Id] = m.Hp;   // resync effective HP from snapshot, covering regen/healing
                 species[m.Id] = m.Species;
-                if (m.IsBoss) { bossId = m.Id; bossMaxHp = m.MaxHp; } // ignora posture-tank comum (IsBoss=false)
+                if (m.IsBoss) { bossId = m.Id; bossMaxHp = m.MaxHp; }
             }
 
-            // F-E: conta as quebras (PostureCycle sobe a cada Echo Break) e fecha a janela de pico quando
-            // o stagger termina (maior dano efetivo despejado numa única quebra).
+            // F-E: count breaks (PostureCycle rises on each Echo Break) and close the peak window
+            // when stagger ends (largest effective damage dumped into a single break).
             if (snap.Run.BossPostureCycle > prevPostureCycle)
                 breakCount += snap.Run.BossPostureCycle - prevPostureCycle;
             prevPostureCycle = snap.Run.BossPostureCycle;
@@ -159,7 +159,7 @@ internal static class Simulator
             if (tick >= maxTicks) break;
         }
 
-        // boss morto dentro de uma janela aberta → fecha o último pico.
+        // Boss killed inside an open window -> close the last peak.
         peakWindowDamage = Math.Max(peakWindowDamage, currentWindowDamage);
 
         var victory = ended?.Victory ?? false;

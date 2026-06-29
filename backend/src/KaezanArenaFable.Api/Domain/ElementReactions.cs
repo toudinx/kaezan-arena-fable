@@ -25,17 +25,17 @@ public static class ElementReactions
 
     // reaction prototypes
     private static readonly ReactionDef Vaporize =
-        new("reaction:vaporize", "Estilhaço", 0.70, 1, 0, 1.0, 0, 43);     // ice + fire: thermal shock, splashes
+        new("reaction:vaporize", "Shatter", 0.70, 1, 0, 1.0, 0, 43);       // ice + fire: thermal shock, splashes
     private static readonly ReactionDef Permafrost =
         new("reaction:permafrost", "Permafrost", 0.40, 0, 0, GameConfig.SlowFactorFloor, 2500, 44); // ice + earth: locks the target
     private static readonly ReactionDef Overload =
-        new("reaction:overload", "Sobrecarga", 0.60, 1, 0, 1.0, 0, 12);    // energy + fire: bursts outward
+        new("reaction:overload", "Overload", 0.60, 1, 0, 1.0, 0, 12);      // energy + fire: bursts outward
     private static readonly ReactionDef Superconduct =
-        new("reaction:superconduct", "Supercondução", 0.50, 0, 1200, 1.0, 0, 32); // energy + ice: stuns
+        new("reaction:superconduct", "Superconduct", 0.50, 0, 1200, 1.0, 0, 32); // energy + ice: stuns
     private static readonly ReactionDef Detonate =
-        new("reaction:detonate", "Detonação", 0.85, 0, 0, 1.0, 0, 4);      // fire + earth: detonates the burn
+        new("reaction:detonate", "Detonation", 0.85, 0, 0, 1.0, 0, 4);     // fire + earth: detonates the burn
     private static readonly ReactionDef Annihilate =
-        new("reaction:annihilate", "Aniquilação", 1.00, 0, 0, 1.0, 0, 18); // holy + death: opposites annihilate
+        new("reaction:annihilate", "Annihilation", 1.00, 0, 0, 1.0, 0, 18); // holy + death: opposites annihilate
 
     private static readonly IReadOnlyDictionary<(string Mark, string Trigger), ReactionDef> Matrix = Build();
 

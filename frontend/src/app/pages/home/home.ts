@@ -14,7 +14,7 @@ interface NavItem { route: string; icon: string; title: string; sub: string; ton
   imports: [RouterLink, OutfitPreview, RarityStars],
   template: `
     <div class="hub">
-      <!-- vitrine: wallpaper da Kaeli fixada -->
+      <!-- showcase: pinned Kaeli wallpaper -->
       <div class="bg">
         @if (wallpaper(); as wp) {
           <img class="wallpaper" [src]="wp" alt="" decoding="async" fetchpriority="high" />
@@ -25,7 +25,7 @@ interface NavItem { route: string; icon: string; title: string; sub: string; ton
       <div class="scrim"></div>
 
       @if (pinnedWaifu(); as w) {
-        <!-- sem wallpaper dedicado: a Kaeli não está "dentro" do fundo, então mostramos o sprite -->
+        <!-- no dedicated wallpaper: the Kaeli is not "inside" the background, so show the sprite -->
         @if (!wallpaper() && pinnedSkin(); as skin) {
           <div class="sprite-stage">
             <app-outfit-preview
@@ -35,7 +35,7 @@ interface NavItem { route: string; icon: string; title: string; sub: string; ton
           </div>
         }
 
-        <!-- identidade da Kaeli (canto inferior esquerdo) -->
+        <!-- Kaeli identity (lower-left corner) -->
         <section class="identity">
           <div class="tags">
             <span class="el-tag" [style.--el]="elementColor(w.element)">{{ elementLabel(w.element) }}</span>
@@ -47,7 +47,7 @@ interface NavItem { route: string; icon: string; title: string; sub: string; ton
 
           @if (owned().length > 1) {
             <div class="pin">
-              <span class="eyebrow">Destaque</span>
+              <span class="eyebrow">Featured</span>
               <div class="pin-strip">
                 @for (o of owned(); track o.id) {
                   <button class="pin-thumb" [class.active]="o.id === w.id"
@@ -66,28 +66,28 @@ interface NavItem { route: string; icon: string; title: string; sub: string; ton
             </div>
           }
 
-          <!-- CTA do banner ativo -->
+          <!-- active banner CTA -->
           @if (activeBanner(); as b) {
             <a class="banner-cta glass" routerLink="/recruit">
               <span class="flare">DROP RATE UP</span>
               <div class="cta-body">
-                <span class="eyebrow">Banner ativo</span>
+                <span class="eyebrow">Active banner</span>
                 <strong>{{ b.name }}</strong>
-                @if (featuredName(b); as fn) { <span class="feat">Destaque · {{ fn }}</span> }
+                @if (featuredName(b); as fn) { <span class="feat">Featured · {{ fn }}</span> }
               </div>
-              <span class="cta-go">Convocar →</span>
+              <span class="cta-go">Summon →</span>
             </a>
           }
         </section>
       } @else {
         <section class="identity empty">
-          <h1 class="name">Sua arena aguarda</h1>
-          <p class="desc">Recrute uma Kaeli no banner para fixá-la aqui como sua protagonista.</p>
-          <a class="btn gold" routerLink="/recruit">Ir ao Recrutamento</a>
+          <h1 class="name">Your arena awaits</h1>
+          <p class="desc">Recruit a Kaeli from the banner to pin her here as your protagonist.</p>
+          <a class="btn gold" routerLink="/recruit">Go to Recruit</a>
         </section>
       }
 
-      <!-- rail de navegação vertical (direita) -->
+      <!-- vertical navigation rail (right) -->
       <nav class="rail">
         @for (it of navItems(); track it.route) {
           <a class="rail-item glass" [class.gold]="it.tone === 'gold'" [routerLink]="it.route">
@@ -100,19 +100,19 @@ interface NavItem { route: string; icon: string; title: string; sub: string; ton
         }
       </nav>
 
-      <!-- contratos diários: drawer no canto, fora da vitrine -->
+      <!-- daily contracts: corner drawer outside the showcase -->
       <button class="dailies-fab glass" (click)="drawerOpen.set(!drawerOpen())"
               [attr.aria-expanded]="drawerOpen()">
-        <span>📜 Contratos</span>
+        <span>📜 Contracts</span>
         @if (claimable() > 0) { <span class="badge">{{ claimable() }}</span> }
       </button>
 
-      <aside class="drawer glass-strong" [class.open]="drawerOpen()" aria-label="Contratos diários">
+      <aside class="drawer glass-strong" [class.open]="drawerOpen()" aria-label="Daily contracts">
         <header class="drawer-hd">
-          <h2>Contratos Diários</h2>
-          <button class="x" (click)="drawerOpen.set(false)" aria-label="Fechar">✕</button>
+          <h2>Daily Contracts</h2>
+          <button class="x" (click)="drawerOpen.set(false)" aria-label="Close">✕</button>
         </header>
-        <p class="reset eyebrow">Reseta 00:00 UTC</p>
+        <p class="reset eyebrow">Resets 00:00 UTC</p>
         @for (d of dailies(); track d.id) {
           <div class="contract" [class.done]="d.progress >= d.target">
             <span class="c-desc">{{ d.description }}</span>
@@ -120,22 +120,22 @@ interface NavItem { route: string; icon: string; title: string; sub: string; ton
             <div class="c-foot">
               <span class="prog">{{ d.progress }} / {{ d.target }}</span>
               @if (d.claimed) {
-                <span class="claimed">✓ Resgatado</span>
+                <span class="claimed">✓ Claimed</span>
               } @else if (d.progress >= d.target) {
-                <button class="btn gold" (click)="claim(d.id)">Resgatar</button>
+                <button class="btn gold" (click)="claim(d.id)">Claim</button>
               } @else {
                 <span class="reward muted">+100 ✦ · +150 🪙</span>
               }
             </div>
           </div>
         } @empty {
-          <p class="muted">Carregando contratos…</p>
+          <p class="muted">Loading contracts...</p>
         }
         @if (account(); as acc) {
           <div class="acct">
             <div class="acct-top">
-              <span>Conta · Nível {{ acc.accountLevel }}</span>
-              <span class="muted">{{ acc.runsWon }}/{{ acc.runsPlayed }} vitórias</span>
+              <span>Account · Level {{ acc.accountLevel }}</span>
+              <span class="muted">{{ acc.runsWon }}/{{ acc.runsPlayed }} wins</span>
             </div>
             <div class="bar"><div class="fill xp" [style.width.%]="(100 * acc.accountXp) / acc.accountXpNext"></div></div>
             <span class="muted">{{ acc.accountXp }} / {{ acc.accountXpNext }} XP</span>
@@ -155,7 +155,7 @@ interface NavItem { route: string; icon: string; title: string; sub: string; ton
       isolation: isolate;
     }
 
-    /* ---- vitrine ---- */
+    /* ---- showcase ---- */
     .bg { position: absolute; inset: 0; z-index: -2; }
     .wallpaper { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
     .wallpaper.gradient { object-position: center; }
@@ -172,7 +172,7 @@ interface NavItem { route: string; icon: string; title: string; sub: string; ton
       filter: drop-shadow(0 24px 48px rgba(0,0,0,0.6));
     }
 
-    /* ---- identidade ---- */
+    /* ---- identity ---- */
     .identity {
       position: absolute; left: clamp(24px, 5vw, 72px); bottom: clamp(28px, 7vh, 72px);
       max-width: min(560px, 56vw); z-index: 2;
@@ -293,7 +293,7 @@ interface NavItem { route: string; icon: string; title: string; sub: string; ton
     .acct { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
     .acct-top { display: flex; justify-content: space-between; font-size: var(--fs-sm); margin-bottom: 6px; }
 
-    /* ---- responsivo ---- */
+    /* ---- responsive ---- */
     @media (max-width: 900px) {
       .hub { min-height: calc(100dvh - 53px); padding-bottom: 80px; }
       .identity { left: 20px; right: 20px; bottom: 84px; max-width: none; }
@@ -325,7 +325,7 @@ export class HomePage {
   );
   readonly drawerOpen = signal(false);
 
-  // Protagonista do Início = Kaeli fixada (favorita); senão a primeira possuída.
+  // Home protagonist = pinned (favorite) Kaeli; otherwise the first owned one.
   readonly pinnedWaifu = computed(() => {
     const acc = this.api.account();
     const cat = this.api.catalog();
@@ -342,7 +342,7 @@ export class HomePage {
   readonly pinnedAddons = computed(() => this.pinnedSkin()?.addons ?? 0);
   readonly pinnedMount = computed(() => this.pinnedSkin()?.mountLookType ?? 0);
 
-  // Fundo da vitrine: wallpaper dedicado da Kaeli; senão gradiente do elemento.
+  // Showcase background: dedicated Kaeli wallpaper; otherwise the element gradient.
   readonly wallpaper = computed(() => {
     const w = this.pinnedWaifu();
     return w ? this.art.wallpaper(w.id) : null;
@@ -371,11 +371,11 @@ export class HomePage {
     const cat = this.api.catalog();
     const acc = this.api.account();
     return [
-      { route: '/hunt', icon: '⚔', title: 'Caçada', sub: `${cat?.tiers.length ?? 0} masmorras`, tone: 'iris' },
-      { route: '/kaelis', icon: '👥', title: 'Kaelis', sub: `${this.owned().length} caçadoras`, tone: 'iris' },
-      { route: '/recruit', icon: '✦', title: 'Recrutar', sub: 'Banner ativo', tone: 'gold' },
-      { route: '/backpack', icon: '🎒', title: 'Mochila', sub: `${acc?.inventory.length ?? 0} tipos de item`, tone: 'iris' },
-      { route: '/bestiary', icon: '📖', title: 'Bestiário', sub: `${cat?.monsters.length ?? 0} criaturas`, tone: 'iris' },
+      { route: '/hunt', icon: '⚔', title: 'Hunt', sub: `${cat?.tiers.length ?? 0} dungeons`, tone: 'iris' },
+      { route: '/kaelis', icon: '👥', title: 'Kaelis', sub: `${this.owned().length} hunters`, tone: 'iris' },
+      { route: '/recruit', icon: '✦', title: 'Recruit', sub: 'Active banner', tone: 'gold' },
+      { route: '/backpack', icon: '🎒', title: 'Backpack', sub: `${acc?.inventory.length ?? 0} item types`, tone: 'iris' },
+      { route: '/bestiary', icon: '📖', title: 'Bestiary', sub: `${cat?.monsters.length ?? 0} creatures`, tone: 'iris' },
     ];
   });
 

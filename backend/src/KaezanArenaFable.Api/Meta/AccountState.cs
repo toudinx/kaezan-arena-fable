@@ -19,7 +19,7 @@ public sealed class DailyContract
     public bool Claimed { get; set; }
 }
 
-/// <summary>Maestria de Eco por Kaeli: pontos disponíveis, gastos e nodes destravados.</summary>
+/// <summary>Echo Mastery per Kaeli: available points, spent points and unlocked nodes.</summary>
 public sealed class MasteryState
 {
     public int Points { get; set; }
@@ -41,7 +41,7 @@ public sealed class AccountState
     public Dictionary<string, int> Ascension { get; set; } = [];
     public string ActiveWaifuId { get; set; } = "";
 
-    // kaeli depth: afinidade (xp acumulado), presentes do dia, skins e maestria
+    // Kaeli depth: affinity, daily gifts, skins, and mastery.
     public Dictionary<string, long> AffinityXp { get; set; } = [];
     public string GiftsDate { get; set; } = "";
     public Dictionary<string, int> GiftsToday { get; set; } = [];
@@ -61,13 +61,13 @@ public sealed class AccountState
     public int RunsWon { get; set; }
     public Dictionary<int, int> TierClears { get; set; } = [];
 
-    /// <summary>G-10: config default do helper por Kaeli — "targeting|skills|ult|pref|movement|autoheal|nav".</summary>
+    /// <summary>G-10: default helper config per Kaeli — "targeting|skills|ult|pref|movement|autoheal|nav".</summary>
     public Dictionary<string, string> HelperProfiles { get; set; } = [];
 
-    /// <summary>Chave do loadout de equipamento: um set por Kaeli POR tier ("waifu:x#3").</summary>
+    /// <summary>Equipment loadout key: one set per Kaeli PER tier ("waifu:x#3").</summary>
     public static string EquipKey(string waifuId, int tier) => $"{waifuId}#{tier}";
 
-    /// <summary>Decompõe a chave do loadout. Chave legada (sem "#tier") cai no tier 1.</summary>
+    /// <summary>Decomposes the loadout key. Legacy key (without "#tier") falls back to tier 1.</summary>
     public static (string WaifuId, int Tier) ParseEquipKey(string key)
     {
         var hash = key.LastIndexOf('#');

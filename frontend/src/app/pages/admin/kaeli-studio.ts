@@ -12,16 +12,16 @@ import {
 } from '../../core/types';
 
 type Region = 'head' | 'body' | 'legs' | 'feet';
-type OutfitCategory = 'kaezan' | 'feminino' | 'masculino' | 'monster' | 'boss' | 'all';
+type OutfitCategory = 'kaezan' | 'female' | 'male' | 'monster' | 'boss' | 'all';
 
-/** Pedido vindo do guarda-roupa: editar uma skin existente ou criar uma nova já apontada à Kaeli. */
+/** Request from the wardrobe: edit an existing skin or create a new one already pointed at a Kaeli. */
 export interface StudioSeed {
   mode: 'new' | 'edit';
   waifuId: string;
   skin?: KaeliSkinDefinition;
 }
 
-/** Entrada de outfit-catalog.json (gerado de Canary outfits.xml: nome + gênero por lookType). */
+/** outfit-catalog.json entry (generated from Canary outfits.xml: name + gender by lookType). */
 interface OutfitCatalogEntry {
   lookType: number;
   name: string;
@@ -32,13 +32,13 @@ interface OutfitOption {
   lookType: number;
   name: string;
   recolorable: boolean;
-  category: 'kaezan' | 'feminino' | 'masculino' | 'monster' | 'boss' | 'other';
+  category: 'kaezan' | 'female' | 'male' | 'monster' | 'boss' | 'other';
   bestiaryClass: string;
 }
 
 const PAGE_SIZE = 48;
 
-/** Outfit Studio: cria skins autorais (visual recolorível + addons + montaria) para as Kaelis. */
+/** Outfit Studio: creates authored skins (recolorable visual + addons + mount) for Kaelis. */
 @Component({
   selector: 'app-kaeli-studio',
   standalone: true,
@@ -46,25 +46,25 @@ const PAGE_SIZE = 48;
   template: `
     @if (metadata(); as meta) {
       <div class="studio">
-        <!-- LEFT: biblioteca de outfits (só visuais — montaria fica no estúdio) -->
+        <!-- LEFT: outfit library (visuals only; mount stays in the studio) -->
         <aside class="library panel">
           <div class="panel-head">
             <div>
-              <span class="eyebrow">Acervo visual</span>
-              <h2>Biblioteca</h2>
+              <span class="eyebrow">Visual Archive</span>
+              <h2>Library</h2>
             </div>
             <b class="count">{{ filteredOutfits().length }}</b>
           </div>
 
-          <input class="search" type="search" placeholder="Nome, classe ou lookType"
+          <input class="search" type="search" placeholder="Name, class, or lookType"
             [value]="outfitSearch()" (input)="setOutfitSearch($any($event.target).value)" />
           <select class="search cat-select" (change)="setOutfitCategory($any($event.target).value)">
             <option value="kaezan" [selected]="outfitCategory() === 'kaezan'">Kaezan ({{ categoryCounts().kaezan }})</option>
-            <option value="feminino" [selected]="outfitCategory() === 'feminino'">Feminino ({{ categoryCounts().feminino }})</option>
-            <option value="masculino" [selected]="outfitCategory() === 'masculino'">Masculino ({{ categoryCounts().masculino }})</option>
-            <option value="monster" [selected]="outfitCategory() === 'monster'">Monstros ({{ categoryCounts().monster }})</option>
+            <option value="female" [selected]="outfitCategory() === 'female'">Female ({{ categoryCounts().female }})</option>
+            <option value="male" [selected]="outfitCategory() === 'male'">Male ({{ categoryCounts().male }})</option>
+            <option value="monster" [selected]="outfitCategory() === 'monster'">Monsters ({{ categoryCounts().monster }})</option>
             <option value="boss" [selected]="outfitCategory() === 'boss'">Bosses ({{ categoryCounts().boss }})</option>
-            <option value="all" [selected]="outfitCategory() === 'all'">Todos ({{ categoryCounts().all }})</option>
+            <option value="all" [selected]="outfitCategory() === 'all'">All ({{ categoryCounts().all }})</option>
           </select>
 
           <div class="lib-list">
@@ -81,29 +81,29 @@ const PAGE_SIZE = 48;
                 </span>
               </button>
             } @empty {
-              <div class="empty">Nenhum outfit encontrado.</div>
+              <div class="empty">No outfit found.</div>
             }
           </div>
           <footer class="pagination">
-            <button type="button" [disabled]="outfitPage() <= 1" (click)="changeOutfitPage(-1)">Anterior</button>
+            <button type="button" [disabled]="outfitPage() <= 1" (click)="changeOutfitPage(-1)">Previous</button>
             <span>{{ outfitPage() }} / {{ outfitPageCount() }}</span>
-            <button type="button" [disabled]="outfitPage() >= outfitPageCount()" (click)="changeOutfitPage(1)">Próxima</button>
+            <button type="button" [disabled]="outfitPage() >= outfitPageCount()" (click)="changeOutfitPage(1)">Next</button>
           </footer>
         </aside>
 
-        <!-- CENTER: estúdio -->
+        <!-- CENTER: studio -->
         <main class="editor panel">
           <div class="editor-head">
             <div>
               <span class="eyebrow">Outfit Studio</span>
-              <h2>{{ draft().id ? 'Editar skin' : 'Nova skin' }}</h2>
+              <h2>{{ draft().id ? 'Edit skin' : 'New skin' }}</h2>
               @if (draft().id) { <code>{{ draft().id }}</code> }
             </div>
             <div class="actions">
-              <button type="button" class="secondary" (click)="closed.emit()">← Guarda-roupa</button>
-              <button type="button" class="secondary" (click)="duplicateCurrent()">Duplicar</button>
+              <button type="button" class="secondary" (click)="closed.emit()">← Wardrobe</button>
+              <button type="button" class="secondary" (click)="duplicateCurrent()">Duplicate</button>
               <button type="button" class="primary" [disabled]="saving()" (click)="save()">
-                {{ saving() ? 'Salvando...' : 'Salvar look' }}
+                {{ saving() ? 'Saving...' : 'Save look' }}
               </button>
             </div>
           </div>
@@ -122,12 +122,12 @@ const PAGE_SIZE = 48;
                     [addons]="draft().addons" [mountLookType]="draft().mountLookType"
                     [animate]="walk()" [size]="168" />
                 } @else {
-                  <span class="no-outfit">Escolha um outfit na biblioteca</span>
+                  <span class="no-outfit">Choose an outfit in the library</span>
                 }
               </div>
               <label class="check center">
                 <input type="checkbox" [checked]="walk()" (change)="walk.set($any($event.target).checked)" />
-                Andar / girar
+                Walk / rotate
               </label>
             </div>
 
@@ -141,9 +141,9 @@ const PAGE_SIZE = 48;
                   </div>
                 </div>
                 <div>
-                  <h3>Montaria</h3>
+                  <h3>Mount</h3>
                   <select (change)="setMount(+$any($event.target).value)">
-                    <option value="0" [selected]="draft().mountLookType === 0">Sem montaria</option>
+                    <option value="0" [selected]="draft().mountLookType === 0">No mount</option>
                     @for (m of mounts(); track m.itemId) {
                       <option [value]="m.mountLookType" [selected]="draft().mountLookType === m.mountLookType">{{ m.name }}</option>
                     }
@@ -152,7 +152,7 @@ const PAGE_SIZE = 48;
               </section>
 
               <section class="block">
-                <h3>Região</h3>
+                <h3>Region</h3>
                 <div class="regions">
                   @for (r of regions; track r.key) {
                     <button type="button" [class.active]="region() === r.key" (click)="region.set(r.key)">
@@ -163,7 +163,7 @@ const PAGE_SIZE = 48;
                 <div class="palette">
                   @for (c of colorSwatches(); track $index) {
                     <button type="button" class="swatch" [class.active]="draft()[region()] === $index"
-                      [style.background]="c" [title]="'Cor ' + $index" (click)="pickColor($index)"></button>
+                      [style.background]="c" [title]="'Color ' + $index" (click)="pickColor($index)"></button>
                   }
                 </div>
               </section>
@@ -180,22 +180,22 @@ const PAGE_SIZE = 48;
                   }
                 </select>
               </label>
-              <label>Nome da skin
+              <label>Skin name
                 <input [value]="draft().name" (input)="patch({ name: $any($event.target).value })" placeholder="Ex.: Aurora Boreal" />
               </label>
               <button type="button" class="secondary load-default" (click)="loadKaeliDefault()">
-                Carregar visual padrão da Kaeli
+                Load Kaeli default visual
               </button>
             </div>
-            <label>Descrição
+            <label>Description
               <textarea rows="2" [value]="draft().description"
                 (input)="patch({ description: $any($event.target).value })"></textarea>
             </label>
             @if (isDefaultSkin()) {
-              <p class="hint locked">Esta é a skin <b>padrão</b> da Kaeli: o desbloqueio fica sempre “Padrão (grátis)”. Você pode trocar o visual livremente.</p>
+              <p class="hint locked">This is the Kaeli's <b>default</b> skin: unlock always stays "Default (free)". You can freely change the visual.</p>
             } @else {
               <div class="unlock-grid">
-                <label>Desbloqueio
+                <label>Unlock
                   <select (change)="patch({ unlock: $any($event.target).value })">
                     @for (k of unlockKinds(); track k) {
                       <option [value]="k" [selected]="k === draft().unlock">{{ unlockLabel(k) }}</option>
@@ -211,27 +211,27 @@ const PAGE_SIZE = 48;
               </div>
             }
             <p class="hint">
-              Skins com desbloqueio “Padrão” já podem ser equipadas; as demais exigem afinidade, ouro ou Kaeros.
-              Addons e montaria definidos aqui sobrescrevem ascensão/equipamento dentro da run.
+              Skins with "Default" unlock can already be equipped; the others require affinity, gold, or Kaeros.
+              Addons and mount defined here override ascension/equipment inside the run.
             </p>
           </section>
         </main>
 
-        <!-- RIGHT: skins autorais -->
+        <!-- RIGHT: authored skins -->
         <aside class="authored panel">
           <div class="panel-head">
             <div>
-              <span class="eyebrow">Conteúdo autoral</span>
+              <span class="eyebrow">Authored Content</span>
               <h2>Skins Kaezan</h2>
             </div>
-            <button class="primary compact" type="button" (click)="newSkin()">Nova</button>
+            <button class="primary compact" type="button" (click)="newSkin()">New</button>
           </div>
 
-          <input class="search" type="search" placeholder="Buscar skin"
+          <input class="search" type="search" placeholder="Search skin"
             [value]="authoredSearch()" (input)="authoredSearch.set($any($event.target).value)" />
           <label class="filter-label">Kaeli
             <select (change)="authoredWaifuFilter.set($any($event.target).value)">
-              <option value="all" [selected]="authoredWaifuFilter() === 'all'">Todas</option>
+              <option value="all" [selected]="authoredWaifuFilter() === 'all'">All</option>
               @for (w of roster(); track w.id) {
                 <option [value]="w.id" [selected]="authoredWaifuFilter() === w.id">{{ w.name }}</option>
               }
@@ -251,14 +251,14 @@ const PAGE_SIZE = 48;
                   </span>
                 </button>
                 <footer>
-                  <button type="button" (click)="editSkin(s)">Editar</button>
-                  <button type="button" (click)="duplicateSkin(s)">Duplicar</button>
-                  <button type="button" class="danger" (click)="requestDelete(s)">Excluir</button>
+                  <button type="button" (click)="editSkin(s)">Edit</button>
+                  <button type="button" (click)="duplicateSkin(s)">Duplicate</button>
+                  <button type="button" class="danger" (click)="requestDelete(s)">Delete</button>
                 </footer>
               </article>
             } @empty {
               <div class="empty authored-empty">
-                Nenhuma skin autoral ainda. Escolha um outfit, ajuste as cores e salve a primeira.
+                No authored skin yet. Choose an outfit, adjust the colors, and save the first one.
               </div>
             }
           </div>
@@ -267,13 +267,13 @@ const PAGE_SIZE = 48;
         @if (pendingDelete(); as skin) {
           <div class="modal-backdrop" (click)="cancelDelete()">
             <section class="confirm-modal" (click)="$event.stopPropagation()">
-              <span class="eyebrow">Excluir skin</span>
+              <span class="eyebrow">Delete skin</span>
               <h2>{{ skin.name }}</h2>
-              <p>Remove definitivamente <code>{{ skin.id }}</code> de {{ waifuName(skin.waifuId) }}.</p>
+              <p>Permanently removes <code>{{ skin.id }}</code> from {{ waifuName(skin.waifuId) }}.</p>
               <div class="actions">
-                <button type="button" class="secondary" (click)="cancelDelete()">Cancelar</button>
+                <button type="button" class="secondary" (click)="cancelDelete()">Cancel</button>
                 <button type="button" class="danger solid" [disabled]="deleting()" (click)="confirmDelete()">
-                  {{ deleting() ? 'Excluindo...' : 'Excluir' }}
+                  {{ deleting() ? 'Deleting...' : 'Delete' }}
                 </button>
               </div>
             </section>
@@ -281,7 +281,7 @@ const PAGE_SIZE = 48;
         }
       </div>
     } @else {
-      <div class="loading">Carregando Outfit Studio...</div>
+      <div class="loading">Loading Outfit Studio...</div>
     }
   `,
   styles: [`
@@ -314,8 +314,8 @@ const PAGE_SIZE = 48;
     .row-tags { display: flex; gap: 3px; margin-top: 4px; }
     .row-tags i { border-radius: 3px; font-size: 7px; font-style: normal; font-weight: 900; padding: 2px 4px; }
     .row-tags i.kaezan { background: #173b35; color: #58dbc9; }
-    .row-tags i.feminino { background: #3a1f33; color: #f0a4d4; }
-    .row-tags i.masculino { background: #1b2a3b; color: #74c0e8; }
+    .row-tags i.female { background: #3a1f33; color: #f0a4d4; }
+    .row-tags i.male { background: #1b2a3b; color: #74c0e8; }
     .row-tags i.monster { background: #2a2438; color: #b79cf0; }
     .row-tags i.boss { background: #3b2818; color: #efad69; }
     .row-tags i.other { background: #26262f; color: #a8a6b8; }
@@ -389,9 +389,9 @@ const PAGE_SIZE = 48;
   `],
 })
 export class KaeliStudio implements OnInit {
-  /** Quando aberto a partir do guarda-roupa: edita uma skin ou semeia uma nova para a Kaeli. */
+  /** When opened from the wardrobe: edits a skin or seeds a new one for the Kaeli. */
   @Input() seed: StudioSeed | null = null;
-  /** Pede ao host (KaeliManager) para voltar ao guarda-roupa. */
+  /** Asks the host (KaeliManager) to return to the wardrobe. */
   @Output() readonly closed = new EventEmitter<void>();
 
   readonly metadata = signal<KaeliAuthoringMetadata | null>(null);
@@ -414,10 +414,10 @@ export class KaeliStudio implements OnInit {
   readonly status = signal<{ kind: 'ok' | 'err'; msg: string } | null>(null);
 
   readonly regions: { key: Region; label: string }[] = [
-    { key: 'head', label: 'Cabeça' },
-    { key: 'body', label: 'Corpo' },
-    { key: 'legs', label: 'Pernas' },
-    { key: 'feet', label: 'Pés' },
+    { key: 'head', label: 'Head' },
+    { key: 'body', label: 'Body' },
+    { key: 'legs', label: 'Legs' },
+    { key: 'feet', label: 'Feet' },
   ];
 
   readonly roster = computed<WaifuDef[]>(() => this.api.catalog()?.waifus ?? []);
@@ -430,7 +430,7 @@ export class KaeliStudio implements OnInit {
   });
   readonly unlockKinds = computed(() => this.metadata()?.unlockKinds ?? ['default', 'affinity', 'gold', 'kaeros']);
 
-  /** A skin sendo editada é a padrão da Kaeli? (override da padrão mantém desbloqueio "default"). */
+  /** Is the edited skin the Kaeli default? (default override keeps "default" unlock). */
   readonly isDefaultSkin = computed(() => {
     const draft = this.draft();
     if (!draft.id) return false;
@@ -442,8 +442,8 @@ export class KaeliStudio implements OnInit {
     const list = this.outfitList();
     return {
       kaezan: list.filter((o) => o.category === 'kaezan').length,
-      feminino: list.filter((o) => o.category === 'feminino').length,
-      masculino: list.filter((o) => o.category === 'masculino').length,
+      female: list.filter((o) => o.category === 'female').length,
+      male: list.filter((o) => o.category === 'male').length,
       monster: list.filter((o) => o.category === 'monster').length,
       boss: list.filter((o) => o.category === 'boss').length,
       all: list.length,
@@ -490,9 +490,9 @@ export class KaeliStudio implements OnInit {
         this.api.getMonsterAuthoringMetadata(),
         fetch('/assets/tibia/outfit-catalog.json').then((r) => r.json() as Promise<OutfitCatalogEntry[]>).catch(() => []),
       ]);
-      // catálogo autoritativo de outfits de jogador (Canary outfits.xml): nome + gênero
+      // Authoritative player outfit catalog (Canary outfits.xml): name + gender.
       const catByLook = new Map(outfitCatalog.map((o) => [o.lookType, o]));
-      // lookType -> aparência nomeada do Canary (bosses têm prioridade na classificação)
+      // lookType -> named Canary appearance (bosses take priority in classification).
       const byLook = new Map<number, MonsterAppearance>();
       for (const appearance of monsterMeta.appearances) {
         const current = byLook.get(appearance.outfit.lookType);
@@ -500,7 +500,7 @@ export class KaeliStudio implements OnInit {
           byLook.set(appearance.outfit.lookType, appearance);
         }
       }
-      // montarias têm slot próprio (controle no estúdio) — fora da biblioteca de outfits
+      // Mounts have their own slot (studio control), outside the outfit library.
       const mountLooks = new Set(this.mounts().map((m) => m.mountLookType));
       this.outfitList.set(this.assets.ids('outfits')
         .filter((lookType) => !mountLooks.has(lookType))
@@ -515,7 +515,7 @@ export class KaeliStudio implements OnInit {
             category = 'kaezan';
             name = entry.name || `Kaezan LookType ${lookType}`;
           } else if (player) {
-            category = player.gender === 'male' ? 'masculino' : 'feminino';
+            category = player.gender === 'male' ? 'male' : 'female';
             name = player.name;
           } else if (appearance) {
             category = appearance.kind === 'boss' ? 'boss' : 'monster';
@@ -533,9 +533,9 @@ export class KaeliStudio implements OnInit {
             bestiaryClass,
           } as OutfitOption;
         })
-        // skins são recoloríveis: outfits de jogador sempre entram; monstros/bosses só se tiverem
-        // camada de máscara de cor (sem isso a paleta não faz nada)
-        .filter((o) => o.category === 'kaezan' || o.category === 'feminino' || o.category === 'masculino' || o.recolorable)
+        // Skins are recolorable: player outfits always enter; monsters/bosses only enter if they have
+        // a color mask layer (without it the palette does nothing).
+        .filter((o) => o.category === 'kaezan' || o.category === 'female' || o.category === 'male' || o.recolorable)
         .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })));
       this.metadata.set(metadata);
       this.authored.set(authored);
@@ -567,7 +567,7 @@ export class KaeliStudio implements OnInit {
   pickColor(index: number): void { this.patch({ [this.region()]: index }); }
 
   setWaifu(waifuId: string): void {
-    const reseed = !this.draft().id; // só re-seeda o visual em skins novas
+    const reseed = !this.draft().id; // only reseed the visual for new skins
     this.patch({ waifuId });
     if (reseed) this.loadKaeliDefault();
   }
@@ -585,13 +585,13 @@ export class KaeliStudio implements OnInit {
 
   unlockLabel(kind: string): string {
     const labels: Record<string, string> = {
-      default: 'Padrão (grátis)', affinity: 'Afinidade', gold: 'Ouro', kaeros: 'Kaeros',
+      default: 'Default (free)', affinity: 'Affinity', gold: 'Gold', kaeros: 'Kaeros',
     };
     return labels[kind] ?? kind;
   }
   unlockValueLabel(): string {
     const labels: Record<string, string> = {
-      affinity: 'Nível de afinidade', gold: 'Preço (ouro)', kaeros: 'Preço (Kaeros)',
+      affinity: 'Affinity level', gold: 'Price (gold)', kaeros: 'Price (Kaeros)',
     };
     return labels[this.draft().unlock] ?? 'Valor';
   }
@@ -600,7 +600,7 @@ export class KaeliStudio implements OnInit {
   }
   catLabel(category: string): string {
     const labels: Record<string, string> = {
-      kaezan: 'Kaezan', feminino: 'Feminino', masculino: 'Masculino', monster: 'Monstro', boss: 'Boss', other: 'Outro',
+      kaezan: 'Kaezan', female: 'Female', male: 'Male', monster: 'Monster', boss: 'Boss', other: 'Other',
     };
     return labels[category] ?? category;
   }
@@ -637,7 +637,7 @@ export class KaeliStudio implements OnInit {
       name: skin.name ? `${skin.name} Echo` : '',
     }));
     this.selectedId.set('');
-    this.status.set({ kind: 'ok', msg: 'Cópia aberta como nova skin. Ajuste o nome e salve.' });
+    this.status.set({ kind: 'ok', msg: 'Copy opened as a new skin. Adjust the name and save.' });
   }
 
   requestDelete(skin: KaeliSkinDefinition): void { this.pendingDelete.set(skin); }
@@ -652,7 +652,7 @@ export class KaeliStudio implements OnInit {
       this.authored.update((list) => list.filter((s) => s.id !== skin.id));
       if (this.selectedId() === skin.id) this.newSkin();
       this.pendingDelete.set(null);
-      this.status.set({ kind: 'ok', msg: `${skin.name} foi excluída.` });
+      this.status.set({ kind: 'ok', msg: `${skin.name} was deleted.` });
     } catch (error) {
       this.pendingDelete.set(null);
       this.status.set({ kind: 'err', msg: (error as Error).message });
@@ -665,7 +665,7 @@ export class KaeliStudio implements OnInit {
     this.saving.set(true);
     this.status.set(null);
     try {
-      // override de skin estática: tem id mas ainda não é um registro autoral → cria (POST com id fixo).
+      // Static skin override: it has an id but is not an authored record yet, so create it (POST with fixed id).
       const id = this.draft().id;
       const isExistingAuthored = !!id && this.authored().some((s) => s.id === id);
       const saved = isExistingAuthored
@@ -674,7 +674,7 @@ export class KaeliStudio implements OnInit {
       this.authored.update((list) => [...list.filter((s) => s.id !== saved.id), saved]);
       this.draft.set({ ...saved });
       this.selectedId.set(saved.id);
-      this.status.set({ kind: 'ok', msg: `Skin salva para ${this.waifuName(saved.waifuId)}. Já pode ser equipada.` });
+      this.status.set({ kind: 'ok', msg: `Skin saved for ${this.waifuName(saved.waifuId)}. It can now be equipped.` });
     } catch (error) {
       this.status.set({ kind: 'err', msg: (error as Error).message });
     } finally {

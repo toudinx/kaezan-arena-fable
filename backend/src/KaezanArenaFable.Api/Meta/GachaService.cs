@@ -23,17 +23,17 @@ public sealed record PullResponse(
 public sealed class GachaService(AccountStore store, ItemRegistry items, ContentStore content)
 {
     private static readonly BannerDef StandardBanner =
-        new("banner:standard", "Convocação Padrão", "Banner permanente com todas as Kaelis.", null);
+        new("banner:standard", "Standard Summon", "Permanent banner featuring all Kaelis.", null);
 
     /// <summary>
-    /// ID estável do banner para uma waifu. Velvet mantém "banner:nightmare" por compatibilidade
-    /// de pity; demais usam "banner:{sufixo}", ex.: "banner:rin".
+    /// Stable banner ID for a waifu. Velvet keeps "banner:nightmare" for pity compatibility;
+    /// others use "banner:{suffix}", e.g. "banner:rin".
     /// </summary>
     public static string BannerIdFor(string waifuId) =>
         waifuId == Waifus.FeaturedFiveStarId ? "banner:nightmare" : $"banner:{waifuId[6..]}";
 
     /// <summary>
-    /// Banners ativos: waifus em destaque (da ContentStore) + padrão fixo ao final.
+    /// Active banners: featured waifus (from ContentStore) + standard banner at the end.
     /// </summary>
     public IReadOnlyList<BannerDef> GetBanners()
     {
@@ -44,7 +44,7 @@ public sealed class GachaService(AccountStore store, ItemRegistry items, Content
             result.Add(new BannerDef(
                 BannerIdFor(waifuId),
                 waifu.Title,
-                $"Banner promocional: taxa aumentada para {waifu.Name}, {waifu.Title}.",
+                $"Promotional banner: increased rate for {waifu.Name}, {waifu.Title}.",
                 waifuId));
         }
         result.Add(StandardBanner);
@@ -53,14 +53,14 @@ public sealed class GachaService(AccountStore store, ItemRegistry items, Content
 
     public PullResponse Pull(string bannerId, int count)
     {
-        if (count is not (1 or 10)) throw new ArgumentException("count deve ser 1 ou 10");
+        if (count is not (1 or 10)) throw new ArgumentException("count must be 1 or 10");
         var banner = GetBanners().FirstOrDefault(b => b.Id == bannerId)
-                     ?? throw new ArgumentException("banner desconhecido");
+                     ?? throw new ArgumentException("unknown banner");
         var cost = GameConfig.PullCostKaeros * count;
 
         return store.Mutate(state =>
         {
-            if (state.Kaeros < cost) throw new InvalidOperationException("Kaeros insuficiente");
+            if (state.Kaeros < cost) throw new InvalidOperationException("insufficient Kaeros");
             state.Kaeros -= cost;
 
             if (!state.Pity.TryGetValue(banner.Id, out var pity))
@@ -147,7 +147,7 @@ public sealed class GachaService(AccountStore store, ItemRegistry items, Content
                 .OrderBy(item => item.ItemId)
                 .ToList();
         if (pool.Count == 0)
-            throw new InvalidOperationException("catalogo de itens vazio");
+            throw new InvalidOperationException("empty item catalog");
 
         var picked = pool[rng.Next(pool.Count)];
         if (state.Inventory.TryGetValue(picked.ItemId, out var stack))
@@ -161,22 +161,22 @@ public sealed class GachaService(AccountStore store, ItemRegistry items, Content
             };
 
         return new PullResult("item", null, picked.ItemId, 1,
-            picked.Name, "Item obtido", 3, false, 0, false);
+            picked.Name, "Item obtained", 3, false, 0, false);
     }
 
     public object Ascend(string waifuId)
     {
         var waifu = Waifus.ById.GetValueOrDefault(waifuId)
-                    ?? throw new ArgumentException("waifu desconhecida");
+                    ?? throw new ArgumentException("unknown waifu");
         return store.Mutate(state =>
         {
-            if (!state.OwnedWaifus.Contains(waifuId)) throw new InvalidOperationException("não possuída");
+            if (!state.OwnedWaifus.Contains(waifuId)) throw new InvalidOperationException("not owned");
             var current = state.Ascension.GetValueOrDefault(waifuId);
             if (current >= GameConfig.AscensionShardCost.Length)
-                throw new InvalidOperationException("ascensão máxima");
+                throw new InvalidOperationException("maximum ascension");
             var cost = GameConfig.AscensionShardCost[current];
             var have = state.Shards.GetValueOrDefault(waifuId);
-            if (have < cost) throw new InvalidOperationException($"shards insuficientes ({have}/{cost})");
+            if (have < cost) throw new InvalidOperationException($"insufficient shards ({have}/{cost})");
             state.Shards[waifuId] = have - cost;
             state.Ascension[waifuId] = current + 1;
             return new { waifuId, ascension = current + 1, shardsLeft = state.Shards[waifuId], name = waifu.Name };

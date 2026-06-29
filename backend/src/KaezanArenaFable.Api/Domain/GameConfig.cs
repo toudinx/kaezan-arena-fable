@@ -8,37 +8,39 @@ public static class GameConfig
 {
     // ---- simulation ----
     public const int TickMs = 100;
-    // G-01: 250→340 (passo 400ms→~294ms/tile) pro ritmo de hunt; mantém folga acima de MinStepMs.
+    // G-01: 250→340 (step 400ms→~294ms/tile) for hunt pacing; keeps margin above MinStepMs.
     public const int PlayerBaseSpeed = 340;
-    // G-01: revisado e mantido em 2 — mobs já andam a 430–625ms vs player ~294ms, kita bem.
+    // G-01: reviewed and kept at 2 — mobs already move at 430–625ms vs player ~294ms, kites well.
     public const int MonsterSpeedMultiplier = 2;
     public const int GroundFriction = 100;
     public const double DiagonalStepFactor = 1.4;
-    // G-01: 160→140, mais teto pra haste/move-speed sem cruzar o piso no passo base.
+    // G-01: 160→140, more headroom for haste/move-speed without crossing the base step floor.
     public const int MinStepMs = 140;
     public const int MaxStepMs = 1400;
-    // G-01: 80→130, suaviza virar/parar (buffer em SetMoveDirection + chain em TickPlayerMovement).
+    // G-01: 80→130, smooths turning/stopping (buffer in SetMoveDirection + chain in TickPlayerMovement).
     public const int StepGraceMs = 130;
-    // H-07: aquisição mantida em 8 — define o alcance de PULL (a que distância você "lura"), não a
-    // persistência. Mexer aqui muda balance de todo combate; o overlure se afina no lado do DROP abaixo.
-    public const int MonsterAggroRange = 8;
-    // H-07 (persistência de aggro / overlure). Os três valores abaixo sustentam um train deliberado feito
-    // na volta (overlure) sem virar grude infinito — todo drop continua finito, então uma fuga real
-    // (correr pro ladder / sentar atrás de parede) ainda solta a pilha.
-    // 12→16: a cauda do train pode atrasar mais durante a volta antes de o timer de drop começar. Coerente
-    // com as salas grandes da H-01 (RoomMax 16) e com a caverna aberta da H-06 (Floor1Size 52) — em campo
-    // aberto o tail facilmente fica >12 tiles num pico da volta sem que o jogador tenha escapado de fato.
+    // H-07: PULL range (distance at which a mob "sees" you and gives chase). 8→10 (feel feedback 2026-06-29,
+    // 9th pass): with the Tibia-style limited camera, mobs should CHASE the player (horde closing in
+    // rather than standing idle in a corner). Combined with the helper's straggler-seek (goes after the
+    // last lost mob), the room closes without getting stuck. Still requires LoS — no aggro through wall/rock.
+    public const int MonsterAggroRange = 10;
+    // H-07 (aggro persistence / overlure). The three values below sustain a deliberate train on the return
+    // lap (overlure) without turning into infinite glue — every drop is still finite, so a real escape
+    // (running to the ladder / sitting behind a wall) still breaks the pile.
+    // 12→16: the train tail can fall further behind during the return before the drop timer starts. Consistent
+    // with the large rooms of H-01 (RoomMax 16) and the open cave of H-06 (Floor1Size 52) — in open terrain
+    // the tail easily exceeds 12 tiles on a lap peak without the player having truly escaped.
     public const int AggroDropRange = 16;
-    // 4000→8000: o player corre ~294ms/tile vs mob ~430–625ms, então no overlure a frente dispara e a cauda
-    // fica pra trás. AggroOutOfRangeSinceMs zera assim que o mob re-entra em AggroDropRange (a cada passagem
-    // da volta), então 8s só dispara quando o jogador some de vez — tempo de sobra pra a pilha reagrupar.
+    // 4000→8000: the player runs at ~294ms/tile vs mob ~430–625ms, so on the overlure the lead surges ahead
+    // and the tail falls behind. AggroOutOfRangeSinceMs resets as soon as the mob re-enters AggroDropRange
+    // (each lap pass), so 8s only fires when the player truly vanishes — plenty of time for the pile to regroup.
     public const int AggroDropOutOfRangeMs = 8000;
-    // 6000→8000: virar uma quina na volta quebra a LoS dos mobs do fundo por alguns segundos; 8s aguenta a
-    // curva do loop mas ainda solta quem perde o jogador de verdade atrás de uma parede.
+    // 6000→8000: rounding a corner on the lap breaks LoS for rear mobs for a few seconds; 8s holds through
+    // the loop bend but still releases anyone who truly loses the player behind a wall.
     public const int AggroDropNoLosMs = 8000;
     public const int MonsterWanderIntervalMs = 1600;
-    // MG-02: supersedido por RoleTuning.BaseAutoAttackMs (velocidade de auto agora é por papel).
-    // Mantido como referência histórica do baseline pré-papéis; não usar no tick.
+    // MG-02: superseded by RoleTuning.BaseAutoAttackMs (auto speed is now per role).
+    // Kept as a historical reference for the pre-role baseline; do not use in the tick.
     public const int PlayerAutoAttackMs = 1800;
     public const int AutoHelperTargetRange = 8;
     public const double AutoHelperHealHpFraction = 0.70;
@@ -52,28 +54,39 @@ public static class GameConfig
     public const int AutoHelperMovementModeAvoidCode = 2;
     public const int AutoHelperFollowDistance = 1;
     public const int AutoHelperAvoidDistance = 2;
+    // Skill discipline (feel feedback 2026-06-29): the helper was casting AoE/field on every cooldown
+    // even on a lone mob = "skill spam at nothing". Now area skills (area/field/nova/ring/cone) only
+    // fire when they would hit at least this many targets — OR when a boss/elite is in the footprint (to
+    // avoid wasting damage on a boss). Single/chain/barrage still trigger on 1 target.
+    public const int AutoHelperAoeMinTargets = 2;
+    // Mobbing (feel feedback 2026-06-29, 3rd pass): instead of planting and poking ("locked mode"),
+    // a ranged Kaeli ORBITS the pile when enough mobs are aggroed — walks around the pack center
+    // to bunch them up and dumps AoE on top. Dynamic movement, kills in a pile, satisfying to watch.
+    public const int HelperGatherThreshold = 3;  // minimum pile to enter orbit-mob mode
+    public const int HelperGatherRange = 8;       // range (Chebyshev) that counts as "nearby" for the pack
+    public const int HelperMobOrbitRadius = 3;    // target distance from pack center when orbiting (kite)
 
-    // G-10: automações do HELPER (estilo autoplay de gacha). Tudo determinístico no tick.
-    // Auto-heal: usa a poção da run quando a vida cai abaixo deste percentual (configurável na UI;
-    // a poção respeita seus próprios cargas/cooldown). 50% é o default; faixa 10..90.
+    // G-10: HELPER automations (gacha autoplay style). Everything deterministic in the tick.
+    // Auto-heal: uses the run potion when health drops below this percentage (configurable in UI;
+    // the potion respects its own charges/cooldown). 50% is the default; range 10..90.
     public const int AutoHelperHealPctDefault = 50;
     public const int AutoHelperHealPctMin = 10;
     public const int AutoHelperHealPctMax = 90;
     public static int ClampHealPct(int pct) => Math.Clamp(pct, AutoHelperHealPctMin, AutoHelperHealPctMax);
-    // Auto-pick de carta: na oferta, pega sozinho a de maior raridade (echo>rare>common; desempate
-    // por ordem estável). Pequeno atraso pra a oferta piscar na tela antes de resolver. Ligado por default.
+    // Auto-pick card: on the offer, automatically picks the highest rarity (echo>rare>common; tie-break
+    // by stable order). Small delay so the offer flashes on screen before resolving. On by default.
     public const int AutoHelperAutoCardsFlag = 16;
     public const int AutoCardPickDelayMs = 700;
-    // Auto-loot ("cavebot" do helper): caminha sozinho até o baú/altar ativo mais próximo, abre e
-    // repete; sem mais nada pra coletar, segue pra saída — sempre lutando no caminho. Ligado por
-    // default. Não há modo "rush/skip" de propósito (não incentivar pular o mapa).
-    //   off  = pathing desligado (combate normal: stand/follow/avoid governam o movimento)
-    //   loot = explora coletando, depois sai
+    // Auto-loot (helper "cavebot"): walks on its own to the nearest active chest/altar, opens it and
+    // repeats; when nothing left to collect, heads to the exit — always fighting on the way. On by
+    // default. No "rush/skip" mode by design (not incentivizing skipping the map).
+    //   off  = pathing off (normal combat: stand/follow/avoid govern movement)
+    //   loot = explores while looting, then exits
     public const string AutoHelperNavOff = "off";
     public const string AutoHelperNavLoot = "loot";
-    // Espera ~1s no início de cada andar antes de começar a andar sozinho (a tela carrega primeiro).
+    // Waits ~1s at the start of each floor before walking on its own (screen loads first).
     public const int AutoLootStartDelayMs = 1000;
-    // bit do auto-heal no bitmask de flags do comando ToggleAutoHelper (1=target,2=skills,4=ult).
+    // bit for auto-heal in the flag bitmask of the ToggleAutoHelper command (1=target,2=skills,4=ult).
     public const int AutoHelperAutoHealFlag = 8;
 
     public static string NormalizeAutoHelperNav(string? nav) =>
@@ -90,16 +103,55 @@ public static class GameConfig
 
     // ---- monster kit fidelity (T-53: conditions/summons/healing/speed from canary data) ----
     /// <summary>Tames raw tibia damage numbers into arena pacing (applies to hits and DoTs).</summary>
-    // MVP/dificuldade: baixado de 0.35 — recebíamos dano demais. Sobe pra punir mais.
-    public const double MonsterDamageTuning = 0.26;
+    // MVP/difficulty: 0.26→0.40 (feel feedback 2026-06-29, 8th pass): "the health bar doesn't move = bad".
+    // The goal is NOT for the player to die (auto-heal at 50% + potion handles it), but for health to
+    // visibly swing during the pile/box for tension. Tunable by feel.
+    public const double MonsterDamageTuning = 0.40;
     public const int ConditionMaxTicks = 10;
     public const int ConditionDefaultTickMs = 2000;
     public const double ConditionResistCap = 0.85;
     /// <summary>Canary speedChange is an absolute speed delta; divide by this to get a factor.</summary>
     public const double SpeedChangeReference = 600.0;
     public const double SlowFactorFloor = 0.40;
-    /// <summary>Provocar (rider "taunt"): por quanto tempo um inimigo provocado abandona o kiting e
-    /// marcha pro corpo-a-corpo (ignora TargetDistance e fuga por vida baixa). Skill das melee.</summary>
+    // ---- Dash / Dodge (Space) — GAME MECHANIC (not a helper bypass) ----
+    /// <summary>Dash on Space (market trend): slides the player exactly `DashTiles` tiles in the CARDINAL
+    /// movement direction (or facing) — never diagonal — stopping at the first wall or mob (does not pass
+    /// through, does not cut wall corners), with brief i-frames (dodge). It is NOT a teleport: the player
+    /// slides fast (DashStepMs per tile) leaving a poof trail, reading as motion. The auto-helper uses this
+    /// SAME ability (same cooldown/resource) to slip out of a corner while kiting the boss. Deterministic.
+    /// 3 tiles (was 4): 4 felt too long, especially for melee. Was on Left Shift, moved to Space because
+    /// 5× Shift triggers the Windows Sticky Keys popup.</summary>
+    public const int DashTiles = 3;
+    public const int DashCooldownMs = 2500;
+    public const int DashIFramesMs = 300;
+    public const int DashTrailFx = 11; // poof used as a trail along the dash path
+    /// <summary>Dash slide duration (ms) PER tile travelled. The dash does not teleport: it slides fast from
+    /// origin to destination (like the monster charge) leaving a poof trail — reads as motion, not a blink.
+    /// 55ms/tile = ~165ms for 3 tiles (much faster than the normal ~294ms/tile step).</summary>
+    public const int DashStepMs = 55;
+    // ---- Dash Signatures (role-keyed dash; same cooldown/i-frames for all, but the MOVEMENT and payoff differ) ----
+    /// <summary>The Space ability behaves differently per role:
+    /// - Knight (Cleave): a short BLINK (instant, DashKnightBlinkTiles) that may pass OVER a mob in front but must
+    ///   land on a FREE tile, then an Exori-style nova around the landing. Damage only on landing, never terrain.
+    /// - Archer (Sprint): a DashTiles slide that PASSES THROUGH mobs (stops only at walls), lands on the farthest
+    ///   free tile, and grants a brief move-speed haste. Pure mobility — no damage.
+    /// - Mage (Trail): a DashTiles slide that STOPS before the first wall/mob and seeds a weak spreading scorch
+    ///   trail (Contagion) on the tiles crossed. Damage scales off PlayerAttack()*RoleSkillMult(). Tune here.</summary>
+    public const string DashStrikeElement = "physical"; // Knight cleave: reaction-inert (no element-combo farming)
+    public const int DashKnightBlinkTiles = 2;     // Knight blink is shorter than the 3-tile dash
+    public const int DashCleaveRadius = 1;          // Exori-style nova: the 8 tiles around the landing
+    public const double DashCleaveAtkScale = 0.70;  // Knight: concentrated burst at the landing
+    public const int DashCleaveFx = 35;             // impact burst FX at the landing tile
+    public const int DashArcherHasteMs = 1500;      // Archer: brief move-speed buff after the sprint (kite identity)
+    public const double DashArcherHasteFactor = 1.5;
+    public const double DashTrailFieldAtkScale = 0.18; // Mage: weak DoT per tick (Rin's cast field ~0.40)
+    public const int DashTrailFieldFx = 7;             // fire FX (matches Rin's cast fire field)
+    public const int DashTrailFieldTickMs = 600;
+    public const int DashTrailFieldLifeMs = 1600;      // short — expires fast vs the ~5s cast field
+    public const int DashTrailFieldSpreadChance = 20;  // vs 45 for the cast field
+    public const int DashTrailFieldGenerations = 1;    // <=1 — barely crawls (cast field crawls 3)
+    /// <summary>Taunt (rider "taunt"): how long a taunted enemy abandons kiting and
+    /// marches to melee (ignores TargetDistance and low-health flee). Melee skill.</summary>
     public const int MeleeTauntMs = 2500;
     public const double HasteFactorCap = 1.5;
     public const int SlowDurationCapMs = 6000;
@@ -118,12 +170,12 @@ public static class GameConfig
     /// <summary>
     /// Direct arena-scale baselines (Health, Damage, Armor, Speed, Experience). Authored bosses use
     /// these values and never receive the legacy BossHpScale multiplier; <see cref="MonsterDamageTuning"/>
-    /// is inert for them (eles têm <c>StatMult=1</c>), então a alavanca real de dano de mob é a coluna
-    /// <c>Damage</c> aqui.
-    /// MG-08 (calibração por simulador, tools/BalanceSim): a coluna <c>Health</c> foi reescalada para
-    /// bater os alvos de TTK em ciclos de ação (comum ~3 · elite ~6 · boss ~12) com gear do mesmo tier,
-    /// e <c>Damage</c> foi baixado para deaths ~0 (mage/archer) — boss nunca &lt; 8 ciclos, sem one-shot
-    /// de boss/elite. Cada número justificado pelo sweep (docs/balance/mg08_before.csv→mg08_after.csv).
+    /// is inert for them (they have <c>StatMult=1</c>), so the real mob damage lever is the
+    /// <c>Damage</c> column here.
+    /// MG-08 (simulator calibration, tools/BalanceSim): the <c>Health</c> column was rescaled to
+    /// hit TTK targets in action cycles (common ~3 · elite ~6 · boss ~12) with same-tier gear,
+    /// and <c>Damage</c> was lowered for deaths ~0 (mage/archer) — boss never &lt; 8 cycles, no one-shot
+    /// from boss/elite. Each number justified by the sweep (docs/balance/mg08_before.csv→mg08_after.csv).
     /// </summary>
     public static readonly IReadOnlyDictionary<string, MonsterStatLine> MonsterStatLines =
         new Dictionary<string, MonsterStatLine>
@@ -147,102 +199,102 @@ public static class GameConfig
 
     public static readonly MonsterStatPreset[] MonsterStatPresets =
     [
-        new("balanced", "Equilibrado", "Sem desvio do baseline.", 1, 1, 1, 1),
-        new("tank", "Resistente", "Mais vida, menos dano e mobilidade.", 1.25, 0.85, 0.90, 0.90),
-        new("glass", "Canhao de vidro", "Mais dano, menos vida.", 0.80, 1.20, 1, 1.05),
-        new("swift", "Veloz", "Move e ataca mais rapido, com menos impacto.", 0.90, 0.90, 1.20, 1.15),
-        new("caster", "Conjurador", "Ataques fortes e ritmo deliberado.", 0.90, 1.10, 0.95, 0.95),
+        new("balanced", "Balanced", "No deviation from baseline.", 1, 1, 1, 1),
+        new("tank", "Tough", "More health, less damage and mobility.", 1.25, 0.85, 0.90, 0.90),
+        new("glass", "Glass Cannon", "More damage, less health.", 0.80, 1.20, 1, 1.05),
+        new("swift", "Swift", "Moves and attacks faster, with less impact.", 0.90, 0.90, 1.20, 1.15),
+        new("caster", "Caster", "Strong attacks and deliberate pacing.", 0.90, 1.10, 0.95, 0.95),
     ];
 
     public static readonly MonsterElementProfile[] MonsterElementProfiles =
     [
-        new("physical", "Fisico", 1, 0, null),
-        new("fire", "Fogo", 16, 4, "fire"),
-        new("ice", "Gelo", 44, 29, "freeze"),
-        new("energy", "Energia", 12, 5, "energy"),
-        new("earth", "Terra", 17, 30, "poison"),
-        new("holy", "Sagrado", 40, 31, "dazzle"),
-        new("death", "Morte", 18, 11, "curse"),
+        new("physical", "Physical", 1, 0, null),
+        new("fire", "Fire", 16, 4, "fire"),
+        new("ice", "Ice", 44, 29, "freeze"),
+        new("energy", "Energy", 12, 5, "energy"),
+        new("earth", "Earth", 17, 30, "poison"),
+        new("holy", "Holy", 40, 31, "dazzle"),
+        new("death", "Death", 18, 11, "curse"),
     ];
 
     public static readonly MonsterBehaviorProfile[] MonsterBehaviorProfiles =
     [
-        new("bruiser", "Brutamontes", "Pressao corpo a corpo com golpes de pesos diferentes.", 1, 85,
+        new("bruiser", "Bruiser", "Melee pressure with hits of varying weight.", 1, 85,
         [
             new("melee", 1, 0, 0, 0, false, 1700, 100, 0.72, 1.08, false, 0),
             new("spell", 1, 1, 0, 0, false, 3200, 28, 0.48, 0.78, true, 0),
         ]),
-        new("skirmisher", "Escaramucador", "Ataques curtos, rapidos e menos previsiveis.", 1, 65,
+        new("skirmisher", "Skirmisher", "Short, quick, less predictable attacks.", 1, 65,
         [
             new("melee", 1, 0, 0, 0, false, 1150, 82, 0.52, 0.88, false, 0),
             new("melee", 1, 0, 0, 0, false, 2300, 45, 0.75, 1.12, true, 0),
         ]),
-        new("ranger", "Atirador", "Mantem distancia e alterna disparos fisicos e elementais.", 5, 90,
+        new("ranger", "Ranger", "Keeps distance and alternates physical and elemental shots.", 5, 90,
         [
             new("spell", 5, 0, 0, 0, true, 1750, 88, 0.62, 1.02, false, 0),
             new("spell", 5, 0, 0, 0, true, 2850, 52, 0.78, 1.18, true, 0),
         ]),
-        new("artillery", "Artilharia", "Ataques lentos em area com alto impacto.", 6, 95,
+        new("artillery", "Artillery", "Slow area attacks with high impact.", 6, 95,
         [
             new("spell", 6, 2, 0, 0, true, 2700, 78, 0.78, 1.22, true, 0),
             new("spell", 6, 3, 0, 0, true, 4400, 35, 0.95, 1.38, true, 0),
         ]),
-        new("breather", "Soprador", "Combina mordida e cone elemental.", 2, 85,
+        new("breather", "Breather", "Combines bite and elemental cone.", 2, 85,
         [
             new("melee", 1, 0, 0, 0, false, 1750, 92, 0.60, 0.96, false, 0),
             new("spell", 0, 0, 4, 2, false, 3100, 62, 0.72, 1.18, true, 0),
         ]),
-        new("controller", "Controlador", "Dano moderado com condicao elemental ocasional.", 4, 88,
+        new("controller", "Controller", "Moderate damage with occasional elemental condition.", 4, 88,
         [
             new("spell", 4, 0, 0, 0, true, 1850, 86, 0.52, 0.86, true, 0),
             new("spell", 4, 1, 0, 0, true, 3600, 42, 0.40, 0.72, true, 0.75),
         ]),
-        new("support", "Sustentacao", "Pressao leve com cura propria intermitente.", 4, 90,
+        new("support", "Support", "Light pressure with intermittent self-healing.", 4, 90,
         [
             new("spell", 4, 0, 0, 0, true, 2050, 88, 0.55, 0.90, true, 0),
         ], 0.07, 4200),
-        new("juggernaut", "Juggernaut", "Lento, resistente e perigoso quando conecta.", 1, 95,
+        new("juggernaut", "Juggernaut", "Slow, tough, and dangerous when it connects.", 1, 95,
         [
             new("melee", 1, 0, 0, 0, false, 2300, 100, 0.82, 1.28, false, 0),
             new("spell", 1, 2, 0, 0, false, 4200, 32, 0.60, 1.02, true, 0),
         ]),
 
-        // ---- G-08B: arquétipos novos ----
-        // swarm: instâncias baratas e rápidas; custo de spawn 1 (dobra a contagem por sala) = pressão numérica.
-        new("swarm", "Enxame", "Lacaios baratos e velozes que pressionam pelo número.", 1, 60,
+        // ---- G-08B: new archetypes ----
+        // swarm: cheap and fast instances; spawn cost 1 (doubles count per room) = numerical pressure.
+        new("swarm", "Swarm", "Cheap and fast minions that press through numbers.", 1, 60,
         [
             new("melee", 1, 0, 0, 0, false, 850, 90, 0.28, 0.50, false, 0),
         ], SpawnCost: 1),
-        // summoner: mantém distância e conjura Ecoídes sem parar (reusa TickMonsterSummons).
-        new("summoner", "Invocador", "Recua e conjura lacaios de eco sem descanso.", 5, 88,
+        // summoner: keeps distance and endlessly summons Echolings (reuses TickMonsterSummons).
+        new("summoner", "Summoner", "Retreats and endlessly summons echo minions.", 5, 88,
         [
             new("spell", 5, 0, 0, 0, true, 2300, 70, 0.46, 0.82, true, 0),
         ], SummonSpecies: "monster:t1-echoides", SummonCount: 2, SummonChance: 70, SummonIntervalMs: 5200, SummonMax: 4),
-        // tanque-de-postura: couraça que só cede dano útil depois do Echo Break (PostureScale alimenta a barra).
-        new("posture-tank", "Sentinela de Postura", "Couraça impassível: só abre brecha de dano no Echo Break.", 1, 95,
+        // posture-tank: armor that only takes meaningful damage after Echo Break (PostureScale feeds the bar).
+        new("posture-tank", "Posture Sentinel", "Impassive armor: only opens a damage window on Echo Break.", 1, 95,
         [
             new("melee", 1, 0, 0, 0, false, 2100, 100, 0.70, 1.12, false, 0),
             new("spell", 1, 1, 0, 0, false, 4000, 30, 0.55, 0.95, true, 0),
         ], PostureScale: 0.55),
-        // charger: recua e investe num dash brutal (MonsterAttackPattern.Kind = "charge").
-        new("charger", "Investida", "Ronda à distância e investe com um avanço brutal.", 2, 65,
+        // charger: retreats and charges in with a brutal dash (MonsterAttackPattern.Kind = "charge").
+        new("charger", "Charger", "Circles at range and charges with a brutal rush.", 2, 65,
         [
             new("melee", 1, 0, 0, 0, false, 1600, 80, 0.52, 0.84, false, 0),
             new("charge", 6, 0, 0, 0, false, 4200, 85, 1.05, 1.55, false, 0),
         ]),
-        // bomber/suicida: corre até o alvo e explode em área ao morrer perto dele.
-        new("bomber", "Detonador", "Corre até o alvo e se desfaz numa explosão de eco.", 1, 45,
+        // bomber/suicide: runs to the target and explodes in an area upon dying near it.
+        new("bomber", "Bomber", "Rushes the target and detonates in an echo explosion.", 1, 45,
         [
             new("melee", 1, 0, 0, 0, false, 1200, 70, 0.22, 0.42, false, 0),
         ], ExplodeRadius: 1, ExplodeDamageScale: 1.7),
-        // escudeiro: blinda o aliado mais ferido por perto → força o helper a focá-lo primeiro.
-        new("shielder", "Portador de Eco", "Ergue barreiras em aliados e força o foco sobre si.", 5, 90,
+        // shielder: shields the most injured nearby ally → forces the helper to focus it first.
+        new("shielder", "Echo Bearer", "Raises barriers on allies and forces focus onto itself.", 5, 90,
         [
             new("spell", 5, 0, 0, 0, true, 2600, 55, 0.40, 0.72, true, 0),
         ], ShieldRadius: 4, ShieldFraction: 0.35, ShieldIntervalMs: 3500),
     ];
 
-    /// <summary>G-08B: lookup O(1) por id para o tick ler campos de comportamento (summon/posture/explode/shield).</summary>
+    /// <summary>G-08B: O(1) lookup by id for the tick to read behavior fields (summon/posture/explode/shield).</summary>
     public static readonly IReadOnlyDictionary<string, MonsterBehaviorProfile> MonsterBehaviorById =
         MonsterBehaviorProfiles.ToDictionary(b => b.Id, StringComparer.OrdinalIgnoreCase);
 
@@ -256,11 +308,11 @@ public static class GameConfig
         ["curse"] = 18, ["freeze"] = 44, ["drown"] = 54, ["dazzle"] = 40,
     };
 
-    /// <summary>PT-BR labels for run-end reason ("morta por veneno").</summary>
-    public static readonly IReadOnlyDictionary<string, string> ConditionLabelPt = new Dictionary<string, string>
+    /// <summary>Display labels for run-end condition reason ("killed by poison").</summary>
+    public static readonly IReadOnlyDictionary<string, string> ConditionLabel = new Dictionary<string, string>
     {
-        ["poison"] = "veneno", ["fire"] = "queimadura", ["energy"] = "eletrocussão", ["bleed"] = "sangramento",
-        ["curse"] = "maldição", ["freeze"] = "congelamento", ["drown"] = "afogamento", ["dazzle"] = "ofuscamento",
+        ["poison"] = "poison", ["fire"] = "burn", ["energy"] = "shock", ["bleed"] = "bleed",
+        ["curse"] = "curse", ["freeze"] = "freeze", ["drown"] = "drown", ["dazzle"] = "dazzle",
     };
 
     // ---- run / leveling ----
@@ -271,27 +323,27 @@ public static class GameConfig
     public const int CardOfferTimeoutMs = 20000;
     public const int CardRerollsPerRun = 2;
 
-    // ---- G-04: framework de cartas (raridade + mecânica) ----
-    /// <summary>Eco define a run; não empilha como os status.</summary>
+    // ---- G-04: card framework (rarity + mechanic) ----
+    /// <summary>Echo defines the run; does not stack like status effects.</summary>
     public const int EchoMaxStacks = 1;
     public static int MaxStacksForRarity(string rarity) =>
         rarity == Cards.Echo ? EchoMaxStacks : MaxCardStacks;
 
-    // ---- G-06: cadência (beats fixos) ----
-    // Level-up dá um status pequeno automático (drip de dopamina, sem abrir tela); as escolhas
-    // pesadas ficam em beats antecipáveis: derrotar um elite, limpar um andar e a sala Santuário de
-    // Eco. O teto abaixo mantém ~6-9 escolhas por run, e a raridade escala com o progresso.
-    /// <summary>Teto de escolhas de carta por run (alvo ~6-9). Throttle dos beats.</summary>
+    // ---- G-06: cadence (fixed beats) ----
+    // Level-up gives a small automatic bonus (dopamine drip, no screen opened); heavy choices
+    // land on anticipatable beats: defeating an elite, clearing a floor, and the Echo Sanctuary room.
+    // The cap below keeps ~6-9 choices per run, with rarity scaling with progress.
+    /// <summary>Card choice cap per run (target ~6-9). Beat throttle.</summary>
     public const int MaxCardChoicesPerRun = 9;
-    /// <summary>Salas Santuário de Eco por andar (beat garantido, sinalizado no minimapa).</summary>
+    /// <summary>Echo Sanctuary rooms per floor (guaranteed beat, shown on minimap).</summary>
     public const int SanctuariesPerFloor = 1;
-    /// <summary>Limpar um andar (descer a escada) também concede um beat de escolha.</summary>
+    /// <summary>Clearing a floor (going down the stairs) also grants a choice beat.</summary>
     public const bool OfferChoiceOnFloorClear = true;
 
     /// <summary>
-    /// Peso de amostragem da oferta por raridade, escalado pelo progresso da run em [0,1]
-    /// (fração de escolhas já concedidas). Começo favorece comum/raro (monta a engine); fim
-    /// favorece raro/eco (define a run). Determinístico: só interpola pesos fixos.
+    /// Offer sampling weight by rarity, scaled by run progress in [0,1]
+    /// (fraction of choices already granted). Early run favors common/rare (builds the engine); late run
+    /// favors rare/echo (defines the run). Deterministic: only interpolates fixed weights.
     /// </summary>
     public static double CardRarityWeight(string rarity, double progress)
     {
@@ -306,100 +358,143 @@ public static class GameConfig
         };
     }
 
-    // Eco Sobrecarregado (echo_surge): carga de ult por acerto direto, por stack.
+    // Overloaded Echo (echo_surge): ult gauge per direct hit, per stack.
     public const double CardEchoSurgeGaugePerHit = 4;
-    // Golpe Duplo (double_strike): a cada N acertos, um golpe extra (fração do ataque, por stack).
+    // Double Strike (double_strike): every N hits, an extra blow (fraction of attack, per stack).
     public const int CardDoubleStrikeEvery = 3;
     public const double CardDoubleStrikeDamageMult = 0.60;
-    // Detonação (detonate): condição expira → estouro em área (fração do ataque, por stack).
+    // Detonate (detonate): condition expires → area burst (fraction of attack, per stack).
     public const int CardDetonateRadius = 1;
     public const double CardDetonateDamageMult = 0.80;
-    // Colheita do Pesadelo (harvest, Velvet): espectro que pulsa dano ao matar sob Decadência.
+    // Nightmare Harvest (harvest, Velvet): spectre that pulses damage when killing under Decay.
     public const int CardHarvestMaxSpectres = 5;
     public const double CardHarvestSpectreDamageMult = 0.50;
     public const int CardHarvestSpectreRadius = 1;
     public const int CardHarvestSpectrePulseMs = 1000;
     public const int CardHarvestSpectreDurationMs = 6000;
-    public const int CardHarvestSpectreFx = 18; // mort area fx
+    public const int CardHarvestSpectreFx = 18; // death area fx
     public const int UltimateGaugeMax = 100;
     public const int GaugeFillPerKill = 8;
     public const double GaugeFillPerDamageTaken = 0.5;
 
     // ---- dungeon generation ----
-    // H-01 (G2): salas maiores e menos numerosas — espaço pra empilhar uma hunt (overlure/box), como no
-    // Tibia (poucas cavernas grandes em vez de muitas salinhas). Andares cresceram pra comportar as salas
-    // grandes sem o placement falhar.
-    public const int Floor1Size = 52;
-    public const int Floor2Size = 42;
-    public const int RoomMin = 9;
-    public const int RoomMax = 16;
-    public const int RoomsFloor1 = 5;
-    public const int RoomsFloor2 = 3;
-    /// <summary>H-01: tentativas de posicionamento de sala (salas grandes preenchem mais o andar → mais
-    /// rejeições por overlap, então a margem de tentativas sobe pra garantir a contagem-alvo).</summary>
+    // H-01 (G2): larger, fewer rooms — space to stack a hunt (overlure/box), like in
+    // Tibia (few large caves instead of many small rooms). Floors grew to fit large rooms
+    // without placement failing.
+    // SINGLE ARENA (feel feedback 2026-06-29, 4th pass): "multiple rooms on the same map is not
+    // fun" + the "clear everything then walk to the chest" flow felt artificial. Now each floor is ONE
+    // large open room (RoomsFloorN=1) where the Kaeli mobs/lures, clears, and picks up the chest/stairs.
+    // The generator fills the floor with a single arena; RoomMin/Max remain as reference (single-arena
+    // forces the size). Smaller floor = arena sized to the floor, no dead corridor.
+    // 34→26 (feedback 2026-06-29, 8th pass): "room 1 still feels too large". Smaller arena = denser,
+    // closer horde, less dead walking. Organic erosion (ErodeArena) still trims the edge.
+    public const int Floor1Size = 26;
+    // Boss arena smaller than the horde arena (feedback 2026-06-29): focused chamber, boss at the back + escort.
+    public const int Floor2Size = 22;
+    public const int RoomMin = 12;
+    public const int RoomMax = 20;
+    public const int RoomsFloor1 = 1;
+    public const int RoomsFloor2 = 1;
+    /// <summary>Chebyshev radius around the entrance where mobs avoid spawning — so the Kaeli doesn't start
+    /// the run buried in the middle of the arena horde.</summary>
+    public const int SpawnEntrySafeRadius = 6;
+    /// <summary>1-tile box alcove (H-03): choke for the "mob/run" tactic. Disabled in favor of open-map
+    /// direction — the game is now about orbiting the pile in an open arena, not retreating to a bottleneck.
+    /// (static readonly, not const: the generator checks at runtime, avoids CS0162 unreachable code.)</summary>
+    public static readonly bool EnableBoxNiches = false;
+    /// <summary>H-01: room placement attempts (large rooms fill more of the floor → more overlap rejections,
+    /// so the attempt margin rises to guarantee the target count).</summary>
     public const int RoomPlacementAttempts = 300;
     public const int ChestsPerFloor = 2;
-    public const int SpawnBudgetBase = 14;
+    // Dynamic loot (feel feedback 2026-06-29, 8th pass): instead of fixed chests scattered around (the Kaeli
+    // would go "straight to them", which felt odd), a chest DROPS on the corpse every N kills — spawns mid-fight
+    // and the Kaeli detours to grab it while luring. Never a mimic (always a benefit; can be cursed = ambush).
+    public const int ChestDropEveryKills = 6;
+    /// <summary>Single organic arena: the entire room is seeded with noise and smoothed by CA (irregular
+    /// cave, not a square). 0.42 leaves the center mostly open with rock clusters/pillars at the edges;
+    /// a central core is forced open + flood-fill ensures the stage is connected.</summary>
+    public const double ArenaFillProb = 0.42;
+    // Density: with large, open rooms, the budget goes back to 16 (the area factor fills the arena).
+    // Target: ~10-16 mobs per large room = a satisfying pile to orbit and melt with AoE, without becoming a wall.
+    public const int SpawnBudgetBase = 16;
     public const double SpawnBudgetTierGrowth = 0.55;
-    // H-01: orçamento de spawn escala com a área da sala (room.W*room.H / baseline), clampeado. Com salas
-    // grandes (H-01) o teto subiu pra a sala não nascer vazia — uma caverna grande tem de comportar a pilha.
-    /// <summary>Área de sala (tiles) que vale fator 1.0 no orçamento de spawn (~11×11, a sala-base nova).</summary>
-    public const double SpawnRoomAreaBaseline = 120.0;
-    /// <summary>Piso do fator de área (salas pequenas não viram desertas).</summary>
+    // H-01: spawn budget scales with room area (room.W*room.H / baseline), clamped. With large
+    // rooms (H-01) the cap rose so the room doesn't spawn empty — a large cave needs to fit the pile.
+    /// <summary>Room area (tiles) worth factor 1.0 in spawn budget. 160 with large rooms
+    /// (a ~13×13 room is worth 1.0); prevents every arena from hitting the clamp ceiling and becoming a mob wall.</summary>
+    public const double SpawnRoomAreaBaseline = 160.0;
+    /// <summary>Floor of the area factor (small rooms don't become empty).</summary>
     public const double SpawnBudgetSizeClampMin = 0.6;
-    /// <summary>Teto do fator de área (H-01: subiu de 1.4 → 2.2 pra a sala grande encher e dar overlure).</summary>
-    public const double SpawnBudgetSizeClampMax = 2.2;
+    /// <summary>Ceiling of the area factor. 2.6: the single arena is the entire floor, so the budget rises to
+    /// fill it with mobs (a satisfying horde to mob), without letting the guard of 50 burst all at once.</summary>
+    public const double SpawnBudgetSizeClampMax = 2.6;
 
-    // ---- H-02 (B1): salas orgânicas (autômato celular) ----
-    // Depois de carvar o retângulo, erodir a borda com um passe de CA determinístico (regra clássica 4-5)
-    // pra a sala ler como blob irregular em vez de caixa. Só o anel de borda é semeado com rocha; o miolo
-    // fica aberto, e um flood-fill a partir do centro garante que a sala continua um único componente
-    // conectado ao centro (corredores ligam centro↔centro). Tudo no Rng da run → determinístico.
-    /// <summary>Salas com lado menor que isto não são erodidas (pequenas demais — erosão as estrangularia).</summary>
+    // ---- H-02 (B1): organic rooms (cellular automaton) ----
+    // After carving the rectangle, erode the border with a deterministic CA pass (classic 4-5 rule)
+    // so the room reads as an irregular blob instead of a box. Only the border ring is seeded with rock;
+    // the interior stays open, and a flood-fill from the center ensures the room remains a single connected
+    // component (corridors link center↔center). All using the run Rng → deterministic.
+    /// <summary>Rooms with a shorter side below this are not eroded (too small — erosion would strangle them).</summary>
     public const int OrganicRoomMinSize = 7;
-    /// <summary>Largura (tiles) do anel de borda onde a rocha é semeada; o miolo da sala fica intacto/aberto.</summary>
+    /// <summary>Width (tiles) of the border ring where rock is seeded; the room interior remains intact/open.</summary>
     public const int OrganicSeedBand = 3;
-    /// <summary>Probabilidade de uma célula do anel de borda nascer como rocha antes do smoothing.</summary>
+    /// <summary>Probability of a border ring cell spawning as rock before smoothing.</summary>
     public const double OrganicFillProb = 0.45;
-    /// <summary>Iterações de smoothing do autômato celular (mais = contorno mais suave/arredondado).</summary>
+    /// <summary>Cellular automaton smoothing iterations (more = smoother/rounder outline).</summary>
     public const int OrganicCaIterations = 4;
-    /// <summary>Regra 4-5: célula vira rocha se tiver ≥ isto vizinhos-8 de rocha (fora do retângulo conta como rocha).</summary>
+    /// <summary>4-5 rule: cell becomes rock if it has ≥ this many rock 8-neighbors (outside the rectangle counts as rock).</summary>
     public const int OrganicWallThreshold = 5;
-    /// <summary>Regra 4-5: célula vira chão se tiver ≤ isto vizinhos-8 de rocha.</summary>
+    /// <summary>4-5 rule: cell becomes floor if it has ≤ this many rock 8-neighbors.</summary>
     public const int OrganicFloorThreshold = 3;
 
-    // ---- corredores: largura mínima 2 (nunca 1 sqm) ----
-    /// <summary>Largura mínima de corredor (tiles). Nunca 1 — um corredor de 1 sqm pincha o movimento.</summary>
-    public const int CorridorWidthMin = 2;
-    /// <summary>Largura máxima de corredor (tiles). 2–3 dá passagem larga o bastante pra um train passar.</summary>
-    public const int CorridorWidthMax = 3;
+    // ---- corridors: minimum width 2 (never 1 sqm) ----
+    /// <summary>Minimum corridor width (tiles). 3 (was 2): wide passage for the Kaeli to run and the train
+    /// to follow side by side — a width-2 corridor still pinched mob movement.</summary>
+    public const int CorridorWidthMin = 3;
+    /// <summary>Maximum corridor width (tiles). 4 (was 3): almost a corridor-room, map reads as open.</summary>
+    public const int CorridorWidthMax = 4;
 
-    // ---- LM-07: qualidade de geração (decor agrupado em vez de pontilhado) ----
-    /// <summary>Raio (Chebyshev) do agrupamento de props ambientais (decor) dentro de uma sala.</summary>
+    // ---- H-03 (G3): box niche (alcove with a 1-tile mouth) ----
+    // In each combat room, carve a closed alcove with a single 1-tile entrance. The corridor
+    // stays wide (2–3, closed decision); the ONLY 1-tile choke is the alcove mouth. Tactic: lure the
+    // pile in the open room, retreat to the alcove and tank mobs in single file through the mouth. The
+    // enclosure (back + sides + mouth wall) is built entirely INSIDE the room rectangle, flush against
+    // one wall — never depends on external rock or borders a corridor outside the rect. Each position is
+    // validated by BFS: only commits if the interior is reachable through the mouth AND no previously
+    // reachable cell is orphaned by the new walls. Deterministic (only the Rng chooses the wall; center-out slide).
+    /// <summary>Open interior side of the alcove (tiles). Footprint = this + 2 (1-tile wall ring).</summary>
+    public const int BoxInteriorSize = 3;
+    /// <summary>Alcove mouth width (tiles). Fixed at 1 — it is the "box close" choke (closed decision).</summary>
+    public const int BoxMouthWidth = 1;
+    /// <summary>Combat rooms with a shorter side below this do not receive an alcove (not enough room to fight).</summary>
+    public const int BoxRoomMinSize = 8;
+
+    // ---- LM-07: generation quality (clustered decor instead of dotted) ----
+    /// <summary>Chebyshev radius of ambient prop clusters (decor) within a room.</summary>
     public const int DecorClusterRadius = 1;
-    /// <summary>Raio das poças de accent (ex. lava) — maiores que o decor para lerem como ambiente.</summary>
+    /// <summary>Radius of accent puddles (e.g. lava) — larger than decor so they read as environment.</summary>
     public const int AccentClusterRadius = 2;
-    /// <summary>Queda de chance por anel a partir do centro do cluster (0 = sólido, 1 = só o centro).</summary>
+    /// <summary>Chance falloff per ring from the cluster center (0 = solid, 1 = center only).</summary>
     public const double ClusterFalloff = 0.45;
-    /// <summary>Escala o nº de clusters por sala (área × chance do bioma × isto). Mantém o decor esparso.</summary>
+    /// <summary>Scales the number of clusters per room (area × biome chance × this). Keeps decor sparse.</summary>
     public const double DecorDensityScale = 0.5;
 
-    // ---- G-07: tipos de sala (grafo + bifurcação risco/recompensa) ----
-    /// <summary>Sala de elite (detour de risco) força elites até este teto; o resto do orçamento vira comum.</summary>
+    // ---- G-07: room types (graph + risk/reward fork) ----
+    /// <summary>Elite room (risk detour) forces elites up to this cap; the rest of the budget becomes common.</summary>
     public const int EliteRoomMaxElites = 2;
-    /// <summary>Sala de evento/risco (hazard): orçamento de spawn ampliado por este fator (swarm = o risco).</summary>
+    /// <summary>Event/hazard room: spawn budget expanded by this factor (swarm = the hazard).</summary>
     public const double HazardBudgetMult = 1.35;
-    /// <summary>Miniboss só aparece em andares com pelo menos este número de salas (evita lotar mapas pequenos).</summary>
+    /// <summary>Miniboss only appears on floors with at least this many rooms (avoids crowding small maps).</summary>
     public const int MiniBossMinRooms = 6;
-    /// <summary>HP do miniboss = HP do elite × este fator (mini-clímax antes do boss).</summary>
+    /// <summary>Miniboss HP = elite HP × this factor (mini-climax before the boss).</summary>
     public const double MiniBossHpScale = 2.4;
-    /// <summary>Comuns que escoltam o miniboss.</summary>
+    /// <summary>Common mobs escorting the miniboss.</summary>
     public const int MiniBossEscort = 2;
 
-    // ---- MG-02: papéis (Knight · Mage · Archer) — eixo primário de identidade ----
-    // Cada papel dirige dano de auto vs skill, velocidade de auto, range e tamanho de AOE. Estes são
-    // os valores SEED (refinados por MG-06/MG-07 via simulador); em MG-05 viram editáveis no admin.
-    // Ordens-alvo: auto archer/knight > mage; skill mage > archer > knight; spd archer > knight > mage;
+    // ---- MG-02: roles (Knight · Mage · Archer) — primary identity axis ----
+    // Each role drives auto vs skill damage, auto speed, range, and AOE size. These are the
+    // SEED values (refined by MG-06/MG-07 via simulator); in MG-05 they become editable in admin.
+    // Target orders: auto archer/knight > mage; skill mage > archer > knight; spd archer > knight > mage;
     // range archer > mage > knight; aoe mage > knight > archer.
     public static readonly IReadOnlyDictionary<KaeliRole, RoleTuning> Roles =
         new Dictionary<KaeliRole, RoleTuning>
@@ -410,16 +505,26 @@ public static class GameConfig
             [KaeliRole.Knight] = new(1.05,   0.80,    1700,  1,    0.80),
         };
 
-    // ---- MG-04: resize de AOE ----
-    // Footprint dos shapes de área. Antes CircleTiles/RingTiles cortavam em raio*1.5 (quase um
-    // quadrado); 1.25 dá um diamante mais honesto. Aplicado dentro dos helpers, sem tocar call sites.
+    // ---- MG-04: AOE resize ----
+    // Footprint of area shapes. Previously CircleTiles/RingTiles capped at radius*1.5 (almost a
+    // square); 1.25 gives a more honest diamond. Applied inside helpers, without touching call sites.
     public const double AoeRoundingFactor = 1.25;
-    // Raio máximo de uma ultimate ANTES do AoeScale do papel: a ult ainda "estoura" (piso 2 garantido
-    // em GameWorld.SkillRadius), mas nenhuma vira tela inteira. Mage ult fica 3, archer/knight ~2.
+    // Maximum radius of an ultimate BEFORE the role's AoeScale: the ult still "bursts" (floor of 2
+    // guaranteed in GameWorld.SkillRadius), but none become full-screen. Mage ult lands at 3, archer/knight ~2.
     public const int UltimateRadiusCap = 3;
 
+    // ---- spreading terrain (spreading fields — Rin's Contagion) ----
+    // A GroundField with a spread budget ignites, each tick, one free neighboring tile (deterministic
+    // choice in the run Rng), creating a fire that creeps across the map = visual chaos + an area that
+    // grows on its own. The per-floor cap below limits growth so the simulation never explodes.
+    /// <summary>Cap on simultaneous field tiles per floor (cuts propagation when reached).</summary>
+    public const int FieldMaxTilesPerFloor = 80;
+    /// <summary>Lifetime (ms) of a child tile lit by propagation. Short: the fire front "walks"
+    /// instead of covering everything at once (the tail fades as the edge advances).</summary>
+    public const int FieldSpreadChildLifeMs = 2600;
+
     // ---- player damage ----
-    /// <summary>Multiplicador global do dano do player (autos + skills). MVP/dificuldade: dávamos pouco dano.</summary>
+    /// <summary>Global player damage multiplier (autos + skills). MVP/difficulty: we were dealing too little damage.</summary>
     public const double PlayerDamageMult = 1.4;
     public const double AtkPerRunLevel = 0.06;
     public const double AscensionAtkBonus = 0.08;
@@ -469,9 +574,9 @@ public static class GameConfig
     public static readonly int[] AuthoredItemSetTiers = [0, 1, 2, 3, 4, 5];
     public static readonly ItemBalanceGrade[] AuthoredItemBalanceGrades =
     [
-        new("low", "Baixa"),
-        new("moderate", "Moderada"),
-        new("high", "Alta"),
+        new("low", "Low"),
+        new("moderate", "Moderate"),
+        new("high", "High"),
     ];
     public static readonly ItemBalanceRange[] AuthoredItemBalanceRanges =
     [
@@ -594,22 +699,22 @@ public static class GameConfig
         [5] = 626, // Flamesteed
     };
 
-    // ---- sustain baseline (ponte até os sets: todo Kaeli tem um mínimo, sem depender de card) ----
-    /// <summary>Regen passivo por segundo como fração da vida máxima, mesmo sem o card de regen.</summary>
+    // ---- sustain baseline (bridge until sets: every Kaeli has a minimum, without depending on a card) ----
+    /// <summary>Passive regen per second as a fraction of max health, even without the regen card.</summary>
     public const double BaselineRegenPctPerSec = 0.006;
-    /// <summary>+regen por run-level (recompensa quem sobe de nível dentro da run).</summary>
+    /// <summary>+regen per run-level (rewards those who level up within the run).</summary>
     public const double BaselineRegenPctPerRunLevel = 0.0006;
-    /// <summary>Life leech mínimo: fração do dano causado que volta como vida, mesmo sem card.</summary>
+    /// <summary>Minimum life leech: fraction of damage dealt returned as health, even without a card.</summary>
     public const double BaselineLifesteal = 0.02;
 
-    // ---- drops com função (consumíveis curam ao pegar; lixo vira ouro) ----
-    /// <summary>Comida cura esta fração da vida máxima ao ser pega.</summary>
+    // ---- functional drops (consumables heal on pickup; junk becomes gold) ----
+    /// <summary>Food heals this fraction of max health when picked up.</summary>
     public const double FoodHealPct = 0.05;
-    /// <summary>Poções de vida curam por fração da vida máxima — mais forte a poção, mais cura.</summary>
+    /// <summary>Health potions heal by a fraction of max health — stronger potion, more healing.</summary>
     public const double PotionHealBasic = 0.15;
     public const double PotionHealStrong = 0.25;
     public const double PotionHealGreat = 0.40;
-    /// <summary>Sprite da moeda de ouro (Tibia) usado na animação de loot voando até o player.</summary>
+    /// <summary>Gold coin sprite (Tibia) used in the loot-flying-to-player animation.</summary>
     public const int GoldCoinItemId = 3031;
 
     // ---- Kaezan authored loot ----
@@ -622,34 +727,34 @@ public static class GameConfig
     public const double KaezanBossRelicDropChance = 0.30;
     public const int KaezanChestItemDrops = 2;
 
-    // ---- G-09: baú = altar de Eco / loja da run + amaldiçoados + mímicos + material de gear ----
-    /// <summary>Chance de um baú ser, na verdade, um mímico (elite corrompido). Surpresa — oculto do cliente.</summary>
+    // ---- G-09: chest = Echo altar / run shop + cursed + mimics + gear material ----
+    /// <summary>Chance of a chest actually being a mimic (corrupted elite). Surprise — hidden from the client.</summary>
     public const double ChestMimicChance = 0.12;
-    /// <summary>Chance de um baú (não-mímico) ser amaldiçoado: Eco forte + emboscada/maldição. Telegrafado.</summary>
+    /// <summary>Chance of a non-mimic chest being cursed: strong Echo + ambush/curse. Telegraphed.</summary>
     public const double ChestCursedChance = 0.22;
-    /// <summary>HP do mímico = HP do elite × este fator (baú-Eco corrompido = mini-clímax).</summary>
+    /// <summary>Mimic HP = elite HP × this factor (corrupted Echo chest = mini-climax).</summary>
     public const double MimicHpScale = 2.0;
-    /// <summary>Comuns que emboscam ao abrir um baú amaldiçoado (a maldição em si).</summary>
+    /// <summary>Common mobs that ambush when opening a cursed chest (the curse itself).</summary>
     public const int CursedChestAmbush = 3;
-    /// <summary>Maldição no jogador ao abrir um baú amaldiçoado: lentidão temporária.</summary>
+    /// <summary>Curse on the player upon opening a cursed chest: temporary slow.</summary>
     public const int CursedChestSlowMs = 6000;
     public const double CursedChestSlowFactor = 0.6;
-    /// <summary>Custo em ouro de um reroll quando os grátis acabam (a "loja" do altar da run).</summary>
+    /// <summary>Gold cost of a reroll when the free ones run out (the run altar "shop").</summary>
     public const int CardRerollGoldCost = 150;
-    /// <summary>Oferta abençoada (baú amaldiçoado): pondera como o fim da run (favorece raro/eco).</summary>
+    /// <summary>Blessed offer (cursed chest): weighted like the end of the run (favors rare/echo).</summary>
     public const double BlessedOfferProgress = 1.0;
 
-    /// <summary>Material de Eco: ids sintéticos (1 por tier) que fluem pelo inventário da conta para
-    /// a tela de equipamento. Fora do catálogo de itens (não-equipável, não-vendável).</summary>
+    /// <summary>Echo Material: synthetic ids (1 per tier) that flow through the account inventory to
+    /// the equipment screen. Outside the item catalog (not equippable, not sellable).</summary>
     public const int GearMaterialItemIdBase = 950000;
     public static int GearMaterialItemId(int tier) => GearMaterialItemIdBase + Math.Clamp(tier, 1, 5);
     public static bool IsGearMaterial(int itemId) =>
         itemId > GearMaterialItemIdBase && itemId <= GearMaterialItemIdBase + 5;
-    public static string GearMaterialName(int tier) => $"Estilhaço de Eco · T{Math.Clamp(tier, 1, 5)}";
-    /// <summary>Chance de um baú comum dropar 1 material de Eco; amaldiçoado/mímico garantem N.</summary>
+    public static string GearMaterialName(int tier) => $"Echo Shard · T{Math.Clamp(tier, 1, 5)}";
+    /// <summary>Chance of a common chest dropping 1 Echo material; cursed/mimic guarantee N.</summary>
     public const double ChestMaterialDropChance = 0.45;
     public const int CursedChestMaterialDrops = 2;
-    /// <summary>Sprite (gema preciosa) usado na animação do material voando até o jogador.</summary>
+    /// <summary>Sprite (precious gem) used in the material-flying-to-player animation.</summary>
     public const int GearMaterialFlySpriteId = 2478;
 
     public static (int Min, int Max) KaezanDropGoldRange(int tier, string rank)
@@ -663,13 +768,13 @@ public static class GameConfig
         };
     }
 
-    // ---- poção de slot (recurso da run, independente do loot dos mobs) ----
-    /// <summary>Cargas de poção com que o jogador começa cada run (slot 5).</summary>
+    // ---- slot potion (run resource, independent of mob loot) ----
+    /// <summary>Potion charges the player starts each run with (slot 5).</summary>
     public const int PotionChargesPerRun = 2;
-    /// <summary>Cooldown entre usos da poção do slot.</summary>
+    /// <summary>Cooldown between uses of the slot potion.</summary>
     public const int PotionCooldownMs = 1500;
 
-    /// <summary>Fração de cura da poção do slot conforme o tier da run (escala como o equipamento).</summary>
+    /// <summary>Healing fraction of the slot potion based on run tier (scales like equipment).</summary>
     public static double PotionSlotHealFraction(int tier) => tier switch
     {
         <= 2 => PotionHealBasic,
@@ -677,14 +782,14 @@ public static class GameConfig
         _ => PotionHealGreat,
     };
 
-    /// <summary>Sprite/ícone da poção do slot conforme o tier — casa com a cura.</summary>
+    /// <summary>Sprite/icon of the slot potion based on tier — matches the healing amount.</summary>
     public static int PotionSlotItemId(int tier) => tier switch
     {
         <= 2 => 266, // health potion
         <= 4 => 236, // strong health potion
         _ => 239,    // great health potion
     };
-    /// <summary>Palavras que marcam um item como comida (resolvidas para ids em GameData).</summary>
+    /// <summary>Words that mark an item as food (resolved to ids in GameData).</summary>
     public static readonly string[] FoodNameWords =
     [
         "meat", "ham", "cheese", "fish", "cookie", "cherry", "corncob", "mushroom", "worm",
@@ -694,7 +799,7 @@ public static class GameConfig
 
     // ---- death / rewards ----
     public const double DefeatGoldKeptFraction = 0.5;
-    // MVP/teste: recompensa por run inflada. Produção: Base 120, PerTier 40.
+    // MVP/test: inflated per-run reward. Production: Base 120, PerTier 40.
     public const int VictoryKaerosBase = 400;
     public const int VictoryKaerosPerTier = 120;
     public const long AccountXpPerVictory = 60;
@@ -716,26 +821,26 @@ public static class GameConfig
     public static long XpForAccountLevel(int level) => (long)(80 * Math.Pow(level, 1.7));
     public const int MaxAccountLevel = 100;
 
-    // ---- dungeon tiers (mob salas + boss). Account level gates. ----
+    // ---- dungeon tiers (mob rooms + boss). Account level gates. ----
     public static readonly DungeonTier[] Tiers =
     [
-        new(1, "Toca Ecoante", "Cavernas infestadas de vermes sob o Monte Sternum.",
+        new(1, "Echoing Burrow", "Worm-infested caves beneath Mount Sternum.",
             ["Rat", "Cave Rat", "Wolf", "Winter Wolf", "Bug", "Spider", "Snake", "Troll"],
             ["Rotworm", "Scorpion", "Centipede", "Troll Champion", "Carrion Worm", "Poison Spider", "Slime"],
             "Rotworm Queen", 1, 1.0),
-        new(2, "Forte Uruk", "Um bastião orc tomado pela ganância.",
+        new(2, "Uruk Stronghold", "An orc bastion seized by greed.",
             ["Orc", "Orc Spearman", "Goblin", "Goblin Scavenger", "Dwarf", "War Wolf"],
             ["Orc Warrior", "Orc Shaman", "Dwarf Soldier", "Orc Rider", "Orc Berserker"],
             "Orc Warlord", 2, 1.35),
-        new(3, "Cripta Sombria", "Catacumbas onde os mortos não descansam.",
+        new(3, "Dark Crypt", "Catacombs where the dead do not rest.",
             ["Skeleton", "Ghoul", "Ghost", "Mummy", "Bonelord"],
             ["Crypt Shambler", "Demon Skeleton", "Witch", "Vampire", "Necromancer", "Banshee"],
             "Black Knight", 3, 1.8),
-        new(4, "Covil Escamado", "Ninhos de dragões nas profundezas vulcânicas.",
+        new(4, "Scaled Den", "Dragon nests in the volcanic depths.",
             ["Minotaur", "Minotaur Archer", "Minotaur Mage", "Minotaur Guard", "Fire Elemental", "Dragon Hatchling"],
             ["Cyclops", "Earth Elemental", "Dragon", "Dragon Lord Hatchling", "Frost Dragon Hatchling"],
             "Dragon Lord", 4, 2.4),
-        new(5, "Abismo Ecoante", "Onde os ecos do abismo ganham forma.",
+        new(5, "Echoing Abyss", "Where the echoes of the abyss take shape.",
             ["Cyclops", "Fire Devil", "Dragon", "Dragon Lord Hatchling", "Frost Dragon Hatchling"],
             ["Giant Spider", "Dragon Lord", "Frost Dragon", "Hydra", "Hellfire Fighter", "Behemoth", "Hellhound", "Dark Torturer", "Juggernaut"],
             "Demon", 5, 3.2),
@@ -759,7 +864,7 @@ public static class GameConfig
     public const int FiveStarSoftPityStart = 65;
     public const double FiveStarBaseRate = 0.008;
     public const double FiveStarSoftPityRamp = 0.06;
-    // MVP/teste: economia generosa pra testar conteúdo. Produção: StartingKaeros 4000, Gold 500.
+    // MVP/test: generous economy for content testing. Production: StartingKaeros 4000, Gold 500.
     public const int StartingKaeros = 20000;
     public const int StartingGold = 3000;
     public const int ItemFallbackSalePrice = 5;
@@ -768,18 +873,18 @@ public static class GameConfig
     public const int AddonOneAscension = 2;
     public const int AddonTwoAscension = 4;
 
-    // ---- kaeli depth: afinidade / presentes / skins / maestria (refundação 2026-06-12) ----
+    // ---- kaeli depth: affinity / gifts / skins / mastery (refoundation 2026-06-12) ----
     public const int AffinityMaxLevel = 10;
-    /// <summary>XP necessário para ir do nível N para o N+1.</summary>
+    /// <summary>XP required to go from level N to N+1.</summary>
     public static long XpForAffinityLevel(int level) => (long)(40 * Math.Pow(level, 1.35));
-    /// <summary>+1% ATK e HP por nível de afinidade, aplicado no início da run.</summary>
+    /// <summary>+1% ATK and HP per affinity level, applied at the start of the run.</summary>
     public const double AffinityStatBonusPerLevel = 0.01;
     public const long AffinityXpVictory = 50;
     public const long AffinityXpDefeat = 20;
     public const long AffinityXpPerRunLevel = 2;
-    /// <summary>Níveis de afinidade que destravam os fragmentos de lore 1..4.</summary>
+    /// <summary>Affinity levels that unlock lore fragments 1..4.</summary>
     public static readonly int[] AffinityLoreLevels = [2, 4, 6, 8];
-    /// <summary>Kaeros entregues ao alcançar o nível (marcos de afinidade).</summary>
+    /// <summary>Kaeros awarded upon reaching the level (affinity milestones).</summary>
     public static readonly IReadOnlyDictionary<int, int> AffinityKaerosRewards =
         new Dictionary<int, int> { [3] = 200, [5] = 400, [7] = 600, [10] = 1000 };
 
@@ -793,12 +898,12 @@ public static class GameConfig
     public const int MasteryPointsPerDefeat = 1;
     public const long MasteryRespecGold = 1000;
 
-    /// <summary>Kaeros devolvidos por Kaeli removida do roster encontrada numa conta antiga.</summary>
+    /// <summary>Kaeros refunded for a Kaeli removed from the roster found in an old account.</summary>
     public const int CutKaeliRefundKaeros = 600;
 
     // ---- dailies ----
     public const int DailyContractCount = 3;
-    // MVP/teste: dailies generosas. Produção: Kaeros 100, Gold 150.
+    // MVP/test: generous dailies. Production: Kaeros 100, Gold 150.
     public const int DailyKaerosReward = 500;
     public const int DailyGoldReward = 600;
     public const long DailyAccountXpReward = 25;
@@ -826,15 +931,15 @@ public static class GameConfig
     /// <summary>Stagger (Echo Break) window where the boss is stunned and amplified.</summary>
     public const int PostureStaggerMs = 4000;
     /// <summary>Raw-damage multiplier during stagger, one entry per cycle (caps at the last).
-    /// F-E rebalance: achatado de [2.5, 3.5, 5.0, 6.5]. O multiplicador alto foi desenhado para os
-    /// bosses-monstro do Tibia (paredes de carne); com bosses próprios isso virava "delete" nos
-    /// ciclos tardios. A quebra continua recompensadora sem apagar o boss. (Calibrar contra o pivô
-    /// ECHO BREAK do BalanceSim — alvo: quebras ≲ 40% da barra do boss.)</summary>
+    /// F-E rebalance: flattened from [2.5, 3.5, 5.0, 6.5]. The high multiplier was designed for
+    /// Tibia's monster bosses (walls of meat); with authored bosses it became "delete" in later
+    /// cycles. The break remains rewarding without erasing the boss. (Calibrate against the
+    /// ECHO BREAK pivot in BalanceSim — target: breaks ≲ 40% of boss bar.)</summary>
     public static readonly double[] PostureDamageMultipliers = [1.8, 2.1, 2.4, 2.8];
     /// <summary>Each valid hit during stagger also adds this fraction of the boss max HP...
-    /// F-E rebalance: 0.015 → 0.006. Esse adicional ignora a tankiness (fração fixa da vida) e procca
-    /// ~7×/janela, então com AOE/helper somava ~10%+ da barra por quebra. Reduzido para a quebra
-    /// pesar pelo multiplicador, não por um dreno fixo de %vida.</summary>
+    /// F-E rebalance: 0.015 → 0.006. This bonus ignores tankiness (fixed fraction of health) and procs
+    /// ~7x per window, so with AOE/helper it summed ~10%+ of the bar per break. Reduced so the break
+    /// weighs through the multiplier, not a fixed HP%-drain.</summary>
     public const double PostureMaxHpBonusPct = 0.006;
     /// <summary>...but no more than once per this internal cooldown (anti multi-hit exploit).</summary>
     public const int PostureMaxHpBonusCooldownMs = 600;
@@ -843,99 +948,99 @@ public static class GameConfig
     /// <summary>How long an element "mark" lingers on a target waiting for a second element.</summary>
     public const int ElementMarkDurationMs = 4000;
 
-    // ---- K-04: traits assinatura (uma por Kaeli, estado vivo no tick) ----
-    // Uma família mecânica distinta por Kaeli. Os tunáveis principais ficam na TraitDef
-    // (Value/Param, amplificados pela maestria via _traitMult); todo o resto (limiares, stacks,
-    // durações, raios) mora aqui. Seleção de alvo é sempre determinística (menor distância,
-    // desempate por menor id).
+    // ---- K-04: signature traits (one per Kaeli, live state in the tick) ----
+    // A distinct mechanical family per Kaeli. The main tunables live in TraitDef
+    // (Value/Param, amplified by mastery via _traitMult); everything else (thresholds, stacks,
+    // durations, radii) lives here. Target selection is always deterministic (shortest distance,
+    // tie-break by lowest id).
 
-    // Eloa — Selo de Julgamento (marca + detonar). Acertos aplicam Pecado; ao chegar a N o alvo
-    // fica Julgado e o próximo acerto detona um burst sacro em área pequena e cura a Serafim.
+    // Eloa — Seal of Judgment (mark + detonate). Hits apply Sin; upon reaching N the target
+    // becomes Judged and the next hit detonates a holy burst in a small area and heals the Seraph.
     public const int EloaSinStacksToJudge = 3;
     public const int EloaJudgmentRadius = 1;
     public const int EloaSinDurationMs = 4000;
 
-    // Seren — Disciplina (combo cadence). Acertos consecutivos no MESMO alvo escalam o dano;
-    // trocar de alvo ou ficar parada zera. Cada N-ésimo acerto é um Corte Perfeito (crit garantido).
+    // Seren — Discipline (combo cadence). Consecutive hits on the SAME target scale damage;
+    // switching targets or standing still resets it. Every Nth hit is a Perfect Cut (guaranteed crit).
     public const int SerenDisciplineResetMs = 3000;
     public const int SerenPerfectCutEvery = 3;
 
-    // Velvet — Maldição Acumulada (stacks + execução). Cada acerto empilha Decadência (DoT) e
-    // sobe o limiar de execução; quanto mais investiu, mais cedo o alvo estoura.
-    public const double VelvetThresholdPerStack = 0.02; // +2% de limiar por stack
-    public const double VelvetThresholdCap = 0.25;      // limiar máximo (executa < 25% de HP)
+    // Velvet — Accumulated Curse (stacks + execute). Each hit stacks Decay (DoT) and
+    // raises the execute threshold; the more invested, the sooner the target bursts.
+    public const double VelvetThresholdPerStack = 0.02; // +2% threshold per stack
+    public const double VelvetThresholdCap = 0.25;      // maximum threshold (executes < 25% HP)
     public const int VelvetDecayMaxStacks = 5;
-    public const int VelvetDecayTicks = 3;              // duração (em ticks) de cada DoT de decadência
+    public const int VelvetDecayTicks = 3;              // duration (in ticks) of each decay DoT
     public const int VelvetDecayTickMs = 2000;
-    public const double VelvetDecayDamagePerStack = 0.10; // dano/tick por stack = fração do ataque
-    public const int VelvetDecayDurationMs = 5000;      // janela de expiração dos stacks sem refresh
+    public const double VelvetDecayDamagePerStack = 0.10; // damage/tick per stack = fraction of attack
+    public const int VelvetDecayDurationMs = 5000;      // stack expiry window without refresh
 
-    // Rin — Contágio (incêndio que se propaga). Acertos de fogo incendeiam; o burn salta entre
-    // inimigos e cada tick de queimadura cura Rin um pouco (pacto). Value=cura, Param=raio do salto.
+    // Rin — Contagion (spreading fire). Fire hits ignite; burn jumps between enemies and each
+    // burn tick heals Rin a little (pact). Value=heal, Param=jump radius.
     public const int RinContagionIntervalMs = 2000;
-    public const double RinContagionBurnPower = 0.30;   // dano/tick do burn = fração do ataque
+    public const double RinContagionBurnPower = 0.30;   // burn damage/tick = fraction of attack
     public const int RinContagionBurnTicks = 4;
     public const int RinContagionBurnTickMs = 1000;
 
-    // Rynna — Carga Estática (barra de carga). Acertos enchem a carga; cheia, o acerto que a
-    // completa vira Descarga (chain curto + paralyze) e o paralyze acelera a ultimate.
+    // Rynna — Static Charge (charge bar). Hits fill the charge; when full, the hit that completes it
+    // becomes a Discharge (short chain + paralyze) and the paralyze accelerates the ultimate.
     public const double RynnaChargeMax = 100;
-    public const double RynnaChargePerHit = 20;         // 5 acertos enchem
-    public const double RynnaDischargeDamageMult = 1.5; // ~150% do ataque por alvo
+    public const double RynnaChargePerHit = 20;         // 5 hits fill it
+    public const double RynnaDischargeDamageMult = 1.5; // ~150% of attack per target
     public const int RynnaDischargeChainJumps = 3;
     public const int RynnaDischargeChainRange = 3;
     public const int RynnaParalyzeMs = 800;
     public const double RynnaParalyzeGaugeBonus = 8;
 
-    // Lunara — Estilhaçar (hit-and-run). Bater em alvo lento dá dano bônus + haste breve; o
-    // N-ésimo acerto no lento estilhaça (burst e consome o slow). Value=bônus, Param=dur. do slow.
-    public const double LunaraSlowFactor = 0.65;        // 35% de lentidão aplicado pelo gelo
+    // Lunara — Shatter (hit-and-run). Hitting a slowed target deals bonus damage + brief haste;
+    // the Nth hit on the slowed target shatters it (burst and consumes the slow). Value=bonus, Param=slow dur.
+    public const double LunaraSlowFactor = 0.65;        // 35% slow applied by ice
     public const double LunaraHasteFactor = 1.2;
     public const int LunaraHasteMs = 2000;
     public const int LunaraShatterHits = 3;
     public const double LunaraShatterDamageMult = 1.5;
 
-    // Gaia — Presa (perseguir e executar). Marca um alvo; o dano contra a Presa cresce quanto mais
-    // a caça dura; quando a Presa morre a marca salta e Gaia ganha cadência. Value=ramp/s, Param=cap.
+    // Gaia — Prey (chase and execute). Marks a target; damage against the Prey grows the longer
+    // the hunt lasts; when the Prey dies the mark jumps and Gaia gains cadence. Value=ramp/s, Param=cap.
     public const double GaiaHuntAtkSpeedBonus = 0.20;
     public const int GaiaHuntBonusMs = 3000;
 
-    // ================= G-04B: Ecos por Kaeli (3 × 7) =================
-    // Cada Eco (cap de 1 stack) ramifica nos hooks de trait/carta do GameWorld — sem dispatch novo.
-    // Win-conditions ancoradas no campo/constante real do trait (SinStacks, _comboHits, DecayStacks,
-    // burn DoTs, _staticCharge, SlowUntilMs, _preyId). Determinístico: só _rng/NowMs + desempate por id.
+    // ================= G-04B: Echoes per Kaeli (3 × 7) =================
+    // Each Echo (cap of 1 stack) branches into the trait/card hooks of GameWorld — no new dispatch.
+    // Win-conditions anchored in the real trait field/constant (SinStacks, _comboHits, DecayStacks,
+    // burn DoTs, _staticCharge, SlowUntilMs, _preyId). Deterministic: only _rng/NowMs + tie-break by id.
 
-    /// <summary>Escudo de Eco (Eloa Mártir / Velvet Pacto): teto da sobre-vida absorvida, fração da vida máx.</summary>
+    /// <summary>Echo Shield (Eloa Martyr / Velvet Pact): cap on absorbed over-health, fraction of max health.</summary>
     public const double EchoShieldCapFraction = 0.60;
 
-    // Eloa — chain-judgment: o estouro semeia Pecado nos atingidos. sentence: Julga mais cedo e
-    // cada Julgamento amplia o próximo estouro (acumula até um teto).
+    // Eloa — chain-judgment: the burst seeds Sin on those hit. sentence: Judges sooner and
+    // each Judgment amplifies the next burst (accumulates up to a cap).
     public const int EchoEloaChainSinSeed = 1;
     public const int EchoSentenceStacksToJudge = 2;
-    public const double EchoSentenceBurstPerStack = 0.15; // +15% no estouro por Julgamento acumulado
+    public const double EchoSentenceBurstPerStack = 0.15; // +15% burst per accumulated Judgment
     public const int EchoSentenceMaxStacks = 6;
 
-    // Seren — endless-cadence: ramp sem teto, reset mais severo. perfect-execution: Corte a cada 2º,
-    // crit garantido executa alvos fracos. immortal-stance: redução de dano com combo alto.
+    // Seren — endless-cadence: uncapped ramp, harsher reset. perfect-execution: Cut every 2nd,
+    // guaranteed crit executes weak targets. immortal-stance: damage reduction at high combo.
     public const int EchoEndlessCadenceResetMs = 1200;
     public const int EchoPerfectCutEvery = 2;
     public const double EchoPerfectExecuteHpFraction = 0.15;
     public const int EchoImmortalComboThreshold = 4;
     public const double EchoImmortalDamageReduction = 0.40;
 
-    // Velvet — blood-pact: cada carga de Decadência aplicada vira escudo (fração do dano de Maldição).
-    // viral-plague: ao morrer, a Decadência salta com os stacks ao vivo mais próximo (reusa o DoT base).
+    // Velvet — blood-pact: each Decay charge applied becomes a shield (fraction of Curse damage).
+    // viral-plague: upon death, Decay jumps with live stacks to the nearest target (reuses base DoT).
     public const double EchoBloodPactShieldFraction = 0.50;
 
-    // Rin — pyre: dano cresce com nº de alvos queimando. holocaust: morte em chamas explode em área.
-    // wildfire reusa o Contágio (incêndio de qualquer elemento + refresh) sem constante nova.
+    // Rin — pyre: damage grows with the number of burning targets. holocaust: dying in flames explodes in an area.
+    // wildfire reuses Contagion (fire from any element + refresh) without a new constant.
     public const double EchoPyreDamagePerBurning = 0.08;
     public const double EchoPyreMaxBonus = 0.60;
     public const double EchoHolocaustDamageMult = 1.2;
     public const int EchoHolocaustRadius = 1;
 
-    // Rynna — perpetual-storm: Descarga retém metade da Carga e a Carga enche o dobro. overload:
-    // paralyze vira DoT de eletrocussão. thunder-core: gauge da Descarga turbinado + ult devolve Carga.
+    // Rynna — perpetual-storm: Discharge retains half the Charge and Charge fills twice as fast. overload:
+    // paralyze becomes a shock DoT. thunder-core: Discharge gauge turbocharged + ult refunds Charge.
     public const double EchoPerpetualDischargeRetain = 0.50;
     public const double EchoPerpetualChargeMult = 2.0;
     public const double EchoOverloadDotPower = 0.20;
@@ -943,16 +1048,16 @@ public static class GameConfig
     public const int EchoOverloadDotTickMs = 400;
     public const double EchoThunderCoreGaugeMult = 3.0;
 
-    // Lunara — eternal-winter: inimigos entram lentos ao ver Lunara, slow mais forte (sem piso).
-    // chain-shatter: o Estilhaço salta para lentos próximos. moon-dance: estilhaça já no 2º acerto.
+    // Lunara — eternal-winter: enemies enter slowed upon seeing Lunara, slow stronger (no floor).
+    // chain-shatter: Shatter jumps to nearby slowed targets. moon-dance: shatters on the 2nd hit.
     public const double EchoEternalWinterSlowFactor = 0.45;
     public const int EchoEternalWinterAggroSlowMs = 1500;
     public const int EchoChainShatterRange = 3;
     public const double EchoChainShatterDamageMult = 0.70;
     public const int EchoMoonDanceShatterHits = 2;
 
-    // Gaia — eternal-hunt: ramp e teto da Presa dobrados. pack: 2 Presas + bônus de caça maior.
-    // deep-roots: cada acerto na Presa enraíza (slow pesado) e crava um veneno de terra.
+    // Gaia — eternal-hunt: Prey ramp and cap doubled. pack: 2 Preys + larger hunt bonus.
+    // deep-roots: each hit on the Prey roots (heavy slow) and drives an earth poison.
     public const double EchoEternalHuntRampMult = 2.0;
     public const double EchoEternalHuntCapMult = 2.0;
     public const int EchoPackHuntBonusMs = 5000;
@@ -962,17 +1067,17 @@ public static class GameConfig
     public const int EchoDeepRootsDotTicks = 3;
     public const int EchoDeepRootsDotTickMs = 1000;
 
-    // ---- G-08B: arquétipos novos + keyword interaction ----
-    // charger: o dash anda em linha reta até o alvo (parando a 1 tile), com janela de animação no cliente.
+    // ---- G-08B: new archetypes + keyword interaction ----
+    // charger: the dash moves in a straight line to the target (stopping 1 tile away), with an animation window on the client.
     public const int ChargeMaxTiles = 4;
     public const int ChargeDashMs = 220;
-    public const int ChargeFx = 11; // poof de teleporte como rastro do avanço
-    // bomber/suicida: estouro em área ao morrer; dano = maior ataque do kit × escala.
-    public const int BomberExplodeFx = 35; // grande explosão
-    // escudeiro: a barreira em aliado nunca passa desta fração da vida máx do aliado.
+    public const int ChargeFx = 11; // teleport poof as charge trail
+    // bomber/suicide: area burst on death; damage = highest kit attack × scale.
+    public const int BomberExplodeFx = 35; // large explosion
+    // shielder: the barrier on an ally never exceeds this fraction of the ally's max health.
     public const double MonsterShieldCapFraction = 0.50;
-    public const int MonsterShieldFx = 49; // brilho de proteção
-    // Keyword interaction: tags de G-04 que um mob pode resistir/amplificar (% 0-100, negativo = amplifica).
+    public const int MonsterShieldFx = 49; // protection glow
+    // Keyword interaction: G-04 tags a mob can resist/amplify (% 0-100, negative = amplifies).
     public static readonly string[] MonsterKeywordTags =
         ["sin", "combo", "curse", "burn", "charge", "frost", "prey", "posture"];
     public const int KeywordResistMin = -100;
@@ -980,15 +1085,15 @@ public static class GameConfig
 }
 
 /// <summary>
-/// MG-02: tuning de combate por papel. AoeScale é consumido em MG-04 (resize de AOE); aqui em MG-02
-/// só AutoDmgMult/SkillDmgMult/BaseAutoAttackMs/AutoRange entram em vigor.
+/// MG-02: combat tuning per role. AoeScale is consumed in MG-04 (AOE resize); here in MG-02
+/// only AutoDmgMult/SkillDmgMult/BaseAutoAttackMs/AutoRange take effect.
 /// </summary>
 public sealed record RoleTuning(
     double AutoDmgMult, double SkillDmgMult, int BaseAutoAttackMs, int AutoRange, double AoeScale);
 
 /// <summary>
-/// MG-05: linha serializável de <see cref="RoleTuning"/> para persistência/edição no admin. O papel
-/// vai como string (legível no JSON e no front); o ContentStore converte de/para o dicionário tipado.
+/// MG-05: serializable row of <see cref="RoleTuning"/> for persistence/editing in admin. The role
+/// goes as a string (readable in JSON and frontend); ContentStore converts to/from the typed dictionary.
 /// </summary>
 public sealed record RoleTuningRow(
     string Role, double AutoDmgMult, double SkillDmgMult,
@@ -1018,10 +1123,10 @@ public sealed record MonsterAttackPattern(
 public sealed record MonsterBehaviorProfile(
     string Id, string Name, string Description, int TargetDistance, int StaticAttackChance,
     MonsterAttackPattern[] Attacks, double HealFraction = 0, int HealIntervalMs = 0,
-    // G-08B: arquétipos novos. Campos data-only — o tick lê o perfil por BehaviorId (sem dispatch novo).
-    int SpawnCost = 2,                       // custo no orçamento de spawn da sala (swarm = 1, pressão numérica)
-    double PostureScale = 0,                 // >0: mob comum/elite ganha Postura (tanque de postura) escalada por este fator
-    string SummonSpecies = "",               // summoner: id/nome autoral conjurado (liga em MonsterAuthoring.Resolve)
+    // G-08B: new archetypes. Data-only fields — the tick reads the profile by BehaviorId (no new dispatch).
+    int SpawnCost = 2,                       // spawn budget cost per room (swarm = 1, numerical pressure)
+    double PostureScale = 0,                 // >0: common/elite mob gains Posture (posture tank) scaled by this factor
+    string SummonSpecies = "",               // summoner: authored id/name conjured (wired in MonsterAuthoring.Resolve)
     int SummonCount = 1, int SummonChance = 100, int SummonIntervalMs = 0, int SummonMax = 0,
-    int ExplodeRadius = 0, double ExplodeDamageScale = 0,  // bomber/suicida: estouro em área ao morrer perto do player
-    int ShieldRadius = 0, double ShieldFraction = 0, int ShieldIntervalMs = 0); // escudeiro: barreira em aliado próximo
+    int ExplodeRadius = 0, double ExplodeDamageScale = 0,  // bomber/suicide: area burst on death near player
+    int ShieldRadius = 0, double ShieldFraction = 0, int ShieldIntervalMs = 0); // shielder: barrier on nearby ally

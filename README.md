@@ -44,10 +44,10 @@ npx ng serve
 Abra `http://localhost:4200`. Sem configuração de banco, a conta local é criada automaticamente
 em `backend/src/KaezanArenaFable.Api/.data/account.json` com uma Kaeli inicial e 4000 Kaeros.
 
-O painel `http://localhost:4200/admin` traz o editor de conteúdo Kaezan com abas **Monstros**,
-**Items**, **Dungeons**, **Skins**, **Papéis** e **Banners**. Cada tier de dungeon pode receber
+O painel `http://localhost:4200/admin` traz o editor de conteúdo Kaezan com abas **Monsters**,
+**Items**, **Dungeons**, **Skins**, **Roles** e **Banners**. Cada tier de dungeon pode receber
 mobs comuns, elites e um boss autorais; salvar persiste a composição em `.data/content/tiers.json`
-e afeta somente as próximas runs. A aba **Papéis** edita a tabela de tuning por papel (Knight ·
+e afeta somente as próximas runs. A aba **Roles** edita a tabela de tuning por papel (Knight ·
 Mage · Archer): dano de auto/skill, velocidade de auto, alcance e escala de AOE, persistida em
 `.data/content/role-tuning.json` (seedada dos defaults em `GameConfig.Roles`) e aplicada na próxima run.
 Quando `.data/content` ainda está vazio ou contém só o conteúdo legado/de teste, o backend faz seed
@@ -144,7 +144,8 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
 |---|---|
 | WASD / setas | Movimento cardinal (combinações de duas teclas também formam diagonais) |
 | Q / E / Z / C | Movimento diagonal (sem cortar quinas; diagonal bloqueada desliza pelo eixo livre) |
-| Espaço | Mirar no inimigo mais próximo |
+| Espaço | **Dash/Esquiva** — esquiva cardinal (N/S/L/O, sem diagonal) com i-frames curtos e cooldown no HUD; o autopilot usa a mesma habilidade pra sair da quina ao kitar o boss. (Saiu do Shift: 5× Shift abre o popup de Teclas de Aderência do Windows.) A **assinatura muda por papel**: **Mage** desliza **3 tiles** parando na 1ª parede/mob e deixa uma *trilha incandescente* (campos de fogo fracos que se alastram — Contágio); **Archer** desliza **3 tiles** *atravessando mobs* (só para em parede, pousa no tile livre mais distante) e ganha *move speed* — pura mobilidade, sem dano; **Knight** dá um *blink* curto de **2 tiles** (instantâneo, pode passar por cima de um mob na frente, mas o tile de pouso tem que estar livre) e solta um *cleave estilo Exori* ao redor do pouso (dano só no pouso, nunca no terreno). Constantes em `GameConfig` (`Dash*` / `DashKnightBlinkTiles` / `DashArcherHaste*` / `DashTrailField*`). |
+| V | Mirar no inimigo mais próximo |
 | Clique / F | Mirar inimigo / interagir (baú, **Santuário de Eco**, escada) |
 | Painel Helper | Controla alvo automático, preferência de alvo, skills, ultimate e modo de movimento; abre o **editor de táticas** (gambit) |
 | 1 / 2 / 3 / 4 | Slots 1-4 do kit da classe |
@@ -178,7 +179,16 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
   topo ("Exploring & looting · hitting the nearest foe · auto-healing.") pra você "ler" a config num relance:
   - **Combat:** on/off de **Target**, **Skills**, **Ultimate**; e prioridade de alvo **Nearest** ou
     **Lowest HP**. Skills/ult só disparam quando a área/linha alcançaria um mob; a escolha manual
-    de alvo prevalece até ele morrer/sair.
+    de alvo prevalece até ele morrer/sair. **Disciplina de skill:** habilidades de área
+    (area/field/nova/ring/cone) só disparam quando acertariam ≥ `AutoHelperAoeMinTargets` alvos (ou um
+    boss/elite) — nada de "spam de skill no nada"; e um campo não é re-pintado onde já há fogo ativo.
+  - **Estilo por papel — ranged moba/kita, melee fecha box:** o helper **pega o baú dropado enquanto lura**
+    (vai até o coletável mais próximo puxando o train, abre ao encostar). Com uma pilha
+    (`HelperGatherThreshold`) aggroada, **ranged ORBITA o centro da arena** (ponto fixo → sem tremor, giro
+    consistente + anti-retrocesso, raio `HelperMobOrbitRadius`) amontoando os mobs num maço onde a AoE cai;
+    **melee FECHA BOX** — planta no lugar e cleava (não orbita/lura). **Contra o boss, ranged KITA**: mantém
+    o alcance de auto-ataque e recua quando o boss fecha a distância; só **planta pra fuzilar no Echo Break**
+    (quando o boss está quebrado/atordoado). Melee encara o boss. Por fim, o altar central e a saída.
   - **Movement:** **Stand** (off), **Follow** ou **Avoid**. Melee começa em Follow, ranged em Avoid
     (mantém ~2 SQM).
   - **Autopilot** (ligado por default — o jogo é autoplay-first): **Auto-heal** (usa a poção da run
@@ -194,10 +204,10 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
   - **Save as default** persiste a config **por Kaeli** (recarrega no início da próxima run dela);
     **Reset** volta ao default. Tudo é avaliado deterministicamente no tick (backend autoritativo).
 - **Legibilidade do helper (client-side).** Dá pra "ler" o que a build vai fazer: um retículo animado
-  marca o alvo atual do helper, uma linha de intenção liga a Kaeli ao alvo (dourada quando há skill
-  pronta para cair) e um *telegraph* pulsante prevê o shape que vai disparar (cone/beam saindo da
-  Kaeli, anel/área em volta dela ou do alvo). Os shapes vêm do catálogo de skills; nada é simulado no
-  front, só leitura do snapshot.
+  marca o alvo atual do helper e uma linha de intenção liga a Kaeli ao alvo (ambos dourados quando há
+  skill pronta para cair). O *telegraph* de footprint (cone/área de "preparação" pairando na frente da
+  Kaeli) foi removido — tirava o ar do jogo; a linha + retículo bastam pra legibilidade. Nada é simulado
+  no front, só leitura do snapshot.
 - **Kits Kaezan autorais:** monstros seedados combinam power tier, função (`common|elite|boss`),
   comportamento curado e elemento ofensivo. Condições, slows, cura própria e ataques em área vêm dos
   perfis data-driven do engine; sprites/corpses ainda podem reaproveitar a biblioteca Canary.
@@ -239,7 +249,17 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
 
 1. **Home Hub** — vitrine da Kaeli ativa, contratos diários, progresso de conta.
 2. **Caçada** — 5 tiers de dungeon (gate por nível de conta). Cada run: 2 andares procedurais e
-   um **boss Kaezan** no fundo. O `DungeonGenerator` conecta as salas como um **grafo** (árvore
+   um **boss Kaezan** no fundo. **Arena única organica** (ajuste de feeling): cada andar é UMA caverna
+   aberta (`RoomsFloorN=1`) recortada por autômato celular (`ErodeArena` — ruído no miolo inteiro, não um
+   quadrado: pedrais/pilares irregulares + núcleo central garantido). O floor-1 é a arena da horda; o
+   floor-2 (menor) é a do boss. Tunáveis em `GameConfig.Floor1Size`/`ArenaFillProb`/`SpawnBudgetBase`;
+   voltar pro layout multi-sala é só subir `RoomsFloorN`. **Loot e saída dinâmicos** (nada de baú fixo
+   espalhado): no andar da horda o **baú CAI no corpo a cada `ChestDropEveryKills` mortes** (surge no meio
+   da luta, a Kaeli desvia pra pegar enquanto lura; nunca é mímico, no máximo amaldiçoado), e a saída só
+   abre como **TELEPORTE no corpo do último mob ao limpar a sala**. A arena do boss **não tem baú** (a
+   saída é derrotá-lo), e o **boss persegue o jogador** (corre atrás em vez de plantar como torreta) a
+   partir do fundo da câmara, com escolta de elites + chaff em volta.
+   Quando há mais de uma sala, o `DungeonGenerator` ainda as conecta como um **grafo** (árvore
    geradora espacial determinística + 1 loop), com **tipo por sala** (G-07): combate, **elite**,
    **tesouro**, **Santuário de Eco**, **evento/risco** (swarm), **miniboss** e **boss**. As salas
    **fora do caminho entrada→saída** viram detours de **risco/recompensa** (elite/tesouro atrás de um
@@ -315,6 +335,14 @@ Os kits autorais seguem a fantasia de cada Kaeli: Eloa julga e absolve com luz, 
 disciplina astral, Velvet corrói e executa, Rin queima por pacto, Rynna engaja com raio, Lunara
 dança entre slows lunares e Gaia prende alvos com raízes e monólitos. Geometrias seguem o Tibia,
 **reescaladas para o mapa da arena** (sem círculos de ~37 tiles em slots básicos).
+
+**Terreno que se alastra (Contágio da Rin).** O shape `field` ganhou propagação determinística: um
+`GroundField` com orçamento de spread acende, a cada tick, um tile-vizinho livre (escolha no `Rng` da
+run), e o incêndio rasteja pelo mapa — a frente avança enquanto a cauda apaga. O **Salão em Chamas** da
+Rin vira uma fornalha que cresce sozinha, o **Baile Infernal** (ult) incendeia o chão a cada meteoro, e
+o **Contrato Ardente** salta por mais alvos (chain mais longo). Tudo casa com a passiva **Contágio** (o
+burn que pula entre inimigos). Limitado por `GameConfig.FieldMaxTilesPerFloor` para a simulação nunca
+explodir. Os params moram em `SkillDef` (`FieldSpreadChance`/`FieldSpreadGenerations`/`StrikeLeavesField`).
 
 Cada Kaeli também tem uma **passiva assinatura** de arquétipo distinto — um mini-game dentro da run,
 com decisão de gameplay e **estado vivo visível no HUD** (chip da passiva + marcas sobre os alvos):
@@ -417,10 +445,19 @@ camada de máscara de cor) e o frontend recoloriza outfits em runtime com a pale
 de 133 cores do Tibia. Além do pacote extraído de `/assets/tibia`, o frontend também mescla
 `frontend/public/assets/kaezan-outfits/manifest.json`: ali ficam lookTypes autorais altos
 (`900001+`) que não vêm do Tibia e sobrevivem a re-runs do extractor. O Outfit Studio mostra
-esses sprites na categoria **Kaezan**; a primeira vertical slice é a **Velvet Kaezan V1**
+esses sprites na categoria **Kaezan**. A primeira vertical slice foi a **Velvet Kaezan V1**
 (`lookType 900003`), sem addons, gerada como uma adaptação compacta da referência visual
-`lookType 433` antes de escalar para as outras Kaelis. Rode
-`node tools/generate-kaezan-outfits.mjs` para regenerar esse atlas v1.
+`lookType 433` (rode `node tools/generate-kaezan-outfits.mjs` para regenerar esse atlas v1).
+Sobre isso vêm os **outfits autorais chibi** (`lookType 900101`–`900108`): cada Kaeli pode ter
+uma folha hi-res já recortada em `assets/kaelis/<slug>/outfit-cardinal.png` (grade 6×4,
+Sul/Leste/Norte/Oeste, 6 frames de caminhada, alpha limpo) que vira a fonte autoral preferida.
+O `tools/pack_kaeli_outfits.py` respeita esse alpha e, quando a fonte cardinal já vem em
+`256×256`, preserva as células sem recortar, escalar ou remover fundo; o `renderScale` do manifest
+controla o tamanho no mapa sem sacrificar a definição da arte. Folhas legadas `outfit.png` ainda funcionam:
+o tool cai no fluxo antigo com `rembg u2net` e detecção de perfil Leste/Oeste. Esses são o
+**visual padrão** das 7 Kaelis jogáveis (a skin padrão de cada uma aponta para o `lookType`
+autoral; cores ignoradas pois o atlas já vem colorido).
+Rode `python tools/pack_kaeli_outfits.py [--slug <nome>] [--preview]` para regerar.
 O mesmo comando cruza `items.xml` para gerar slots e atributos reais,
 incluindo dano elemental, crítico, roubo de vida, poder mágico, velocidade e resistências, além dos
 itens sintéticos de montaria usados pelo equipamento. O modo `--equipment` inclui automaticamente
@@ -444,6 +481,11 @@ modo recomendado ao atualizar apenas a biblioteca visual do editor de monstros.
 
 ## Invariantes (não quebre)
 
+- **Idioma: jogo e código em inglês.** Toda string visível ao jogador (UI do frontend e display do
+  backend) e todo o código/comentário são em **inglês**. Apenas docs de lore/specs (`docs/**`,
+  `docs_web/**`) ficam em português. Migração PT→EN rastreada em
+  [`docs/roadmap_i18n_english_migration.md`](docs/roadmap_i18n_english_migration.md); um switch de
+  idioma é fase futura.
 - **Backend é autoritativo.** O frontend nunca simula gameplay; só renderiza snapshots.
 - **Determinismo**: mesma seed + mesmos comandos = mesma run (Rng xorshift próprio; nada de
   `Random` compartilhado no engine). Gacha usa `Random` não-determinístico de propósito.

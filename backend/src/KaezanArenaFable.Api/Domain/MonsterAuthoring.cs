@@ -22,7 +22,7 @@ public sealed record MonsterDefinition(
     Dictionary<string, double> Resistances,
     string AppearanceId = "",
     bool Enabled = true,
-    // G-08B: resistência por keyword de carta (% 0-100; negativo amplifica). Distinta de Resistances (elemento).
+    // G-08B: card keyword resistance (% 0-100; negative amplifies). Separate from elemental Resistances.
     Dictionary<string, double>? KeywordResistances = null);
 
 public sealed record MonsterAppearance(
@@ -78,11 +78,11 @@ public static class MonsterAuthoring
 
     public static string? Validate(MonsterDefinition definition)
     {
-        if (string.IsNullOrWhiteSpace(definition.Name)) return "nome vazio";
-        if (!definition.Id.StartsWith("monster:", StringComparison.Ordinal)) return "id deve comecar com 'monster:'";
-        if (definition.Outfit.LookType <= 0) return "lookType invalido";
+        if (string.IsNullOrWhiteSpace(definition.Name)) return "empty name";
+        if (!definition.Id.StartsWith("monster:", StringComparison.Ordinal)) return "id must start with 'monster:'";
+        if (definition.Outfit.LookType <= 0) return "invalid lookType";
         if (!GameConfig.MonsterStatLines.ContainsKey($"{definition.PowerTier}:{definition.Rank}"))
-            return "combinacao de tier e rank invalida";
+            return "invalid tier and rank combination";
         return null;
     }
 
@@ -126,8 +126,8 @@ public static class MonsterAuthoring
                 condition);
         }).ToList();
 
-        // G-08B: summoner liga o campo Summons a partir do perfil de comportamento (sem dispatch novo —
-        // o tick reusa TickMonsterSummons). A espécie conjurada é resolvida pelo MonsterRegistry por id/nome.
+        // G-08B: summoner fills Summons from the behavior profile without a new dispatch path.
+        // The tick reuses TickMonsterSummons, and MonsterRegistry resolves the summon by id/name.
         var summons = new List<MonsterSummon>();
         var maxSummons = 0;
         if (!string.IsNullOrWhiteSpace(behavior.SummonSpecies))

@@ -11,8 +11,8 @@ import { TIER_BIOMES } from '../../core/tier-biomes';
       <div class="scene" aria-hidden="true"></div>
       <div class="veil" aria-hidden="true"></div>
 
-      <aside class="mode-rail" aria-label="Modos de caçada">
-        <span class="eyebrow">Caçada</span>
+      <aside class="mode-rail" aria-label="Hunt modes">
+        <span class="eyebrow">Hunt</span>
         @for (m of modes; track m.id) {
           <button class="rail-item mode"
                   [class.active]="selectedModeId() === m.id"
@@ -23,7 +23,7 @@ import { TIER_BIOMES } from '../../core/tier-biomes';
               <b>{{ m.name }}</b>
               <small>{{ m.tagline }}</small>
             </span>
-            @if (m.status !== 'live') { <span class="soon">Em breve</span> }
+            @if (m.status !== 'live') { <span class="soon">Soon</span> }
           </button>
         }
       </aside>
@@ -37,7 +37,7 @@ import { TIER_BIOMES } from '../../core/tier-biomes';
           </div>
 
           <div class="depth">
-            <span class="depth-lbl">A descida — 5 estratos</span>
+            <span class="depth-lbl">The descent - 5 strata</span>
             <div class="rungs">
               @for (b of strata; track b.tier) {
                 <span class="rung" [style.--bc]="b.accent">
@@ -51,15 +51,15 @@ import { TIER_BIOMES } from '../../core/tier-biomes';
 
           <div class="mode-facts">
             <span><b>5</b><small>Tiers</small></span>
-            <span><b>2</b><small>Andares</small></span>
+            <span><b>2</b><small>Floors</small></span>
             <span><b>1</b><small>Boss</small></span>
           </div>
 
           <div class="actions">
             @if (m.status === 'live') {
-              <button class="pill-btn" (click)="enter(m)">Entrar na expedição</button>
+              <button class="pill-btn" (click)="enter(m)">Enter expedition</button>
             } @else {
-              <button class="pill-btn secondary" disabled>Em breve</button>
+              <button class="pill-btn secondary" disabled>Soon</button>
             }
           </div>
         </main>

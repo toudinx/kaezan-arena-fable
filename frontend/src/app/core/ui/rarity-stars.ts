@@ -2,8 +2,8 @@ import { Component, computed, input } from '@angular/core';
 import { RARITY_COLORS } from '../types';
 
 /**
- * Estrelas de raridade (3★/4★/5★) coloridas pelo token --rarity-N (alinhado a
- * RARITY_COLORS em core/types.ts). 5★ ganha um leve glow dourado.
+ * Rarity stars (3★/4★/5★) colored by the --rarity-N token (aligned with
+ * RARITY_COLORS in core/types.ts). 5★ gets a slight golden glow.
  *
  *   <rarity-stars [rarity]="w.rarity" [size]="18" />
  */
@@ -13,7 +13,7 @@ import { RARITY_COLORS } from '../types';
   template: `
     <span class="stars" [class.legendary]="rarity() >= 5"
           [style.color]="color()" [style.fontSize.px]="size()"
-          [attr.aria-label]="rarity() + ' estrelas'" role="img">{{ glyphs() }}</span>
+          [attr.aria-label]="rarity() + ' stars'" role="img">{{ glyphs() }}</span>
   `,
   styles: [`
     :host { display: inline-flex; }

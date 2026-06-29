@@ -1,9 +1,9 @@
 namespace KaezanArenaFable.Api.Domain;
 
 /// <summary>
-/// Item autoral do Kaezan. O SourceItemId aponta para um objeto imutavel do Canary e fornece
-/// sprite; slot, tipo e balanceamento sao identidade propria do Kaezan.
-/// Percentuais usam fracao (0.10 = 10%).
+/// Authored Kaezan item. SourceItemId points to an immutable Canary object and provides the
+/// sprite; slot, type, and balance are Kaezan-owned identity.
+/// Percent values use fractions (0.10 = 10%).
 /// </summary>
 public sealed record AuthoredItemDefinition(
     int ItemId,
@@ -192,36 +192,36 @@ public static class ItemAuthoring
         int? currentId = null)
     {
         if (source is null || source.IsAuthored)
-            return $"item Canary desconhecido: {definition.SourceItemId}";
+            return $"unknown Canary item: {definition.SourceItemId}";
         if (string.IsNullOrWhiteSpace(definition.Name))
-            return "nome obrigatorio";
+            return "name is required";
         if (existing.Any(item =>
                 item.ItemId != currentId
                 && item.Name.Equals(definition.Name, StringComparison.OrdinalIgnoreCase)))
-            return $"nome ja existe: {definition.Name}";
+            return $"name already exists: {definition.Name}";
 
         var effective = definition.Apply(source);
         var caps = ItemCapabilities.For(effective);
-        if (!caps.Attack && definition.Attack != 0) return "ataque so pode ser definido em armas";
-        if (!caps.Armor && definition.Armor != 0) return "armadura so pode ser definida em equipamentos defensivos";
-        if (!caps.Defense && definition.Defense != 0) return "defesa so pode ser definida em armas ou equipamentos defensivos";
-        if (!caps.MountSpeed && definition.MountSpeed != 0) return "velocidade de montaria so pode ser definida em montarias";
-        if (!caps.CritDamage && definition.CritDamage != 0) return "dano critico so pode ser definido em armas";
-        if (!caps.CritChance && definition.CritChance != 0) return "chance critica so pode ser definida em aneis";
+        if (!caps.Attack && definition.Attack != 0) return "attack can only be defined on weapons";
+        if (!caps.Armor && definition.Armor != 0) return "armor can only be defined on defensive equipment";
+        if (!caps.Defense && definition.Defense != 0) return "defense can only be defined on weapons or defensive equipment";
+        if (!caps.MountSpeed && definition.MountSpeed != 0) return "mount speed can only be defined on mounts";
+        if (!caps.CritDamage && definition.CritDamage != 0) return "critical damage can only be defined on weapons";
+        if (!caps.CritChance && definition.CritChance != 0) return "critical chance can only be defined on rings";
         if (!caps.Vampiric && (definition.LifeStealChance != 0 || definition.LifeStealAmount != 0))
-            return "vampirismo so pode ser definido em capacetes";
+            return "vampirism can only be defined on helmets";
         if (!caps.CooldownReduction && definition.CooldownReduction != 0)
-            return "recarga so pode ser definida em capacetes";
+            return "cooldown reduction can only be defined on helmets";
         if (!caps.MoveSpeed && definition.MoveSpeedPercent != 0)
-            return "movimento so pode ser definido em montarias";
+            return "movement can only be defined on mounts";
         if (!caps.ElementAffinity && definition.ElementDamage != 0)
-            return "afinidade elemental so pode ser definida em amuletos";
+            return "elemental affinity can only be defined on amulets";
         if (!caps.PhysicalResistance && definition.PhysicalResistance != 0)
-            return "resistencia fisica so pode ser definida em armaduras";
+            return "physical resistance can only be defined on armor";
         if (!caps.ElementResistance && HasElementResistance(definition))
-            return "resistencia elemental so pode ser definida em armaduras";
+            return "elemental resistance can only be defined on armor";
         if (ElementResistanceCount(definition) > 1)
-            return "armaduras podem ter no maximo uma resistencia elemental";
+            return "armor can have at most one elemental resistance";
         return null;
     }
 
@@ -382,36 +382,36 @@ public sealed record ItemCapabilities(
     }
 }
 
-/// <summary>Taxonomia tipo TibiaWiki usada apenas na apresentacao do acervo visual.</summary>
+/// <summary>TibiaWiki-like taxonomy used only for presenting the visual library.</summary>
 public static class ItemCategories
 {
     public static (string Category, string Subcategory) Of(ItemType item, bool isFood)
     {
         if (!string.IsNullOrWhiteSpace(item.WeaponType))
-            return ("Armas", WeaponSub(item.WeaponType!));
+            return ("Weapons", WeaponSub(item.WeaponType!));
         return item.Slot switch
         {
-            "helmet" => ("Equipamentos", "Capacetes"),
-            "armor" => ("Equipamentos", "Armaduras"),
-            "necklace" => ("Equipamentos", "Amuletos"),
-            "ring" => ("Equipamentos", "Aneis"),
-            "mount" => ("Equipamentos", "Montarias"),
-            "weapon" => ("Armas", "Outras armas"),
-            _ => ("Outros", OtherSub(item.Name, isFood))
+            "helmet" => ("Equipment", "Helmets"),
+            "armor" => ("Equipment", "Armors"),
+            "necklace" => ("Equipment", "Amulets"),
+            "ring" => ("Equipment", "Rings"),
+            "mount" => ("Equipment", "Mounts"),
+            "weapon" => ("Weapons", "Other weapons"),
+            _ => ("Other", OtherSub(item.Name, isFood))
         };
     }
 
     private static string WeaponSub(string weaponType) => weaponType.ToLowerInvariant() switch
     {
-        "sword" => "Espadas",
-        "axe" => "Machados",
-        "club" or "fist" => "Macas e punhos",
-        "distance" => "Distancia",
-        "wand" or "rod" => "Cajados",
+        "sword" => "Swords",
+        "axe" => "Axes",
+        "club" or "fist" => "Maces and fists",
+        "distance" => "Distance",
+        "wand" or "rod" => "Wands",
         "spellbook" => "Spellbooks",
-        "shield" => "Escudos",
-        "ammunition" => "Municao",
-        _ => "Outras armas"
+        "shield" => "Shields",
+        "ammunition" => "Ammunition",
+        _ => "Other weapons"
     };
 
     private static readonly string[] ValuableWords =
@@ -426,12 +426,12 @@ public static class ItemCategories
     private static string OtherSub(string name, bool isFood)
     {
         var lower = name.ToLowerInvariant();
-        if (lower.Contains("rune")) return "Runas";
-        if (lower.Contains("potion")) return "Pocoes";
-        if (isFood) return "Comida";
-        if (ValuableWords.Any(lower.Contains)) return "Valiosos";
+        if (lower.Contains("rune")) return "Runes";
+        if (lower.Contains("potion")) return "Potions";
+        if (isFood) return "Food";
+        if (ValuableWords.Any(lower.Contains)) return "Valuables";
         if (CreatureProductWords.Any(word => lower.Split(' ', '_').Contains(word)))
-            return "Produtos de criatura";
-        return "Diversos";
+            return "Creature products";
+        return "Miscellaneous";
     }
 }

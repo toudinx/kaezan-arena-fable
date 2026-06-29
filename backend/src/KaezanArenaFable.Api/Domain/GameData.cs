@@ -89,7 +89,7 @@ public sealed record MonsterType(
     double HpMultiplier = 1, double DamageMultiplier = 1,
     double SpeedMultiplier = 1, double CadenceMultiplier = 1,
     int PowerTier = 0, bool IsAuthored = false,
-    // G-08B: resistência por keyword de carta (sin/curse/burn/charge/frost/posture/combo/prey).
+    // G-08B: card keyword resistance (sin/curse/burn/charge/frost/posture/combo/prey).
     Dictionary<string, double>? KeywordResistances = null)
 {
     public List<MonsterSummon> Summons { get; init; } = Summons ?? [];
@@ -133,7 +133,7 @@ public sealed class GameData
                 "legacy",
                 true)).ToList();
 
-        // resolve "comida" a partir das palavras-chave (match por palavra evita "legs" virar comida)
+        // Resolve food from keywords; word matching prevents "legs" from becoming food.
         var foodWords = GameConfig.FoodNameWords.ToHashSet(StringComparer.OrdinalIgnoreCase);
         _foodIds = Items.Values
             .Where(i => i.Name.Split(' ').Any(foodWords.Contains))
@@ -154,12 +154,12 @@ public sealed class GameData
         && item.Slot is not null
         && EquipmentSlots.IsValid(item.Slot);
 
-    /// <summary>Comida: cura pouca vida ao ser pega (heal-on-pickup).</summary>
+    /// <summary>Food: heals a small amount on pickup.</summary>
     public bool IsFood(int itemId) => _foodIds.Contains(itemId);
 
     /// <summary>
-    /// Fração da vida máx que uma poção de vida cura ao ser pega, 0 se não for poção de vida.
-    /// Poções mais fortes (que caem em tiers mais altos) curam mais.
+    /// Fraction of max HP healed by a health potion on pickup; 0 for non-health potions.
+    /// Stronger potions that drop in higher tiers heal more.
     /// </summary>
     public double PotionHealFraction(int itemId)
     {

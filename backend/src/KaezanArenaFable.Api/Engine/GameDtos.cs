@@ -7,15 +7,15 @@ public sealed record MapDto(
     ushort[] Ground, ushort[] Wall, ushort[] Decor, bool[] Blocked,
     int EntryX, int EntryY, int? LadderX, int? LadderY,
     List<PoiDto> Pois,
-    // G-07: grafo de salas + bioma. Rooms expõe o tipo de cada sala (combate/elite/tesouro/eco/
-    // evento/miniboss/boss) pro minimapa desenhar ícones; Biome é a paleta de color-grade do estrato.
+    // G-07: room graph + biome. Rooms exposes each room type (combat/elite/treasure/echo/
+    // event/miniboss/boss) so the minimap can draw icons; Biome is the stratum color-grade palette.
     List<RoomDto> Rooms, BiomeDto Biome)
 {
     /// <summary>
-    /// LM-08: monta o <see cref="MapDto"/> de wire a partir de um andar gerado + a atmosfera do estrato.
-    /// Compartilhado pelo snapshot ao vivo (<see cref="GameWorld.BuildMap"/>) e pelo preview de bioma do
-    /// admin (LM-09) — assim os dois leem o mapa de forma idêntica. Os POIs já vêm convertidos pelo
-    /// chamador (cada modo decide o que telegrafar); o helper só costura ground/wall/decor + salas + bioma.
+    /// LM-08: builds the wire <see cref="MapDto"/> from a generated floor plus the stratum atmosphere.
+    /// Shared by the live snapshot (<see cref="GameWorld.BuildMap"/>) and the admin biome preview
+    /// (LM-09), so both read the map identically. POIs are already converted by the caller
+    /// (each mode decides what to telegraph); the helper only stitches ground/wall/decor + rooms + biome.
     /// </summary>
     public static MapDto FromFloor(
         DungeonFloor floor, BiomeAtmosphere atmo, int floorIndex, IReadOnlyList<PoiDto> pois) =>
@@ -34,13 +34,13 @@ public sealed record MapDto(
                 atmo.ParticleR, atmo.ParticleG, atmo.ParticleB, atmo.ParticleDensity, atmo.ParticleDrift));
 }
 
-// G-09: Variant expõe só "cursed" (amaldiçoado, telegrafado) ou "" — mímicos chegam como "" (surpresa).
+// G-09: Variant exposes only "cursed" (telegraphed) or ""; mimics arrive as "" (surprise).
 public sealed record PoiDto(int Id, string Kind, int X, int Y, int ItemId, string Variant, bool Used);
 
-/// <summary>G-07: retângulo + tipo de uma sala, para o minimapa pintar a rota antecipável.</summary>
+/// <summary>G-07: rectangle + room type, so the minimap can paint the anticipated route.</summary>
 public sealed record RoomDto(int X, int Y, int W, int H, string Role);
 
-/// <summary>G-07: paleta cosmética do estrato (color-grade/luz/névoa/partículas). Só o front lê.</summary>
+/// <summary>G-07: cosmetic stratum palette (color-grade/light/fog/particles). Only the frontend reads it.</summary>
 public sealed record BiomeDto(
     string Name,
     int TintR, int TintG, int TintB, double TintStrength,
@@ -81,12 +81,13 @@ public sealed record PlayerDto(
     EquipmentStatsDto EquipmentStats,
     int PotionCharges, int PotionMaxCharges, int PotionItemId,
     long PotionCooldownRemainingMs, long PotionCooldownTotalMs, double PotionHealPct,
+    long DashCooldownRemainingMs, long DashCooldownTotalMs, bool DashReady,
     TraitStateDto Trait);
 
 /// <summary>
-/// K-04: estado vivo da passiva assinatura para o HUD. Kind identifica a mecânica; Value/Max
-/// alimentam uma barra (carga da Rynna, combo da Seren) quando Max &gt; 0; Text é o rótulo curto
-/// (ex. "x3 (+24%)", "60/100", "2 em chamas", "HASTE"). Marcas por-alvo vão no MonsterDto.
+/// K-04: live signature-passive state for the HUD. Kind identifies the mechanic; Value/Max
+/// feed a bar (Rynna charge, Seren combo) when Max &gt; 0; Text is the short label
+/// (for example "x3 (+24%)", "60/100", "2 burning", "HASTE"). Per-target marks go in MonsterDto.
 /// </summary>
 public sealed record TraitStateDto(
     string Kind, string Name, double Value, double Max, string Text);
@@ -99,8 +100,8 @@ public sealed record MonsterDto(
     int Id, string Species, int X, int Y, int Dir, int Hp, int MaxHp,
     int FromX, int FromY, int StepDurMs, long StepStartTick,
     OutfitDto Outfit, bool IsBoss, bool Stunned, string ElementMark,
-    // K-04: estado vivo da passiva por-alvo. TraitStacks = stacks (Pecado/Decadência/gelo);
-    // TraitTag = marca especial ("judged" | "prey" | "frozen") pro render desenhar o ícone certo.
+    // K-04: live per-target passive state. TraitStacks = stacks (Sin/Decay/frost);
+    // TraitTag = special mark ("judged" | "prey" | "frozen") so the renderer can draw the right icon.
     int TraitStacks, string TraitTag);
 
 public sealed record GroundItemDto(int Id, int X, int Y, int ItemId, int Count);
@@ -127,7 +128,7 @@ public sealed record RunStateDto(
     List<RewardItemDto> Items,
     NavTargetDto? NavTarget);
 
-/// <summary>G-10: para onde o auto-loot está andando (tile + tipo), só pra legibilidade no cliente.</summary>
+/// <summary>G-10: where auto-loot is walking (tile + type), only for client readability.</summary>
 public sealed record NavTargetDto(int X, int Y, string Kind);
 
 public sealed record CardStackDto(

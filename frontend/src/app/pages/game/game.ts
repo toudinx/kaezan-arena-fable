@@ -9,7 +9,7 @@ import { ItemIcon } from '../../core/item-icon';
 import { SoundService } from '../../core/sound.service';
 import { AutoHelperSettingsDto, SnapshotDto } from '../../core/types';
 
-// G-01: alinhado abaixo do passo do player (~294ms a PlayerBaseSpeed=340) pra resend confiável.
+// G-01: aligned below the player step (~294ms at PlayerBaseSpeed=340) for reliable resends.
 const MOVE_HEARTBEAT_MS = 200;
 const RESUME_TOAST_MS = 2500;
 
@@ -36,7 +36,7 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
     <div class="game-root" tabindex="0" #root>
       <canvas #cv class="game-canvas"></canvas>
       @if (resumeToast()) {
-        <div class="resume-toast">Run retomada</div>
+        <div class="resume-toast">Run resumed</div>
       }
 
       <!-- top HUD -->
@@ -46,7 +46,7 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
             <div class="label">{{ s.player.hp }} / {{ s.player.maxHp }}</div>
             <div class="bar hp"><div class="fill" [style.width.%]="(100 * s.player.hp) / s.player.maxHp"></div></div>
             <div class="bar xp"><div class="fill" [style.width.%]="(100 * s.run.xp) / s.run.xpNext"></div></div>
-            <div class="sub">Lv {{ s.run.level }} · {{ s.run.kills }} abates · 🪙 {{ s.run.gold }} · {{ s.run.tierName }}</div>
+            <div class="sub">Lv {{ s.run.level }} · {{ s.run.kills }} kills · 🪙 {{ s.run.gold }} · {{ s.run.tierName }}</div>
             @if (hasEquipmentStats(s.player.equipmentStats)) {
               <div class="gear-stats">{{ equipmentStatsLabel(s.player.equipmentStats) }}</div>
             }
@@ -61,9 +61,9 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
                 </div>
                 <div class="posture-label">
                   @if (s.run.bossStaggered) {
-                    <span class="broken">⚡ ECHO BREAK · dano ×{{ activeMult(s.run.bossPostureCycle) }}</span>
+                    <span class="broken">⚡ ECHO BREAK · damage ×{{ activeMult(s.run.bossPostureCycle) }}</span>
                   } @else {
-                    <span>Postura → quebra ×{{ nextMult(s.run.bossPostureCycle) }}</span>
+                    <span>Stance → break ×{{ nextMult(s.run.bossPostureCycle) }}</span>
                   }
                 </div>
               }
@@ -88,26 +88,26 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
           }
           <button class="stance" [class.fixed]="!s.player.canToggleStance"
                   [disabled]="!s.player.canToggleStance" (click)="toggleStance()"
-                  title="Tab alterna a postura">
+                  title="Tab toggles stance">
             <span>{{ s.player.className }}</span>
             <b>{{ elementLabel(s.player.stanceElement) }}</b>
             @if (s.player.canToggleStance) { <small>TAB</small> }
           </button>
         }
-        <button class="btn secondary leave" (click)="leave()">Sair</button>
-        <button class="btn secondary bag-toggle" [class.on]="showBag()" (click)="toggleBag()" title="Mochila da caçada (B)">🎒</button>
-        <button class="btn secondary snd-toggle" [class.muted]="sound.muted()" (click)="sound.toggleMute()" [title]="sound.muted() ? 'Som desligado (M)' : 'Som ligado (M)'">{{ sound.muted() ? '🔇' : '🔊' }}</button>
-        <button class="btn secondary helper-toggle" [class.on]="showHelper()" (click)="toggleHelper()" title="Helper de combate">🤖</button>
+        <button class="btn secondary leave" (click)="leave()">Leave</button>
+        <button class="btn secondary bag-toggle" [class.on]="showBag()" (click)="toggleBag()" title="Hunt backpack (B)">🎒</button>
+        <button class="btn secondary snd-toggle" [class.muted]="sound.muted()" (click)="sound.toggleMute()" [title]="sound.muted() ? 'Sound off (M)' : 'Sound on (M)'">{{ sound.muted() ? '🔇' : '🔊' }}</button>
+        <button class="btn secondary helper-toggle" [class.on]="showHelper()" (click)="toggleHelper()" title="Combat helper">🤖</button>
       </div>
 
-      <!-- helper panel (canto inferior esquerdo, minimizável) -->
+      <!-- helper panel (lower-left corner, minimizable) -->
       @if (snapshot(); as s) {
         @if (showHelper()) {
           <div class="helper-panel" title="Combat helper — set it and watch">
             <div class="hp-head">
               <span class="hp-title">Helper</span>
               <span class="hp-readout">{{ helperReadout(s.player.autoHelper) }}</span>
-              <button class="hp-min" (click)="toggleHelper()" title="Minimizar">–</button>
+              <button class="hp-min" (click)="toggleHelper()" title="Minimize">-</button>
             </div>
 
             <div class="hp-group">
@@ -139,7 +139,7 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
                         (click)="setAutoHelperMovement('avoid')">Avoid</button>
               </div>
               @if (s.player.autoHelper.navMode === 'loot') {
-                <span class="hp-hint">Auto-loot está pilotando o movimento — Follow/Avoid voltam ao desligá-lo.</span>
+                <span class="hp-hint">Auto-loot is steering movement - Follow/Avoid return when it is disabled.</span>
               }
             </div>
 
@@ -211,11 +211,20 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
               <div class="cd" [style.height.%]="(100 * s.player.potionCooldownRemainingMs) / s.player.potionCooldownTotalMs"></div>
             }
           </button>
+          <button class="skill dash" [class.ready]="s.player.dashReady" (click)="dash()"
+                  title="Dash / Dodge (Space) - leaps 3 tiles in your movement direction, with i-frames">
+            <span class="key">Spc</span>
+            <span class="dashglyph">&gt;&gt;</span>
+            <span class="name">Dash</span>
+            @if (s.player.dashCooldownRemainingMs > 0) {
+              <div class="cd" [style.height.%]="(100 * s.player.dashCooldownRemainingMs) / s.player.dashCooldownTotalMs"></div>
+            }
+          </button>
         </div>
 
         @if (showBag()) {
           <div class="bagpanel">
-            <div class="baghead"><b>Mochila da caçada</b><span>🪙 {{ s.run.gold }}</span></div>
+            <div class="baghead"><b>Hunt backpack</b><span>🪙 {{ s.run.gold }}</span></div>
             @if (s.run.items.length) {
               <div class="baggrid">
                 @for (item of s.run.items; track item.itemId) {
@@ -226,7 +235,7 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
                 }
               </div>
             } @else {
-              <p class="bagempty">Nada coletado ainda — vá caçar!</p>
+              <p class="bagempty">Nothing collected yet - go hunt!</p>
             }
           </div>
         }
@@ -236,19 +245,19 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
       @if (snapshot()?.run; as run) {
         @if (run.offer; as offer) {
           <div class="overlay cards">
-            <h2>Escolha um eco:</h2>
+            <h2>Choose an echo:</h2>
             <div class="offer-actions">
               @if (run.cardRerollsRemaining > 0) {
                 <button class="offer-action" (click)="rerollCards()">
                   Reroll <b>{{ run.cardRerollsRemaining }}</b>
                 </button>
               } @else {
-                <!-- G-09: rerolls grátis esgotados → reroll pago (loja do altar da run) -->
+                <!-- G-09: free rerolls depleted -> paid reroll (run altar shop) -->
                 <button class="offer-action" [disabled]="run.gold < run.cardRerollGoldCost" (click)="rerollCards()">
                   Reroll <b>{{ run.cardRerollGoldCost }}🪙</b>
                 </button>
               }
-              <span>Banidas {{ run.bannedCardsCount }}</span>
+              <span>Banned {{ run.bannedCardsCount }}</span>
             </div>
             <div class="choices">
               @for (c of offer; track c.id; let i = $index) {
@@ -270,7 +279,7 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
             </div>
             <div class="ban-actions">
               @for (c of offer; track c.id; let i = $index) {
-                <button (click)="banCard(c.id)">Banir {{ i + 1 }}</button>
+                <button (click)="banCard(c.id)">Ban {{ i + 1 }}</button>
               }
             </div>
           </div>
@@ -280,15 +289,15 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
       <!-- run end -->
       @if (snapshot()?.run?.ended; as end) {
         <div class="overlay end">
-          <h1 [class.victory]="end.victory">{{ end.victory ? 'VITÓRIA' : 'DERROTA' }}</h1>
+          <h1 [class.victory]="end.victory">{{ end.victory ? 'VICTORY' : 'DEFEAT' }}</h1>
           <p class="reason">{{ end.reason }}</p>
           <div class="stats">
-            <div class="stat"><b>{{ end.kills }}</b><span>abates</span></div>
+            <div class="stat"><b>{{ end.kills }}</b><span>kills</span></div>
             <div class="stat"><b>{{ end.runLevel }}</b><span>level</span></div>
-            <div class="stat"><b>{{ end.goldEarned }}</b><span>🪙 ouro</span></div>
+            <div class="stat"><b>{{ end.goldEarned }}</b><span>🪙 gold</span></div>
             <div class="stat"><b>{{ end.kaerosEarned }}</b><span>✦ kaeros</span></div>
-            <div class="stat"><b>{{ end.accountXpEarned }}</b><span>XP de conta</span></div>
-            <div class="stat"><b>{{ formatTime(end.durationMs) }}</b><span>duração</span></div>
+            <div class="stat"><b>{{ end.accountXpEarned }}</b><span>Account XP</span></div>
+            <div class="stat"><b>{{ formatTime(end.durationMs) }}</b><span>duration</span></div>
           </div>
           @if (end.items.length) {
             <div class="loot">
@@ -302,17 +311,17 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
           }
           @for (note of end.dailyProgressNotes; track note) { <p class="note">📜 {{ note }}</p> }
           @if (autoRunsRemaining() > 0) {
-            <p class="note farm-note">Lote {{ farmProgressLabel() }}: proxima run em {{ autoRepeatCountdown() }}s</p>
+            <p class="note farm-note">Batch {{ farmProgressLabel() }}: next run in {{ autoRepeatCountdown() }}s</p>
           }
           <div class="actions">
-            <button class="btn" (click)="again()">JOGAR DE NOVO</button>
-            <button class="btn secondary" (click)="leave()">VOLTAR À CAÇADA</button>
+            <button class="btn" (click)="again()">PLAY AGAIN</button>
+            <button class="btn secondary" (click)="leave()">BACK TO HUNT</button>
           </div>
         </div>
       }
 
       @if (!snapshot()) {
-        <div class="overlay"><h2>Gerando dungeon...</h2></div>
+        <div class="overlay"><h2>Generating dungeon...</h2></div>
       }
     </div>
   `,
@@ -468,6 +477,11 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
     .skill.potion.ready { border-color: #ff6b8b; box-shadow: 0 0 10px rgba(255,107,139,0.4); }
     .skill.potion:disabled { opacity: 0.45; cursor: default; }
     .skill.potion .charges { font-size: 11px; font-weight: 800; color: #ffd1dc; }
+    .skill.dash { width: 72px; cursor: pointer; }
+    .skill.dash .dashglyph { font-size: 24px; font-weight: 900; line-height: 1; letter-spacing: -3px; color: #5cc8ff; }
+    .skill.dash.ready { border-color: #5cc8ff; box-shadow: 0 0 10px rgba(92,200,255,0.4); }
+    .skill.dash:not(.ready) { opacity: 0.6; }
+    .skill.dash:not(.ready) .dashglyph { color: #46506b; }
     .bag-toggle, .snd-toggle, .helper-toggle { pointer-events: auto; font-size: 16px; padding: 4px 9px; }
     .bag-toggle.on { border-color: #2dd4bf; color: #8bfff1; }
     .snd-toggle.muted { opacity: 0.5; }
@@ -494,7 +508,7 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
       display: flex; flex-direction: column; gap: 6px; text-align: left;
       transition: transform 0.1s;
     }
-    /* G-04: cor da borda/realce por raridade (comum azul-petróleo, raro azul, eco dourado). */
+    /* G-04: border/highlight color by rarity (common teal, rare blue, echo gold). */
     .choice[data-rarity="common"] { border-color: #2dd4bf; }
     .choice[data-rarity="rare"] { border-color: #5b9bff; box-shadow: 0 0 14px rgba(91,155,255,0.25); }
     .choice[data-rarity="echo"] {
@@ -540,7 +554,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   readonly showBag = signal(false);
   readonly showHelper = signal(false);
 
-  // G-10: feedback do botão "Save as default" do painel HELPER.
+  // G-10: feedback for the HELPER panel "Save as default" button.
   readonly helperSaved = signal(false);
   readonly plannedRuns = signal(1);
   readonly autoRunsRemaining = signal(0);
@@ -631,9 +645,9 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     this.moveHeartbeat = window.setInterval(this.resendMoveDir, MOVE_HEARTBEAT_MS);
 
     const loop = (now: number) => {
-      // Um frame ruim NUNCA pode matar o loop: se draw() lançasse, o requestAnimationFrame abaixo não
-      // era reagendado e o canvas congelava de vez (enquanto backend/helper seguiam jogando — a "tela
-      // travada controlada pelo helper"). Isolamos o frame: logamos a 1ª falha (com stack) e seguimos.
+      // A bad frame must never kill the loop: if draw() throws, the requestAnimationFrame below would not
+      // be scheduled again and the canvas would freeze while the backend/helper kept playing.
+      // Isolate the frame: log the first failure with its stack, then continue.
       try {
         this.renderer?.draw(now);
         if (this.mini?.nativeElement) this.renderer?.drawMinimap(this.mini.nativeElement);
@@ -645,12 +659,12 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     this.raf = requestAnimationFrame(loop);
   }
 
-  // Render loop é best-effort: um erro de desenho degrada para um frame perdido, não para o jogo.
+  // The render loop is best-effort: a draw error degrades to one lost frame, not a dead game.
   private renderErrorLogged = false;
   private onRenderError(err: unknown): void {
-    if (this.renderErrorLogged) return; // não floodar o console a 60fps
+    if (this.renderErrorLogged) return; // Do not flood the console at 60fps.
     this.renderErrorLogged = true;
-    console.error('[game] erro no render loop (mantendo o loop vivo):', err);
+    console.error('[game] render loop error (keeping loop alive):', err);
   }
 
   // ---- input ----
@@ -680,8 +694,10 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     else if (k === 'b') this.toggleBag();
     else if (k === 'm') this.sound.toggleMute();
     else if (k === 'f') this.interactNearest();
+    else if (k === 'v') this.targetNearest();
     else if (k === 'tab') { this.toggleStance(); e.preventDefault(); }
-    else if (k === ' ') { this.targetNearest(); e.preventDefault(); }
+    // Dash/Dodge on Space (moved off Shift: 5x Shift triggers the Windows Sticky Keys popup).
+    else if (k === ' ') { this.dash(); e.preventDefault(); }
     else if (k === 'escape') this.leave();
   };
 
@@ -757,6 +773,10 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     this.client.usePotion();
   }
 
+  dash(): void {
+    this.client.dash(this.lastDir.x, this.lastDir.y);
+  }
+
   toggleBag(): void {
     this.showBag.update((v) => !v);
   }
@@ -766,14 +786,14 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   potionTitle(healPct: number): string {
-    return `Poção de cura — restaura ${Math.round(healPct * 100)}% da vida (tecla 5)`;
+    return `Healing potion - restores ${Math.round(healPct * 100)}% HP (key 5)`;
   }
 
   toggleStance(): void {
     this.client.toggleStance();
   }
 
-  // G-10: aplica uma alteração parcial à config do helper (mescla com o estado atual e envia).
+  // G-10: applies a partial helper config change (merges with current state and sends it).
   private applyHelper(patch: Partial<AutoHelperSettingsDto>): void {
     const c = this.snapshot()?.player.autoHelper;
     if (!c) return;
@@ -938,7 +958,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
 
   buffLabel(buff: string): string {
     return {
-      atk: 'ATK+', haste: 'VEL+', atkspeed: 'AS+', shield: 'ESCUDO', crit: 'CRIT+',
+      atk: 'ATK+', haste: 'SPD+', atkspeed: 'AS+', shield: 'SHIELD', crit: 'CRIT+',
       bloodrage: 'BLOOD RAGE', aegis: 'AEGIS',
     }[buff] ?? buff;
   }
@@ -952,8 +972,8 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
 
   elementLabel(element: string): string {
     return {
-      physical: 'Fisico', holy: 'Sagrado', ice: 'Gelo',
-      earth: 'Terra', energy: 'Energia', fire: 'Fogo', support: 'Suporte',
+      physical: 'Physical', holy: 'Holy', ice: 'Ice',
+      earth: 'Earth', energy: 'Energy', fire: 'Fire', support: 'Support',
     }[element] ?? element;
   }
 

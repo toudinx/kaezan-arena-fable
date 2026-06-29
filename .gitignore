@@ -1,5 +1,6 @@
 # .NET
 bin/
+bin_*/
 obj/
 .build/
 backend/.tmpbuild/
@@ -23,3 +24,7 @@ Thumbs.db
 
 # Output / generated assets
 output/
+
+# Python caches
+__pycache__/
+*.pyc

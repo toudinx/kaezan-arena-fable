@@ -30,6 +30,10 @@ O dev server **não** sobe o backend — rode `dotnet run` em paralelo. `/api` e
 
 ## Convenções
 
+- **Idioma: a UI é em inglês.** Toda string visível ao jogador (templates, `aria-label`/`title`/
+  `placeholder`, toasts, constantes de label) e todo comentário de código são em **inglês**, sem
+  exceção. Lore/specs em `docs/**` e `docs_web/**` ficam em português. Ver
+  `docs/roadmap_i18n_english_migration.md`.
 - Componente standalone com `imports: [...]` explícito e `template` inline (veja
   `pages/mode/mode.ts`). Use control flow novo (`@if`, `@for` com `track`), não `*ngIf`/`*ngFor`.
 - Estado reativo: `signal()` / `computed()`. Evite `Subject`/`BehaviorSubject` salvo

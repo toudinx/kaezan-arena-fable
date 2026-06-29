@@ -26,8 +26,8 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
       <div class="scrim"></div>
       <div class="content-divider" aria-hidden="true"></div>
 
-      <aside class="banner-rail" aria-label="Banners disponiveis">
-        <span class="eyebrow">Convocacao</span>
+      <aside class="banner-rail" aria-label="Available banners">
+        <span class="eyebrow">Summon</span>
         @for (b of banners(); track b.id) {
           <button class="banner-tab" [class.active]="b.id === activeBanner()?.id"
                   [style.--rc]="bannerRarityColor(b)"
@@ -46,38 +46,38 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
               } @else {
                 <span class="tab-glyph">✦</span>
               }
-              <span class="tab-badge">{{ b.featuredWaifuId ? 'EVENT' : 'PADRAO' }}</span>
+              <span class="tab-badge">{{ b.featuredWaifuId ? 'EVENT' : 'STANDARD' }}</span>
             </span>
           </button>
         }
       </aside>
 
-      <div class="utility-row" aria-label="Ferramentas do banner">
-        <button class="utility-btn" type="button" (click)="ratesOpen.set(true)" aria-label="Informacoes do banner">
+      <div class="utility-row" aria-label="Banner tools">
+        <button class="utility-btn" type="button" (click)="ratesOpen.set(true)" aria-label="Banner info">
           i
         </button>
       </div>
 
       @if (activeBanner(); as b) {
         <main class="banner-copy">
-          <span class="eyebrow">Banner ativo</span>
+          <span class="eyebrow">Active banner</span>
           <h1>{{ b.name }}</h1>
 
-          <section class="pity-strip" aria-label="Progresso de garantia">
+          <section class="pity-strip" aria-label="Guarantee progress">
             <div class="pity-title">
-              <span>Kaeli em</span>
+              <span>Kaeli in</span>
               <strong>{{ pullsUntilFiveStar(b.id) }}</strong>
-              <span>convocacoes</span>
+              <span>summons</span>
               @if (pity(b.id).featuredGuaranteed) {
-                <span class="guaranteed">Kaeli destaque garantida</span>
+                <span class="guaranteed">Featured Kaeli guaranteed</span>
               }
             </div>
             <div class="guarantee-bar">
               <div class="fill" [style.width.%]="fiveStarPercent(b.id)"></div>
             </div>
             <div class="pity-meta">
-              <span>{{ pity(b.id).pullsSinceFiveStar }}/80 para Kaeli</span>
-              <span>Demais convocacoes: item comum aleatorio</span>
+              <span>{{ pity(b.id).pullsSinceFiveStar }}/80 to Kaeli</span>
+              <span>Other summons: random common item</span>
             </div>
           </section>
         </main>
@@ -86,18 +86,18 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
           <div class="action-row">
             <ui-button variant="ghost" [loading]="busy()" [disabled]="kaeros() < pullCost()"
                        (act)="pull(b.id, 1)">
-              Convocar x1 <span class="cost">{{ pullCost() }} ✦</span>
+              Summon x1 <span class="cost">{{ pullCost() }} ✦</span>
             </ui-button>
             <ui-button variant="gold" [loading]="busy()" [disabled]="kaeros() < pullCost() * 10"
                        (act)="pull(b.id, 10)">
-              Convocar x10 <span class="cost">{{ pullCost() * 10 }} ✦</span>
+              Summon x10 <span class="cost">{{ pullCost() * 10 }} ✦</span>
             </ui-button>
           </div>
         </section>
       }
 
       @if (activeFeatured(); as fw) {
-        <aside class="featured-callout" [style.--el]="elementColor(fw.element)" aria-label="Kaeli em destaque">
+        <aside class="featured-callout" [style.--el]="elementColor(fw.element)" aria-label="Featured Kaeli">
           <span class="featured-element">{{ elementLabel(fw.element) }}</span>
           <div class="featured-name">
             <strong>{{ fw.name }}</strong>
@@ -109,26 +109,26 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
 
       @if (ratesOpen()) {
         <div class="rates-scrim" (click)="ratesOpen.set(false)"></div>
-        <aside class="rates-modal glass-strong" role="dialog" aria-modal="true" aria-label="Taxas do banner">
+        <aside class="rates-modal glass-strong" role="dialog" aria-modal="true" aria-label="Banner rates">
           <header class="rates-head">
             <div>
-              <span class="eyebrow">Informacoes</span>
-              <h2>Taxas do banner</h2>
+              <span class="eyebrow">Info</span>
+              <h2>Banner rates</h2>
             </div>
-            <button class="close-btn" type="button" (click)="ratesOpen.set(false)" aria-label="Fechar">x</button>
+            <button class="close-btn" type="button" (click)="ratesOpen.set(false)" aria-label="Close">x</button>
           </header>
           <div class="rate-block">
             <span class="eyebrow">Resultados</span>
-            <p><b class="five">Kaeli</b> 0.8% · soft pity a partir de 65 · garantida em 80</p>
-            <p><b class="item-rate">Item comum</b> em todos os resultados sem Kaeli</p>
+            <p><b class="five">Kaeli</b> 0.8% · soft pity starts at 65 · guaranteed at 80</p>
+            <p><b class="item-rate">Common item</b> on every non-Kaeli result</p>
           </div>
           <div class="rate-block">
-            <span class="eyebrow">Destaque</span>
-            <p>Banner promocional: 50% de chance da Kaeli ser a destaque. Se perder, a proxima Kaeli promocional fica garantida.</p>
+            <span class="eyebrow">Featured</span>
+            <p>Promotional banner: 50% chance for the Kaeli to be the featured one. If you miss, the next promotional Kaeli is guaranteed.</p>
           </div>
           <div class="rate-block">
-            <span class="eyebrow">Duplicatas</span>
-            <p>Duplicatas de Kaeli viram <b>Echo Shards</b> para Ascensao.</p>
+            <span class="eyebrow">Duplicates</span>
+            <p>Duplicate Kaelis become <b>Echo Shards</b> for Ascension.</p>
           </div>
         </aside>
       }
@@ -137,7 +137,7 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
     @if (results(); as res) {
       <div class="overlay"
            (click)="onOverlay()" role="dialog" aria-modal="true"
-           [attr.aria-label]="phase() === 'charge' ? 'Convocando' : 'Resultado da convocacao'">
+           [attr.aria-label]="phase() === 'charge' ? 'Summoning' : 'Summon results'">
 
         @if (phase() === 'charge') {
           <div class="charge" [class.intense]="topRarity() >= 5"
@@ -165,7 +165,7 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
               </svg>
               <span class="column"></span>
             </div>
-            <span class="charge-label eyebrow">Convocando</span>
+            <span class="charge-label eyebrow">Summoning</span>
           </div>
         } @else {
           <span class="flash" [style.--rc]="rarityColor(topRarity())" aria-hidden="true"></span>
@@ -195,18 +195,18 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
                   <span class="sweep" aria-hidden="true"></span>
                   <div class="plate">
                     @if (r.kind === 'item') {
-                      <div class="stars item-label">Item comum</div>
+                      <div class="stars item-label">Common item</div>
                     } @else {
                       <div class="stars kaeli-label" [style.color]="rarityColor(r.rarity)">Kaeli</div>
                     }
                     <div class="name">{{ r.name }}</div>
                     <div class="tags">
                       @if (r.kind === 'item') {
-                        <span class="tag item">+{{ r.count }} na Mochila</span>
+                        <span class="tag item">+{{ r.count }} to Backpack</span>
                       } @else {
-                        @if (r.isNew) { <span class="tag new">NOVA!</span> }
+                        @if (r.isNew) { <span class="tag new">NEW!</span> }
                         @else { <span class="tag shards">+{{ r.shardsGained }} shards</span> }
-                        @if (r.wasFeatured && !isBatch()) { <span class="tag feat">DESTAQUE</span> }
+                        @if (r.wasFeatured && !isBatch()) { <span class="tag feat">FEATURED</span> }
                       }
                     </div>
                   </div>
@@ -218,9 +218,9 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
 
         <div class="reveal-controls" (click)="$event.stopPropagation()">
           @if (allRevealed()) {
-            <button class="ctrl primary" type="button" (click)="dismiss()">Fechar</button>
+            <button class="ctrl primary" type="button" (click)="dismiss()">Close</button>
           } @else {
-            <button class="ctrl" type="button" (click)="skip()">Pular animacao</button>
+            <button class="ctrl" type="button" (click)="skip()">Skip animation</button>
           }
         </div>
       </div>
@@ -495,7 +495,7 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
     }
     @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
 
-    /* ---- charge: circulo arcano + coluna que antecipam o melhor resultado ---- */
+    /* ---- charge: arcane circle + column preview the best result ---- */
     .charge { display: flex; flex-direction: column; align-items: center; gap: 26px; animation: chargeIn var(--dur) var(--ease-out); }
     @keyframes chargeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
     .rune-stage {
@@ -539,7 +539,7 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes spinRev { to { transform: rotate(-360deg); } }
 
-    /* burst de luz no instante da revelacao (cor = melhor resultado do lote) */
+    /* light burst at reveal time (color = best batch result) */
     .flash {
       position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
       background: radial-gradient(circle at 50% 48%, #fff 0%,
@@ -548,7 +548,7 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
     }
     @keyframes flash { 0% { opacity: 0; } 14% { opacity: 0.92; } 100% { opacity: 0; } }
 
-    /* ---- reveal: cartas ---- */
+    /* ---- reveal: cards ---- */
     .reveal { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
     .reveal.batch { max-width: 880px; }
     .card {
@@ -571,7 +571,7 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
       box-shadow: 0 0 18px color-mix(in srgb, var(--rc) 38%, transparent), var(--sh-2);
       overflow: hidden;
     }
-    /* hairline interno (crystal edge) na cor do resultado */
+    /* inner hairline (crystal edge) in the result color */
     .inner::after {
       content: ''; position: absolute; inset: 5px; z-index: 2; pointer-events: none;
       border: 1px solid color-mix(in srgb, var(--rc) 45%, transparent);
@@ -588,7 +588,7 @@ import { BannerDef, ELEMENT_LABELS, PullResult, RARITY_COLORS } from '../../core
       background: radial-gradient(circle, rgba(255,255,255,0.14), rgba(255,255,255,0.03) 62%, transparent 72%);
       filter: drop-shadow(0 12px 22px rgba(0,0,0,0.45));
     }
-    /* light sweep dourado cruzando o retrato/item ao revelar */
+    /* golden light sweep crossing the portrait/item on reveal */
     .sweep {
       position: absolute; top: 0; bottom: 0; left: -45%; width: 38%; z-index: 1; pointer-events: none;
       transform: skewX(-16deg); opacity: 0; mix-blend-mode: screen;
@@ -702,16 +702,16 @@ export class RecruitPage implements OnDestroy {
   readonly ratesOpen = signal(false);
   readonly results = signal<PullResult[] | null>(null);
   readonly revealed = signal(0);
-  /** 'charge' = circulo de antecipação; 'reveal' = cartas reveladas. */
+  /** 'charge' = anticipation circle; 'reveal' = revealed cards. */
   readonly phase = signal<'charge' | 'reveal'>('charge');
 
   readonly isBatch = computed(() => (this.results()?.length ?? 0) > 1);
   readonly allRevealed = computed(() => this.revealed() >= (this.results()?.length ?? 0));
   readonly spriteSize = computed(() => (this.isBatch() ? 80 : 150));
   readonly itemIconSize = computed(() => (this.isBatch() ? 76 : 132));
-  /** Melhor resultado do lote: colore o circulo antes de revelar. */
+  /** Best result in the batch: colors the circle before reveal. */
   readonly topRarity = computed(() => (this.results() ?? []).reduce((m, r) => Math.max(m, r.rarity), 3));
-  /** Primeira carta com o melhor resultado ganha o destaque do lote. */
+  /** First card with the best result gets the batch highlight. */
   readonly topCardIndex = computed(() => {
     const res = this.results();
     return res ? res.findIndex((r) => r.rarity === this.topRarity()) : -1;
@@ -774,7 +774,7 @@ export class RecruitPage implements OnDestroy {
 
   featuredLabel(banner: BannerDef): string {
     const fw = this.featuredWaifu(banner.featuredWaifuId);
-    return fw ? `${fw.name} rate up` : 'Convocacao padrao';
+    return fw ? `${fw.name} rate up` : 'Standard summon';
   }
 
   fiveStarPercent(bannerId: string): number {
@@ -799,7 +799,7 @@ export class RecruitPage implements OnDestroy {
     }
   }
 
-  /** Abre o overlay na fase de carga; o circulo antecipa o melhor resultado antes da revelacao. */
+  /** Opens the overlay in charge phase; the circle previews the best result before reveal. */
   private openReveal(results: PullResult[]): void {
     this.clearTimers();
     this.results.set(results);
@@ -809,12 +809,12 @@ export class RecruitPage implements OnDestroy {
       this.startReveal();
       return;
     }
-    // build-up arcano completo (circulo + coluna) antes do burst
+    // Full arcane build-up (circle + column) before the burst.
     const chargeMs = results.length > 1 ? 2200 : 1900;
     this.timers.push(setTimeout(() => this.startReveal(), chargeMs));
   }
 
-  /** Troca para as cartas e revela em cascata (1 por vez no x10). */
+  /** Switches to cards and reveals in a cascade (1 at a time on x10). */
   private startReveal(): void {
     this.phase.set('reveal');
     const res = this.results();
@@ -831,7 +831,7 @@ export class RecruitPage implements OnDestroy {
     this.timers.push(id);
   }
 
-  /** Pula a animação: revela tudo imediatamente. */
+  /** Skips the animation: reveals everything immediately. */
   skip(): void {
     this.clearTimers();
     this.phase.set('reveal');
@@ -845,7 +845,7 @@ export class RecruitPage implements OnDestroy {
     this.phase.set('charge');
   }
 
-  /** Clique no fundo: pula enquanto revela, fecha quando concluído. */
+  /** Background click: skips while revealing, closes when complete. */
   onOverlay(): void {
     if (this.allRevealed()) this.dismiss();
     else this.skip();

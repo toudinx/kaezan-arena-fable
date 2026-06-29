@@ -22,17 +22,17 @@ type DropZone = MobKind | 'boss';
     <div class="page">
       <header class="titlebar">
         <div>
-          <span class="eyebrow">Editor de conteudo</span>
-          <h1>Conteudo Kaezan</h1>
-          <p>Crie monstros, items, dungeons e skins usados nas proximas runs.</p>
+          <span class="eyebrow">Content Editor</span>
+          <h1>Kaezan Content</h1>
+          <p>Create monsters, items, dungeons, and skins used in upcoming runs.</p>
         </div>
         <div class="header-actions">
           <div class="tabs page-tabs">
-            <button type="button" [class.active]="pageMode() === 'monsters'" (click)="pageMode.set('monsters')">Monstros</button>
+            <button type="button" [class.active]="pageMode() === 'monsters'" (click)="pageMode.set('monsters')">Monsters</button>
             <button type="button" [class.active]="pageMode() === 'items'" (click)="pageMode.set('items')">Items</button>
             <button type="button" [class.active]="pageMode() === 'dungeons'" (click)="pageMode.set('dungeons')">Dungeons</button>
             <button type="button" [class.active]="pageMode() === 'kaelis'" (click)="pageMode.set('kaelis')">Skins</button>
-            <button type="button" [class.active]="pageMode() === 'roles'" (click)="pageMode.set('roles')">Papéis</button>
+            <button type="button" [class.active]="pageMode() === 'roles'" (click)="pageMode.set('roles')">Roles</button>
             <button type="button" [class.active]="pageMode() === 'banners'" (click)="openBanners()">Banners</button>
           </div>
         </div>
@@ -54,11 +54,11 @@ type DropZone = MobKind | 'boss';
           <div class="banners-head">
             <div>
               <span class="eyebrow">Gacha</span>
-              <h2>Banners ativos</h2>
-              <p class="banners-desc">Escolha até 3 personagens em destaque. O banner padrão é sempre incluído ao final.</p>
+              <h2>Active Banners</h2>
+              <p class="banners-desc">Choose up to 3 featured characters. The standard banner is always included at the end.</p>
             </div>
             <button class="primary" type="button" [disabled]="bannerSaving() || activeBannerWaifuIds().length === 0" (click)="saveBanners()">
-              {{ bannerSaving() ? 'Salvando...' : 'Salvar banners' }}
+              {{ bannerSaving() ? 'Saving...' : 'Save banners' }}
             </button>
           </div>
           <div class="banner-kaeli-grid">
@@ -89,7 +89,7 @@ type DropZone = MobKind | 'boss';
             }
           </div>
           <div class="banner-preview-row">
-            <span class="eyebrow">Ordem na tela de Recrutar</span>
+            <span class="eyebrow">Order on the Recruit screen</span>
             <div class="banner-preview-list">
               @for (id of activeBannerWaifuIds(); track id) {
                 @if (waifuById(id); as w) {
@@ -102,8 +102,8 @@ type DropZone = MobKind | 'boss';
               }
               <div class="bp-chip bp-standard">
                 <span class="bp-num">{{ activeBannerWaifuIds().length + 1 }}</span>
-                <span>Padrão</span>
-                <span class="bp-lock">fixo</span>
+                <span>Standard</span>
+                <span class="bp-lock">fixed</span>
               </div>
             </div>
           </div>
@@ -118,7 +118,7 @@ type DropZone = MobKind | 'boss';
             <div class="catalog-head">
               <div class="tabs">
                 <button type="button" [class.active]="mode() === 'monsters'" (click)="setMode('monsters')">
-                  Monstros <span>{{ commonCount() }}</span>
+                  Monsters <span>{{ commonCount() }}</span>
                 </button>
                 <button type="button" [class.active]="mode() === 'elites'" (click)="setMode('elites')">
                   Elites <span>{{ eliteCount() }}</span>
@@ -127,25 +127,25 @@ type DropZone = MobKind | 'boss';
                   Bosses <span>{{ bossCount() }}</span>
                 </button>
               </div>
-              <span class="result-count">{{ filtered().length }} resultado(s)</span>
+              <span class="result-count">{{ filtered().length }} result(s)</span>
             </div>
 
             <div class="filters">
-              <label>Buscar
-                <input type="search" placeholder="Nome, classe ou origem" [value]="search()"
+              <label>Search
+                <input type="search" placeholder="Name, class, or source" [value]="search()"
                   (input)="search.set($any($event.target).value)" />
               </label>
-              <label>Tipo
+              <label>Type
                 <select (change)="typeFilter.set($any($event.target).value)">
-                  <option value="">Todos</option>
+                  <option value="">All</option>
                   @for (type of classes(); track type) {
                     <option [value]="type" [selected]="type === typeFilter()">{{ type }}</option>
                   }
                 </select>
               </label>
-              <label>Origem
+              <label>Source
                 <select (change)="originFilter.set($any($event.target).value)">
-                  <option value="" [selected]="originFilter() === ''">todas</option>
+                  <option value="" [selected]="originFilter() === ''">all</option>
                   @for (origin of origins(); track origin) {
                     <option [value]="origin" [selected]="origin === originFilter()">{{ originLabel(origin) }}</option>
                   }
@@ -154,7 +154,7 @@ type DropZone = MobKind | 'boss';
             </div>
 
             @if (loading()) {
-              <div class="empty">Carregando conteudo...</div>
+              <div class="empty">Loading content...</div>
             } @else {
               <div class="creature-grid">
                 @for (monster of filtered(); track monster.id) {
@@ -173,7 +173,7 @@ type DropZone = MobKind | 'boss';
                           <i [class]="role.kind">{{ role.label }}</i>
                         }
                       </div>
-                      <small>{{ monster.bestiaryClass || 'Sem classe' }}</small>
+                      <small>{{ monster.bestiaryClass || 'No class' }}</small>
                       <div class="badges">
                         <span>{{ sourceLabel(monster) }}</span>
                         @if (monster.source === 'authored') { <span>T{{ monster.powerTier }}</span> }
@@ -184,7 +184,7 @@ type DropZone = MobKind | 'boss';
                       @if (mode() === 'monsters') {
                         <button type="button" [class.active-common]="inCommon(monster.id)"
                           [disabled]="!canPlace(monster, 'commonMobs')"
-                          (click)="toggle(monster.id, 'commonMobs')">Comum</button>
+                          (click)="toggle(monster.id, 'commonMobs')">Common</button>
                       } @else if (mode() === 'elites') {
                         <button type="button" [class.active-elite]="inElite(monster.id)"
                           [disabled]="!canPlace(monster, 'eliteMobs')"
@@ -192,13 +192,13 @@ type DropZone = MobKind | 'boss';
                       } @else {
                         <button type="button" class="boss-action" [class.active-boss]="isBoss(monster.id)"
                           (click)="setBoss(monster.id)">
-                          {{ isBoss(monster.id) ? 'Boss selecionado' : 'Definir como boss' }}
+                          {{ isBoss(monster.id) ? 'Boss selected' : 'Set as boss' }}
                         </button>
                       }
                     </div>
                   </article>
                 } @empty {
-                  <div class="empty">Nenhuma criatura encontrada.</div>
+                  <div class="empty">No creature found.</div>
                 }
               </div>
             }
@@ -206,11 +206,11 @@ type DropZone = MobKind | 'boss';
 
           <aside class="dungeon panel">
             <div class="dungeon-head">
-              <div><span class="eyebrow">Composicao</span><h2>Dungeon</h2></div>
+              <div><span class="eyebrow">Composition</span><h2>Dungeon</h2></div>
               <div class="dungeon-actions">
                 @if (current(); as tier) { <b class="tier-badge">Tier {{ tier.tier }}</b> }
                 <button class="primary" type="button" [disabled]="busy()" (click)="save()">
-                  {{ saving() ? 'Salvando...' : 'Salvar dungeon' }}
+                  {{ saving() ? 'Saving...' : 'Save dungeon' }}
                 </button>
               </div>
             </div>
@@ -222,21 +222,21 @@ type DropZone = MobKind | 'boss';
             </div>
 
             @if (current(); as tier) {
-              <label>Nome
+              <label>Name
                 <input class="dungeon-name" [value]="tier.name" (input)="setField('name', $any($event.target).value)" />
               </label>
-              <label>Descricao
+              <label>Description
                 <textarea rows="2" [value]="tier.description" (input)="setField('description', $any($event.target).value)"></textarea>
               </label>
               <div class="numbers">
-                <label>Nivel minimo
+                <label>Minimum level
                   <input type="number" min="1" [value]="tier.requiredAccountLevel"
                     (input)="setNum('requiredAccountLevel', $any($event.target).value, 1)" />
                 </label>
               </div>
 
               <section class="group common">
-                <div class="group-head"><h3>Comuns <span>{{ tier.commonMobs.length }}</span></h3><small>Maior presenca no mapa.</small></div>
+                <div class="group-head"><h3>Common <span>{{ tier.commonMobs.length }}</span></h3><small>Largest presence on the map.</small></div>
                 <div class="drop-zone" [class.drop-active]="dropTarget() === 'commonMobs'"
                   (dragover)="allowDrop($event, 'commonMobs')" (dragleave)="leaveDrop('commonMobs')" (drop)="drop($event, 'commonMobs')">
                   @for (ref of tier.commonMobs; track ref) {
@@ -245,12 +245,12 @@ type DropZone = MobKind | 'boss';
                         <span>{{ monster.name }}</span><button type="button" (click)="remove(ref, 'commonMobs')">&times;</button>
                       </div>
                     }
-                  } @empty { <div class="zone-empty">Arraste monstros ou use Comum.</div> }
+                  } @empty { <div class="zone-empty">Drag monsters here or use Common.</div> }
                 </div>
               </section>
 
               <section class="group elite">
-                <div class="group-head"><h3>Elites <span>{{ tier.eliteMobs.length }}</span></h3><small>Ameacas intermediarias e mais raras.</small></div>
+                <div class="group-head"><h3>Elites <span>{{ tier.eliteMobs.length }}</span></h3><small>Rarer mid-tier threats.</small></div>
                 <div class="drop-zone" [class.drop-active]="dropTarget() === 'eliteMobs'"
                   (dragover)="allowDrop($event, 'eliteMobs')" (dragleave)="leaveDrop('eliteMobs')" (drop)="drop($event, 'eliteMobs')">
                   @for (ref of tier.eliteMobs; track ref) {
@@ -259,12 +259,12 @@ type DropZone = MobKind | 'boss';
                         <span>{{ monster.name }}</span><button type="button" (click)="remove(ref, 'eliteMobs')">&times;</button>
                       </div>
                     }
-                  } @empty { <div class="zone-empty">Arraste monstros ou use Elite.</div> }
+                  } @empty { <div class="zone-empty">Drag monsters here or use Elite.</div> }
                 </div>
               </section>
 
               <section class="group boss">
-                <div class="group-head"><h3>Boss <span>1</span></h3><small>Confronto final.</small></div>
+                <div class="group-head"><h3>Boss <span>1</span></h3><small>Final encounter.</small></div>
                 <div class="drop-zone boss-zone" [class.drop-active]="dropTarget() === 'boss'"
                   (dragover)="allowDrop($event, 'boss')" (dragleave)="leaveDrop('boss')" (drop)="drop($event, 'boss')">
                   @if (findMonster(tier.boss); as monster) {
@@ -272,12 +272,12 @@ type DropZone = MobKind | 'boss';
                       <div><strong>{{ monster.name }}</strong><span>{{ monster.bestiaryClass || 'Boss' }}</span>
                         <small>HP {{ monster.health }} · XP {{ monster.experience }}</small></div>
                     </div>
-                  } @else { <div class="zone-empty">Escolha um boss na aba Bosses.</div> }
+                  } @else { <div class="zone-empty">Choose a boss in the Bosses tab.</div> }
                 </div>
               </section>
 
               <footer class="summary">
-                <span><b>{{ tier.commonMobs.length }}</b> comuns</span>
+                <span><b>{{ tier.commonMobs.length }}</b> common</span>
                 <span><b>{{ tier.eliteMobs.length }}</b> elites</span>
                 <span><b>1</b> boss</span>
               </footer>
@@ -441,7 +441,7 @@ export class AdminPage implements OnInit {
     this.bannerStatus.set(null);
     try {
       await this.api.saveAdminBanners(this.activeBannerWaifuIds());
-      this.bannerStatus.set({ kind: 'ok', msg: 'Banners salvos. A tela de Recrutar já reflete a mudança.' });
+      this.bannerStatus.set({ kind: 'ok', msg: 'Banners saved. The Recruit screen already reflects the change.' });
     } catch (err) {
       this.bannerStatus.set({ kind: 'err', msg: (err as Error).message });
     } finally {
@@ -552,13 +552,13 @@ export class AdminPage implements OnInit {
   }
 
   sourceLabel(monster: MonsterCatalogEntry): string {
-    return this.originLabel(this.originKey(monster) || 'LEGADO');
+    return this.originLabel(this.originKey(monster) || 'LEGACY');
   }
 
   roleLabel(reference: string): { label: string; kind: string } | null {
     if (this.isBoss(reference)) return { label: 'BOSS', kind: 'boss' };
     if (this.inElite(reference)) return { label: 'ELITE', kind: 'elite' };
-    if (this.inCommon(reference)) return { label: 'COMUM', kind: 'common' };
+    if (this.inCommon(reference)) return { label: 'COMMON', kind: 'common' };
     return null;
   }
 
@@ -639,7 +639,7 @@ export class AdminPage implements OnInit {
     this.status.set(null);
     try {
       this.draft.set(structuredClone(await this.api.saveAdminTiers(this.draft())));
-      this.status.set({ kind: 'ok', msg: 'Dungeons salvas. As proximas runs ja usam esta composicao.' });
+      this.status.set({ kind: 'ok', msg: 'Dungeons saved. Upcoming runs already use this composition.' });
     } catch (error) {
       this.status.set({ kind: 'err', msg: (error as Error).message });
     } finally {

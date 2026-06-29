@@ -167,10 +167,10 @@ public static class MetaEndpoints
 
         api.MapPost("/account/active-waifu", (ActiveWaifuRequest req, AccountStore store) =>
         {
-            if (!Waifus.ById.ContainsKey(req.WaifuId)) return Results.BadRequest(new { error = "waifu desconhecida" });
+            if (!Waifus.ById.ContainsKey(req.WaifuId)) return Results.BadRequest(new { error = "unknown waifu" });
             return store.Mutate(s =>
             {
-                if (!s.OwnedWaifus.Contains(req.WaifuId)) return Results.BadRequest(new { error = "não possuída" });
+                if (!s.OwnedWaifus.Contains(req.WaifuId)) return Results.BadRequest(new { error = "not owned" });
                 s.ActiveWaifuId = req.WaifuId;
                 return Results.Ok(new { s.ActiveWaifuId });
             });
@@ -232,7 +232,7 @@ public static class MetaEndpoints
             store.Mutate(s =>
             {
                 if (!s.Inventory.TryGetValue(req.ItemId, out var stack) || stack.Count < req.Count || req.Count <= 0)
-                    return Results.BadRequest(new { error = "quantidade inválida" });
+                    return Results.BadRequest(new { error = "invalid quantity" });
                 stack.Count -= req.Count;
                 if (stack.Count == 0) s.Inventory.Remove(req.ItemId);
                 var gold = (long)req.Count * itemRegistry.Value(req.ItemId);
@@ -245,22 +245,22 @@ public static class MetaEndpoints
             store.Mutate(s =>
             {
                 if (!s.OwnedWaifus.Contains(req.WaifuId))
-                    return Results.BadRequest(new { error = "Kaeli não possuída" });
+                    return Results.BadRequest(new { error = "Kaeli not owned" });
                 if (!EquipmentSlots.IsValid(req.Slot))
-                    return Results.BadRequest(new { error = "slot inválido" });
+                    return Results.BadRequest(new { error = "invalid slot" });
                 if (req.Tier is < 1 or > 5)
-                    return Results.BadRequest(new { error = "tier inválido" });
+                    return Results.BadRequest(new { error = "invalid tier" });
                 if (items.Get(req.ItemId) is not { } item || item.Slot != req.Slot)
-                    return Results.BadRequest(new { error = "item incompatível com o slot" });
+                    return Results.BadRequest(new { error = "item incompatible with slot" });
                 if (item.Tier != 0 && item.Tier != req.Tier)
-                    return Results.BadRequest(new { error = $"{item.Name} é do tier {item.Tier}, não do tier {req.Tier}" });
+                    return Results.BadRequest(new { error = $"{item.Name} belongs to tier {item.Tier}, not tier {req.Tier}" });
                 if (kaelis.Find(req.WaifuId) is not { } waifu)
-                    return Results.BadRequest(new { error = "Kaeli desconhecida" });
+                    return Results.BadRequest(new { error = "unknown Kaeli" });
                 if (item.AllowedClassIds is { Count: > 0 }
                     && !item.AllowedClassIds.Contains(waifu.ClassId, StringComparer.OrdinalIgnoreCase))
-                    return Results.BadRequest(new { error = $"{item.Name} nao pode ser usado pela classe {waifu.ClassId}" });
+                    return Results.BadRequest(new { error = $"{item.Name} cannot be used by class {waifu.ClassId}" });
                 if (!s.Inventory.TryGetValue(req.ItemId, out var stack) || stack.Count <= 0)
-                    return Results.BadRequest(new { error = "item não está na Mochila" });
+                    return Results.BadRequest(new { error = "item not in Backpack" });
 
                 var equipKey = AccountState.EquipKey(req.WaifuId, req.Tier);
                 if (!s.Equipment.TryGetValue(equipKey, out var loadout))
@@ -291,14 +291,14 @@ public static class MetaEndpoints
             store.Mutate(s =>
             {
                 if (!EquipmentSlots.IsValid(req.Slot))
-                    return Results.BadRequest(new { error = "slot inválido" });
+                    return Results.BadRequest(new { error = "invalid slot" });
                 if (req.Tier is < 1 or > 5)
-                    return Results.BadRequest(new { error = "tier inválido" });
+                    return Results.BadRequest(new { error = "invalid tier" });
                 var equipKey = AccountState.EquipKey(req.WaifuId, req.Tier);
                 if (!s.Equipment.TryGetValue(equipKey, out var loadout)
                     || !loadout.Remove(req.Slot, out var itemId)
                     || items.Get(itemId) is not { } item)
-                    return Results.BadRequest(new { error = "slot vazio" });
+                    return Results.BadRequest(new { error = "empty slot" });
 
                 if (s.Inventory.TryGetValue(itemId, out var stack))
                     stack.Count++;
@@ -314,10 +314,10 @@ public static class MetaEndpoints
                 return Results.Ok(new { req.WaifuId, req.Slot, itemId, req.Tier });
             }));
 
-        // ---- admin: autoria de conteúdo (editor in-game) ----
+        // ---- admin: content authoring (in-game editor) ----
         var admin = api.MapGroup("/admin");
 
-        // dados de apoio pro editor: lista de mobs e bosses disponíveis (de monsters.json)
+        // editor support data: list of available mobs and bosses (from monsters.json)
         admin.MapGet("/monsters", (MonsterRegistry registry) => Results.Ok(
             registry.All
                 .OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase)
@@ -344,7 +344,7 @@ public static class MetaEndpoints
             modifierMax = GameConfig.AuthoredModifierMax,
             resistanceMin = GameConfig.AuthoredResistanceMin,
             resistanceMax = GameConfig.AuthoredResistanceMax,
-            // G-08B: keyword interaction — tags de carta e faixa de resistência por keyword.
+            // G-08B: keyword interaction — card tags and resistance range per keyword.
             keywordTags = GameConfig.MonsterKeywordTags,
             keywordResistMin = GameConfig.KeywordResistMin,
             keywordResistMax = GameConfig.KeywordResistMax,
@@ -393,26 +393,26 @@ public static class MetaEndpoints
 
         admin.MapPut("/content/tiers", (List<DungeonTier> tiers, ContentStore content, MonsterRegistry registry) =>
         {
-            // validação de conteúdo (mobs/boss existem) antes de persistir
+            // validate content (mobs/boss exist) before persisting
             if (tiers is null || tiers.Count == 0)
-                return Results.BadRequest(new { error = "envie ao menos um tier" });
+                return Results.BadRequest(new { error = "provide at least one tier" });
             if (tiers.Select(t => t.Tier).Distinct().Count() != tiers.Count)
-                return Results.BadRequest(new { error = "números de tier duplicados" });
+                return Results.BadRequest(new { error = "duplicate tier numbers" });
 
             foreach (var t in tiers)
             {
                 if (string.IsNullOrWhiteSpace(t.Name))
-                    return Results.BadRequest(new { error = $"tier {t.Tier}: nome vazio" });
+                    return Results.BadRequest(new { error = $"tier {t.Tier}: empty name" });
                 if (t.CommonMobs.Length == 0)
-                    return Results.BadRequest(new { error = $"tier {t.Tier}: precisa de ao menos 1 mob comum" });
+                    return Results.BadRequest(new { error = $"tier {t.Tier}: requires at least 1 common mob" });
 
                 foreach (var mob in t.CommonMobs.Concat(t.EliteMobs))
                     if (!registry.Contains(mob))
-                        return Results.BadRequest(new { error = $"tier {t.Tier}: mob desconhecido '{mob}'" });
+                        return Results.BadRequest(new { error = $"tier {t.Tier}: unknown mob '{mob}'" });
 
-                // boss pode ser qualquer monstro — o engine escala o HP de quem for escolhido
+                // boss can be any monster — the engine scales HP of whoever is chosen
                 if (!registry.Contains(t.Boss))
-                    return Results.BadRequest(new { error = $"tier {t.Tier}: boss desconhecido '{t.Boss}'" });
+                    return Results.BadRequest(new { error = $"tier {t.Tier}: unknown boss '{t.Boss}'" });
             }
 
             return Results.Ok(content.ReplaceTiers(tiers));
@@ -424,35 +424,35 @@ public static class MetaEndpoints
         admin.MapPut("/content/role-tuning", (List<RoleTuningRow> rows, ContentStore content) =>
         {
             if (rows is null || rows.Count == 0)
-                return Results.BadRequest(new { error = "envie a tabela de papéis" });
+                return Results.BadRequest(new { error = "provide the roles table" });
 
             var known = Enum.GetNames<KaeliRole>().ToHashSet(StringComparer.OrdinalIgnoreCase);
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var row in rows)
             {
                 if (string.IsNullOrWhiteSpace(row.Role) || !known.Contains(row.Role.Trim()))
-                    return Results.BadRequest(new { error = $"papel desconhecido: '{row.Role}'" });
+                    return Results.BadRequest(new { error = $"unknown role: '{row.Role}'" });
                 if (!seen.Add(row.Role.Trim()))
-                    return Results.BadRequest(new { error = $"papel duplicado: '{row.Role}'" });
+                    return Results.BadRequest(new { error = $"duplicate role: '{row.Role}'" });
                 if (row.AutoDmgMult <= 0 || row.SkillDmgMult <= 0)
-                    return Results.BadRequest(new { error = $"{row.Role}: multiplicadores de dano devem ser > 0" });
+                    return Results.BadRequest(new { error = $"{row.Role}: damage multipliers must be > 0" });
                 if (row.BaseAutoAttackMs < 400)
-                    return Results.BadRequest(new { error = $"{row.Role}: velocidade de auto deve ser >= 400ms (piso do engine)" });
+                    return Results.BadRequest(new { error = $"{row.Role}: auto speed must be >= 400ms (engine floor)" });
                 if (row.AutoRange < 1)
-                    return Results.BadRequest(new { error = $"{row.Role}: alcance deve ser >= 1" });
+                    return Results.BadRequest(new { error = $"{row.Role}: range must be >= 1" });
                 if (row.AoeScale <= 0)
-                    return Results.BadRequest(new { error = $"{row.Role}: escala de AOE deve ser > 0" });
+                    return Results.BadRequest(new { error = $"{row.Role}: AoE scale must be > 0" });
             }
             if (!known.All(seen.Contains))
-                return Results.BadRequest(new { error = "envie os 3 papéis (Mage, Archer, Knight)" });
+                return Results.BadRequest(new { error = "provide all 3 roles (Mage, Archer, Knight)" });
 
             try { return Results.Ok(content.ReplaceRoleTunings(rows)); }
             catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
         });
 
-        // ---- admin: Outfit Studio (skins autorais de Kaeli) ----
+        // ---- admin: Outfit Studio (authored Kaeli skins) ----
 
-        // metadados de apoio: roster (pra atribuir a skin), regras de desbloqueio e tamanho da paleta
+        // support metadata: roster (for assigning skins), unlock rules and palette size
         admin.MapGet("/kaeli-authoring", () => Results.Ok(new
         {
             kaelis = Waifus.All.Select(w => new
@@ -464,7 +464,7 @@ public static class MetaEndpoints
                 w.Element,
                 w.ClassId,
                 defaultSkin = new { w.DefaultSkin.LookType, w.DefaultSkin.Head, w.DefaultSkin.Body, w.DefaultSkin.Legs, w.DefaultSkin.Feet },
-                // ids das skins do código (para o guarda-roupa distinguir estática/override) + a padrão
+                // code skin ids (so the wardrobe can distinguish static/override) + the default
                 staticSkinIds = w.Skins.Select(s => s.Id).ToArray(),
                 defaultSkinId = w.DefaultSkin.Id
             }),
@@ -507,15 +507,15 @@ public static class MetaEndpoints
             }
         });
 
-        // reordena as skins autorais de uma Kaeli (guarda-roupa) — controla a ordem no seletor de skin
+        // reorders a Kaeli's authored skins (wardrobe) — controls the order in the skin selector
         admin.MapPost("/content/kaeli-skins/reorder", (ReorderSkinsRequest request, ContentStore content) =>
         {
             if (string.IsNullOrWhiteSpace(request.WaifuId) || request.OrderedIds is null)
-                return Results.BadRequest(new { error = "waifuId e orderedIds são obrigatórios" });
+                return Results.BadRequest(new { error = "waifuId and orderedIds are required" });
             return Results.Ok(content.ReorderKaeliSkins(request.WaifuId, request.OrderedIds));
         });
 
-        // ---- admin: Item Studio (biblioteca Canary + CRUD de itens Kaezan) ----
+        // ---- admin: Item Studio (Canary library + Kaezan item CRUD) ----
 
         admin.MapGet("/items", (GameData data, ContentStore content, ItemRegistry items) =>
             Results.Ok(new
@@ -539,7 +539,7 @@ public static class MetaEndpoints
                     tags = new[]
                     {
                         new { id = GameConfig.AuthoredItemTagNormal, name = "Normal" },
-                        new { id = GameConfig.AuthoredItemTagRelic, name = "Reliquia" }
+                        new { id = GameConfig.AuthoredItemTagRelic, name = "Relic" }
                     },
                     relicMultiplierDefault = GameConfig.AuthoredItemRelicMultiplierDefault,
                     relicMultiplierMin = GameConfig.AuthoredItemRelicMultiplierMin,
@@ -581,11 +581,11 @@ public static class MetaEndpoints
         {
             if (!content.AuthoredItems.Any(item => item.ItemId == id)
                 || items.Get(id) is not { } item)
-                return Results.NotFound(new { error = $"item autoral desconhecido: {id}" });
+                return Results.NotFound(new { error = $"unknown authored item: {id}" });
             if (request.Count is < 1 or > GameConfig.AdminItemGrantMax)
                 return Results.BadRequest(new
                 {
-                    error = $"quantidade deve ficar entre 1 e {GameConfig.AdminItemGrantMax}"
+                    error = $"count must be between 1 and {GameConfig.AdminItemGrantMax}"
                 });
 
             return accounts.Mutate(state =>
@@ -621,13 +621,13 @@ public static class MetaEndpoints
         admin.MapPut("/banners", (BannersRequest req, ContentStore content, GachaService gacha) =>
         {
             if (req.WaifuIds is null || req.WaifuIds.Count == 0)
-                return Results.BadRequest(new { error = "envie ao menos uma waifu" });
+                return Results.BadRequest(new { error = "provide at least one waifu" });
             if (req.WaifuIds.Count > 3)
-                return Results.BadRequest(new { error = "maximo de 3 banners de personagem" });
+                return Results.BadRequest(new { error = "maximum of 3 character banners" });
 
             var unknown = req.WaifuIds.Where(id => !Waifus.ById.ContainsKey(id)).ToArray();
             if (unknown.Length > 0)
-                return Results.BadRequest(new { error = $"waifus desconhecidas: {string.Join(", ", unknown)}" });
+                return Results.BadRequest(new { error = $"unknown waifus: {string.Join(", ", unknown)}" });
 
             var saved = content.SetActiveBanners(req.WaifuIds);
             return Results.Ok(new { activeWaifuIds = saved, banners = gacha.GetBanners() });
@@ -639,7 +639,7 @@ public static class MetaEndpoints
                 state.Inventory.ContainsKey(id)
                 || state.Equipment.Values.Any(loadout => loadout.Values.Contains(id)));
             if (referenced)
-                return Results.BadRequest(new { error = "remova o item dos inventarios e equipamentos antes de excluir" });
+                return Results.BadRequest(new { error = "remove the item from inventories and equipment before deleting" });
             try
             {
                 var removed = content.DeleteAuthoredItem(id);
@@ -705,24 +705,24 @@ public static class MetaEndpoints
         var error = KaeliAuthoring.Validate(definition);
         if (error is not null) return error;
 
-        // override de skin estática: permitido (edita a skin do código), mas só para a dona original
-        // — o id encoda a dona, então re-vincular um id estático a outra Kaeli é recusado.
+        // static skin override: allowed (edits the code skin), but only for the original owner
+        // — the id encodes the owner, so re-linking a static id to another Kaeli is rejected.
         if (Waifus.SkinById.ContainsKey(definition.Id))
         {
             var owner = Waifus.SkinOwner[definition.Id];
             if (!definition.WaifuId.Equals(owner, StringComparison.OrdinalIgnoreCase))
-                return $"a skin {definition.Id} pertence a {owner} e não pode ser re-vinculada";
-            // a skin padrão tem de continuar grátis (é o visual base sempre disponível)
+                return $"skin {definition.Id} belongs to {owner} and cannot be re-linked";
+            // the default skin must remain free (it is the always-available base visual)
             if (definition.Id.Equals(Waifus.ById[owner].DefaultSkin.Id, StringComparison.OrdinalIgnoreCase)
                 && definition.Unlock != "default")
-                return "a skin padrão precisa manter o desbloqueio Padrão";
+                return "the default skin must keep the Default unlock";
             return null;
         }
 
-        // skin com id novo: não pode colidir com outra skin autoral (exceto ela mesma ao editar)
+        // new id skin: must not collide with another authored skin (except itself when editing)
         if (content.AuthoredKaeliSkins.Any(s => s.Id.Equals(definition.Id, StringComparison.OrdinalIgnoreCase))
             && !definition.Id.Equals(currentId, StringComparison.OrdinalIgnoreCase))
-            return $"id de skin ja existe: {definition.Id}";
+            return $"skin id already exists: {definition.Id}";
         return null;
     }
 
@@ -735,19 +735,19 @@ public static class MetaEndpoints
         var error = MonsterAuthoring.Validate(definition);
         if (error is not null) return error;
         if (data.Monsters.ContainsKey(definition.Name))
-            return $"o nome '{definition.Name}' pertence a um placeholder legado; escolha um nome novo";
+            return $"the name '{definition.Name}' belongs to a legacy placeholder; choose a new name";
         if (content.Monsters.Any(m =>
                 !m.Id.Equals(currentId, StringComparison.OrdinalIgnoreCase)
                 && m.Name.Equals(definition.Name, StringComparison.OrdinalIgnoreCase)))
-            return $"nome ja existe: {definition.Name}";
+            return $"name already exists: {definition.Name}";
         if (content.Monsters.Any(m =>
                 !m.Id.Equals(currentId, StringComparison.OrdinalIgnoreCase)
                 && m.Id.Equals(definition.Id, StringComparison.OrdinalIgnoreCase)))
-            return $"id ja existe: {definition.Id}";
+            return $"id already exists: {definition.Id}";
         if (!string.IsNullOrWhiteSpace(definition.AppearanceId)
             && !data.MonsterAppearances.Any(appearance =>
                 appearance.Id.Equals(definition.AppearanceId, StringComparison.OrdinalIgnoreCase)))
-            return $"aparencia Canary desconhecida: {definition.AppearanceId}";
+            return $"unknown Canary appearance: {definition.AppearanceId}";
         return null;
     }
 

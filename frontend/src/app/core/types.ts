@@ -50,9 +50,9 @@ export interface KaeliAuthoringKaeli {
   element: string;
   classId: string;
   defaultSkin: { lookType: number; head: number; body: number; legs: number; feet: number };
-  /** ids das skins definidas no código (estáticas) — o guarda-roupa usa para distinguir override. */
+  /** ids of code-defined skins (static); the wardrobe uses them to distinguish overrides. */
   staticSkinIds: string[];
-  /** id da skin padrão (índice 0); precisa manter o desbloqueio "default". */
+  /** default skin id (index 0); must keep the "default" unlock. */
   defaultSkinId: string;
 }
 
@@ -189,7 +189,7 @@ export interface DungeonTier {
   statMultiplier: number;
 }
 
-/** MG-05: linha de tuning por papel editável no admin (espelha RoleTuningRow do backend). */
+/** MG-05: editable role tuning row in admin (mirrors backend RoleTuningRow). */
 export interface RoleTuningRow {
   role: string;
   autoDmgMult: number;
@@ -249,7 +249,7 @@ export interface MonsterDefinition {
   cadenceMultiplier: number;
   bestiaryClass: string;
   resistances: Record<string, number>;
-  // G-08B: resistência por keyword de carta (sin/curse/burn/charge/frost/posture/combo/prey); % 0-100, negativo amplifica.
+  // G-08B: resistance by card keyword (sin/curse/burn/charge/frost/posture/combo/prey); % 0-100, negative amplifies.
   keywordResistances: Record<string, number>;
   appearanceId: string;
   enabled: boolean;
@@ -311,7 +311,7 @@ export interface MonsterAuthoringMetadata {
   modifierMax: number;
   resistanceMin: number;
   resistanceMax: number;
-  // G-08B: tags de keyword (de G-04) e faixa de resistência por keyword.
+  // G-08B: keyword tags (from G-04) and keyword resistance range.
   keywordTags: string[];
   keywordResistMin: number;
   keywordResistMax: number;
@@ -351,7 +351,7 @@ export interface ItemCatalogEntry {
   holyResistance: number;
   allowedClassIds: string[];
   requiredMasteryPoints: number;
-  /** 0 = sem-tier (legado, equipável em qualquer loadout); 1..5 = peça de set travada no tier. */
+  /** 0 = tierless (legacy, equippable in any loadout); 1..5 = set piece locked to that tier. */
   tier: number;
   tag: 'normal' | 'relic';
   statMultiplier: number;
@@ -360,15 +360,15 @@ export interface ItemCatalogEntry {
 export type EquipmentSlot = 'helmet' | 'armor' | 'weapon' | 'necklace' | 'ring' | 'mount';
 export type EquipmentLoadout = Partial<Record<EquipmentSlot, number>>;
 
-/** Chave do loadout: um set por Kaeli POR tier. Espelha AccountState.EquipKey no backend. */
+/** Loadout key: one set per Kaeli PER tier. Mirrors backend AccountState.EquipKey. */
 export function equipKey(waifuId: string, tier: number): string {
   return `${waifuId}#${tier}`;
 }
 
-/** Tiers de set disponíveis (1..5), alinhados aos tiers de dungeon. */
+/** Available set tiers (1..5), aligned with dungeon tiers. */
 export const SET_TIERS = [1, 2, 3, 4, 5] as const;
 
-/** Item enriquecido com categoria/subcategoria + flag de edição, para o editor de itens do admin. */
+/** Item enriched with category/subcategory plus edit flag for the admin item editor. */
 export interface ItemCapabilities {
   attack: boolean;
   armor: boolean;
@@ -558,13 +558,13 @@ export interface AutoHelperSettingsDto {
   targetPreference: 'lowestHp' | 'nearest';
   movementMode: 'none' | 'follow' | 'avoid';
   defaultMovementMode: 'follow' | 'avoid';
-  /** G-10: auto-usa a poção quando a vida cai abaixo de autoHealPct%. */
+  /** G-10: auto-uses the potion when health falls below autoHealPct%. */
   autoHeal: boolean;
-  /** G-10: limiar do auto-heal em % (10..90, default 50). */
+  /** G-10: auto-heal threshold in % (10..90, default 50). */
   autoHealPct: number;
-  /** G-10: auto-loot — 'off' | 'loot' (coleta baús/altares e segue pra saída). */
+  /** G-10: auto-loot — 'off' | 'loot' (collects chests/altars and heads to the exit). */
   navMode: 'off' | 'loot';
-  /** G-10: pega sozinho a carta de maior raridade na oferta. */
+  /** G-10: automatically picks the highest-rarity card in the offer. */
   autoCards: boolean;
 }
 
@@ -574,12 +574,12 @@ export interface PoiDto {
   x: number;
   y: number;
   itemId: number;
-  /** G-09: "" (comum) | "cursed" (baú amaldiçoado, telegrafado). Mímicos chegam como "" (surpresa). */
+  /** G-09: "" (common) | "cursed" (cursed chest, telegraphed). Mimics arrive as "" (surprise). */
   variant: string;
   used: boolean;
 }
 
-/** G-09: material de Eco — ids sintéticos (1 por tier) fora do catálogo de itens equipáveis. */
+/** G-09: Echo material — synthetic ids (1 per tier) outside the equippable item catalog. */
 export const GEAR_MATERIAL_ID_BASE = 950000;
 export function isGearMaterial(itemId: number): boolean {
   return itemId > GEAR_MATERIAL_ID_BASE && itemId <= GEAR_MATERIAL_ID_BASE + 5;
@@ -672,6 +672,9 @@ export interface PlayerDto {
   potionCooldownRemainingMs: number;
   potionCooldownTotalMs: number;
   potionHealPct: number;
+  dashCooldownRemainingMs: number;
+  dashCooldownTotalMs: number;
+  dashReady: boolean;
   trait: TraitStateDto;
 }
 
@@ -786,11 +789,11 @@ export interface RunStateDto {
   elapsedMs: number;
   ended: RunEndDto | null;
   items: RewardItemDto[];
-  /** G-10: tile/tipo pra onde o auto-loot está andando (null = pathing off). */
+  /** G-10: tile/type the auto-loot is walking toward (null = pathing off). */
   navTarget: NavTargetDto | null;
 }
 
-/** G-10: alvo atual do auto-loot — só legibilidade (a Kaeli caminha pra lá). */
+/** G-10: current auto-loot target — readability only (the Kaeli walks there). */
 export interface NavTargetDto {
   x: number;
   y: number;
@@ -817,18 +820,18 @@ export const RARITY_COLORS: Record<number, string> = {
 };
 
 export const ELEMENT_LABELS: Record<string, string> = {
-  physical: 'Físico',
-  fire: 'Fogo',
-  ice: 'Gelo',
-  energy: 'Energia',
-  earth: 'Terra',
-  death: 'Morte',
-  holy: 'Sagrado',
-  support: 'Suporte',
+  physical: 'Physical',
+  fire: 'Fire',
+  ice: 'Ice',
+  energy: 'Energy',
+  earth: 'Earth',
+  death: 'Death',
+  holy: 'Holy',
+  support: 'Support',
 };
 
 export const WEAPON_LABELS: Record<string, string> = {
-  melee: 'Corpo a corpo',
-  bow: 'Arco',
-  wand: 'Cajado',
+  melee: 'Melee',
+  bow: 'Bow',
+  wand: 'Wand',
 };

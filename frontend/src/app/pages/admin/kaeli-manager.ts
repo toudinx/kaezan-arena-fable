@@ -3,11 +3,11 @@ import { KaeliStudio, StudioSeed } from './kaeli-studio';
 import { KaeliWardrobe } from './kaeli-wardrobe';
 
 /**
- * Host da aba Kaelis: alterna entre o <b>Guarda-roupa</b> (gestão de skins por Kaeli) e o
- * <b>Outfit Studio</b> (desenho visual). O guarda-roupa é a entrada; "Nova skin"/"Editar visual"
- * abrem o estúdio já apontado à Kaeli/skin via {@link StudioSeed}, e o estúdio volta pelo evento
- * <code>closed</code>. Trocar de visão remonta o componente alvo, então o guarda-roupa relê o
- * catálogo (recarregado a cada salvar) e reflete as mudanças.
+ * Host for the Kaelis tab: switches between the <b>Wardrobe</b> (skin management per Kaeli) and the
+ * <b>Outfit Studio</b> (visual authoring). The wardrobe is the entry point; "New skin"/"Edit visual"
+ * open the studio already pointed at the Kaeli/skin through {@link StudioSeed}, and the studio
+ * returns through the <code>closed</code> event. Switching views remounts the target component, so
+ * the wardrobe rereads the catalog (reloaded after every save) and reflects the changes.
  */
 @Component({
   selector: 'app-kaeli-manager',
@@ -15,7 +15,7 @@ import { KaeliWardrobe } from './kaeli-wardrobe';
   imports: [KaeliWardrobe, KaeliStudio],
   template: `
     <div class="sub-tabs">
-      <button type="button" [class.active]="view() === 'wardrobe'" (click)="showWardrobe()">Guarda-roupa</button>
+      <button type="button" [class.active]="view() === 'wardrobe'" (click)="showWardrobe()">Wardrobe</button>
       <button type="button" [class.active]="view() === 'studio'" (click)="showStudio()">Outfit Studio</button>
     </div>
 
@@ -37,7 +37,7 @@ import { KaeliWardrobe } from './kaeli-wardrobe';
 export class KaeliManager {
   readonly view = signal<'wardrobe' | 'studio'>('wardrobe');
   readonly seed = signal<StudioSeed | null>(null);
-  /** Última Kaeli vista no guarda-roupa, preservada ao ir/voltar do estúdio. */
+  /** Last Kaeli seen in the wardrobe, preserved when going to/from the studio. */
   readonly lastWaifuId = signal('');
 
   showWardrobe(): void {
@@ -45,7 +45,7 @@ export class KaeliManager {
     this.view.set('wardrobe');
   }
 
-  /** Abre o estúdio "em branco" (botão da sub-aba): nova skin para a primeira Kaeli. */
+  /** Opens a blank studio (sub-tab button): new skin for the first Kaeli. */
   showStudio(): void {
     this.seed.set(null);
     this.view.set('studio');

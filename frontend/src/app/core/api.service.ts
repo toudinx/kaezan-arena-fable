@@ -35,25 +35,25 @@ export class ApiService {
     return this.reloadCatalog();
   }
 
-  /** Re-busca o catálogo ignorando o cache (ex.: depois de editar conteúdo no painel admin). */
+  /** Refetches the catalog while ignoring the cache (for example, after editing admin content). */
   async reloadCatalog(): Promise<Catalog> {
     const cat = await this.request<Catalog>('GET', '/catalog');
     this.catalog.set(cat);
     return cat;
   }
 
-  // ---- admin: autoria de conteúdo ----
+  // ---- admin: content authoring ----
   async getAdminTiers(): Promise<DungeonTier[]> {
     return this.request<DungeonTier[]>('GET', '/admin/content/tiers');
   }
 
   async saveAdminTiers(tiers: DungeonTier[]): Promise<DungeonTier[]> {
     const saved = await this.request<DungeonTier[]>('PUT', '/admin/content/tiers', tiers);
-    await this.reloadCatalog(); // /hunt e dailies passam a refletir a edição
+    await this.reloadCatalog(); // /hunt and dailies now reflect the edit
     return saved;
   }
 
-  // ---- MG-05: tuning por papel ----
+  // ---- MG-05: role tuning ----
   async getAdminRoleTuning(): Promise<RoleTuningRow[]> {
     return this.request<RoleTuningRow[]>('GET', '/admin/content/role-tuning');
   }
@@ -91,7 +91,7 @@ export class ApiService {
     await this.reloadCatalog();
   }
 
-  // ---- admin: Outfit Studio (skins de Kaeli) ----
+  // ---- admin: Outfit Studio (Kaeli skins) ----
   async getKaeliAuthoringMetadata(): Promise<KaeliAuthoringMetadata> {
     return this.request<KaeliAuthoringMetadata>('GET', '/admin/kaeli-authoring');
   }
@@ -128,7 +128,7 @@ export class ApiService {
     return saved;
   }
 
-  // ---- admin: editor de itens ----
+  // ---- admin: item editor ----
   async getAdminItems(): Promise<AdminItemsPayload> {
     return this.request<AdminItemsPayload>('GET', '/admin/items');
   }
@@ -182,7 +182,7 @@ export class ApiService {
     return res;
   }
 
-  /** Fixa a Kaeli favorita exibida no Início (não tem mais relação com a run). */
+  /** Pins the favorite Kaeli shown on Home (no longer related to the run). */
   async pinWaifu(waifuId: string): Promise<void> {
     await this.request('POST', '/account/active-waifu', { waifuId });
     await this.refreshAccount();

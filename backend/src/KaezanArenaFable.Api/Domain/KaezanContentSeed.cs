@@ -80,25 +80,25 @@ public static class KaezanContentSeed
         new(5, "monster:t5-storm-tyrant", "Storm Tyrant", "elite", "artillery", "energy", "glass", "earth", "energy"),
         new(5, "monster:t5-boss-echo-of-kaezan", "Echo of Kaezan", "boss", "controller", "death", "balanced", "holy", "death"),
 
-        // ---- G-08B: criaturas-assinatura dos novos arquétipos (apêndice — não desloca os outfits acima) ----
-        // Ecoídes: enxame de eco (swarm) — derrete no fogo (amplifica burn) pra empurrar build de Rin.
-        new(1, "monster:t1-echoides", "Ecoide", "common", "swarm", "death", "glass", "holy", "death",
+        // ---- G-08B: signature creatures for the new archetypes (appendix — keeps the outfits above fixed) ----
+        // Echoids: echo swarm — melts to fire (amplifies burn) to push Rin builds.
+        new(1, "monster:t1-echoides", "Echoid", "common", "swarm", "death", "glass", "holy", "death",
             Keywords: [("burn", -50)]),
-        // Besta de Investida: avança com dash (charger).
-        new(2, "monster:t2-charge-beast", "Besta de Investida", "common", "charger", "physical", "swift", "fire", "physical"),
-        // Casulo Detonante: corre e explode ao morrer (bomber).
-        new(2, "monster:t2-blast-cocoon", "Casulo Detonante", "common", "bomber", "fire", "glass", "ice", "fire"),
-        // Necromante Caído: invocador miniboss que espelha a Velvet — resiste forte à Maldição (curse:80).
-        new(3, "monster:t3-fallen-necromancer", "Necromante Caido", "elite", "summoner", "death", "caster", "holy", "death",
+        // Charge Beast: advances with a dash.
+        new(2, "monster:t2-charge-beast", "Charge Beast", "common", "charger", "physical", "swift", "fire", "physical"),
+        // Blast Cocoon: rushes in and explodes on death.
+        new(2, "monster:t2-blast-cocoon", "Blast Cocoon", "common", "bomber", "fire", "glass", "ice", "fire"),
+        // Fallen Necromancer: summoner miniboss that mirrors Velvet — strongly resists Curse.
+        new(3, "monster:t3-fallen-necromancer", "Fallen Necromancer", "elite", "summoner", "death", "caster", "holy", "death",
             Keywords: [("curse", 80)]),
-        new(4, "monster:t4-fallen-necromancer", "Necromante Maldito", "elite", "summoner", "death", "caster", "holy", "death",
+        new(4, "monster:t4-fallen-necromancer", "Cursed Necromancer", "elite", "summoner", "death", "caster", "holy", "death",
             Keywords: [("curse", 80)]),
-        // Couraça de Eco: tanque de postura — couraça que só abre brecha no Echo Break.
-        new(3, "monster:t3-echo-bulwark", "Couraca de Eco", "common", "posture-tank", "physical", "tank", "energy", "physical"),
-        // Portador de Eco: escudeiro que redireciona o helper — resiste à Carga, vulnerável à Postura.
-        new(4, "monster:t4-echo-bearer", "Portador de Eco", "common", "shielder", "holy", "caster", "death", "holy",
+        // Echo Bulwark: posture tank — armor only opens during Echo Break.
+        new(3, "monster:t3-echo-bulwark", "Echo Bulwark", "common", "posture-tank", "physical", "tank", "energy", "physical"),
+        // Echo Bearer: shieldbearer that redirects the helper — resists Charge, vulnerable to Posture.
+        new(4, "monster:t4-echo-bearer", "Echo Bearer", "common", "shielder", "holy", "caster", "death", "holy",
             Keywords: [("charge", 60), ("posture", -40)]),
-        new(5, "monster:t5-echo-warden", "Guardiao de Eco", "elite", "shielder", "holy", "caster", "death", "holy",
+        new(5, "monster:t5-echo-warden", "Echo Warden", "elite", "shielder", "holy", "caster", "death", "holy",
             Keywords: [("charge", 60), ("posture", -40)]),
     ];
 
@@ -139,21 +139,21 @@ public static class KaezanContentSeed
     public static IReadOnlyList<AuthoredItemDefinition> AuthoredItems =>
         BuildItems().Select(item => ItemAuthoring.Normalize(item, item.ItemId)).ToList();
 
-    /// <summary>LM-08: seed dos 5 biomas a partir dos defaults canônicos em <see cref="Domain.Biomes"/>
-    /// (idêntico ao código → golden verde sem rebaseline).</summary>
+    /// <summary>LM-08: seeds the 5 biomes from canonical defaults in <see cref="Domain.Biomes"/>
+    /// (identical to code → golden stays green without rebaseline).</summary>
     public static IReadOnlyList<BiomeRow> Biomes => Domain.Biomes.AllDefaults();
 
     public static readonly DungeonTier[] Tiers =
     [
-        new(1, "Toca Ecoante", "Cavernas de cristal vivo onde a terra ainda aprende a lutar.",
+        new(1, "Echoing Den", "Living crystal caves where the earth is still learning to fight.",
             TierRefs(1, "common"), TierRefs(1, "elite"), "monster:t1-boss-heart-of-the-den", 1, 1.0),
-        new(2, "Forte Ferrum", "Um bastiao de ferro, brasa e terra compactada.",
+        new(2, "Ferrum Keep", "A bastion of iron, ember, and packed earth.",
             TierRefs(2, "common"), TierRefs(2, "elite"), "monster:t2-boss-marshal-ferrum", 2, 1.35),
-        new(3, "Cripta Noctra", "Catacumbas de velas frias, ecos santos e morte acumulada.",
+        new(3, "Noctra Crypt", "Catacombs of cold candles, holy echoes, and gathered death.",
             TierRefs(3, "common"), TierRefs(3, "elite"), "monster:t3-boss-abbess-noctra", 3, 1.8),
-        new(4, "Covil Ashscale", "Ninhos vulcanicos onde fogo, pedra e raio dividem a mesma pele.",
+        new(4, "Ashscale Lair", "Volcanic nests where fire, stone, and lightning share the same hide.",
             TierRefs(4, "common"), TierRefs(4, "elite"), "monster:t4-boss-aurelion-ashscale", 4, 2.4),
-        new(5, "Abismo Kaezan", "O fundo da descida, onde os ecos autorais tomam forma final.",
+        new(5, "Kaezan Abyss", "The bottom of the descent, where authored echoes take their final shape.",
             TierRefs(5, "common"), TierRefs(5, "elite"), "monster:t5-boss-echo-of-kaezan", 5, 3.2),
     ];
 
@@ -165,7 +165,7 @@ public static class KaezanContentSeed
         if (seed.ResistTo != "physical") resistances[seed.ResistTo] = seed.Rank == "boss" ? 20 : 10;
         if (!string.IsNullOrWhiteSpace(seed.WeakTo)) resistances[seed.WeakTo] = seed.Rank == "boss" ? -15 : -10;
 
-        // G-08B: resistência por keyword de carta (curse/burn/charge/posture...).
+        // G-08B: card keyword resistance (curse/burn/charge/posture...).
         var keywords = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
         if (seed.Keywords is not null)
             foreach (var (tag, pct) in seed.Keywords) keywords[tag] = pct;
@@ -180,7 +180,7 @@ public static class KaezanContentSeed
         return MonsterAuthoring.Normalize(new MonsterDefinition(
             seed.Id,
             seed.Name,
-            $"Criatura Kaezan T{seed.Tier} {seed.Rank} de elemento {seed.Element}.",
+            $"Kaezan T{seed.Tier} {seed.Rank} creature of the {seed.Element} element.",
             outfit,
             corpse,
             seed.Tier,

@@ -10,7 +10,7 @@ import { CurrencyPill } from '../core/ui/currency-pill';
   imports: [RouterOutlet, RouterLink, RouterLinkActive, CurrencyPill],
   template: `
     <header class="topbar">
-      <a routerLink="/" class="brand" aria-label="Kaezan Arena Fable - Início">
+      <a routerLink="/" class="brand" aria-label="Kaezan Arena Fable - Home">
         <span class="brand-mark">K</span>
         <span class="brand-copy">
           <strong>Kaezan</strong>
@@ -18,36 +18,36 @@ import { CurrencyPill } from '../core/ui/currency-pill';
         </span>
       </a>
 
-      <nav class="main-nav" aria-label="Navegação principal">
-        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Início</a>
-        <a routerLink="/hunt" routerLinkActive="active">Caçada</a>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Home</a>
+        <a routerLink="/hunt" routerLinkActive="active">Hunt</a>
         <a routerLink="/kaelis" routerLinkActive="active">Kaelis</a>
-        <a routerLink="/recruit" routerLinkActive="active" class="reward">Recrutar</a>
-        <a routerLink="/backpack" routerLinkActive="active">Mochila</a>
-        <a routerLink="/bestiary" routerLinkActive="active">Bestiário</a>
+        <a routerLink="/recruit" routerLinkActive="active" class="reward">Recruit</a>
+        <a routerLink="/backpack" routerLinkActive="active">Backpack</a>
+        <a routerLink="/bestiary" routerLinkActive="active">Bestiary</a>
       </nav>
 
       <div class="status">
         @if (account(); as acc) {
-          <span class="level-pill" title="Nível de conta">
-            <span>Conta</span>
+          <span class="level-pill" title="Account level">
+            <span>Account</span>
             <strong>Lv. {{ acc.accountLevel }}</strong>
           </span>
-          <currency-pill icon="🪙" label="Ouro" [value]="acc.gold" />
+          <currency-pill icon="🪙" label="Gold" [value]="acc.gold" />
           <currency-pill icon="✦" label="Kaeros" tone="gold" [value]="acc.kaeros" />
 
           @if (acc.offlineReward; as idle) {
-            <span class="offline-pill" [title]="'Creditos de ' + idle.creditedMinutes + ' min offline'">
-              Offline +{{ idle.gold }} ouro · +{{ idle.accountXp }} XP
+            <span class="offline-pill" [title]="'Credits from ' + idle.creditedMinutes + ' min offline'">
+              Offline +{{ idle.gold }} gold · +{{ idle.accountXp }} XP
             </span>
           }
 
           <details class="tools" routerLinkActive="admin-active">
-            <summary title="Ferramentas" aria-label="Ferramentas">⚙</summary>
+            <summary title="Tools" aria-label="Tools">⚙</summary>
             <div class="tools-menu">
               <a routerLink="/admin" routerLinkActive="active" class="tool-link">
                 <span>Admin</span>
-                <small>Ferramental</small>
+                <small>Tools</small>
               </a>
               @if (devMode) {
                 <button class="tool-link dev-grant" type="button" title="[DEV] +1600 Kaeros (10 pulls)" (click)="addKaeros()">

@@ -68,7 +68,7 @@ public sealed class RewardService(AccountStore store, DailyService dailies)
             state.Kaeros += end.KaerosEarned;
             GrantAccountXp(state, end.AccountXpEarned);
 
-            // kaeli depth: afinidade por uso + pontos de maestria para a Kaeli da run
+            // kaeli depth: affinity per use + mastery points for the run's Kaeli
             var affinityXp = (end.Victory ? GameConfig.AffinityXpVictory : GameConfig.AffinityXpDefeat)
                              + GameConfig.AffinityXpPerRunLevel * end.RunLevel;
             KaeliService.GrantAffinityXp(state, world.Waifu, affinityXp, notes);
@@ -77,7 +77,7 @@ public sealed class RewardService(AccountStore store, DailyService dailies)
             if (!state.Mastery.TryGetValue(world.Waifu.Id, out var mastery))
                 state.Mastery[world.Waifu.Id] = mastery = new MasteryState();
             mastery.Points += masteryPoints;
-            notes.Add($"{world.Waifu.Name}: +{affinityXp} afinidade · +{masteryPoints} ponto(s) de maestria");
+            notes.Add($"{world.Waifu.Name}: +{affinityXp} affinity · +{masteryPoints} mastery point(s)");
 
             foreach (var (species, kills) in world.KillsBySpecies)
                 state.BestiaryKills[species] = state.BestiaryKills.GetValueOrDefault(species) + kills;
@@ -104,8 +104,8 @@ public sealed class RewardService(AccountStore store, DailyService dailies)
                 contract.Progress = Math.Min(contract.Progress, contract.Target);
                 if (contract.Progress > before)
                     notes.Add(contract.Progress >= contract.Target
-                        ? $"Contrato completo: {contract.Description}"
-                        : $"Contrato {contract.Progress}/{contract.Target}: {contract.Description}");
+                        ? $"Contract complete: {contract.Description}"
+                        : $"Contract {contract.Progress}/{contract.Target}: {contract.Description}");
             }
         });
 

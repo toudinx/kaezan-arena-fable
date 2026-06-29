@@ -8,7 +8,7 @@ namespace KaezanArenaFable.Api.Meta;
 
 /// <summary>
 /// 3 deterministic contracts per UTC day (kaezan-arena Daily Contracts idea,
-/// com progressão alimentada pelos eventos de run estilo Daily Hub do Kaezan).
+/// progression fed by run events in the style of the Kaezan Daily Hub).
 /// </summary>
 public sealed class DailyService(AccountStore store, MonsterRegistry monsters, ContentStore content)
 {
@@ -21,6 +21,11 @@ public sealed class DailyService(AccountStore store, MonsterRegistry monsters, C
             {
                 state.DailyDate = today;
                 state.Dailies = Generate(state.Id, today);
+            }
+            else
+            {
+                foreach (var contract in state.Dailies)
+                    contract.Description = DescriptionFor(contract);
             }
             return state.Dailies.Select(Clone).ToList();
         });
@@ -50,7 +55,7 @@ public sealed class DailyService(AccountStore store, MonsterRegistry monsters, C
             Kind = "kill_species",
             Param = species,
             Target = killTarget,
-            Description = $"Derrote {killTarget}x {monsters.Get(species).Name} ({monsters.Get(species).BestiaryClass})"
+            Description = KillDescription(species, killTarget)
         });
 
         // 2) clear contract
@@ -61,7 +66,7 @@ public sealed class DailyService(AccountStore store, MonsterRegistry monsters, C
             Kind = "clear_tier",
             Param = clearTier.Tier.ToString(),
             Target = 1,
-            Description = $"Silencie a dungeon \"{clearTier.Name}\" (derrote o boss)"
+            Description = ClearDescription(clearTier.Tier)
         });
 
         // 3) one of: chests or gold
@@ -73,7 +78,7 @@ public sealed class DailyService(AccountStore store, MonsterRegistry monsters, C
                 Kind = "open_chests",
                 Param = "",
                 Target = 3,
-                Description = "Abra 3 baús em dungeons"
+                Description = "Open 3 chests in dungeons"
             });
         }
         else
@@ -85,11 +90,34 @@ public sealed class DailyService(AccountStore store, MonsterRegistry monsters, C
                 Kind = "collect_gold",
                 Param = "",
                 Target = goldTarget,
-                Description = $"Saqueie {goldTarget} de ouro em runs"
+                Description = $"Collect {goldTarget} gold in runs"
             });
         }
 
         return contracts;
+    }
+
+    private string DescriptionFor(DailyContract contract) => contract.Kind switch
+    {
+        "kill_species" => KillDescription(contract.Param, contract.Target),
+        "clear_tier" => int.TryParse(contract.Param, out var tier)
+            ? ClearDescription(tier)
+            : contract.Description,
+        "open_chests" => "Open 3 chests in dungeons",
+        "collect_gold" => $"Collect {contract.Target} gold in runs",
+        _ => contract.Description
+    };
+
+    private string KillDescription(string species, long target)
+    {
+        var monster = monsters.Get(species);
+        return $"Defeat {target}x {monster.Name} ({monster.BestiaryClass})";
+    }
+
+    private string ClearDescription(int tier)
+    {
+        var tierName = content.Tier(tier)?.Name ?? $"Tier {tier}";
+        return $"Clear the dungeon \"{tierName}\" (defeat the boss)";
     }
 
     public object Claim(string contractId)
@@ -98,9 +126,9 @@ public sealed class DailyService(AccountStore store, MonsterRegistry monsters, C
         return store.Mutate(state =>
         {
             var contract = state.Dailies.FirstOrDefault(c => c.Id == contractId)
-                           ?? throw new ArgumentException("contrato não encontrado");
-            if (contract.Claimed) throw new InvalidOperationException("já resgatado");
-            if (contract.Progress < contract.Target) throw new InvalidOperationException("incompleto");
+                           ?? throw new ArgumentException("contract not found");
+            if (contract.Claimed) throw new InvalidOperationException("already claimed");
+            if (contract.Progress < contract.Target) throw new InvalidOperationException("incomplete");
             contract.Claimed = true;
             state.Kaeros += GameConfig.DailyKaerosReward;
             state.Gold += GameConfig.DailyGoldReward;

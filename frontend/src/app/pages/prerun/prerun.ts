@@ -7,7 +7,7 @@ import { OutfitPreview } from '../../core/outfit-preview';
 import { tierBiome } from '../../core/tier-biomes';
 import { ELEMENT_LABELS, RARITY_COLORS, SkinDef, WaifuDef } from '../../core/types';
 
-/** Tela de deploy: escolher a Kaeli da hunt, sem editar build/equipamento. */
+/** Deploy screen: choose the Hunt Kaeli without editing build or equipment. */
 @Component({
   selector: 'app-prerun',
   standalone: true,
@@ -21,15 +21,15 @@ import { ELEMENT_LABELS, RARITY_COLORS, SkinDef, WaifuDef } from '../../core/typ
       <div class="wash" aria-hidden="true"></div>
       <div class="tier-ghost" aria-hidden="true">{{ roman(tierNum()) }}</div>
 
-      <button class="back" (click)="back()">‹ Voltar aos tiers</button>
+      <button class="back" (click)="back()">‹ Back to tiers</button>
 
       @if (tierDef(); as t) {
         <main class="deploy">
-          <aside class="selector" aria-label="Selecionar Kaeli">
+          <aside class="selector" aria-label="Select Kaeli">
             <div class="selector-head">
               <span class="tier-badge">Tier {{ t.tier }} · {{ biome(t.tier).label }} · ×{{ t.statMultiplier }}</span>
               <h1>{{ t.name }}</h1>
-              <p>Escolha quem vai encarar <b>{{ t.boss }}</b>.</p>
+              <p>Choose who will face <b>{{ t.boss }}</b>.</p>
             </div>
 
             <div class="roster">
@@ -55,7 +55,7 @@ import { ELEMENT_LABELS, RARITY_COLORS, SkinDef, WaifuDef } from '../../core/typ
                   </span>
                 </button>
               } @empty {
-                <p class="muted">Você ainda não recrutou nenhuma Kaeli.</p>
+                <p class="muted">You have not recruited any Kaelis yet.</p>
               }
             </div>
           </aside>
@@ -78,14 +78,14 @@ import { ELEMENT_LABELS, RARITY_COLORS, SkinDef, WaifuDef } from '../../core/typ
 
               <div class="actions">
                 <span class="run-plan">{{ runCount() }} run{{ runCount() > 1 ? 's' : '' }}</span>
-                <button class="pill-btn secondary" (click)="details(w)">Detalhes</button>
-                <button class="pill-btn" (click)="enter()">Continuar</button>
+                <button class="pill-btn secondary" (click)="details(w)">Details</button>
+                <button class="pill-btn" (click)="enter()">Continue</button>
               </div>
             </section>
           }
         </main>
       } @else {
-        <p class="muted">Carregando tier...</p>
+        <p class="muted">Loading tier...</p>
       }
     </section>
   `,

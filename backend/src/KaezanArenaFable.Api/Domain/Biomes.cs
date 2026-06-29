@@ -73,44 +73,44 @@ public static class Biomes
     private const ushort DirtBedrock = 356, StoneBedrock = 416;
 
     // G-07: one color-grade + light/fog/particle palette per stratum. A strong grade + drifting motes
-    // is the cheapest way to make each estrato read as a distinct place while reusing the same tiles.
+    // is the cheapest way to make each stratum read as a distinct place while reusing the same tiles.
     private static readonly BiomeAtmosphere CaveAtmo = new(
-        "Toca Ecoante", 255, 190, 120, 0.16, 40, 28, 18, 0.18, 0.34,
+        "Echoing Den", 255, 190, 120, 0.16, 40, 28, 18, 0.18, 0.34,
         216, 196, 156, 0.40, 0);                  // warm amber, floating dust
     private static readonly BiomeAtmosphere FortAtmo = new(
-        "Forte Uruk", 200, 224, 178, 0.12, 120, 140, 110, 0.10, 0.22,
+        "Uruk Fort", 200, 224, 178, 0.12, 120, 140, 110, 0.10, 0.22,
         222, 236, 172, 0.34, 0);                  // green daylight, drifting pollen
     private static readonly BiomeAtmosphere CryptAtmo = new(
-        "Cripta Sombria", 132, 152, 210, 0.20, 28, 34, 56, 0.26, 0.46,
+        "Shadowed Crypt", 132, 152, 210, 0.20, 28, 34, 56, 0.26, 0.46,
         176, 196, 232, 0.46, 1);                  // cold blue mist, settling motes
     private static readonly BiomeAtmosphere LairAtmo = new(
-        "Covil Escamado", 255, 150, 90, 0.22, 50, 18, 12, 0.20, 0.40,
+        "Scaled Lair", 255, 150, 90, 0.22, 50, 18, 12, 0.20, 0.40,
         255, 172, 84, 0.52, -1);                  // hot orange, rising embers
     private static readonly BiomeAtmosphere AbyssAtmo = new(
-        "Abismo Ecoante", 182, 92, 202, 0.24, 30, 12, 38, 0.30, 0.52,
+        "Echoing Abyss", 182, 92, 202, 0.24, 30, 12, 38, 0.30, 0.52,
         222, 122, 232, 0.56, -1);                 // violet abyss, rising ash
 
-    /// <summary>Tier 1 — Toca Ecoante: brown dirt cavern with boulders.</summary>
+    /// <summary>Tier 1 — Echoing Den: brown dirt cavern with boulders.</summary>
     public static readonly BiomeDef Cave = new(
         CaveGround, StoneGround, DirtBedrock, DirtH, DirtV, DirtPole, DirtCorner,
         CaveRocks, 0.025, [], 0, CaveAtmo);
 
-    /// <summary>Tier 2 — Forte Uruk: grassy orc camp ringed by stone ruins.</summary>
+    /// <summary>Tier 2 — Uruk Fort: grassy orc camp ringed by stone ruins.</summary>
     public static readonly BiomeDef Fort = new(
         GrassGround, StoneGround, StoneBedrock, StoneH, StoneV, StonePole, StoneCorner,
         CaveRocks, 0.02, [], 0, FortAtmo);
 
-    /// <summary>Tier 3 — Cripta Sombria: mossy stone crypt strewn with bones.</summary>
+    /// <summary>Tier 3 — Shadowed Crypt: mossy stone crypt strewn with bones.</summary>
     public static readonly BiomeDef Crypt = new(
         MossStone, StoneGround, StoneBedrock, StoneH, StoneV, StonePole, StoneCorner,
         Bones, 0.03, [], 0, CryptAtmo);
 
-    /// <summary>Tier 4 — Covil Escamado: dark stone lair with decorative lava pools.</summary>
+    /// <summary>Tier 4 — Scaled Lair: dark stone lair with decorative lava pools.</summary>
     public static readonly BiomeDef Lair = new(
         DarkStone, StoneGround, StoneBedrock, StoneH, StoneV, StonePole, StoneCorner,
         CaveRocks, 0.02, Lava, 0.05, LairAtmo);
 
-    /// <summary>Tier 5 — Abismo Ecoante: stone abyss flooded with lava and bone.</summary>
+    /// <summary>Tier 5 — Echoing Abyss: stone abyss flooded with lava and bone.</summary>
     public static readonly BiomeDef Abyss = new(
         DarkStone, StoneGround, StoneBedrock, StoneH, StoneV, StonePole, StoneCorner,
         Bones, 0.02, Lava, 0.055, AbyssAtmo);
@@ -126,22 +126,23 @@ public static class Biomes
     };
 
     /// <summary>
-    /// LM-08: os 5 biomas canônicos como linhas chaveadas por tier — a fonte do seed do
-    /// <c>ContentStore</c> (igual ao bloco de tiers). Editar um bioma no admin muda runs ao vivo, nunca
-    /// estes defaults: a rede-ouro (LM-01) mede <see cref="ForTier"/> e fica verde sem rebaseline.
+    /// LM-08: the 5 canonical biomes as rows keyed by tier — the seed source for the
+    /// <c>ContentStore</c> (same as the tiers block). Editing a biome in the admin changes live runs,
+    /// never these defaults: the golden net (LM-01) measures <see cref="ForTier"/> and stays green
+    /// without rebaseline.
     /// </summary>
     public static IReadOnlyList<BiomeRow> AllDefaults() =>
     [
-        new(1, "Toca Ecoante", Cave),
-        new(2, "Forte Uruk", Fort),
-        new(3, "Cripta Sombria", Crypt),
-        new(4, "Covil Escamado", Lair),
-        new(5, "Abismo Ecoante", Abyss),
+        new(1, "Echoing Den", Cave),
+        new(2, "Uruk Fort", Fort),
+        new(3, "Shadowed Crypt", Crypt),
+        new(4, "Scaled Lair", Lair),
+        new(5, "Echoing Abyss", Abyss),
     ];
 }
 
 /// <summary>
-/// LM-08: um bioma serializável chaveado por tier, para o <c>ContentStore</c> persistir/editar.
-/// <see cref="BiomeDef"/>/<see cref="BiomeAtmosphere"/> já serializam em System.Text.Json.
+/// LM-08: a serializable biome keyed by tier, for the <c>ContentStore</c> to persist/edit.
+/// <see cref="BiomeDef"/>/<see cref="BiomeAtmosphere"/> already serialize via System.Text.Json.
 /// </summary>
 public sealed record BiomeRow(int Tier, string Name, BiomeDef Def);

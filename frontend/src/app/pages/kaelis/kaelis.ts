@@ -11,7 +11,7 @@ import {
   isGearMaterial,
 } from '../../core/types';
 
-type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
+type KaeliTab = 'profile' | 'skins' | 'mastery' | 'equipment' | 'info';
 
 @Component({
   selector: 'app-kaelis',
@@ -79,7 +79,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
           </div>
         } @else {
           <div class="stage-empty">
-            <p class="muted">Selecione uma Kaeli na barra lateral.</p>
+            <p class="muted">Select a Kaeli from the sidebar.</p>
           </div>
         }
       </div>
@@ -94,10 +94,10 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
               }
             </div>
 
-            <!-- ═══ PERFIL ═══ -->
-            @if (tab() === 'perfil') {
+            <!-- ═══ PROFILE ═══ -->
+            @if (tab() === 'profile') {
               <div class="tab-content">
-                <!-- atributos -->
+                <!-- attributes -->
                 <section class="sheet glass">
                   <div class="sheet-stats">
                     <div class="big-stat">
@@ -109,45 +109,45 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
                       <b class="bs-val">{{ w.baseHp }}</b>
                     </div>
                     <div class="big-stat">
-                      <span class="bs-label">Bônus afinidade</span>
+                      <span class="bs-label">Affinity bonus</span>
                       <b class="bs-val accent">+{{ affinityLevel(w.id) - 1 }}%</b>
                     </div>
                   </div>
                   <div class="sheet-facts">
-                    <div class="fact"><span>Elemento</span>
+                    <div class="fact"><span>Element</span>
                       <b class="fact-el" [style.--el]="elementColor(w.element)">{{ elementLabel(w.element) }}</b>
                     </div>
-                    <div class="fact"><span>Classe</span><b>{{ classFor(w)?.name }}</b></div>
-                    <div class="fact"><span>Ascensão</span><b class="gold">A{{ ascension(w.id) }} / 6</b></div>
-                    <div class="fact"><span>Maestria de Eco</span><b>{{ masteryOf(w.id).points }} pt livres</b></div>
+                    <div class="fact"><span>Class</span><b>{{ classFor(w)?.name }}</b></div>
+                    <div class="fact"><span>Ascension</span><b class="gold">A{{ ascension(w.id) }} / 6</b></div>
+                    <div class="fact"><span>Echo Mastery</span><b>{{ masteryOf(w.id).points }} free pts</b></div>
                   </div>
                 </section>
 
-                <!-- trait + voz -->
+                <!-- trait + voice -->
                 <section class="trait-card glass">
                   <span class="eyebrow trait-label">Trait · {{ w.trait.name }}</span>
                   <p>{{ w.trait.description }}</p>
                   <p class="personality">「 {{ w.personality }} 」</p>
                 </section>
 
-                <!-- afinidade -->
+                <!-- affinity -->
                 <section class="aff-card glass">
                   <div class="aff-head">
-                    <span class="eyebrow">Afinidade</span>
+                    <span class="eyebrow">Affinity</span>
                     <span class="aff-lvl">{{ affinityLevel(w.id) }}<i> / {{ affinityMax() }}</i></span>
                   </div>
                   <div class="aff-bar"><div class="aff-fill" [style.width.%]="affinityPercent(w.id)"></div></div>
                   @if (affinityToNext(w.id) > 0) {
-                    <span class="muted small">{{ affinityInto(w.id) }} / {{ affinityToNext(w.id) }} XP — jogue runs com ela ou dê presentes</span>
+                    <span class="muted small">{{ affinityInto(w.id) }} / {{ affinityToNext(w.id) }} XP - play runs with her or give gifts</span>
                   } @else {
-                    <span class="maxed small">Afinidade máxima · +{{ affinityLevel(w.id) - 1 }}% ATK/HP na run</span>
+                    <span class="maxed small">Max affinity · +{{ affinityLevel(w.id) - 1 }}% ATK/HP in runs</span>
                   }
                 </section>
 
-                <!-- ascensão -->
+                <!-- ascension -->
                 <section class="asc-card glass">
                   <div class="asc-head">
-                    <span class="eyebrow">Ascensão</span>
+                    <span class="eyebrow">Ascension</span>
                     <div class="asc-dots">
                       @for (i of [1,2,3,4,5,6]; track i) {
                         <span class="dot" [class.on]="ascension(w.id) >= i">◆</span>
@@ -155,31 +155,31 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
                     </div>
                   </div>
                   <div class="asc-foot">
-                    <span class="muted small">Shards desta Kaeli: <b class="gold">{{ shards(w.id) }}</b></span>
+                    <span class="muted small">This Kaeli's shards: <b class="gold">{{ shards(w.id) }}</b></span>
                     @if (ascension(w.id) < 6) {
                       <button class="btn gold compact" [disabled]="busy() || shards(w.id) < ascCost(w.id)" (click)="ascend(w.id)">
-                        Ascender — {{ ascCost(w.id) }} shards
+                        Ascend - {{ ascCost(w.id) }} shards
                       </button>
                     } @else {
-                      <span class="maxed">Ascensão máxima!</span>
+                      <span class="maxed">Max ascension!</span>
                     }
                   </div>
                 </section>
               </div>
             }
 
-            <!-- ═══ MAESTRIA ═══ -->
-            @if (tab() === 'maestria') {
+            <!-- ═══ MASTERY ═══ -->
+            @if (tab() === 'mastery') {
               <div class="tab-content">
                 <div class="mastery-header glass">
                   <div>
-                    <h3 style="margin:0">Maestria de Eco</h3>
-                    <span class="muted small">Vitória +{{ pointsPerVictory() }} pt · derrota +{{ pointsPerDefeat() }} pt</span>
+                    <h3 style="margin:0">Echo Mastery</h3>
+                    <span class="muted small">Victory +{{ pointsPerVictory() }} pt · defeat +{{ pointsPerDefeat() }} pt</span>
                   </div>
                   <div class="mastery-pts-badge">{{ masteryOf(w.id).points }}<span>pts</span></div>
                   @if (masteryOf(w.id).spent > 0) {
                     <button class="btn secondary compact" [disabled]="busy()" (click)="respec(w.id)">
-                      Resetar — {{ respecGold() }} ouro
+                      Reset - {{ respecGold() }} gold
                     </button>
                   }
                 </div>
@@ -205,14 +205,14 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
                             <b>{{ node.name }}</b>
                             <p>{{ node.description }}</p>
                             @if (nodeUnlocked(w.id, node)) {
-                              <span class="node-done">destravado</span>
+                              <span class="node-done">unlocked</span>
                             } @else {
                               <div class="node-actions">
                                 <span class="node-cost">{{ node.cost }} pt</span>
                                 <button class="btn compact mini"
                                         [disabled]="busy() || !nodeAvailable(w.id, node)"
                                         (click)="unlockNode(w.id, node.id)">
-                                  {{ nodeAvailable(w.id, node) ? 'Destravar' : nodeBlockReason(w.id, node) }}
+                                  {{ nodeAvailable(w.id, node) ? 'Unlock' : nodeBlockReason(w.id, node) }}
                                 </button>
                               </div>
                             }
@@ -225,31 +225,31 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
               </div>
             }
 
-            <!-- ═══ EQUIPAMENTO ═══ -->
-            @if (tab() === 'equipamento') {
+            <!-- ═══ EQUIPMENT ═══ -->
+            @if (tab() === 'equipment') {
               <div class="tab-content">
                 <div class="tier-bar">
-                  <span class="eyebrow">Set por tier</span>
+                  <span class="eyebrow">Set by tier</span>
                   <div class="tier-seg">
                     @for (t of setTiers; track t) {
                       <button class="tier-tab" [class.active]="selectedTier() === t" (click)="selectTier(t)">T{{ t }}</button>
                     }
                   </div>
-                  <button class="btn secondary compact auto-equip-btn" [disabled]="busy()" (click)="autoEquip(w.id)" title="Equipa o melhor item disponível em cada slot vazio ou inferior">
+                  <button class="btn secondary compact auto-equip-btn" [disabled]="busy()" (click)="autoEquip(w.id)" title="Equips the best available item in every empty or weaker slot">
                     Auto Equip
                   </button>
-                  <span class="muted small tier-hint">A dungeon usa o set do tier selecionado.</span>
+                  <span class="muted small tier-hint">The dungeon uses the selected tier set.</span>
                 </div>
-                <!-- G-09: material de Eco que os baús da caçada dropam (crescimento de conta) -->
+                <!-- G-09: Echo material dropped by hunt chests (account growth) -->
                 @if (gearMaterials().length > 0) {
                   <div class="materials">
-                    <span class="eyebrow">Materiais de Eco</span>
+                    <span class="eyebrow">Echo Materials</span>
                     <div class="mat-chips">
                       @for (m of gearMaterials(); track m.tier) {
                         <span class="mat-chip" [class.active]="m.tier === selectedTier()">T{{ m.tier }} <b>×{{ m.count }}</b></span>
                       }
                     </div>
-                    <span class="muted small mat-hint">Saque dos baús da caçada (altares, amaldiçoados e mímicos). Forja de gear chega numa próxima atualização.</span>
+                    <span class="muted small mat-hint">Loot from hunt chests (altars, cursed chests, and mimics). Gear forging arrives in a future update.</span>
                   </div>
                 }
                 @if (equipmentTotals(w.id).length > 0) {
@@ -274,7 +274,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
                         <small>{{ itemStats(item) }}</small>
                       } @else {
                         <span class="slot-icon empty">+</span>
-                        <span class="empty-slot">vazio</span>
+                        <span class="empty-slot">empty</span>
                       }
                     </button>
                   }
@@ -284,7 +284,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
                     <div class="picker-title">
                       <b>{{ slotLabel(slot) }}</b>
                       @if (equippedItem(w.id, slot)) {
-                        <button class="btn secondary compact" [disabled]="busy()" (click)="unequip(w.id, slot)">Desequipar</button>
+                        <button class="btn secondary compact" [disabled]="busy()" (click)="unequip(w.id, slot)">Unequip</button>
                       }
                     </div>
                     <div class="gear-options">
@@ -302,7 +302,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
                           </span>
                         </button>
                       } @empty {
-                        <span class="muted">Nenhum item deste slot na Mochila.</span>
+                        <span class="muted">No items for this slot in the Backpack.</span>
                       }
                     </div>
                   </div>
@@ -310,29 +310,29 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
               </div>
             }
 
-            <!-- ═══ INFORMAÇÃO ═══ -->
-            @if (tab() === 'informacao') {
+            <!-- ═══ INFO ═══ -->
+            @if (tab() === 'info') {
               <div class="tab-content">
                 <div class="info-layout">
-                  <nav class="info-nav" aria-label="Seções de informação">
-                    <button class="info-navitem" [class.active]="infoSection() === 'classe'" (click)="infoSection.set('classe')">
-                      <span class="ina-label">Classe</span>
+                  <nav class="info-nav" aria-label="Info sections">
+                    <button class="info-navitem" [class.active]="infoSection() === 'class'" (click)="infoSection.set('class')">
+                      <span class="ina-label">Class</span>
                       <span class="ina-sub">{{ classFor(w)?.name }}</span>
                     </button>
-                    <button class="info-navitem" [class.active]="infoSection() === 'ecos'" (click)="infoSection.set('ecos')">
-                      <span class="ina-label">Ecos de Memória</span>
-                      <span class="ina-sub">{{ unlockedLoreCount(w) }} / {{ w.lore.length }} revelados</span>
+                    <button class="info-navitem" [class.active]="infoSection() === 'echoes'" (click)="infoSection.set('echoes')">
+                      <span class="ina-label">Memory Echoes</span>
+                      <span class="ina-sub">{{ unlockedLoreCount(w) }} / {{ w.lore.length }} revealed</span>
                     </button>
-                    <button class="info-navitem" [class.active]="infoSection() === 'presentes'" (click)="infoSection.set('presentes')">
-                      <span class="ina-label">Presentes</span>
-                      <span class="ina-sub">{{ giftsLeft(w.id) }} restante(s) hoje</span>
+                    <button class="info-navitem" [class.active]="infoSection() === 'gifts'" (click)="infoSection.set('gifts')">
+                      <span class="ina-label">Gifts</span>
+                      <span class="ina-sub">{{ giftsLeft(w.id) }} left today</span>
                     </button>
                   </nav>
 
                   <div class="info-panel glass">
                     @switch (infoSection()) {
 
-                      @case ('classe') {
+                      @case ('class') {
                         @if (classFor(w); as cls) {
                           <div class="class-head">
                             <span class="eyebrow">Classe · {{ cls.name }}</span>
@@ -362,8 +362,8 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
                         }
                       }
 
-                      @case ('ecos') {
-                        <span class="eyebrow">Ecos de Memória</span>
+                      @case ('echoes') {
+                        <span class="eyebrow">Memory Echoes</span>
                         <ol class="lore-list">
                           @for (fragment of w.lore; track $index) {
                             <li class="lore-entry" [class.locked]="!loreUnlocked(w.id, $index)">
@@ -371,26 +371,26 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
                               @if (loreUnlocked(w.id, $index)) {
                                 <p>{{ fragment }}</p>
                               } @else {
-                                <p>🔒 Desbloqueia na afinidade {{ loreLevelFor($index) }}.</p>
+                                <p>🔒 Unlocks at affinity {{ loreLevelFor($index) }}.</p>
                               }
                             </li>
                           }
                         </ol>
                       }
 
-                      @case ('presentes') {
+                      @case ('gifts') {
                         <div class="gift-head">
                           <div>
-                            <span class="eyebrow">Presentes</span>
-                            <p class="gift-sub muted small">Sobe afinidade. Favoritos rendem XP ×{{ favoriteMultiplier() }}.</p>
+                            <span class="eyebrow">Gifts</span>
+                            <p class="gift-sub muted small">Raises affinity. Favorites grant XP ×{{ favoriteMultiplier() }}.</p>
                           </div>
-                          <span class="gift-left" [class.spent]="giftsLeft(w.id) === 0">{{ giftsLeft(w.id) }}<i>/ dia</i></span>
+                          <span class="gift-left" [class.spent]="giftsLeft(w.id) === 0">{{ giftsLeft(w.id) }}<i>/ day</i></span>
                         </div>
 
                         @if (w.favoriteGiftItemIds.length) {
                           <div class="fav-row">
                             @for (itemId of w.favoriteGiftItemIds; track itemId) {
-                              <span class="fav-item" [title]="itemName(itemId) + ' (favorito)'">
+                              <span class="fav-item" [title]="itemName(itemId) + ' (favorite)'">
                                 <app-item-icon [itemId]="itemId" [size]="26" />
                                 <span class="fav-heart">❤</span>
                               </span>
@@ -403,7 +403,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
                             @for (item of giftCandidates(); track item.itemId) {
                               <button class="gift-option" [class.fav]="isFavorite(w, item.itemId)"
                                       [disabled]="busy()" (click)="gift(w.id, item.itemId)"
-                                      [title]="'Presentear ' + item.name">
+                                      [title]="'Gift ' + item.name">
                                 <app-item-icon [itemId]="item.itemId" [size]="30" />
                                 <span class="gift-meta">
                                   <b>{{ item.name }}</b>
@@ -411,11 +411,11 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
                                 </span>
                               </button>
                             } @empty {
-                              <p class="empty-note muted">A Mochila está vazia. Traga loot das runs para presentear {{ w.name }}.</p>
+                              <p class="empty-note muted">The Backpack is empty. Bring loot from runs to gift {{ w.name }}.</p>
                             }
                           </div>
                         } @else {
-                          <p class="empty-note muted">{{ w.name }} já recebeu presentes demais hoje. Volte amanhã.</p>
+                          <p class="empty-note muted">{{ w.name }} has received enough gifts today. Come back tomorrow.</p>
                         }
                       }
                     }
@@ -429,16 +429,16 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
               <div class="tab-content skins-tab">
                 <div class="skins-carousel-wrap">
                   @if (w.skins.length > 3) {
-                    <button class="carousel-arrow left" type="button" aria-label="Skins anteriores"
+                    <button class="carousel-arrow left" type="button" aria-label="Previous skins"
                             (click)="sc.scrollBy({ left: -340, behavior: 'smooth' })">‹</button>
-                    <button class="carousel-arrow right" type="button" aria-label="Próximas skins"
+                    <button class="carousel-arrow right" type="button" aria-label="Next skins"
                             (click)="sc.scrollBy({ left: 340, behavior: 'smooth' })">›</button>
                   }
                   <div class="skins-carousel" #sc>
                     @for (skin of w.skins; track skin.id) {
                       <div class="skin-card glass" [class.selected]="isSelectedSkin(w, skin)"
                            [class.locked]="!skinUnlocked(w, skin)">
-                        @if (isSelectedSkin(w, skin)) { <span class="skin-pin">✓ Em uso</span> }
+                        @if (isSelectedSkin(w, skin)) { <span class="skin-pin">✓ In use</span> }
                         <div class="skin-art">
                           <app-outfit-preview [lookType]="skin.lookType" [head]="skin.head" [body]="skin.body"
                             [legs]="skin.legs" [feet]="skin.feet" [addons]="skin.addons ?? 0"
@@ -452,16 +452,16 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
                           <p class="skin-desc">{{ skin.description }}</p>
                           <div class="skin-cta">
                             @if (isSelectedSkin(w, skin)) {
-                              <span class="skin-current">Equipada</span>
+                              <span class="skin-current">Equipped</span>
                             } @else if (skinUnlocked(w, skin)) {
-                              <button class="btn secondary compact" [disabled]="busy()" (click)="selectSkin(w.id, skin.id)">Equipar</button>
+                              <button class="btn secondary compact" [disabled]="busy()" (click)="selectSkin(w.id, skin.id)">Equip</button>
                             } @else if (skin.unlock === 'gold' || skin.unlock === 'kaeros') {
                               <button class="btn gold compact" [disabled]="busy() || !canAfford(skin)"
                                       (click)="buySkin(w.id, skin.id)">
-                                Comprar · {{ skin.unlockValue }} {{ skin.unlock === 'gold' ? 'ouro' : 'Kaeros' }}
+                                Buy · {{ skin.unlockValue }} {{ skin.unlock === 'gold' ? 'gold' : 'Kaeros' }}
                               </button>
                             } @else {
-                              <span class="skin-req muted small">🔒 Afinidade {{ skin.unlockValue }}</span>
+                              <span class="skin-req muted small">🔒 Affinity {{ skin.unlockValue }}</span>
                             }
                           </div>
                         </div>
@@ -469,15 +469,15 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
                     }
                   </div>
                 </div>
-                <p class="muted small skins-note">A skin equipada aparece no Hub, nas runs e nesta página.</p>
+                <p class="muted small skins-note">The equipped skin appears in the Hub, runs, and this page.</p>
               </div>
             }
 
           } @else {
-            <!-- não recrutada -->
+            <!-- not recruited -->
             <div class="not-owned">
-              <span class="eyebrow">Ainda nao recrutada</span>
-              <p class="muted">{{ selected()?.name }} aguarda no banner. Tente a sorte no recrutamento.</p>
+              <span class="eyebrow">Not recruited yet</span>
+              <p class="muted">{{ selected()?.name }} waits in the banner. Try your luck in Recruit.</p>
               <div class="trait-card glass">
                 <span class="eyebrow trait-label">Trait</span>
                 <b>{{ w.trait.name }}</b>
@@ -486,7 +486,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
             </div>
           }
         } @else {
-          <p class="muted" style="padding:24px">Carregando…</p>
+          <p class="muted" style="padding:24px">Loading...</p>
         }
       </div>
     </div>
@@ -547,7 +547,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .tab:hover:not(.active) { color: var(--text-dim); }
     .tab-content { display: flex; flex-direction: column; gap: var(--sp-4); }
 
-    /* perfil — character sheet */
+    /* profile - character sheet */
     .sheet { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
     .sheet-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); }
     .big-stat { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 12px 8px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md); text-align: center; }
@@ -576,7 +576,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .asc-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
     .maxed { color: var(--gold-bright); font-weight: 700; }
 
-    /* maestria */
+    /* mastery */
     .mastery-header { display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap; padding: 12px 16px; }
     .mastery-pts-badge { margin-left: auto; background: color-mix(in srgb, var(--gold) 12%, var(--bg-2)); border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent); border-radius: var(--r-md); padding: 6px 14px; font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--gold-bright); display: flex; align-items: baseline; gap: 4px; }
     .mastery-pts-badge span { font-size: var(--fs-xs); color: var(--gold-deep); font-family: var(--font-ui); }
@@ -599,7 +599,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .node-actions { display: flex; align-items: center; gap: 8px; }
     .node-cost { color: var(--gold-bright); font-size: 11px; font-weight: 800; }
 
-    /* equipamento */
+    /* equipment */
     .tier-bar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
     .tier-seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md); }
     .tier-tab { border: none; background: none; color: var(--text-dim); padding: 5px 14px; font-size: 12px; font-weight: 800; border-radius: var(--r-sm); transition: all var(--dur) var(--ease-out); }
@@ -607,7 +607,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .tier-tab.active { background: color-mix(in srgb, var(--gold) 16%, var(--bg-3)); color: var(--gold-bright); box-shadow: var(--glass-edge); }
     .auto-equip-btn { margin-left: auto; }
     .tier-hint { flex-basis: 100%; }
-    /* G-09: materiais de Eco (saque dos baús) */
+    /* G-09: Echo materials (chest loot) */
     .materials { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin: var(--sp-1) 0 var(--sp-2); }
     .mat-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
     .mat-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 11px; font-weight: 800; color: var(--text-dim); background: var(--bg-2); border: 1px solid var(--line); border-radius: 999px; }
@@ -641,7 +641,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .gear-option small { color: var(--text-dim); font-size: 10px; }
     .req-locked { color: var(--danger) !important; }
 
-    /* informação — sub-nav vertical + painel único */
+    /* info - vertical sub-nav + single panel */
     .info-layout { display: grid; grid-template-columns: 176px 1fr; gap: var(--sp-3); align-items: start; }
     .info-nav { display: flex; flex-direction: column; gap: var(--sp-2); }
     .info-navitem { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 10px 13px; border-radius: var(--r-md); background: var(--bg-2); border: 1px solid var(--line); border-left: 3px solid transparent; color: var(--text); transition: all var(--dur) var(--ease-out); }
@@ -654,7 +654,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .aff-bar { height: 8px; background: var(--bg-3); border-radius: var(--r-full); overflow: hidden; }
     .aff-fill { height: 100%; background: linear-gradient(90deg, var(--accent-bright), var(--accent-dim)); border-radius: var(--r-full); transition: width var(--dur-slow) var(--ease-out); }
 
-    /* presentes */
+    /* gifts */
     .gift-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .gift-sub { margin: 4px 0 0; }
     .gift-left { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--accent-bright); white-space: nowrap; line-height: 1; }
@@ -673,7 +673,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .gift-xp i { font-style: normal; }
     .empty-note { margin: 0; font-size: var(--fs-sm); line-height: 1.5; }
 
-    /* ecos de memória */
+    /* memory echoes */
     .lore-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
     .lore-entry { display: flex; gap: 12px; align-items: flex-start; }
     .lore-num { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--af); border: 1px solid var(--ae); color: var(--accent-bright); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
@@ -681,7 +681,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .lore-entry.locked .lore-num { background: var(--bg-3); border-color: var(--line); color: var(--text-faint); }
     .lore-entry.locked p { color: var(--text-faint); }
 
-    /* kit de classe */
+    /* class kit */
     .class-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
     .class-desc { margin: 0; }
     .stances { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -697,7 +697,7 @@ type KaeliTab = 'perfil' | 'skins' | 'maestria' | 'equipamento' | 'informacao';
     .element-name { color: var(--accent-bright); font-size: 10px; font-weight: 800; text-transform: uppercase; }
     .skill-cd { font-size: 11px; }
 
-    /* skins — carrossel horizontal que preenche a área */
+    /* skins - horizontal carousel that fills the area */
     .skins-tab { flex: 1; min-height: 0; }
     .skins-carousel-wrap { position: relative; flex: 1; min-height: 0; }
     .skins-carousel { display: flex; gap: var(--sp-3); height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; padding: 4px 2px 8px; scroll-padding: 0 44px; }
@@ -762,32 +762,32 @@ export class KaelisPage implements OnDestroy {
     );
   });
   readonly selected = signal<WaifuDef | null>(null);
-  readonly tab = signal<KaeliTab>('perfil');
-  readonly infoSection = signal<'classe' | 'ecos' | 'presentes'>('classe');
+  readonly tab = signal<KaeliTab>('profile');
+  readonly infoSection = signal<'class' | 'echoes' | 'gifts'>('class');
   readonly previewStanceId = signal('');
   readonly selectedEquipmentSlot = signal<EquipmentSlot | null>(null);
   readonly selectedTier = signal(1);
   readonly setTiers = SET_TIERS;
   readonly busy = signal(false);
   readonly tabs: { id: KaeliTab; label: string }[] = [
-    { id: 'perfil', label: 'Perfil' },
-    { id: 'maestria', label: 'Maestria' },
-    { id: 'equipamento', label: 'Equipamento' },
-    { id: 'informacao', label: 'Informação' },
+    { id: 'profile', label: 'Profile' },
+    { id: 'mastery', label: 'Mastery' },
+    { id: 'equipment', label: 'Equipment' },
+    { id: 'info', label: 'Info' },
     { id: 'skins', label: 'Skins' },
   ];
   readonly branches: { id: 'off' | 'def' | 'eco'; label: string }[] = [
-    { id: 'off', label: 'Ofensiva' },
-    { id: 'def', label: 'Defensiva' },
+    { id: 'off', label: 'Offense' },
+    { id: 'def', label: 'Defense' },
     { id: 'eco', label: 'Eco' },
   ];
   readonly equipmentSlots: { id: EquipmentSlot; label: string }[] = [
-    { id: 'helmet', label: 'Capacete' },
-    { id: 'armor', label: 'Armadura' },
-    { id: 'weapon', label: 'Arma' },
-    { id: 'necklace', label: 'Colar' },
-    { id: 'ring', label: 'Anel' },
-    { id: 'mount', label: 'Montaria' },
+    { id: 'helmet', label: 'Helmet' },
+    { id: 'armor', label: 'Armor' },
+    { id: 'weapon', label: 'Weapon' },
+    { id: 'necklace', label: 'Necklace' },
+    { id: 'ring', label: 'Ring' },
+    { id: 'mount', label: 'Mount' },
   ];
 
   private readonly art = inject(KaeliArtService);
@@ -824,7 +824,7 @@ export class KaelisPage implements OnDestroy {
   elementLabel(e: string): string { return ELEMENT_LABELS[e] ?? e; }
   elementColor(el: string): string { return ELEMENT_PALETTE.has(el) ? `var(--el-${el})` : 'var(--accent)'; }
 
-  // ---- arte autoral ----
+  // ---- authored art ----
   thumb(id: string): string | null { return this.art.thumb(id); }
   hasArt(id: string): boolean { return this.art.idles(id).length > 0; }
   bgPortrait(w: WaifuDef): string | null { return this.art.bgPortrait(w.id); }
@@ -832,8 +832,8 @@ export class KaelisPage implements OnDestroy {
 
   select(w: WaifuDef): void {
     this.selected.set(w);
-    this.tab.set('perfil');
-    this.infoSection.set('classe');
+    this.tab.set('profile');
+    this.infoSection.set('class');
     this.previewStanceId.set(this.initialStance(w)?.id ?? '');
     this.selectedEquipmentSlot.set(null);
   }
@@ -872,9 +872,9 @@ export class KaelisPage implements OnDestroy {
 
   skinBadge(skin: SkinDef): string {
     switch (skin.unlock) {
-      case 'default': return 'Padrão';
-      case 'affinity': return `Afinidade ${skin.unlockValue}`;
-      case 'gold': return `${skin.unlockValue} ouro`;
+      case 'default': return 'Default';
+      case 'affinity': return `Affinity ${skin.unlockValue}`;
+      case 'gold': return `${skin.unlockValue} gold`;
       default: return `${skin.unlockValue} Kaeros`;
     }
   }
@@ -885,7 +885,7 @@ export class KaelisPage implements OnDestroy {
     return skin.unlock === 'gold' ? acc.gold >= skin.unlockValue : acc.kaeros >= skin.unlockValue;
   }
 
-  // ---- afinidade / presentes ----
+  // ---- affinity / gifts ----
 
   affinityMax(): number { return this.api.catalog()?.affinity.maxLevel ?? 10; }
   favoriteMultiplier(): number { return this.api.catalog()?.affinity.giftFavoriteMultiplier ?? 2; }
@@ -933,7 +933,7 @@ export class KaelisPage implements OnDestroy {
     return Math.floor(Math.min(xp, cfg.giftXpCap));
   }
 
-  // ---- maestria ----
+  // ---- mastery ----
 
   masteryOf(id: string): MasteryState {
     return this.api.account()?.mastery?.[id] ?? { points: 0, spent: 0, nodes: [] };
@@ -964,12 +964,12 @@ export class KaelisPage implements OnDestroy {
     const mastery = this.masteryOf(id);
     if (node.order > 1) {
       const prev = this.branchNodes(id, node.branch).find((n) => n.order === node.order - 1);
-      if (prev && !mastery.nodes.includes(prev.id)) return 'Requer node anterior';
+      if (prev && !mastery.nodes.includes(prev.id)) return 'Requires previous node';
     }
-    return `Faltam ${node.cost - mastery.points} pt`;
+    return `${node.cost - mastery.points} pt missing`;
   }
 
-  // ---- equipamento ----
+  // ---- equipment ----
 
   equipmentTotals(waifuId: string): { label: string; value: string }[] {
     const slots: EquipmentSlot[] = ['helmet', 'armor', 'weapon', 'necklace', 'ring', 'mount'];
@@ -1021,7 +1021,7 @@ export class KaelisPage implements OnDestroy {
     this.selectedEquipmentSlot.set(null);
   }
 
-  /** G-09: material de Eco por tier (lido do inventário da conta; ids sintéticos fora do catálogo). */
+  /** G-09: Echo material by tier (read from account inventory; synthetic ids outside the catalog). */
   gearMaterials(): { tier: number; count: number }[] {
     return (this.api.account()?.inventory ?? [])
       .filter((stack) => isGearMaterial(stack.itemId))
@@ -1053,11 +1053,11 @@ export class KaelisPage implements OnDestroy {
 
   itemRequirement(waifu: WaifuDef, item: ItemCatalogEntry): string {
     if (item.allowedClassIds.length && !item.allowedClassIds.includes(waifu.classId))
-      return `Restrito a ${item.allowedClassIds.join(', ')}`;
+      return `Restricted to ${item.allowedClassIds.join(', ')}`;
     const mastery = this.api.account()?.mastery?.[waifu.id];
     const total = (mastery?.points ?? 0) + (mastery?.spent ?? 0);
     if (total < item.requiredMasteryPoints)
-      return `Requer ${item.requiredMasteryPoints} pontos de maestria`;
+      return `Requires ${item.requiredMasteryPoints} mastery points`;
     return '';
   }
 
@@ -1079,14 +1079,14 @@ export class KaelisPage implements OnDestroy {
       item.attack ? `ATK ${item.attack}` : '',
       item.armor ? `ARM ${item.armor}` : '',
       item.defense ? `DEF ${item.defense}` : '',
-      item.mountSpeed ? `VEL ${item.mountSpeed}` : '',
+      item.mountSpeed ? `SPD ${item.mountSpeed}` : '',
       item.elementDamage ? `${item.element.toUpperCase()} +${item.elementDamage}` : '',
       item.critChance ? `CRIT +${Math.round(item.critChance * 100)}%` : '',
-      item.physicalResistance ? `RES FIS ${Math.round(item.physicalResistance * 100)}%` : '',
-    ].filter(Boolean).join(' · ') || 'equipável';
+      item.physicalResistance ? `PHY RES ${Math.round(item.physicalResistance * 100)}%` : '',
+    ].filter(Boolean).join(' · ') || 'equippable';
   }
 
-  // ---- ações ----
+  // ---- actions ----
 
   async gift(waifuId: string, itemId: number): Promise<void> {
     this.busy.set(true);
@@ -1119,7 +1119,7 @@ export class KaelisPage implements OnDestroy {
   }
 
   async respec(waifuId: string): Promise<void> {
-    if (!confirm(`Resetar a maestria por ${this.respecGold()} de ouro?`)) return;
+    if (!confirm(`Reset mastery for ${this.respecGold()} gold?`)) return;
     this.busy.set(true);
     try { await this.api.respecMastery(waifuId); }
     catch (e) { alert((e as Error).message); }

@@ -2,10 +2,14 @@ import { AssetsService } from './assets.service';
 import { BiomeDto, EventDto, MapDto, MonsterDto, PlayerDto, SnapshotDto, TICK_MS } from './types';
 
 const TILE = 32;
-const BASE_SCALE = 2;
-const GAMEPLAY_ZOOM = 1.25;
-const SCALE = BASE_SCALE * GAMEPLAY_ZOOM;
-const TS = TILE * SCALE; // screen px per tile
+// Tibia-style camera (2026-06-29 feel pass 9): instead of a fixed zoom that showed the whole map,
+// the view follows the player and shows a LIMITED number of tiles. SCALE is recalculated per frame
+// (draw) from canvas height to keep ~VIEW_TILES_Y vertical tiles visible, with clamp.
+const VIEW_TILES_Y = 11;     // visible vertical tiles (Tibia ~11); horizontal follows the canvas aspect
+const MIN_SCALE = 2.0;
+const MAX_SCALE = 4.5;
+let SCALE = 2.5;             // recalculated in draw(); initial value only before the first frame
+let TS = TILE * SCALE;       // screen px per tile (derived from SCALE every frame)
 const RENDER_DELAY_MS = TICK_MS;
 const CLOCK_SMOOTHING = 0.2;
 const MAX_CLOCK_CORRECTION_MS = 25;
@@ -191,6 +195,9 @@ export class GameRenderer {
   private snapArrival = 0;
   private serverClockOffsetMs: number | null = null;
   private readonly motionHistory = new Map<number, MotionSample[]>();
+  // Per-actor stride accumulator: counts completed tile-steps so the walk animation can be driven
+  // by stride progress (foot grips the ground) instead of the wall clock (which slides/glides).
+  private readonly walkClocks = new Map<number, { lastStepStart: number; strides: number }>();
   private snapshot: SnapshotDto | null = null;
   private map: MapDto | null = null;
 
@@ -220,6 +227,7 @@ export class GameRenderer {
     this.shakeMag = 0;
     this.deathLookup.clear();
     this.motionHistory.clear();
+    this.walkClocks.clear();
     this.shockwaves = [];
     this.skillFx = [];
     this.ultFlashStart = -1;
@@ -347,7 +355,7 @@ export class GameRenderer {
         this.texts.push({ x: ev.x, y: ev.y, text: ev.text, color: '#9dff9d', start: now, kind: 'info' });
         break;
       case 'loot':
-        // value = sprite que voa, text = rótulo na chegada, crit = é ouro (cor dourada)
+        // value = flying sprite, text = arrival label, crit = gold (gold color)
         this.loot.push({
           fromX: ev.x, fromY: ev.y, id: ev.value, text: ev.text,
           color: ev.crit ? '#ffd35d' : '#9dff9d', start: now,
@@ -608,6 +616,26 @@ export class GameRenderer {
     return history[0];
   }
 
+  /**
+   * Continuous stride clock for an actor: completed tile-steps + progress through the current step.
+   * Feeds {@link AssetsService.drawOutfit} so the walk frame advances with distance covered (one
+   * stride per tile) — the planted foot grips the ground instead of sliding at a fixed clock rate.
+   * A new step (changed `stepStartTick`) increments the stride count, alternating the leading foot.
+   */
+  private walkStrideFor(actor: PlayerDto | MonsterDto, serverNow: number): number {
+    const motion = this.actorMotionAt(actor, serverNow);
+    const wc = this.walkClocks.get(actor.id) ?? { lastStepStart: motion.stepStartTick, strides: 0 };
+    if (motion.stepStartTick !== wc.lastStepStart) {
+      wc.strides += 1;
+      wc.lastStepStart = motion.stepStartTick;
+    }
+    this.walkClocks.set(actor.id, wc);
+    const progress = motion.stepDurMs
+      ? clamp((serverNow - motion.stepStartTick) / motion.stepDurMs, 0, 1)
+      : 0;
+    return wc.strides + progress;
+  }
+
   private actorRenderState(
     actor: PlayerDto | MonsterDto,
     serverNow: number,
@@ -660,6 +688,9 @@ export class GameRenderer {
   draw(nowPerf: number): void {
     const ctx = this.canvas.getContext('2d')!;
     ctx.imageSmoothingEnabled = false;
+    // Tibia-like camera: keeps ~VIEW_TILES_Y vertical tiles, following the player (limited view, not the full map).
+    SCALE = Math.max(MIN_SCALE, Math.min(MAX_SCALE, this.canvas.height / (VIEW_TILES_Y * TILE)));
+    TS = TILE * SCALE;
     ctx.fillStyle = '#0a0a0f';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -722,7 +753,7 @@ export class GameRenderer {
     for (const poi of map.pois) {
       if (poi.kind === 'chest' && poi.used) continue;
       const cursed = poi.kind === 'chest' && poi.variant === 'cursed';
-      // G-09: baú amaldiçoado ganha uma névoa sombria sob o sprite (telegrafa o risco).
+      // G-09: cursed chest gets a dark mist under the sprite (telegraphs the risk).
       if (cursed) {
         const aura = 0.18 + 0.12 * Math.sin(nowPerf / 280);
         ctx.fillStyle = `rgba(140, 40, 200, ${aura})`;
@@ -773,6 +804,7 @@ export class GameRenderer {
               ctx, m.outfit.lookType, px, py, SCALE,
               m.dir, pos.moving, pos.moving ? serverNow : nowPerf,
               m.outfit.head, m.outfit.body, m.outfit.legs, m.outfit.feet, m.outfit.addons,
+              0, pos.moving ? this.walkStrideFor(m, serverNow) : null,
             );
           });
         },
@@ -792,6 +824,7 @@ export class GameRenderer {
               p.dir, pos.moving, pos.moving ? serverNow : nowPerf,
               p.outfit.head, p.outfit.body, p.outfit.legs, p.outfit.feet, p.outfit.addons,
               p.outfit.mountLookType,
+              pos.moving ? this.walkStrideFor(p, serverNow) : null,
             );
           });
         },
@@ -1076,8 +1109,10 @@ export class GameRenderer {
     const hot = tele !== null; // a skill is loaded and ready to land — go gold
     const accent = hot ? '#ffd35d' : '#7df0ff';
 
+    // Feel feedback (2026-06-29): the footprint telegraph (cone/area "wind-up" hovering in front
+    // of the Kaeli) made the game feel cramped. Keep only the intent line + reticle (they turn gold
+    // when a skill is ready), preserving readability without previewing/cluttering every cast.
     this.drawIntentLine(ctx, pcx, pcy, tcx, tcy, now, accent);
-    if (tele) this.drawTelegraph(ctx, tele, pcx, pcy, tcx, tcy, now);
     this.drawReticle(ctx, tcx, tcy, now, accent, hot);
   }
 
@@ -1153,61 +1188,6 @@ export class GameRenderer {
       ctx.lineTo(cxn, cyn);
       ctx.lineTo(cxn, cyn - qy * arm);
       ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  /** Pulsing preview of the skill footprint (cone/beam from the Kaeli, ring/area around her or the
-   *  target) so the watcher can see the shape before it fires. */
-  private drawTelegraph(
-    ctx: CanvasRenderingContext2D, tele: SkillShape,
-    pcx: number, pcy: number, tcx: number, tcy: number, now: number,
-  ): void {
-    const dx = tcx - pcx;
-    const dy = tcy - pcy;
-    const len = Math.hypot(dx, dy) || 1;
-    const nx = dx / len;
-    const ny = dy / len;
-    const range = (tele.range || TELE_DEFAULT_RANGE) * TS;
-    const radius = (tele.radius || TELE_DEFAULT_RADIUS) * TS;
-    const pulse = 0.16 + 0.12 * Math.abs(Math.sin(now / 130));
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = `rgba(255, 211, 93, ${pulse})`;
-    ctx.strokeStyle = `rgba(255, 211, 93, ${pulse + 0.35})`;
-    ctx.lineWidth = 1.6;
-    switch (tele.shape) {
-      case 'nova': case 'ring': case 'field':
-        ctx.beginPath(); ctx.arc(pcx, pcy, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        break;
-      case 'area': case 'barrage':
-        ctx.beginPath(); ctx.arc(tcx, tcy, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        break;
-      case 'cone': {
-        const ang = Math.atan2(ny, nx);
-        const half = Math.PI / 6;
-        ctx.beginPath();
-        ctx.moveTo(pcx, pcy);
-        ctx.arc(pcx, pcy, range, ang - half, ang + half);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-        break;
-      }
-      case 'beam': {
-        const w = TS * 0.45;
-        const ox = -ny * w;
-        const oy = nx * w;
-        const ex = pcx + nx * range;
-        const ey = pcy + ny * range;
-        ctx.beginPath();
-        ctx.moveTo(pcx + ox, pcy + oy);
-        ctx.lineTo(ex + ox, ey + oy);
-        ctx.lineTo(ex - ox, ey - oy);
-        ctx.lineTo(pcx - ox, pcy - oy);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-        break;
-      }
-      default: // single / chain — punch a tight ring on the target
-        ctx.beginPath(); ctx.arc(tcx, tcy, TS * 0.42, 0, Math.PI * 2); ctx.stroke();
     }
     ctx.restore();
   }
@@ -1288,7 +1268,8 @@ export class GameRenderer {
       const life = fx.ult ? SKILL_FX_ULT_MS : SKILL_FX_MS;
       const age = now - fx.start;
       if (age >= life) return false;
-      const t = age / life;                       // 0..1
+      const t = clamp(age / life, 0, 1);          // 0..1 (clamp: a marginally-future start must not
+                                                  // make `grow` negative → negative arc radius)
       const grow = 1 - (1 - t) * (1 - t);         // easeOutQuad — the stamp expands then settles
       const fade = t < 0.5 ? 1 : Math.max(0, 1 - (t - 0.5) / 0.5);
       const wide = fx.ult ? 1.5 : 1;

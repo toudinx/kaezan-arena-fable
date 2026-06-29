@@ -7,9 +7,9 @@ using KaezanArenaFable.Api.Engine;
 namespace BalanceSim;
 
 /// <summary>
-/// Simulador headless de balanceamento (MG-01). Constrói o engine determinístico (GameWorld) com o
-/// piloto-automático ligado e tica até a run acabar, varrendo {7 Kaelis} × {5 tiers} × {N seeds} e
-/// medindo TTK, tempo de hunt, dano e one-shots. Sem hub, sem frontend, sem DB.
+/// Headless balance simulator (MG-01). Builds the deterministic engine (GameWorld) with autopilot
+/// enabled and ticks until the run ends, sweeping {7 Kaelis} x {5 tiers} x {N seeds} and measuring
+/// TTK, hunt time, damage, and one-shots. No hub, no frontend, no DB.
 ///
 ///   dotnet run --project tools/BalanceSim -- --out docs/balance/baseline.csv
 ///
@@ -45,13 +45,13 @@ internal static class Program
                 case "--kaeli": kaeliFilter = args[++i]; break;
                 case "--tier": tierFilter = int.Parse(args[++i], CultureInfo.InvariantCulture); break;
                 default:
-                    Console.Error.WriteLine($"flag desconhecida: {args[i]}");
+                    Console.Error.WriteLine($"unknown flag: {args[i]}");
                     return 1;
             }
         }
 
-        // LM-01: modo-ouro de determinismo do gerador. Independe de conteúdo/DB — só Rng + bioma —
-        // então roda antes de carregar o ambiente e sai.
+        // LM-01: generator determinism golden mode. It is independent from content/DB — only Rng
+        // + biome — so it runs before loading the environment and exits.
         if (golden)
             return Golden.Run(goldenCheck, goldenOut);
 
@@ -69,9 +69,9 @@ internal static class Program
         var roster = kaelis.All
             .Where(w => kaeliFilter is null || w.Id.Equals(kaeliFilter, StringComparison.OrdinalIgnoreCase))
             .ToList();
-        if (roster.Count == 0) { Console.Error.WriteLine("nenhuma Kaeli selecionada"); return 1; }
+        if (roster.Count == 0) { Console.Error.WriteLine("no Kaeli selected"); return 1; }
 
-        // gear recomendado por tier (caro de montar; cacheia uma vez por tier).
+        // Recommended gear by tier; expensive to assemble, cached once per tier.
         var gearByTier = tiers.ToDictionary(t => t.Tier, t => RecommendedGear.ForTier(t.Tier));
 
         GameWorld Build(WaifuDef waifu, DungeonTier tier, long seed) => new(
@@ -80,11 +80,11 @@ internal static class Program
             equipmentStats: gearByTier[tier.Tier],
             loadout: null, items: items, helperProfile: null);
 
-        // ---- determinism canary: mesma seed 2× → ticks de kill idênticos ----
+        // ---- determinism canary: same seed 2x -> identical kill ticks ----
         Console.WriteLine();
-        Console.WriteLine($"== canário de determinismo ({roster[0].Name} · T{tiers[0].Tier} · seed 424242) ==");
+        Console.WriteLine($"== determinism canary ({roster[0].Name} · T{tiers[0].Tier} · seed 424242) ==");
         var canaryOk = DeterminismCanary(() => Build(roster[0], tiers[0], 424242), roster[0].Name, tiers[0].Tier, cards, maxTicks);
-        Console.WriteLine(canaryOk ? "  PASS — runs idênticas" : "  FAIL — divergência entre runs!");
+        Console.WriteLine(canaryOk ? "  PASS — identical runs" : "  FAIL — runs diverged!");
 
         // ---- sweep ----
         var allKills = new List<KillRow>();
@@ -109,7 +109,7 @@ internal static class Program
         }
         Console.WriteLine();
 
-        // ---- pivô de TTK (linhas tier×rank, colunas Kaeli, célula = TTK mediano em ciclos) ----
+        // ---- TTK pivot (rows tier x rank, columns Kaeli, cell = median TTK in cycles) ----
         PrintTtkPivot(allKills, roster.Select(w => w.Name).ToList(), tiers.Select(t => t.Tier).ToList());
         PrintTtkTargetPivot(allKills, roster.Select(w => w.Name).ToList(), tiers.Select(t => t.Tier).ToList());
         PrintPostureBreakPivot(allRuns, tiers.Select(t => t.Tier).ToList());
@@ -121,7 +121,7 @@ internal static class Program
         if (outPath is not null)
         {
             WriteCsv(outPath, allKills, allRuns);
-            Console.WriteLine($"\nCSV escrito em {Path.GetFullPath(outPath)} ({allKills.Count} kills + {allRuns.Count} runs)");
+            Console.WriteLine($"\nCSV written to {Path.GetFullPath(outPath)} ({allKills.Count} kills + {allRuns.Count} runs)");
         }
 
         return canaryOk ? 0 : 2;
@@ -144,7 +144,7 @@ internal static class Program
     private static void PrintTtkPivot(List<KillRow> kills, List<string> kaelis, List<int> tiers)
     {
         Console.WriteLine();
-        Console.WriteLine("== TTK mediano em CICLOS de ação (gear × mob no mesmo tier) ==");
+        Console.WriteLine("== median TTK in ACTION CYCLES (gear x mob on the same tier) ==");
         var header = "tier×rank".PadRight(14) + string.Concat(kaelis.Select(k => Short(k).PadLeft(9)));
         Console.WriteLine(header);
         Console.WriteLine(new string('-', header.Length));
@@ -165,27 +165,27 @@ internal static class Program
         }
     }
 
-    // MG-08: alvos de TTK em CICLOS por rank (comum ~3, elite ~6, boss ~12). "sem hit-kill": boss < 8 = falha dura.
+    // MG-08: TTK targets in CYCLES by rank (common ~3, elite ~6, boss ~12). "No hit-kill": boss < 8 is a hard fail.
     private static readonly IReadOnlyDictionary<string, double> TtkTargets =
         new Dictionary<string, double> { ["common"] = 3, ["elite"] = 6, ["boss"] = 12 };
 
-    // MG-08: o pivô-mestre do solve de HP/anti-one-shot. Por célula (tier×rank): TTK mediano CRUZADO
-    // entre Kaelis (a HP é compartilhada, então calibro contra a mediana do roster, com a banda ±1 do
-    // aceite absorvendo a variância por papel), o alvo, o desvio em ciclos, o fator de HP sugerido
-    // (alvo/observado — quanto escalar a célula), one-shots e o maxHp mediano observado. Reporting puro.
+    // MG-08: master pivot for HP/anti-one-shot solving. Per cell (tier x rank): CROSS-Kaeli median
+    // TTK (HP is shared, so calibrate against the roster median while the +/-1 acceptance band absorbs
+    // role variance), target, cycle delta, suggested HP factor (target/observed), one-shots, and
+    // observed median maxHp. Pure reporting.
     private static void PrintTtkTargetPivot(List<KillRow> kills, List<string> kaelis, List<int> tiers)
     {
         Console.WriteLine();
-        Console.WriteLine("== TTK vs. ALVO (MG-08): mediana cruzada entre Kaelis por célula · banda ±1 ciclo ==");
-        Console.WriteLine("   (×HP = fator sugerido p/ a próxima iteração = alvo/observado; 1shot = hits únicos ≥ HP)");
-        Console.WriteLine($"   {"cell",-12}{"obsTTK",8}{"alvo",6}{"desvio",8}{"×HP",7}{"1shot",7}{"maxHpMed",10}  status");
+        Console.WriteLine("== TTK vs. TARGET (MG-08): cross-Kaeli median per cell · +/-1 cycle band ==");
+        Console.WriteLine("   (xHP = suggested factor for next iteration = target/observed; 1shot = single hits >= HP)");
+        Console.WriteLine($"   {"cell",-12}{"obsTTK",8}{"target",6}{"delta",8}{"xHP",7}{"1shot",7}{"maxHpMed",10}  status");
         Console.WriteLine("   " + new string('-', 70));
 
         foreach (var tier in tiers)
         foreach (var rank in Ranks)
         {
             var target = TtkTargets[rank];
-            // mediana cruzada: mediana por Kaeli, depois mediana dessas medianas (cada Kaeli pesa igual).
+            // Cross median: median per Kaeli, then median of those medians (each Kaeli weighs equally).
             var perKaeli = new List<double>();
             foreach (var k in kaelis)
             {
@@ -200,31 +200,31 @@ internal static class Program
             var label = $"T{tier} {rank}";
             if (perKaeli.Count == 0)
             {
-                Console.WriteLine($"   {label,-12}{"-",8}{target,6:F0}{"-",8}{"-",7}{oneShots,7}{maxHpMed,10:F0}  sem dados");
+                Console.WriteLine($"   {label,-12}{"-",8}{target,6:F0}{"-",8}{"-",7}{oneShots,7}{maxHpMed,10:F0}  no data");
                 continue;
             }
             var obs = Median(perKaeli);
             var dev = obs - target;
             var scale = obs > 0 ? target / obs : 0;
-            // dentro da banda ±1 ciclo E sem one-shot = OK; one-shot = falha dura (hit-kill).
+            // Inside the +/-1 cycle band AND no one-shot = OK; one-shot = hard hit-kill fail.
             var inBand = Math.Abs(dev) <= 1.0;
-            var status = oneShots > 0 ? "ONE-SHOT" : inBand ? "OK" : (dev < 0 ? "rápido" : "lento");
-            // boss < 8 ciclos é a restrição dura do roadmap.
+            var status = oneShots > 0 ? "ONE-SHOT" : inBand ? "OK" : (dev < 0 ? "fast" : "slow");
+            // boss < 8 cycles is the hard roadmap constraint.
             if (rank == "boss" && obs < 8) status += " ⛔<8";
             Console.WriteLine($"   {label,-12}{obs,8:F1}{target,6:F0}{dev,+8:F1}{scale,7:F2}{oneShots,7}{maxHpMed,10:F0}  {status}");
         }
     }
 
-    // F-E posture: quanto da morte do boss vem das janelas de Echo Break. Por tier (só runs que de fato
-    // lutaram o boss = BossTotalDamage > 0): nº mediano de quebras, % mediano da vida do boss removido
-    // EM quebras (break/maxHp), % do dano total do boss vindo de quebras, e o pico de janela (%maxHp).
-    // Alvo: a quebra contribui ≲ 40% da barra do boss (acima disso o Echo Break vira "delete").
+    // F-E posture: how much boss death comes from Echo Break windows. Per tier (only runs that
+    // actually fought the boss = BossTotalDamage > 0): median break count, median % of boss HP
+    // removed IN breaks, % of total boss damage from breaks, and peak window (%maxHp).
+    // Target: break contributes <= ~40% of the boss bar; above that Echo Break becomes "delete".
     private static void PrintPostureBreakPivot(List<RunRow> runs, List<int> tiers)
     {
         Console.WriteLine();
-        Console.WriteLine("== ECHO BREAK (F-E): contribuição das quebras à morte do boss (só runs que lutaram o boss) ==");
-        Console.WriteLine("   (alvo: %vida/quebras ≲ 40%; pico = maior dano efetivo numa única janela, em %maxHp)");
-        Console.WriteLine($"   {"tier",-6}{"runs",6}{"quebras",9}{"%vida(qb)",11}{"%dano(qb)",11}{"picoJanela",12}  status");
+        Console.WriteLine("== ECHO BREAK (F-E): break contribution to boss death (only runs that fought the boss) ==");
+        Console.WriteLine("   (target: %HP/breaks <= ~40%; peak = largest effective damage in one window, in %maxHp)");
+        Console.WriteLine($"   {"tier",-6}{"runs",6}{"breaks",9}{"%hp(br)",11}{"%dmg(br)",11}{"peakWindow",12}  status");
         Console.WriteLine("   " + new string('-', 64));
 
         const double breakShareTarget = 0.40;
@@ -233,14 +233,14 @@ internal static class Program
             var bossRuns = runs.Where(r => r.Tier == tier && r.BossTotalDamage > 0 && r.BossMaxHp > 0).ToList();
             if (bossRuns.Count == 0)
             {
-                Console.WriteLine($"   {("T" + tier),-6}{"-",6}{"-",9}{"-",11}{"-",11}{"-",12}  sem dados");
+                Console.WriteLine($"   {("T" + tier),-6}{"-",6}{"-",9}{"-",11}{"-",11}{"-",12}  no data");
                 continue;
             }
             var breaksMed = Median(bossRuns.Select(r => (double)r.BreakCount).ToList());
             var hpShareMed = Median(bossRuns.Select(r => (double)r.BossBreakDamage / r.BossMaxHp).ToList());
             var dmgShareMed = Median(bossRuns.Select(r => (double)r.BossBreakDamage / r.BossTotalDamage).ToList());
             var peakMed = Median(bossRuns.Select(r => (double)r.PeakWindowDamage / r.BossMaxHp).ToList());
-            var status = hpShareMed <= breakShareTarget ? "OK" : "ALTO";
+            var status = hpShareMed <= breakShareTarget ? "OK" : "HIGH";
             Console.WriteLine(
                 $"   {("T" + tier),-6}{bossRuns.Count,6}{breaksMed,9:F1}" +
                 $"{hpShareMed * 100,10:F0}%{dmgShareMed * 100,10:F0}%{peakMed * 100,11:F0}%  {status}");
@@ -250,7 +250,7 @@ internal static class Program
     private static void PrintRunSummary(List<RunRow> runs, List<string> kaelis, List<int> tiers)
     {
         Console.WriteLine();
-        Console.WriteLine("== runs por Kaeli×tier: vitórias / mortes / one-shots / runs sem fim ==");
+        Console.WriteLine("== runs by Kaeli x tier: victories / deaths / one-shots / unfinished runs ==");
         foreach (var tier in tiers)
         {
             Console.WriteLine($"  T{tier}:");
@@ -270,15 +270,14 @@ internal static class Program
         }
     }
 
-    // MG-06: pivô de paridade INTRA-PAPEL. Para cada papel (Mage/Archer/Knight) e cada tier, lista
-    // por Kaeli a mediana de hunt (só runs vitoriosas), a mediana de dmgDealt (vitoriosas), deaths, e
-    // o desvio% vs. a mediana do grupo. spread% = (max-min)/mediana do grupo — alvo ≤ ±10% em hunt E
-    // dmg. Reporting puro, lido do RunRow do sweep — não toca o engine (determinismo intacto).
+    // MG-06: INTRA-ROLE parity pivot. For each role (Mage/Archer/Knight) and tier, list each Kaeli's
+    // median hunt time (victories only), median dmgDealt (victories), deaths, and % delta vs. group
+    // median. spread% = (max-min)/group median; target <= +/-10% in BOTH hunt and damage. Pure reporting.
     private static void PrintParityPivot(List<RunRow> runs, List<WaifuDef> roster)
     {
         Console.WriteLine();
-        Console.WriteLine("== PARIDADE INTRA-PAPEL (MG-06): hunt (vitórias) + dmgDealt por Kaeli, desvio vs. mediana do grupo ==");
-        Console.WriteLine("   (alvo: cada Kaeli dentro de ±10% da mediana do grupo, e spread% do grupo ≤ ±10%, em hunt E dmg)");
+        Console.WriteLine("== INTRA-ROLE PARITY (MG-06): hunt (victories) + dmgDealt by Kaeli, delta vs. group median ==");
+        Console.WriteLine("   (target: each Kaeli within +/-10% of group median, and group spread% <= +/-10%, in BOTH hunt and dmg)");
 
         var tiers = runs.Select(r => r.Tier).Distinct().OrderBy(t => t).ToList();
         var byName = roster.ToDictionary(w => w.Name);
@@ -292,7 +291,7 @@ internal static class Program
 
             foreach (var tier in tiers)
             {
-                // mediana por Kaeli (só vitórias) p/ hunt(s) e dmg; deaths = total de mortes do tier.
+                // Median per Kaeli (victories only) for hunt(s) and dmg; deaths = total tier deaths.
                 var huntMed = new Dictionary<string, double?>();
                 var dmgMed = new Dictionary<string, double?>();
                 var deaths = new Dictionary<string, int>();
@@ -326,30 +325,29 @@ internal static class Program
                 {
                     var hSpread = (huntVals.Max() - huntVals.Min()) / huntGroupMed * 100;
                     var dSpread = dmgVals.Count >= 2 && dmgGroupMed > 0 ? (dmgVals.Max() - dmgVals.Min()) / dmgGroupMed * 100 : 0;
-                    var ok = hSpread <= 20 && dSpread <= 20; // spread (max-min) ≤ 20% ⇔ ±10% em volta da mediana
-                    Console.WriteLine($"      spread%  hunt {hSpread,5:F0}%   dmg {dSpread,5:F0}%   {(ok ? "OK" : "FORA")}");
+                    var ok = hSpread <= 20 && dSpread <= 20; // spread (max-min) <= 20% means +/-10% around median
+                    Console.WriteLine($"      spread%  hunt {hSpread,5:F0}%   dmg {dSpread,5:F0}%   {(ok ? "OK" : "OUT")}");
                 }
             }
         }
     }
 
-    // MG-07: pivô de normalização ENTRE PAPÉIS. Agrega por papel (todas as Kaelis do papel × seeds) a
-    // mediana de hunt (só vitórias), dmgDealt/dmgTaken efetivos e deaths, por tier. spread% entre os 3
-    // papéis = (max-min)/mediana — alvo ≤ ±15% em hunt, preservando as ordens-alvo do MG-02. Reporting
-    // puro lido do RunRow — não toca o engine (determinismo intacto).
+    // MG-07: BETWEEN-ROLE normalization pivot. Aggregates by role (all Kaelis in the role x seeds)
+    // median hunt time (victories only), effective dmgDealt/dmgTaken, and deaths by tier. spread%
+    // between the 3 roles = (max-min)/median; target <= +/-15% in hunt while preserving MG-02 target order.
     private static void PrintRolePivot(List<RunRow> runs, List<WaifuDef> roster)
     {
         Console.WriteLine();
-        Console.WriteLine("== NORMALIZAÇÃO ENTRE PAPÉIS (MG-07): hunt (vitórias) + dmg dado/sofrido + deaths por papel ==");
-        Console.WriteLine("   (alvo: spread% de hunt entre os 3 papéis ≤ ±15% ⇔ ≤30%; ordens-alvo do MG-02 preservadas)");
+        Console.WriteLine("== BETWEEN-ROLE NORMALIZATION (MG-07): hunt (victories) + damage dealt/taken + deaths by role ==");
+        Console.WriteLine("   (target: hunt spread% between the 3 roles <= +/-15% => <=30%; MG-02 target order preserved)");
 
         var roles = new[] { KaeliRole.Mage, KaeliRole.Archer, KaeliRole.Knight };
         var nameRole = roster.ToDictionary(w => w.Name, w => w.Role);
         var tiers = runs.Select(r => r.Tier).Distinct().OrderBy(t => t).ToList();
 
-        // spread% só é honesto entre papéis que de fato limpam o tier — a mediana de hunt de um papel
-        // que vence 6/60 é survivorship-bias (só as seeds fáceis). Conta no spread só papéis com
-        // win-rate ≥ este piso; abaixo disso a viabilidade é problema de survival (deaths) = MG-08.
+        // spread% is only honest between roles that actually clear the tier; median hunt for a role
+        // that wins 6/60 is survivorship bias. Count only roles above this win-rate floor; below it,
+        // viability is a survival problem (deaths) = MG-08.
         const double viableWinRate = 0.40;
 
         foreach (var tier in tiers)
@@ -365,7 +363,7 @@ internal static class Program
                 double? hunt = wins.Count > 0 ? Median(wins.Select(r => (double)r.DurationMs).ToList()) : null;
                 double? dealt = wins.Count > 0 ? Median(wins.Select(r => (double)r.DamageDealt).ToList()) : null;
                 double? taken = wins.Count > 0 ? Median(wins.Select(r => (double)r.DamageTaken).ToList()) : null;
-                // MG-08: vida no fim (pós-boss) e mínima nas vitórias — survival sem o ruído das mortes.
+                // MG-08: end HP (post-boss) and minimum HP in victories — survival without death noise.
                 double? endHp = wins.Count > 0 ? Median(wins.Select(r => r.EndHpFraction).ToList()) : null;
                 double? minHp = wins.Count > 0 ? Median(wins.Select(r => r.MinHpFraction).ToList()) : null;
                 var deaths = rs.Count(r => r.PlayerDied);
@@ -375,7 +373,7 @@ internal static class Program
                 var tStr = taken is null ? "-" : $"{taken.Value,7:F0}";
                 var endStr = endHp is null ? "-" : $"{endHp.Value * 100,3:F0}%";
                 var minStr = minHp is null ? "-" : $"{minHp.Value * 100,3:F0}%";
-                var viableMark = winRate >= viableWinRate ? "  " : " ⚠"; // ⚠ = não-viável, fora do spread
+                var viableMark = winRate >= viableWinRate ? "  " : " !"; // ! = not viable, outside spread
                 Console.WriteLine($"    {role,-7} hunt {hStr}   dmgDealt {dStr}   dmgTaken {tStr}   endHp {endStr,4} minHp {minStr,4}  death {deaths,3}  (wins {wins.Count}/{rs.Count}{viableMark})");
             }
 
@@ -384,11 +382,11 @@ internal static class Program
             {
                 var med = Median(hv);
                 var spread = med > 0 ? (hv.Max() - hv.Min()) / med * 100 : 0;
-                Console.WriteLine($"    spread% hunt (papéis viáveis, win≥{viableWinRate:P0}) {spread,5:F0}%   {(spread <= 30 ? "OK" : "FORA")}");
+                Console.WriteLine($"    spread% hunt (viable roles, win>={viableWinRate:P0}) {spread,5:F0}%   {(spread <= 30 ? "OK" : "OUT")}");
             }
             else
             {
-                Console.WriteLine($"    spread% hunt — <2 papéis viáveis neste tier (survival = MG-08)");
+                Console.WriteLine($"    spread% hunt — <2 viable roles in this tier (survival = MG-08)");
             }
         }
     }
@@ -412,7 +410,7 @@ internal static class Program
 
         foreach (var r in runs)
             sb.Append("run,").Append(Csv(r.Kaeli)).Append(',').Append(r.Tier).Append(',').Append(r.Seed)
-              .Append(",,,,,,,,") // species..oneShot vazios
+              .Append(",,,,,,,,") // empty species..oneShot fields
               .Append(r.Victory ? 1 : 0).Append(',').Append(r.PlayerDied ? 1 : 0).Append(',')
               .Append(r.Unfinished ? 1 : 0).Append(',').Append(r.DurationMs).Append(',').Append(r.Kills).Append(',')
               .Append(r.DamageDealt).Append(',').Append(r.DamageTaken).Append(',').Append(r.OneShotCount).Append(',')

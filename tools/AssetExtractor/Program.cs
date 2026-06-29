@@ -609,7 +609,7 @@ internal static class Program
             }
             catch (Exception ex)
             {
-                // um sheet ilegível não pode abortar a extração inteira: pula essa aparência e segue.
+                // An unreadable sheet must not abort the whole extraction: skip this appearance and continue.
                 Console.Error.WriteLine($"WARN: {category} id {id} skipped: {ex.GetType().Name}: {ex.Message}");
             }
         }

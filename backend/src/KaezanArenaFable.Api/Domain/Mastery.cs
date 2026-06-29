@@ -3,17 +3,17 @@ namespace KaezanArenaFable.Api.Domain;
 /// <summary>
 /// One node of a Kaeli's mastery tree. EffectKind/Target:
 /// - "stat":    Target ∈ { atkPercent, hpPercent, critChance, damageReduction, cooldownPercent, gaugePercent }
-/// - "slotmod": Target = "slot:0".."slot:3" — multiplica o Power do slot (em todas as posturas)
-/// - "ultmod":  Target = "ultimate" — amplifica a ultimate (duração do buff / cura)
-/// - "trait":   amplifica o efeito do trait de assinatura da Kaeli
-/// Dentro de um ramo, o node de Order N exige o de Order N-1 (regra implícita do serviço).
+/// - "slotmod": Target = "slot:0".."slot:3" — multiplies slot Power across every stance
+/// - "ultmod":  Target = "ultimate" — amplifies the ultimate (buff duration / healing)
+/// - "trait":   amplifies the Kaeli signature trait effect
+/// Inside a branch, the node at Order N requires the Order N-1 node.
 /// </summary>
 public sealed record MasteryNodeDef(
     string Id, string Branch, int Order, string Name, string Description, int Cost,
     string EffectKind, string EffectTarget, double Value);
 
 /// <summary>
-/// Agregados de maestria pré-computados no início da run (determinismo: constantes na run).
+/// Precomputed mastery aggregates at run start (determinism: constants during the run).
 /// </summary>
 public sealed record MasteryAggregates(
     double AtkMult, double HpMult, double CritChanceBonus, double DamageReductionBonus,
@@ -32,8 +32,8 @@ public sealed record MasteryAggregates(
 }
 
 /// <summary>
-/// Tudo que a conta injeta na run além da WaifuDef: nível de afinidade (bônus de stats),
-/// agregados de maestria e a skin selecionada (visual no mundo). Constante durante a run.
+/// Everything the account injects into the run beyond WaifuDef: affinity level, mastery
+/// aggregates, and the selected skin. Constant during the run.
 /// </summary>
 public sealed record KaeliLoadout(int AffinityLevel, MasteryAggregates Mastery, SkinDef Skin)
 {
@@ -42,9 +42,9 @@ public sealed record KaeliLoadout(int AffinityLevel, MasteryAggregates Mastery, 
 }
 
 /// <summary>
-/// Árvore de Maestria de Eco por Kaeli (FABLE_TRACK F-B): template de 3 ramos
-/// (Ofensiva/Defensiva/Eco) parametrizado por classe + trait, com nomes que referenciam
-/// as skills reais do kit. IDs `mastery:*` são estáveis — nunca renomear.
+/// Echo Mastery tree per Kaeli (FABLE_TRACK F-B): a 3-branch template
+/// (Offense/Defense/Echo) parameterized by class + trait, with names that reference
+/// the real kit skills. IDs `mastery:*` are stable — never rename them.
 /// </summary>
 public static class Mastery
 {
@@ -54,7 +54,7 @@ public static class Mastery
     public static readonly IReadOnlyDictionary<string, MasteryNodeDef> NodeById =
         TreeByWaifu.Values.SelectMany(nodes => nodes).ToDictionary(n => n.Id);
 
-    /// <summary>Custo total da árvore (todas iguais por construção).</summary>
+    /// <summary>Total tree cost (all trees match by construction).</summary>
     public static int TreeTotalCost(string waifuId) =>
         TreeByWaifu.TryGetValue(waifuId, out var tree) ? tree.Sum(n => n.Cost) : 0;
 
@@ -111,38 +111,38 @@ public static class Mastery
 
         return
         [
-            // ---- Ofensiva ----
-            new MasteryNodeDef(Id("off1"), "off", 1, "Vigor de Batalha",
-                "+4% de ataque.", 1, "stat", "atkPercent", 0.04),
+            // ---- Offense ----
+            new MasteryNodeDef(Id("off1"), "off", 1, "Battle Vigor",
+                "+4% attack.", 1, "stat", "atkPercent", 0.04),
             new MasteryNodeDef(Id("off2"), "off", 2, $"{slot1.Name}+",
-                $"O slot 1 ({slot1.Name} e equivalentes de postura) causa +15% de dano.",
+                $"Slot 1 ({slot1.Name} and stance equivalents) deals +15% damage.",
                 2, "slotmod", "slot:0", 0.15),
-            new MasteryNodeDef(Id("off3"), "off", 3, "Olhar Mortal",
-                "+4% de chance de crítico.", 2, "stat", "critChance", 0.04),
-            new MasteryNodeDef(Id("off4"), "off", 4, $"{slot3.Name} Supremo",
-                $"Node-chave: o slot 3 ({slot3.Name} e equivalentes de postura) causa +25% de dano.",
+            new MasteryNodeDef(Id("off3"), "off", 3, "Killing Gaze",
+                "+4% critical chance.", 2, "stat", "critChance", 0.04),
+            new MasteryNodeDef(Id("off4"), "off", 4, $"{slot3.Name} Supreme",
+                $"Keystone: slot 3 ({slot3.Name} and stance equivalents) deals +25% damage.",
                 3, "slotmod", "slot:2", 0.25),
 
-            // ---- Defensiva ----
-            new MasteryNodeDef(Id("def1"), "def", 1, "Fôlego",
-                "+6% de HP máximo.", 1, "stat", "hpPercent", 0.06),
-            new MasteryNodeDef(Id("def2"), "def", 2, "Pele de Pedra",
-                "Dano recebido reduzido em 3%.", 2, "stat", "damageReduction", 0.03),
-            new MasteryNodeDef(Id("def3"), "def", 3, "Vitalidade",
-                "+8% de HP máximo.", 2, "stat", "hpPercent", 0.08),
-            new MasteryNodeDef(Id("def4"), "def", 4, "Ritmo de Combate",
-                "Node-chave: todos os cooldowns dos slots 1-4 reduzidos em 10%.",
+            // ---- Defense ----
+            new MasteryNodeDef(Id("def1"), "def", 1, "Second Wind",
+                "+6% maximum HP.", 1, "stat", "hpPercent", 0.06),
+            new MasteryNodeDef(Id("def2"), "def", 2, "Stone Skin",
+                "Incoming damage reduced by 3%.", 2, "stat", "damageReduction", 0.03),
+            new MasteryNodeDef(Id("def3"), "def", 3, "Vitality",
+                "+8% maximum HP.", 2, "stat", "hpPercent", 0.08),
+            new MasteryNodeDef(Id("def4"), "def", 4, "Combat Rhythm",
+                "Keystone: all slot 1-4 cooldowns reduced by 10%.",
                 3, "stat", "cooldownPercent", 0.10),
 
-            // ---- Eco (assinatura) ----
-            new MasteryNodeDef(Id("eco1"), "eco", 1, "Eco Desperto",
-                $"O trait \"{trait.Name}\" fica 25% mais forte.", 2, "trait", "trait", 0.25),
-            new MasteryNodeDef(Id("eco2"), "eco", 2, "Pulso de Eco",
-                "O gauge de ultimate enche 15% mais rápido.", 2, "stat", "gaugePercent", 0.15),
-            new MasteryNodeDef(Id("eco3"), "eco", 3, "Eco Profundo",
-                $"O trait \"{trait.Name}\" fica mais 35% mais forte.", 3, "trait", "trait", 0.35),
-            new MasteryNodeDef(Id("eco4"), "eco", 4, $"{ultimate.Name} Verdadeiro",
-                $"Node-chave: a ultimate ({ultimate.Name}) tem efeito 40% maior (duração/cura).",
+            // ---- Echo (signature) ----
+            new MasteryNodeDef(Id("eco1"), "eco", 1, "Awakened Echo",
+                $"The \"{trait.Name}\" trait becomes 25% stronger.", 2, "trait", "trait", 0.25),
+            new MasteryNodeDef(Id("eco2"), "eco", 2, "Echo Pulse",
+                "The ultimate gauge fills 15% faster.", 2, "stat", "gaugePercent", 0.15),
+            new MasteryNodeDef(Id("eco3"), "eco", 3, "Deep Echo",
+                $"The \"{trait.Name}\" trait becomes another 35% stronger.", 3, "trait", "trait", 0.35),
+            new MasteryNodeDef(Id("eco4"), "eco", 4, $"True {ultimate.Name}",
+                $"Keystone: the ultimate ({ultimate.Name}) has 40% stronger effect (duration/healing).",
                 3, "ultmod", "ultimate", 0.40),
         ];
     }

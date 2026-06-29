@@ -28,8 +28,8 @@ const AUTHORED_PAGE_SIZE = 8;
       <aside class="source-library panel">
         <div class="panel-head">
           <div>
-            <span class="eyebrow">Acervo visual</span>
-            <h2>Biblioteca Canary</h2>
+            <span class="eyebrow">Visual Archive</span>
+            <h2>Canary Library</h2>
           </div>
           <b class="count">{{ filteredAppearances().length }}</b>
         </div>
@@ -37,24 +37,24 @@ const AUTHORED_PAGE_SIZE = 8;
         <input
           class="search"
           type="search"
-          placeholder="Nome, tipo ou lookType"
+          placeholder="Name, type, or lookType"
           [value]="appearanceSearch()"
           (input)="setAppearanceSearch($any($event.target).value)"
         />
 
         <div class="filter-grid">
-          <label>Classe
+          <label>Class
             <select (change)="setFamilyFilter($any($event.target).value)">
-              <option value="">Todas</option>
+              <option value="">All</option>
               @for (family of appearanceFamilies(); track family) {
                 <option [value]="family" [selected]="family === familyFilter()">{{ family }}</option>
               }
             </select>
           </label>
-          <label>Categoria
+          <label>Category
             <select (change)="setKindFilter($any($event.target).value)">
-              <option value="all" [selected]="kindFilter() === 'all'">Normais e bosses</option>
-              <option value="normal" [selected]="kindFilter() === 'normal'">Normais</option>
+              <option value="all" [selected]="kindFilter() === 'all'">Normal and bosses</option>
+              <option value="normal" [selected]="kindFilter() === 'normal'">Normal</option>
               <option value="boss" [selected]="kindFilter() === 'boss'">Bosses</option>
             </select>
           </label>
@@ -62,10 +62,10 @@ const AUTHORED_PAGE_SIZE = 8;
 
         <div class="scope-tabs">
           <button type="button" [class.active]="scopeFilter() === 'all'" (click)="setScopeFilter('all')">
-            Todos Canary
+            All Canary
           </button>
           <button type="button" [class.active]="scopeFilter() === 'legacy'" (click)="setScopeFilter('legacy')">
-            Legado importado
+            Imported legacy
           </button>
         </div>
 
@@ -80,26 +80,26 @@ const AUTHORED_PAGE_SIZE = 8;
               <app-creature-preview [creature]="card.creature" [size]="52" />
               <span class="row-copy">
                 <strong [title]="card.appearance.name">{{ card.appearance.name }}</strong>
-                <small>{{ card.appearance.bestiaryClass }} Â· LookType {{ card.appearance.outfit.lookType }}</small>
+                <small>{{ card.appearance.bestiaryClass }} - LookType {{ card.appearance.outfit.lookType }}</small>
                 <span class="badges">
                   <i [class.boss]="card.appearance.kind === 'boss'">
                     {{ card.appearance.kind === 'boss' ? 'BOSS' : 'NORMAL' }}
                   </i>
-                  @if (card.appearance.legacyImported) { <i class="legacy">LEGADO</i> }
-                  @if (card.appearance.bestiaryClass === 'Unclassified') { <i class="review">REVISAR</i> }
-                  @if (!hasOutfit(card.appearance.outfit.lookType)) { <i class="missing">SEM SPRITE</i> }
+                  @if (card.appearance.legacyImported) { <i class="legacy">LEGACY</i> }
+                  @if (card.appearance.bestiaryClass === 'Unclassified') { <i class="review">REVIEW</i> }
+                  @if (!hasOutfit(card.appearance.outfit.lookType)) { <i class="missing">NO SPRITE</i> }
                 </span>
               </span>
             </button>
           } @empty {
-            <div class="empty">Nenhuma aparencia encontrada.</div>
+            <div class="empty">No appearance found.</div>
           }
         </div>
 
         <footer class="pagination">
-          <button type="button" [disabled]="appearancePage() <= 1" (click)="changeAppearancePage(-1)">Anterior</button>
+          <button type="button" [disabled]="appearancePage() <= 1" (click)="changeAppearancePage(-1)">Previous</button>
           <span>{{ appearancePage() }} / {{ appearancePageCount() }}</span>
-          <button type="button" [disabled]="appearancePage() >= appearancePageCount()" (click)="changeAppearancePage(1)">Proxima</button>
+          <button type="button" [disabled]="appearancePage() >= appearancePageCount()" (click)="changeAppearancePage(1)">Next</button>
         </footer>
       </aside>
 
@@ -107,18 +107,18 @@ const AUTHORED_PAGE_SIZE = 8;
         @if (metadata(); as meta) {
           <div class="editor-head">
             <div>
-              <span class="eyebrow">Configuracao Kaezan</span>
-              <h2>{{ draft().id ? 'Editar monstro' : 'Novo monstro' }}</h2>
+              <span class="eyebrow">Kaezan Configuration</span>
+              <h2>{{ draft().id ? 'Edit monster' : 'New monster' }}</h2>
               @if (draft().id) {
                 <code>{{ draft().id }}</code>
               } @else if (selectedAppearance(); as appearance) {
-                <small class="base-label">Base visual: {{ appearance.name }}</small>
+                <small class="base-label">Visual base: {{ appearance.name }}</small>
               }
             </div>
             <div class="actions">
-              <button type="button" class="secondary" (click)="duplicateCurrent()">Duplicar</button>
+              <button type="button" class="secondary" (click)="duplicateCurrent()">Duplicate</button>
               <button type="button" class="primary" [disabled]="saving()" (click)="save()">
-                {{ saving() ? 'Salvando...' : 'Salvar monstro' }}
+                {{ saving() ? 'Saving...' : 'Save monster' }}
               </button>
             </div>
           </div>
@@ -129,35 +129,35 @@ const AUTHORED_PAGE_SIZE = 8;
 
           <div class="editor-grid">
             <section class="form-section identity">
-              <h3>Identidade visual</h3>
+              <h3>Visual identity</h3>
               <div class="identity-grid">
                 <div class="preview">
                   <app-creature-preview [creature]="previewCreature()" [size]="112" />
                   <b>{{ selectedAppearance()?.name || 'LookType ' + draft().outfit.lookType }}</b>
                   <small>LookType {{ draft().outfit.lookType }}</small>
                   @if (selectedAppearance(); as appearance) {
-                    <span>{{ appearance.kind === 'boss' ? 'Boss Canary' : 'Monstro Canary' }}</span>
+                    <span>{{ appearance.kind === 'boss' ? 'Canary boss' : 'Canary monster' }}</span>
                   }
                 </div>
                 <div class="fields">
-                  <label>Nome
+                  <label>Name
                     <input [value]="draft().name" (input)="patch({ name: $any($event.target).value })" />
                   </label>
-                  <label>Descricao
+                  <label>Description
                     <textarea rows="2" [value]="draft().description" (input)="patch({ description: $any($event.target).value })"></textarea>
                   </label>
-                  <label>Tipo do bestiario
+                  <label>Bestiary type
                     <input [value]="draft().bestiaryClass" (input)="patch({ bestiaryClass: $any($event.target).value })" />
                   </label>
                   <p class="hint appearance-hint">
-                    Escolha ou troque o visual pela biblioteca da esquerda. Somente outfit, corpse e tipo visual sao copiados.
+                    Choose or swap the visual from the library on the left. Only outfit, corpse, and visual type are copied.
                   </p>
                 </div>
               </div>
             </section>
 
             <section class="form-section build">
-              <h3>Construcao</h3>
+              <h3>Build</h3>
               <div class="three">
                 <label>Power tier
                   <select (change)="patchNum('powerTier', $any($event.target).value)">
@@ -166,14 +166,14 @@ const AUTHORED_PAGE_SIZE = 8;
                     }
                   </select>
                 </label>
-                <label>Funcao
+                <label>Role
                   <select (change)="patch({ rank: $any($event.target).value })">
                     @for (rank of ranks; track rank.id) {
                       <option [value]="rank.id" [selected]="rank.id === draft().rank">{{ rank.name }}</option>
                     }
                   </select>
                 </label>
-                <label>Elemento ofensivo
+                <label>Offensive element
                   <select (change)="patch({ elementId: $any($event.target).value })">
                     @for (element of meta.elements; track element.id) {
                       <option [value]="element.id" [selected]="element.id === draft().elementId">{{ element.name }}</option>
@@ -182,7 +182,7 @@ const AUTHORED_PAGE_SIZE = 8;
                 </label>
               </div>
 
-              <label>Comportamento
+              <label>Behavior
                 <select (change)="patch({ behaviorId: $any($event.target).value })">
                   @for (behavior of meta.behaviors; track behavior.id) {
                     <option [value]="behavior.id" [selected]="behavior.id === draft().behaviorId">{{ behavior.name }}</option>
@@ -191,7 +191,7 @@ const AUTHORED_PAGE_SIZE = 8;
               </label>
               <p class="behavior">{{ behaviorDescription() }}</p>
 
-              <label>Preset de stats
+              <label>Stat preset
                 <select (change)="applyPreset($any($event.target).value)">
                   @for (preset of meta.presets; track preset.id) {
                     <option [value]="preset.id" [selected]="preset.id === draft().statPresetId">{{ preset.name }}</option>
@@ -213,30 +213,30 @@ const AUTHORED_PAGE_SIZE = 8;
                 }
               </div>
               <p class="hint">
-                Presets sao pontos de partida. Cada multiplicador pode ser ajustado entre
+                Presets are starting points. Each multiplier can be adjusted between
                 {{ meta.modifierMin }}x e {{ meta.modifierMax }}x.
               </p>
             </section>
 
             <section class="form-section result">
-              <h3>Stats resultantes</h3>
+              <h3>Resulting stats</h3>
               <div class="stat-cards">
                 <div><span>HP</span><b>{{ resolvedStats().health }}</b></div>
-                <div><span>Dano base</span><b>{{ resolvedStats().damage }}</b><small>ataques variam por kit</small></div>
-                <div><span>Armadura</span><b>{{ resolvedStats().armor }}</b></div>
-                <div><span>Velocidade</span><b>{{ resolvedStats().speed }}</b></div>
+                <div><span>Base damage</span><b>{{ resolvedStats().damage }}</b><small>attacks vary by kit</small></div>
+                <div><span>Armor</span><b>{{ resolvedStats().armor }}</b></div>
+                <div><span>Speed</span><b>{{ resolvedStats().speed }}</b></div>
                 <div><span>XP</span><b>{{ resolvedStats().experience }}</b></div>
               </div>
               @if (draft().rank === 'boss') {
-                <div class="boss-note">Boss autoral usa este HP diretamente e nao recebe multiplicador legado.</div>
+                <div class="boss-note">Authored boss uses this HP directly and does not receive a legacy multiplier.</div>
               }
             </section>
 
             <section class="form-section resistances">
-              <h3>Fraquezas e resistencias</h3>
-              <p class="hint">Escolha fraqueza ou resistencia por elemento. O valor padrao e 5%, mas pode ser editado.</p>
+              <h3>Weaknesses and resistances</h3>
+              <p class="hint">Choose weakness or resistance by element. The default value is 5%, but it can be edited.</p>
               <div class="resistance-toolbar">
-                <button type="button" class="secondary compact" (click)="clearResistances()">Limpar resistencias</button>
+                <button type="button" class="secondary compact" (click)="clearResistances()">Clear resistances</button>
               </div>
               <div class="resistance-grid">
                 @for (element of meta.elements; track element.id) {
@@ -250,9 +250,9 @@ const AUTHORED_PAGE_SIZE = 8;
                       [value]="resistanceKind(element.id)"
                       (change)="setResistanceKind(element.id, $any($event.target).value)"
                     >
-                      <option value="neutral">Neutro</option>
-                      <option value="weak">Fraqueza</option>
-                      <option value="resist">Resistencia</option>
+                      <option value="neutral">Neutral</option>
+                      <option value="weak">Weakness</option>
+                      <option value="resist">Resistance</option>
                     </select>
                     <div class="suffix">
                       <input
@@ -272,13 +272,13 @@ const AUTHORED_PAGE_SIZE = 8;
             </section>
 
             <section class="form-section keywords">
-              <h3>Resistencia a keywords (cartas)</h3>
+              <h3>Keyword resistance (cards)</h3>
               <p class="hint">
-                % que o monstro resiste de cada keyword de carta (G-04): 0 = normal, 100 = imune,
-                negativo amplifica. Use para forcar variedade de build (ex. Maldicao 80 contra a Velvet).
+                Percentage resisted by the monster for each card keyword (G-04): 0 = normal, 100 = immune,
+                negative values amplify. Use it to force build variety (for example, Curse 80 against Velvet).
               </p>
               <div class="resistance-toolbar">
-                <button type="button" class="secondary compact" (click)="clearKeywordResistances()">Limpar keywords</button>
+                <button type="button" class="secondary compact" (click)="clearKeywordResistances()">Clear keywords</button>
               </div>
               <div class="resistance-grid keyword-grid">
                 @for (tag of meta.keywordTags; track tag) {
@@ -305,29 +305,29 @@ const AUTHORED_PAGE_SIZE = 8;
             </section>
           </div>
         } @else {
-          <div class="loading">Carregando autoria de monstros...</div>
+          <div class="loading">Loading monster authoring...</div>
         }
       </main>
 
       <aside class="authored-library panel">
         <div class="panel-head">
           <div>
-            <span class="eyebrow">Conteudo autoral</span>
-            <h2>Monstros Kaezan</h2>
+            <span class="eyebrow">Authored Content</span>
+            <h2>Kaezan Monsters</h2>
           </div>
-          <button class="primary compact" type="button" (click)="newMonster()">Novo</button>
+          <button class="primary compact" type="button" (click)="newMonster()">New</button>
         </div>
 
         <input
           class="search"
           type="search"
-          placeholder="Buscar monstro Kaezan"
+          placeholder="Search Kaezan monster"
           [value]="authoredSearch()"
           (input)="setAuthoredSearch($any($event.target).value)"
         />
-        <label>Funcao
+        <label>Role
           <select (change)="setAuthoredRankFilter($any($event.target).value)">
-            <option value="all" [selected]="authoredRankFilter() === 'all'">Todas</option>
+            <option value="all" [selected]="authoredRankFilter() === 'all'">All</option>
             @for (rank of ranks; track rank.id) {
               <option [value]="rank.id" [selected]="authoredRankFilter() === rank.id">{{ rank.name }}</option>
             }
@@ -341,48 +341,48 @@ const AUTHORED_PAGE_SIZE = 8;
                 <app-creature-preview [creature]="card.creature" [size]="54" />
                 <span>
                   <strong [title]="card.monster.name">{{ card.monster.name }}</strong>
-                  <small>{{ card.monster.bestiaryClass }} Â· Tier {{ card.monster.powerTier }}</small>
+                  <small>{{ card.monster.bestiaryClass }} - Tier {{ card.monster.powerTier }}</small>
                   <i [class]="card.monster.rank">{{ label(card.monster.rank) }}</i>
                 </span>
               </button>
               @if (card.usages.length) {
-                <div class="usage" [title]="card.usages.join(', ')">Em uso: {{ card.usages.join(', ') }}</div>
+                <div class="usage" [title]="card.usages.join(', ')">In use: {{ card.usages.join(', ') }}</div>
               }
               <footer>
-                <button type="button" (click)="editMonster(card.monster)">Editar</button>
-                <button type="button" (click)="duplicateMonster(card.monster)">Duplicar</button>
-                <button type="button" class="danger" (click)="requestDelete(card.monster)">Excluir</button>
+                <button type="button" (click)="editMonster(card.monster)">Edit</button>
+                <button type="button" (click)="duplicateMonster(card.monster)">Duplicate</button>
+                <button type="button" class="danger" (click)="requestDelete(card.monster)">Delete</button>
               </footer>
             </article>
           } @empty {
             <div class="empty authored-empty">
-              Nenhum monstro Kaezan neste filtro. Escolha um visual Canary e salve a primeira criatura.
+              No Kaezan monster in this filter. Choose a Canary visual and save the first creature.
             </div>
           }
         </div>
 
         <footer class="pagination">
-          <button type="button" [disabled]="authoredPage() <= 1" (click)="changeAuthoredPage(-1)">Anterior</button>
+          <button type="button" [disabled]="authoredPage() <= 1" (click)="changeAuthoredPage(-1)">Previous</button>
           <span>{{ authoredPage() }} / {{ authoredPageCount() }} - {{ filteredAuthored().length }}</span>
-          <button type="button" [disabled]="authoredPage() >= authoredPageCount()" (click)="changeAuthoredPage(1)">Proxima</button>
+          <button type="button" [disabled]="authoredPage() >= authoredPageCount()" (click)="changeAuthoredPage(1)">Next</button>
         </footer>
       </aside>
 
       @if (pendingDelete(); as monster) {
         <div class="modal-backdrop" (click)="cancelDelete()">
           <section class="confirm-modal" (click)="$event.stopPropagation()">
-            <span class="eyebrow">Excluir monstro</span>
+            <span class="eyebrow">Delete monster</span>
             <h2>{{ monster.name }}</h2>
-            <p>Esta acao remove definitivamente <code>{{ monster.id }}</code>.</p>
+            <p>This action permanently removes <code>{{ monster.id }}</code>.</p>
             @if (usageFor(monster).length) {
               <div class="delete-warning">
-                Ele ainda esta em {{ usageFor(monster).join(', ') }} e o backend bloqueara a exclusao.
+                It is still in {{ usageFor(monster).join(', ') }}, and the backend will block deletion.
               </div>
             }
             <div class="actions">
-              <button type="button" class="secondary" (click)="cancelDelete()">Cancelar</button>
+              <button type="button" class="secondary" (click)="cancelDelete()">Cancel</button>
               <button type="button" class="danger solid" [disabled]="deleting()" (click)="confirmDelete()">
-                {{ deleting() ? 'Excluindo...' : 'Excluir definitivamente' }}
+                {{ deleting() ? 'Deleting...' : 'Delete permanently' }}
               </button>
             </div>
           </section>
@@ -561,20 +561,20 @@ export class MonsterEditor implements OnInit {
   readonly status = signal<{ kind: 'ok' | 'err'; msg: string } | null>(null);
 
   readonly ranks = [
-    { id: 'common', name: 'Comum' },
+    { id: 'common', name: 'Common' },
     { id: 'elite', name: 'Elite' },
     { id: 'boss', name: 'Boss' },
   ] as const;
   readonly modifiers = [
     { key: 'hpMultiplier', label: 'HP' },
-    { key: 'damageMultiplier', label: 'Dano' },
-    { key: 'speedMultiplier', label: 'Velocidade' },
-    { key: 'cadenceMultiplier', label: 'Cadencia' },
+    { key: 'damageMultiplier', label: 'Damage' },
+    { key: 'speedMultiplier', label: 'Speed' },
+    { key: 'cadenceMultiplier', label: 'Cadence' },
   ] as const;
-  // G-08B: rótulos PT-BR das keywords de carta (mesma taxonomia de G-04).
+  // G-08B: card keyword labels (same taxonomy as G-04).
   readonly keywordLabels: Record<string, string> = {
-    sin: 'Pecado', combo: 'Disciplina', curse: 'Maldicao', burn: 'Queimadura',
-    charge: 'Carga', frost: 'Gelo', prey: 'Presa', posture: 'Postura',
+    sin: 'Sin', combo: 'Discipline', curse: 'Curse', burn: 'Burn',
+    charge: 'Charge', frost: 'Frost', prey: 'Prey', posture: 'Posture',
   };
 
   readonly appearanceFamilies = computed(() => {
@@ -750,8 +750,8 @@ export class MonsterEditor implements OnInit {
         name: monster.name === `${previousAppearance.name} Echo`
           ? `${appearance.name} Echo`
           : next.name,
-        description: monster.description === `Criatura Kaezan com visual inspirado em ${previousAppearance.name}.`
-          ? `Criatura Kaezan com visual inspirado em ${appearance.name}.`
+        description: monster.description === `Kaezan creature with a visual inspired by ${previousAppearance.name}.`
+          ? `Kaezan creature with a visual inspired by ${appearance.name}.`
           : next.description,
       };
     });
@@ -759,8 +759,8 @@ export class MonsterEditor implements OnInit {
     this.status.set({
       kind: 'ok',
       msg: this.draft().id
-        ? `Visual atualizado para ${appearance.name}. Salve para confirmar.`
-        : `Visual ${appearance.name} selecionado. Configure o monstro Kaezan no centro.`,
+        ? `Visual updated to ${appearance.name}. Save to confirm.`
+        : `${appearance.name} visual selected. Configure the Kaezan monster in the center.`,
     });
   }
 
@@ -783,10 +783,10 @@ export class MonsterEditor implements OnInit {
     this.draft.update((monster) => ({
       ...structuredClone(monster),
       id: '',
-      name: monster.name ? `${monster.name} Echo` : 'Novo monstro',
+      name: monster.name ? `${monster.name} Echo` : 'New monster',
     }));
     this.selectedId.set('');
-    this.status.set({ kind: 'ok', msg: 'Copia aberta como novo monstro. Ajuste o nome e salve.' });
+    this.status.set({ kind: 'ok', msg: 'Copy opened as a new monster. Adjust the name and save.' });
   }
 
   patch(patch: Partial<MonsterDefinition>): void {
@@ -893,7 +893,7 @@ export class MonsterEditor implements OnInit {
     this.patch({ resistances: {} });
   }
 
-  // G-08B: keyword interaction — % que o mob resiste de cada keyword de carta (negativo amplifica).
+  // G-08B: keyword interaction — percent the mob resists from each card keyword (negative amplifies).
   keywordResist(tag: string): number {
     return this.draft().keywordResistances?.[tag] ?? 0;
   }
@@ -930,7 +930,7 @@ export class MonsterEditor implements OnInit {
     const usages: string[] = [];
     for (const tier of this.tiers()) {
       if (tier.commonMobs.some((reference) => this.matches(reference, monster)))
-        usages.push(`T${tier.tier} comuns`);
+        usages.push(`T${tier.tier} common`);
       if (tier.eliteMobs.some((reference) => this.matches(reference, monster)))
         usages.push(`T${tier.tier} elites`);
       if (this.matches(tier.boss, monster))
@@ -957,7 +957,7 @@ export class MonsterEditor implements OnInit {
       if (this.selectedId() === monster.id) this.newMonster();
       this.pendingDelete.set(null);
       this.catalogChanged.emit();
-      this.status.set({ kind: 'ok', msg: `${monster.name} foi excluido.` });
+      this.status.set({ kind: 'ok', msg: `${monster.name} was deleted.` });
     } catch (error) {
       this.pendingDelete.set(null);
       this.status.set({ kind: 'err', msg: (error as Error).message });
@@ -981,7 +981,7 @@ export class MonsterEditor implements OnInit {
       this.selectedId.set(saved.id);
       this.selectedAppearance.set(this.findAppearance(saved));
       this.catalogChanged.emit();
-      this.status.set({ kind: 'ok', msg: 'Monstro salvo. Ele ja pode ser usado nas proximas runs.' });
+      this.status.set({ kind: 'ok', msg: 'Monster saved. It can already be used in upcoming runs.' });
     } catch (error) {
       this.status.set({ kind: 'err', msg: (error as Error).message });
     } finally {
@@ -1025,7 +1025,7 @@ export class MonsterEditor implements OnInit {
       ...monster,
       name: applyDefaults && !monster.name ? `${appearance.name} Echo` : monster.name,
       description: applyDefaults && !monster.description
-        ? `Criatura Kaezan com visual inspirado em ${appearance.name}.`
+        ? `Kaezan creature with a visual inspired by ${appearance.name}.`
         : monster.description,
       outfit: structuredClone(appearance.outfit),
       corpse: appearance.corpse,
@@ -1074,7 +1074,7 @@ export class MonsterEditor implements OnInit {
     const line = this.metadata()?.statLines[`${monster.powerTier}:${monster.rank}`];
     return {
       id: monster.id || 'preview',
-      name: monster.name || 'Novo monstro',
+      name: monster.name || 'New monster',
       description: monster.description,
       health: line ? Math.round(line.health * monster.hpMultiplier) : 0,
       experience: line?.experience ?? 0,

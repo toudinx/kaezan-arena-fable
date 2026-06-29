@@ -41,12 +41,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "roadmap/not started/roadmap_hunts.md",
+                "file": "roadmap_i18n_english_migration.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "roadmap_hunts"
+              "title": "roadmap_i18n_english_migration"
             }
           }
         ],
@@ -214,6 +214,10 @@
   },
   "active": "494a193bb697adc6",
   "lastOpenFiles": [
+    "roadmap/not started/roadmap_skins.md",
+    "roadmap/not started/roadmap_comfyui_geracao.md",
+    "roadmap/not started/roadmap_producao_visual.md",
+    "roadmap/not started/roadmap_hunts.md",
     "roadmap/not started/roadmap_hunts.md.tmp.13684.e31a1d45135d",
     "roadmap/not started/roadmap_hunts.md.tmp.13684.a5c94802e048",
     "roadmap/not started/roadmap_hunts.md.tmp.13684.690dce9e43be",
@@ -223,12 +227,9 @@
     "roadmap/not started/roadmap_hunts.md.tmp.37912.7c4bec592c96",
     "KNOWLEDGE_wall_mountain_family.md",
     "KNOWLEDGE_wall_mountain_family.md.tmp.37912.ee6dc759f0f7",
-    "roadmap/not started/roadmap_comfyui_geracao.md",
     "roadmap/not started/roadmap_comfyui_geracao.md.tmp.26588.34325d23827b",
     "roadmap/not started/roadmap_comfyui_geracao.md.tmp.26588.641956894c03",
-    "roadmap/not started/roadmap_comfyui_geracao.md.tmp.26588.f04c7cb6d3c1",
     "prompts/prompts por imagem.md",
-    "roadmap/not started/roadmap_producao_visual.md",
     "prompts/skins/humanas/rin.md",
     "prompts/skins/verao/seren.md",
     "prompts/skins/verao/lunara.md",
@@ -243,7 +244,6 @@
     "prompts/skins/miko/velvet.md",
     "prompts/skins/verao/rin.md",
     "prompts/skins/celestiais-caidas/eloa.md",
-    "roadmap/not started/roadmap_skins.md",
     "prompts/skins/casual/seren.md",
     "prompts/skins/casual/lunara.md",
     "prompts/skins/casual/gaia.md",

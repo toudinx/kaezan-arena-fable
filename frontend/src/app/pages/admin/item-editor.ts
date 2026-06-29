@@ -19,22 +19,22 @@ interface BonusControl {
 }
 
 const SLOT_OPTIONS: { id: EquipmentSlot; label: string }[] = [
-  { id: 'weapon', label: 'Arma' },
-  { id: 'armor', label: 'Armadura' },
-  { id: 'helmet', label: 'Capacete' },
-  { id: 'ring', label: 'Anel' },
-  { id: 'necklace', label: 'Amuleto' },
-  { id: 'mount', label: 'Montaria' },
+  { id: 'weapon', label: 'Weapon' },
+  { id: 'armor', label: 'Armor' },
+  { id: 'helmet', label: 'Helmet' },
+  { id: 'ring', label: 'Ring' },
+  { id: 'necklace', label: 'Amulet' },
+  { id: 'mount', label: 'Mount' },
 ];
 
 const WEAPON_TYPES = ['sword', 'axe', 'club', 'distance', 'wand', 'rod', 'fist', 'shield'];
 const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: string }[] = [
-  { key: 'fireResistance', element: 'fire', label: 'Fogo' },
-  { key: 'iceResistance', element: 'ice', label: 'Gelo' },
-  { key: 'earthResistance', element: 'earth', label: 'Terra' },
-  { key: 'energyResistance', element: 'energy', label: 'Energia' },
-  { key: 'deathResistance', element: 'death', label: 'Morte' },
-  { key: 'holyResistance', element: 'holy', label: 'Sagrado' },
+  { key: 'fireResistance', element: 'fire', label: 'Fire' },
+  { key: 'iceResistance', element: 'ice', label: 'Ice' },
+  { key: 'earthResistance', element: 'earth', label: 'Earth' },
+  { key: 'energyResistance', element: 'energy', label: 'Energy' },
+  { key: 'deathResistance', element: 'death', label: 'Death' },
+  { key: 'holyResistance', element: 'holy', label: 'Holy' },
 ];
 
 @Component({
@@ -45,18 +45,18 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
     <div class="studio">
       <aside class="panel library">
         <header>
-          <div><span class="eyebrow">Acervo visual</span><h2>Biblioteca Canary</h2></div>
+          <div><span class="eyebrow">Visual Archive</span><h2>Canary Library</h2></div>
           <b>{{ filteredLibrary().length }}</b>
         </header>
-        <input type="search" placeholder="Nome ou item id" [value]="search()"
+        <input type="search" placeholder="Name or item id" [value]="search()"
           (input)="setSearch($any($event.target).value)" />
         <div class="filters">
           <select [value]="category()" (change)="setCategory($any($event.target).value)">
-            <option value="">Todas as categorias</option>
+            <option value="">All categories</option>
             @for (value of categories(); track value) { <option [value]="value">{{ value }}</option> }
           </select>
           <select [value]="subcategory()" (change)="setSubcategory($any($event.target).value)">
-            <option value="">Todos os tipos</option>
+            <option value="">All types</option>
             @for (value of subcategories(); track value) { <option [value]="value">{{ value }}</option> }
           </select>
         </div>
@@ -67,10 +67,10 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
               <app-item-icon [itemId]="item.itemId" [size]="38" />
               <span><strong>{{ item.name }}</strong><small>#{{ item.itemId }} - {{ item.subcategory }}</small></span>
             </button>
-          } @empty { <p class="empty">Nenhum item encontrado.</p> }
+          } @empty { <p class="empty">No item found.</p> }
           @if (visibleLibrary().length < filteredLibrary().length) {
             <button type="button" class="more" (click)="showMore()">
-              Mostrar mais ({{ filteredLibrary().length - visibleLibrary().length }})
+              Show more ({{ filteredLibrary().length - visibleLibrary().length }})
             </button>
           }
         </div>
@@ -80,12 +80,12 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
         <header>
           <div>
             <span class="eyebrow">Item Studio</span>
-            <h2>{{ draft()?.itemId ? 'Editar item' : 'Novo item' }}</h2>
+            <h2>{{ draft()?.itemId ? 'Edit item' : 'New item' }}</h2>
           </div>
           <div class="head-actions">
-            @if (draft()?.itemId) { <button type="button" (click)="duplicate()">Duplicar</button> }
+            @if (draft()?.itemId) { <button type="button" (click)="duplicate()">Duplicate</button> }
             <button type="button" class="primary" [disabled]="busy() || !draft()" (click)="save()">
-              {{ saving() ? 'Salvando...' : 'Salvar item' }}
+              {{ saving() ? 'Saving...' : 'Save item' }}
             </button>
           </div>
         </header>
@@ -103,26 +103,26 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
                 <small>#{{ item.sourceItemId }} - {{ sourceName() }}</small>
               </div>
               <div class="grid two">
-                <label>Nome
+                <label>Name
                   <input [value]="item.name" (input)="patchText('name', $any($event.target).value)" />
                 </label>
-                <label>Preco de venda
+                <label>Sell value
                   <output class="stat-readout">{{ item.salePrice }}</output>
                 </label>
               </div>
               <div class="grid four">
-                <label>Tipo
+                <label>Type
                   <select [value]="item.slot || 'weapon'" (change)="setSlot($any($event.target).value)">
                     @for (slot of slotOptions; track slot.id) { <option [value]="slot.id">{{ slot.label }}</option> }
                   </select>
                 </label>
-                <label>Tipo de arma
+                <label>Weapon type
                   <select [disabled]="item.slot !== 'weapon'" [value]="item.weaponType || 'sword'"
                     (change)="patchText('weaponType', $any($event.target).value)">
                     @for (type of weaponTypes; track type) { <option [value]="type">{{ type }}</option> }
                   </select>
                 </label>
-                <label>Elemento
+                <label>Element
                   <select [value]="item.element" (change)="patchText('element', $any($event.target).value)">
                     @for (element of elements(); track element) { <option [value]="element">{{ element }}</option> }
                   </select>
@@ -136,12 +136,12 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
                 </label>
               </div>
               <div class="grid two">
-                <label>Categoria
+                <label>Category
                   <select [value]="item.tag || 'normal'" (change)="setTag($any($event.target).value)">
                     @for (tag of itemTags(); track tag.id) { <option [value]="tag.id">{{ tag.name }}</option> }
                   </select>
                 </label>
-                <label>Multiplicador relic
+                <label>Relic multiplier
                   <input type="number" step="0.05"
                     [disabled]="item.tag !== 'relic'"
                     [min]="balance()?.relicMultiplierMin ?? 1.05"
@@ -150,7 +150,7 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
                     (input)="setRelicMultiplier($any($event.target).value)" />
                 </label>
               </div>
-              <label>Descricao
+              <label>Description
                 <textarea rows="2" [value]="item.description"
                   (input)="patchText('description', $any($event.target).value)"></textarea>
               </label>
@@ -160,30 +160,30 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
           <section>
             <div class="section-head">
               <div>
-                <h3>Valores do tier</h3>
-                <p class="hint left">Base e magnitude dos bonus sao calculadas pela curva do tier.</p>
+                <h3>Tier values</h3>
+                <p class="hint left">Base values and bonus magnitude are calculated by the tier curve.</p>
               </div>
               <span class="tier-pill">{{ tierSummary() }}</span>
             </div>
 
             <div class="base-grid">
               @if (item.slot === 'weapon') {
-                <label>Ataque base
+                <label>Base attack
                   <output class="stat-readout">{{ item.attack }}</output>
                 </label>
               }
               @if (item.slot === 'armor' || item.slot === 'helmet') {
-                <label>Armadura base
+                <label>Base armor
                   <output class="stat-readout">{{ item.armor }}</output>
                 </label>
               }
               @if (item.slot === 'ring' || item.slot === 'necklace') {
-                <label>Defesa base
+                <label>Base defense
                   <output class="stat-readout">{{ item.defense }}</output>
                 </label>
               }
               @if (item.slot === 'mount') {
-                <label>Velocidade base
+                <label>Base speed
                   <output class="stat-readout">{{ item.mountSpeed }}</output>
                 </label>
               }
@@ -198,12 +198,12 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
                   </label>
                   @switch (bonus.id) {
                     @case ('critDamage') {
-                      <label>Dano critico extra
+                      <label>Extra critical damage
                         <output class="stat-readout">{{ pct(item.critDamage) }}%</output>
                       </label>
                     }
                     @case ('critChance') {
-                      <label>Chance critica
+                      <label>Critical chance
                         <output class="stat-readout">{{ pct(item.critChance) }}%</output>
                       </label>
                     }
@@ -212,34 +212,34 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
                         <label>Chance
                           <output class="stat-readout">{{ pct(item.lifeStealChance) }}%</output>
                         </label>
-                        <label>Vida roubada
+                        <label>Life stolen
                           <output class="stat-readout">{{ pct(item.lifeStealAmount) }}%</output>
                         </label>
                       </div>
                     }
                     @case ('cooldownReduction') {
-                      <label>Reducao de recarga
+                      <label>Cooldown reduction
                         <output class="stat-readout">{{ pct(item.cooldownReduction) }}%</output>
                       </label>
                     }
                     @case ('moveSpeedPercent') {
-                      <label>Movimento
+                      <label>Movement
                         <output class="stat-readout">{{ pct(item.moveSpeedPercent) }}%</output>
                       </label>
                     }
                     @case ('elementAffinity') {
-                      <label>Bonus elemental
+                      <label>Elemental bonus
                         <output class="stat-readout">{{ item.elementDamage }}%</output>
                       </label>
                     }
                     @case ('physicalResistance') {
-                      <label>Resistencia fisica
+                      <label>Physical resistance
                         <output class="stat-readout">{{ pct(item.physicalResistance) }}%</output>
                       </label>
                     }
                     @case ('elementResistance') {
                       <div class="grid two">
-                        <label>Elemento
+                        <label>Element
                           <select [disabled]="!bonusEnabled(bonus.id)" [value]="selectedResistanceElement(item)"
                             (change)="setElementResistance($any($event.target).value)">
                             @for (res of elementResistanceFields; track res.element) {
@@ -247,7 +247,7 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
                             }
                           </select>
                         </label>
-                        <label>Resistencia
+                        <label>Resistance
                           <output class="stat-readout">{{ pct(selectedResistanceValue(item)) }}%</output>
                         </label>
                       </div>
@@ -260,7 +260,7 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
 
           @if (item.slot) {
             <section>
-              <h3>Classes permitidas</h3>
+              <h3>Allowed classes</h3>
               <div class="checks">
                 @for (klass of classes(); track klass.id) {
                   <label class="check"><input type="checkbox"
@@ -268,20 +268,20 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
                     (change)="toggleClass(klass.id)" />{{ klass.name }}</label>
                 }
               </div>
-              <p class="hint left">Nenhuma classe marcada significa sem restricao.</p>
+              <p class="hint left">No checked classes means no restriction.</p>
             </section>
           }
         } @else {
-          <p class="empty large">Escolha um item do Canary para criar uma versao Kaezan.</p>
+          <p class="empty large">Choose a Canary item to create a Kaezan version.</p>
         }
       </main>
 
       <aside class="panel authored">
         <header>
-          <div><span class="eyebrow">Conteudo autoral</span><h2>Itens Kaezan</h2></div>
-          <button type="button" class="primary" (click)="newItem()">Novo</button>
+          <div><span class="eyebrow">Authored Content</span><h2>Kaezan Items</h2></div>
+          <button type="button" class="primary" (click)="newItem()">New</button>
         </header>
-        <input type="search" placeholder="Buscar item criado" [value]="authoredSearch()"
+        <input type="search" placeholder="Search created item" [value]="authoredSearch()"
           (input)="authoredSearch.set($any($event.target).value)" />
         <div class="scroll">
           @for (item of filteredAuthored(); track item.itemId) {
@@ -290,13 +290,13 @@ const ELEMENT_RESISTANCE_FIELDS: { key: PercentField; element: string; label: st
               <app-item-icon [itemId]="item.itemId" [size]="42" />
               <span><strong>{{ item.name }}</strong><small>#{{ item.itemId }} - {{ summary(item) }}</small></span>
             </button>
-          } @empty { <p class="empty">Nenhum item autoral. Escolha uma base e salve o primeiro.</p> }
+          } @empty { <p class="empty">No authored item yet. Choose a base and save the first one.</p> }
         </div>
         @if (draft()?.itemId) {
           <button type="button" class="grant" [disabled]="busy()" (click)="grant()">
-            Adicionar 1 a Mochila
+            Add 1 to Backpack
           </button>
-          <button type="button" class="danger" [disabled]="busy()" (click)="remove()">Excluir item</button>
+          <button type="button" class="danger" [disabled]="busy()" (click)="remove()">Delete item</button>
         }
       </aside>
     </div>
@@ -363,7 +363,7 @@ export class ItemEditor implements OnInit {
   readonly balanceTiers = computed(() => this.balance()?.tiers ?? [0, 1, 2, 3, 4, 5]);
   readonly itemTags = computed(() => this.balance()?.tags ?? [
     { id: 'normal' as const, name: 'Normal' },
-    { id: 'relic' as const, name: 'Reliquia' },
+    { id: 'relic' as const, name: 'Relic' },
   ]);
   readonly categories = computed(() => [...new Set(this.library().map((item) => item.category))].sort());
   readonly subcategories = computed(() => [...new Set(this.library()
@@ -467,7 +467,7 @@ export class ItemEditor implements OnInit {
     const draft = {
       ...item,
       itemId: 0,
-      name: `${item.name} (copia)`,
+      name: `${item.name} (copy)`,
       allowedClassIds: [...item.allowedClassIds],
     };
     this.draft.set(draft);
@@ -539,23 +539,23 @@ export class ItemEditor implements OnInit {
   bonusControls(item: AdminItem): BonusControl[] {
     switch (item.slot) {
       case 'weapon':
-        return [{ id: 'critDamage', label: 'Dano critico', hint: 'Armas escalam o dano do acerto critico.' }];
+        return [{ id: 'critDamage', label: 'Critical damage', hint: 'Weapons scale critical hit damage.' }];
       case 'armor':
         return [
-          { id: 'physicalResistance', label: 'Res. fisica', hint: 'Armadura pode mitigar dano fisico.' },
-          { id: 'elementResistance', label: 'Res. elemental', hint: 'Escolha um unico elemento adicional.' },
+          { id: 'physicalResistance', label: 'Physical res.', hint: 'Armor can mitigate physical damage.' },
+          { id: 'elementResistance', label: 'Elemental res.', hint: 'Choose one additional element.' },
         ];
       case 'helmet':
         return [
-          { id: 'cooldownReduction', label: 'Recarga', hint: 'Capacetes podem acelerar o kit.' },
-          { id: 'vampiric', label: 'Vampirismo', hint: 'Capacetes podem sustentar por roubo de vida.' },
+          { id: 'cooldownReduction', label: 'Cooldown', hint: 'Helmets can speed up the kit.' },
+          { id: 'vampiric', label: 'Vampiric', hint: 'Helmets can sustain through life steal.' },
         ];
       case 'mount':
-        return [{ id: 'moveSpeedPercent', label: 'Movimento', hint: 'Montarias podem dar bonus percentual.' }];
+        return [{ id: 'moveSpeedPercent', label: 'Movement', hint: 'Mounts can grant a percentage bonus.' }];
       case 'ring':
-        return [{ id: 'critChance', label: 'Chance critica', hint: 'Aneis podem aumentar frequencia de critico.' }];
+        return [{ id: 'critChance', label: 'Critical chance', hint: 'Rings can increase critical frequency.' }];
       case 'necklace':
-        return [{ id: 'elementAffinity', label: 'Afinidade elemental', hint: 'Bonus se postura e elemento do item combinarem.' }];
+        return [{ id: 'elementAffinity', label: 'Elemental affinity', hint: 'Bonus when stance and item element match.' }];
       default:
         return [];
     }
@@ -601,7 +601,7 @@ export class ItemEditor implements OnInit {
 
   tierSummary(): string {
     const tier = this.draft()?.tier ?? 0;
-    return tier === 0 ? 'T0 legado/sem trava' : `Set T${tier}`;
+    return tier === 0 ? 'T0 legacy/unlocked' : `Set T${tier}`;
   }
 
   summary(item: AdminItem): string {
@@ -632,7 +632,7 @@ export class ItemEditor implements OnInit {
           : [...items, saved]).sort((a, b) => a.name.localeCompare(b.name));
       });
       this.edit(saved);
-      this.status.set({ kind: 'ok', message: 'Item salvo e disponivel no catalogo.' });
+      this.status.set({ kind: 'ok', message: 'Item saved and available in the catalog.' });
     } catch (error) {
       this.fail(error);
     } finally {
@@ -649,7 +649,7 @@ export class ItemEditor implements OnInit {
       await this.api.deleteAdminItem(item.itemId);
       this.authored.update((items) => items.filter((entry) => entry.itemId !== item.itemId));
       this.draft.set(null);
-      this.status.set({ kind: 'ok', message: 'Item excluido.' });
+      this.status.set({ kind: 'ok', message: 'Item deleted.' });
     } catch (error) {
       this.fail(error);
     } finally {
@@ -668,7 +668,7 @@ export class ItemEditor implements OnInit {
         .find((stack) => stack.itemId === item.itemId)?.count ?? 1;
       this.status.set({
         kind: 'ok',
-        message: `${item.name} adicionado a Mochila. Quantidade atual: ${count}.`,
+        message: `${item.name} added to Backpack. Current quantity: ${count}.`,
       });
     } catch (error) {
       this.fail(error);

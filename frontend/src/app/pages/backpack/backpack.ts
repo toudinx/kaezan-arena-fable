@@ -9,8 +9,8 @@ import { isGearMaterial } from '../../core/types';
   imports: [ItemIcon],
   template: `
     <div class="page">
-      <h1>Mochila</h1>
-      <p class="sub">Saque coletado nas dungeons. Venda itens por ouro.</p>
+      <h1>Backpack</h1>
+      <p class="sub">Loot collected in dungeons. Sell items for gold.</p>
       <div class="grid">
         @for (item of inventory(); track item.itemId) {
           <div class="item panel">
@@ -22,23 +22,23 @@ import { isGearMaterial } from '../../core/types';
                 @if (def.slot) {
                   <span class="equip-tag">{{ slotLabel(def.slot) }} · {{ itemStats(def) }}</span>
                 } @else {
-                  <span class="sale-tag">Loot de venda</span>
+                  <span class="sale-tag">Sell value loot</span>
                 }
               }
             </div>
             <div class="actions">
               <button class="btn secondary" [disabled]="busy()" (click)="sell(item.itemId, 1)">
-                Vender 1 (+{{ salePrice(item.itemId) }} 🪙)
+                Sell 1 (+{{ salePrice(item.itemId) }} 🪙)
               </button>
               @if (item.count > 1) {
                 <button class="btn secondary" [disabled]="busy()" (click)="sell(item.itemId, item.count)">
-                  Tudo (+{{ salePrice(item.itemId) * item.count }} 🪙)
+                  All (+{{ salePrice(item.itemId) * item.count }} 🪙)
                 </button>
               }
             </div>
           </div>
         } @empty {
-          <p class="muted">Mochila vazia — vá caçar! Os monstros de Tibia dropam o loot clássico deles.</p>
+          <p class="muted">Empty backpack - go hunt! Tibia monsters drop their classic loot.</p>
         }
       </div>
     </div>
@@ -74,7 +74,7 @@ import { isGearMaterial } from '../../core/types';
   `],
 })
 export class BackpackPage {
-  // G-09: material de Eco vive na tela de equipamento da Kaeli, não na mochila de venda.
+  // G-09: Echo material lives on the Kaeli equipment screen, not in the sell backpack.
   readonly inventory = computed(() =>
     (this.api.account()?.inventory ?? []).filter((item) => !isGearMaterial(item.itemId)));
   readonly busy = signal(false);
@@ -96,8 +96,8 @@ export class BackpackPage {
 
   slotLabel(slot: string): string {
     return {
-      helmet: 'Capacete', armor: 'Armadura', weapon: 'Arma',
-      necklace: 'Colar', ring: 'Anel', mount: 'Montaria',
+      helmet: 'Helmet', armor: 'Armor', weapon: 'Weapon',
+      necklace: 'Necklace', ring: 'Ring', mount: 'Mount',
     }[slot] ?? slot;
   }
 
@@ -106,8 +106,8 @@ export class BackpackPage {
       item.attack ? `ATK ${item.attack}` : '',
       item.armor ? `ARM ${item.armor}` : '',
       item.defense ? `DEF ${item.defense}` : '',
-      item.mountSpeed ? `VEL ${item.mountSpeed}` : '',
-    ].filter(Boolean).join(' · ') || 'equipável';
+      item.mountSpeed ? `SPD ${item.mountSpeed}` : '',
+    ].filter(Boolean).join(' · ') || 'equippable';
   }
 
   async sell(itemId: number, count: number): Promise<void> {

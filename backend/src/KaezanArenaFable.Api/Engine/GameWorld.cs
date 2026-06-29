@@ -25,10 +25,10 @@ public sealed class Actor
     public long AggroOutOfRangeSinceMs;
     public long ExposedUntilMs;
     public long SappedUntilMs;
-    public long TauntedUntilMs;  // provocado (melee): abandona o kiting e marcha pro corpo-a-corpo
+    public long TauntedUntilMs;  // taunted (melee): drops kiting and marches into melee
     public bool IsBossActor;
-    public bool IsElite;        // G-06: elite de sala comum — derrotá-lo concede um beat de escolha
-    public bool IsMimic;        // G-09: baú-Eco corrompido — dropa material de gear ao morrer
+    public bool IsElite;        // G-06: common-room elite: defeating it grants a choice beat
+    public bool IsMimic;        // G-09: corrupted Echo chest: drops gear material on death
     public double StatMult = 1.0;
 
     // monster kit (T-53): reactive defenses, summon timers, self-haste
@@ -42,18 +42,18 @@ public sealed class Actor
     public long SlowUntilMs;
     public double SlowFactor = 1.0;
 
-    // G-08B: escudeiro — barreira de eco que absorve dano antes da vida (concedida por um aliado escudeiro).
+    // G-08B: shieldbearer: echo barrier that absorbs damage before health (granted by an allied shieldbearer).
     public double MonsterShield;
-    public long ShieldCastReadyAtMs; // cooldown do próprio escudeiro entre concessões de barreira
+    public long ShieldCastReadyAtMs; // shieldbearer personal cooldown between barrier grants
 
     // K-04 signature trait state carried per target.
-    public int SinStacks;       // Eloa — Selo de Julgamento (3 = Julgado, próximo acerto detona)
+    public int SinStacks;       // Eloa: Judgment Seal (3 = Judged, next hit detonates)
     public long SinUntilMs;
-    public int DecayStacks;     // Velvet — Maldição Acumulada (sobe o limiar de execução)
+    public int DecayStacks;     // Velvet: Accumulated Curse (raises the execution threshold)
     public long DecayUntilMs;
-    public int FrostHits;       // Lunara — acertos no alvo lento até estilhaçar
-    public bool IsPrey;         // Gaia — alvo marcado como Presa (HUD/render)
-    public bool Killed;         // guard: KillMonster processa cada morte uma única vez
+    public int FrostHits;       // Lunara: hits on the slowed target until shatter
+    public bool IsPrey;         // Gaia: target marked as Prey (HUD/render)
+    public bool Killed;         // guard: KillMonster processes each death exactly once
 
     // DoT left on this monster by a player skill (necromancer wither / eternal suffering).
     public readonly List<MonsterDot> Dots = [];
@@ -103,7 +103,7 @@ public sealed class MonsterDot
 /// <summary>
 /// A stationary construct summoned by the player (necromancer Bone Construct). It pulses area
 /// damage around its tile for a while, then expires. Kept off the monster list so it never
-/// interferes with player targeting/auto-attack — it is pure scheduled area damage.
+/// interferes with player targeting/auto-attack; it is pure scheduled area damage.
 /// </summary>
 public sealed class PlayerSummon
 {
@@ -115,11 +115,11 @@ public sealed class PlayerSummon
     public int PulseMs;
     public long NextPulseAtMs;
     public long ExpireAtMs;
-    public bool IsEchoSpectre; // G-04: espectro da Colheita (Velvet), contado p/ o cap de 5.
+    public bool IsEchoSpectre; // G-04: Harvest specter (Velvet), counted against the cap of 5.
 }
 
 /// <summary>A hazard tile painted by a player skill (shape "field"): damages/slows the monster
-/// standing on it each tick until it expires. Terrain modification — fire patch, frost patch, etc.</summary>
+/// standing on it each tick until it expires. Terrain modification: fire patch, frost patch, etc.</summary>
 public sealed class GroundField
 {
     public int Floor, X, Y;
@@ -131,6 +131,10 @@ public sealed class GroundField
     public int TickMs;
     public long NextTickAtMs;
     public long ExpireAtMs;
+    // Spreading terrain: chance% per tick to ignite a free neighbor; remaining generations limit
+    // how far the fire crawls from the origin. 0 = static field (no propagation).
+    public int SpreadChance;
+    public int SpreadGenerationsLeft;
 }
 
 /// <summary>A future area hit scheduled by a multi-time skill (shape "barrage", delayed nukes,
@@ -150,6 +154,12 @@ public sealed class ScheduledStrike
     public int SlowMs;
     public int DotTicks, DotTickMs;
     public double DotPower;
+    // Fire trail: each barrage hit may leave a spreading field where it lands.
+    public bool LeavesField;
+    public double FieldPower;
+    public int FieldRadius, FieldTickMs, FieldLifeMs, FieldSpreadChance, FieldSpreadGenerations;
+    public double FieldSlowFactor = 1;
+    public int FieldSlowMs;
 }
 
 public sealed class GroundItem
@@ -165,13 +175,13 @@ public sealed class Poi
 {
     public int Id;
     public string Kind = "chest"; // chest | sanctuary | ladder
-    // G-09: variante do baú — "" (comum) | "cursed" (amaldiçoado, telegrafado) | "mimic" (oculto do cliente).
+    // G-09: chest variant: "" (normal) | "cursed" (telegraphed) | "mimic" (hidden from the client).
     public string Variant = "";
     public int Floor, X, Y;
     public bool Used;
 }
 
-public enum CommandKind { SetMoveDir, SetTarget, CastSkill, ToggleStance, ToggleAutoHelper, Interact, ChooseCard, RerollCards, BanCard, Abandon, UsePotion }
+public enum CommandKind { SetMoveDir, SetTarget, CastSkill, ToggleStance, ToggleAutoHelper, Interact, ChooseCard, RerollCards, BanCard, Abandon, UsePotion, Dash }
 
 public sealed record Command(CommandKind Kind, int A, int B, string? S);
 
@@ -192,20 +202,20 @@ public sealed class GameWorld
     public readonly EquipmentStats EquipmentStats;
     public readonly KaeliLoadout Loadout;
     private readonly TraitDef _trait;
-    private readonly double _traitMult;        // amplificação do trait via maestria (ramo Eco)
-    private readonly double _affinityStatBonus; // +1% ATK/HP por nível de afinidade acima de 1
-    private readonly double _gaugeRate;        // maestria × trait overcharge
+    private readonly double _traitMult;        // trait amplification from mastery (Echo branch)
+    private readonly double _affinityStatBonus; // +1% ATK/HP per affinity level above 1
+    private readonly double _gaugeRate;        // mastery x trait overcharge
     private readonly GameData _data;
     private readonly ItemRegistry? _items;
     private readonly MonsterRegistry _monsterRegistry;
     private readonly Rng _rng;
-    // LM-03: costura de modo — localiza fonte-de-mapa, povoamento e condição de fim.
+    // LM-03: mode stitching: locates map source, population, and end condition.
     private readonly GameModeStrategy _modeRules;
     private readonly IReadOnlyDictionary<string, long> _bestiaryKills;
-    // MG-05: tabela de tuning por papel vigente nesta run (injetada pela Hub do ContentStore).
+    // MG-05: active role-tuning table for this run (injected by the Hub from ContentStore).
     private readonly IReadOnlyDictionary<KaeliRole, RoleTuning> _roles;
-    // LM-08: bioma resolvido UMA vez na construção (injetado pela Hub do ContentStore; fallback aos
-    // defaults canônicos). Nunca relido no tick — determinismo preservado (igual ao RoleTuning).
+    // LM-08: biome resolved ONCE at construction (injected by the Hub from ContentStore; fallback to
+    // canonical defaults). Never reread in the tick: determinism preserved (same as RoleTuning).
     private readonly BiomeDef _biome;
 
     public long TickCount { get; private set; }
@@ -235,8 +245,8 @@ public sealed class GameWorld
     private List<CardOfferDto>? _pendingOffer;
     private long _cardOfferStartedTick;
     private int _queuedOffers;
-    private int _choicesOffered; // G-06: escolhas de carta já concedidas em beats (teto + progresso)
-    private bool _offerBlessed;  // G-09: oferta abençoada (baú amaldiçoado) — pondera raro/eco
+    private int _choicesOffered; // G-06: card choices already granted by beats (cap + progress)
+    private bool _offerBlessed;  // G-09: blessed offer (cursed chest): weights rare/echo higher
     private int _cardRerollsRemaining = GameConfig.CardRerollsPerRun;
     public Dictionary<string, int> KillsBySpecies { get; } = [];
     public List<RewardItemDto> ItemsLooted { get; } = [];
@@ -249,6 +259,16 @@ public sealed class GameWorld
     private readonly long[] _skillReadyAtMs = new long[4];
     private string _stanceId;
     private long _autoAttackReadyAtMs;
+    // Dash/Dodge (Shift): cooldown and i-frame window. Shared between manual input and helper.
+    private long _dashReadyAtMs;
+    private long _dashInvulnUntilMs;
+    // Dash signature: which role-keyed dash the player uses (movement style + payoff). Resolved from the
+    // Kaeli's role at construction; a future card/mastery may reassign it ("dash evolution"). See PerformDash.
+    private enum DashSignature { Cleave, Sprint, Trail }
+    private readonly DashSignature _dashSignature;
+    // Archer sprint: brief move-speed haste granted by the dash (Sprint signature). Applied in PlayerSpeed.
+    private long _dashHasteUntilMs;
+    private double _dashHasteFactor = 1.0;
     private bool _autoHelperTargeting = true;
     private bool _autoHelperSkills = true;
     private bool _autoHelperUltimate = true;
@@ -256,15 +276,21 @@ public sealed class GameWorld
     private string _autoHelperMovementMode = GameConfig.AutoHelperMovementModeNone;
     private string _savedAutoHelperMovementMode = GameConfig.AutoHelperMovementModeNone;
     private string _defaultAutoHelperMovementMode = GameConfig.AutoHelperMovementModeNone;
-    // G-10: automações do helper (estilo autoplay) — ligadas por default. Auto-heal usa a poção
-    // quando a vida cai abaixo de _autoHelperHealPct%; navMode ("off"/"loot") faz o helper caminhar
-    // sozinho coletando baús/altares e indo pra saída; autoCards pega a carta de maior raridade.
+    // G-10: helper automations (autoplay style): enabled by default. Auto-heal uses the potion
+    // when health drops below _autoHelperHealPct%; navMode ("off"/"loot") makes the helper walk
+    // by itself while collecting chests/altars and heading to the exit; autoCards takes the highest-rarity card.
     private bool _autoHelperAutoHeal = true;
     private int _autoHelperHealPct = GameConfig.AutoHelperHealPctDefault;
     private string _autoHelperNavMode = GameConfig.AutoHelperNavLoot;
     private bool _autoHelperAutoCards = true;
-    // marca quando o andar atual começou — o auto-loot espera AutoLootStartDelayMs antes de andar.
+    // marks when the current floor started: auto-loot waits AutoLootStartDelayMs before walking.
     private long _floorEnteredMs;
+    // orbit-mobbing: previous tile, so it does not step back onto the same SQM (anti-stutter for kiting).
+    private int _mobLastX = int.MinValue, _mobLastY = int.MinValue;
+    // dynamic loot: kill counter since the last dropped chest (resets per floor).
+    private int _killsSinceChest;
+    // next free POI id (continues the SpawnPois sequence for runtime-created chests/teleports).
+    private int _nextPoiId = 1;
     private int _helperMovementOverrideTargetId;
     private int _manualTargetId;
     private int _moveDirX, _moveDirY; // held movement direction (-1..1)
@@ -281,31 +307,31 @@ public sealed class GameWorld
     private double _playerSlowFactor = 1.0;
 
     // K-04 signature trait state carried per Kaeli (the player side of the passive).
-    private int _comboTargetId;          // Seren — Disciplina: alvo do ramp atual
-    private int _comboHits;              // acertos consecutivos no alvo
-    private long _comboExpireMs;         // zera o ramp se passar sem bater
-    private double _staticCharge;        // Rynna — Carga Estática (0..RynnaChargeMax)
-    private int _preyId;                 // Gaia — Presa: id do alvo marcado
-    private long _preyStartMs;           // início da caça (ramp por tempo)
-    private long _preyHuntBonusUntilMs;  // janela de cadência após uma execução
-    private long _traitHasteUntilMs;     // Lunara — haste do Estilhaçar (move speed)
+    private int _comboTargetId;          // Seren: Discipline, current ramp target
+    private int _comboHits;              // consecutive hits on the target
+    private long _comboExpireMs;         // resets the ramp if too much time passes without hitting
+    private double _staticCharge;        // Rynna: Static Charge (0..RynnaChargeMax)
+    private int _preyId;                 // Gaia: Prey, marked target id
+    private long _preyStartMs;           // hunt start (time ramp)
+    private long _preyHuntBonusUntilMs;  // cadence window after an execution
+    private long _traitHasteUntilMs;     // Lunara: Shatter haste (move speed)
     private double _traitHasteFactor = 1.0;
-    private long _contagionNextJumpMs;   // Rin — Contágio: próximo salto periódico do burn
-    private int _cardDoubleStrikeHits;   // G-04 — Golpe Duplo: contador de acertos diretos
+    private long _contagionNextJumpMs;   // Rin: Contagion, next periodic burn jump
+    private int _cardDoubleStrikeHits;   // G-04: Double Strike direct-hit counter
 
-    // G-04B: estado vivo dos Ecos por Kaeli (cap de 1 stack; presença = HasEcho).
-    private double _echoShield;          // Eloa Mártir / Velvet Pacto: sobre-vida que absorve dano
-    private int _eloaSentenceStacks;     // Eloa Sentença: amplificação acumulada do próximo estouro
-    private int _preyId2;                // Gaia Matilha: segunda Presa simultânea
+    // G-04B: live Echo state per Kaeli (1-stack cap; presence = HasEcho).
+    private double _echoShield;          // Eloa Martyr / Velvet Pact: overheal shield that absorbs damage
+    private int _eloaSentenceStacks;     // Eloa Sentence: accumulated amplification for the next burst
+    private int _preyId2;                // Gaia Pack: second simultaneous Prey
 
     public RunEndDto? Ended { get; private set; }
     public bool MapDirty { get; private set; } = true;
 
     /// <summary>
-    /// MG-01 (tools/BalanceSim): rank de um monstro por id — "common" | "elite" | "boss" — para o
-    /// simulador classificar TTK sem ter de inferir do pool da dungeon. Leitura pura: não toca estado
-    /// nem o <c>_rng</c>, então não perturba o determinismo. Mortos não são removidos da lista
-    /// (ficam com <c>Killed=true</c>), então o rank continua consultável no tick da morte.
+    /// MG-01 (tools/BalanceSim): monster rank by id: "common" | "elite" | "boss" for the
+    /// Lets the simulator classify TTK without inferring from the dungeon pool. Pure read: touches no state
+    /// or <c>_rng</c>, so it does not perturb determinism. Dead actors are not removed from the list
+    /// (they stay with <c>Killed=true</c>), so the rank remains queryable on the death tick.
     /// </summary>
     public string? MonsterRank(int monsterId) =>
         _monsters.FirstOrDefault(m => m.Id == monsterId) is { } m
@@ -314,8 +340,8 @@ public sealed class GameWorld
 
     /// <summary>
     /// MG-08 (tools/BalanceSim): true se o monstro foi conjurado por outro (OwnerId != 0). O simulador
-    /// exclui conjurados da calibração de TTK — são adds transitórios (ex.: o summoner gera Ecoídes T1
-    /// em qualquer tier), não o comum/elite/boss daquela célula, e poluiriam a mediana. Leitura pura.
+    /// excludes summons from TTK calibration: they are transient adds (for example, a summoner creates T1 Echoids
+    /// in any tier), not that cell's common/elite/boss, and would pollute the median. Pure read.
     /// </summary>
     public bool IsSummonedMonster(int monsterId) =>
         _monsters.FirstOrDefault(m => m.Id == monsterId) is { IsSummon: true };
@@ -331,8 +357,8 @@ public sealed class GameWorld
         _modeRules = GameModeStrategy.For(mode);
         Tier = tier;
         Waifu = waifu;
-        // MG-05: a run lê a tabela vigente injetada (editável no admin); cai nos defaults de
-        // GameConfig.Roles quando nada é passado (ex.: simulador, que mede contra a baseline estável).
+        // MG-05: the run reads the injected active table (editable in admin); falls back to
+        // GameConfig.Roles when nothing is passed (for example, simulator measurements against the stable baseline).
         _roles = roleTuning ?? GameConfig.Roles;
         PlayerClass = Classes.ById.GetValueOrDefault(waifu.ClassId)
                       ?? throw new InvalidOperationException($"classe desconhecida: {waifu.ClassId}");
@@ -350,8 +376,15 @@ public sealed class GameWorld
         _monsterRegistry = monsterRegistry;
         _bestiaryKills = bestiaryKills;
         _rng = new Rng((ulong)seed);
-        // MG-02: o default de movimento (seguir vs kitar) segue o range do papel, não mais a arma.
+        // MG-02: default movement (follow vs kite) follows role range, not the weapon anymore.
         var isMelee = _roles[Waifu.Role].AutoRange <= GameConfig.MeleeRange;
+        // Dash signature is innate to the role (evolution hook: a card could reassign this later).
+        _dashSignature = Waifu.Role switch
+        {
+            KaeliRole.Knight => DashSignature.Cleave,
+            KaeliRole.Archer => DashSignature.Sprint,
+            _ => DashSignature.Trail, // Mage
+        };
         _autoHelperTargetPreference = GameConfig.AutoHelperTargetPreferenceNearest;
         _defaultAutoHelperMovementMode = isMelee
             ? GameConfig.AutoHelperMovementModeFollow
@@ -359,10 +392,10 @@ public sealed class GameWorld
         _autoHelperMovementMode = _defaultAutoHelperMovementMode;
         if (!string.IsNullOrWhiteSpace(helperProfile)) ApplyHelperProfile(helperProfile);
 
-        // LM-08: bioma vem do ContentStore (editável no admin); fallback aos defaults canônicos para
-        // chamadores sem store (ex.: simulador, que mede contra a baseline estável). Resolvido aqui uma vez.
+        // LM-08: biome comes from ContentStore (editable in admin); fallback to canonical defaults for
+        // callers without a store (for example, the simulator measuring against the stable baseline). Resolved here once.
         _biome = biome ?? Biomes.ForTier(tier.Tier);
-        // LM-03 (1) fonte de mapa: o modo decide como o lugar é produzido (mesma seq. de Rng no Dungeon).
+        // LM-03 (1) map source: the mode decides how the place is produced (same Rng sequence in Dungeon).
         _floors = _modeRules.BuildFloors(_rng, _biome);
 
         var hp = (int)(waifu.BaseHp * (1 + ascension * GameConfig.AscensionAtkBonus)
@@ -381,7 +414,7 @@ public sealed class GameWorld
             MaxHp = hp
         };
 
-        // LM-03 (2) povoamento: o modo decide o pré-spawn (salas no Dungeon; waves na Arena).
+        // LM-03 (2) population: the mode decides pre-spawn (rooms in Dungeon; waves in Arena).
         _modeRules.Populate(this);
     }
 
@@ -395,24 +428,24 @@ public sealed class GameWorld
             switch (room.Role)
             {
                 case "entry": continue;
-                // G-06: o Santuário de Eco é seguro — o player reivindica a carta sem briga.
+                // G-06: the Echo Sanctuary is safe: the player claims the card without a fight.
                 case "sanctuary": continue;
                 case "boss":
                     SpawnBossRoom(floorIndex, room);
                     continue;
-                // G-07: miniboss = mini-clímax do detour (1 elite reforçado + escolta).
+                // G-07: miniboss = detour mini-climax (1 reinforced elite + escort).
                 case "miniboss":
                     SpawnMiniBossRoom(floorIndex, room);
                     continue;
             }
 
             // echo-spots style budget spawn: commons cost 2, elites cost 5
-            // H-01: o fator de área escala com room.W*room.H sobre a sala-base (SpawnRoomAreaBaseline) e é
-            // clampeado — com as salas grandes da H-01 o teto subiu pra a sala não ler vazia (cabe a pilha).
+            // H-01: the area factor scales room.W*room.H against the base room (SpawnRoomAreaBaseline) and is
+            // clamped: with the large H-01 rooms, the cap rose so the room does not read empty (the pile fits).
             var sizeFactor = room.W * room.H / GameConfig.SpawnRoomAreaBaseline;
             var budget = (int)(GameConfig.SpawnBudgetBase * (1 + (Tier.Tier - 1) * GameConfig.SpawnBudgetTierGrowth)
                 * Math.Clamp(sizeFactor, GameConfig.SpawnBudgetSizeClampMin, GameConfig.SpawnBudgetSizeClampMax));
-            // G-07: tesouro = menos guardas; evento/risco = mais guardas (swarm); elite = pacote de elites.
+            // G-07: treasure = fewer guards; event/risk = more guards (swarm); elite = elite pack.
             if (room.Role == "treasure") budget = budget / 2 + 2;
             else if (room.Role == "hazard") budget = (int)(budget * GameConfig.HazardBudgetMult);
             var forceElite = room.Role == "elite";
@@ -424,8 +457,8 @@ public sealed class GameWorld
                     ? budget >= 5 && elitesSpawned < GameConfig.EliteRoomMaxElites
                     : budget >= 5 && _rng.Chance(0.25);
                 var name = elite ? _rng.Pick(Tier.EliteMobs) : _rng.Pick(Tier.CommonMobs);
-                // G-06: só elites de salas comuns viram beat (guardas de boss/emboscada não contam).
-                // G-08B: o custo do comum vem do perfil (swarm = 1 → dobra a contagem, pressão numérica).
+                // G-06: only common-room elites become beats (boss guards/ambushes do not count).
+                // G-08B: common cost comes from the profile (swarm = 1 doubles count, numeric pressure).
                 var cost = elite ? 5 : SpawnCostFor(name);
                 if (SpawnMonster(floorIndex, name, room, isElite: elite) is not null)
                 {
@@ -437,7 +470,7 @@ public sealed class GameWorld
         }
     }
 
-    /// <summary>G-07: sala de miniboss — um elite reforçado (beat de escolha ao morrer) + escolta de comuns.</summary>
+    /// <summary>G-07: miniboss room: one reinforced elite (choice beat on death) + common escort.</summary>
     private void SpawnMiniBossRoom(int floorIndex, Room room)
     {
         var mini = SpawnMonster(floorIndex, _rng.Pick(Tier.EliteMobs), room, isElite: true);
@@ -456,20 +489,45 @@ public sealed class GameWorld
                 boss.MaxHp = boss.Hp = (int)(boss.Hp * GameConfig.BossHpScale(Tier.Boss));
             boss.PostureBaseMax = GameConfig.PostureBaseMax * (1 + (Tier.Tier - 1) * GameConfig.PostureTierGrowth);
             boss.PostureMax = boss.PostureBaseMax;
+            // boss at the BACK of the arena (top, opposite the lower entry): the player enters and advances toward it.
+            var (bx, by) = OpenTileNear(floorIndex, room.CenterX, room.Y + 2);
+            boss.X = boss.FromX = bx;
+            boss.Y = boss.FromY = by;
         }
+        // elite escort + common chaff around the boss: the smaller chamber keeps everything close to raise difficulty.
         for (var i = 0; i < 2 + Tier.Tier / 2; i++)
-            SpawnMonster(floorIndex, _rng.Pick(Tier.EliteMobs), room);
+            SpawnMonster(floorIndex, _rng.Pick(Tier.EliteMobs), room, isElite: true);
+        for (var i = 0; i < 2 + Tier.Tier / 2; i++)
+            SpawnMonster(floorIndex, _rng.Pick(Tier.CommonMobs), room);
+    }
+
+    /// <summary>Nearest open and unoccupied tile to (x,y) on the floor (Chebyshev ring), used to anchor a spawn.</summary>
+    private (int X, int Y) OpenTileNear(int floorIndex, int x, int y)
+    {
+        var floor = _floors[floorIndex];
+        for (var r = 0; r <= 10; r++)
+            for (var dy = -r; dy <= r; dy++)
+                for (var dx = -r; dx <= r; dx++)
+                {
+                    if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != r) continue;
+                    int nx = x + dx, ny = y + dy;
+                    if (!floor.IsBlocked(nx, ny) && OccupiedBy(floorIndex, nx, ny) is null) return (nx, ny);
+                }
+        return (x, y);
     }
 
     private Actor? SpawnMonster(int floorIndex, string speciesName, Room room, bool isBoss = false, bool isElite = false)
     {
         var species = _monsterRegistry.Get(speciesName);
         var floor = _floors[floorIndex];
-        for (var attempt = 0; attempt < 20; attempt++)
+        var (entryX, entryY) = floor.Entry;
+        for (var attempt = 0; attempt < 24; attempt++)
         {
             var x = _rng.Range(room.X, room.X + room.W - 1);
             var y = _rng.Range(room.Y, room.Y + room.H - 1);
             if (floor.IsBlocked(x, y) || OccupiedBy(floorIndex, x, y) is not null) continue;
+            // do not spawn on top of the entry (the Kaeli does not start buried); relax on the final attempts.
+            if (!isBoss && attempt < 16 && Chebyshev(x, y, entryX, entryY) < GameConfig.SpawnEntrySafeRadius) continue;
 
             var mult = species.IsAuthored ? 1 : Tier.StatMultiplier;
             var actor = new Actor
@@ -489,7 +547,7 @@ public sealed class GameWorld
                 StatMult = mult,
                 Facing = (Dir)_rng.Next(4)
             };
-            // G-08B: tanque-de-postura — mob comum/elite ganha barra de Postura (Echo Break) escalada pelo perfil.
+            // G-08B: posture tank: common/elite mob gains a Posture bar (Echo Break) scaled by profile.
             if (!isBoss && GameConfig.BehaviorProfile(species.BehaviorId) is { PostureScale: > 0 } postureProfile)
             {
                 actor.PostureBaseMax = GameConfig.PostureBaseMax * postureProfile.PostureScale
@@ -502,7 +560,7 @@ public sealed class GameWorld
         return null;
     }
 
-    /// <summary>G-08B: custo de orçamento de spawn do comum (swarm custa 1 → enche a sala de chaff).</summary>
+    /// <summary>G-08B: common spawn budget cost (swarm costs 1, filling the room with chaff).</summary>
     private int SpawnCostFor(string speciesName) =>
         GameConfig.BehaviorProfile(_monsterRegistry.Get(speciesName).BehaviorId)?.SpawnCost ?? 2;
 
@@ -513,11 +571,14 @@ public sealed class GameWorld
         {
             foreach (var (cx, cy) in _floors[f].Chests)
             {
-                // G-09: cada baú sorteia uma variante determinística — mímico (oculto) ou amaldiçoado
-                // (telegrafado), senão altar comum. Determinístico via _rng da run.
-                var variant = _rng.Chance(GameConfig.ChestMimicChance) ? "mimic"
-                    : _rng.Chance(GameConfig.ChestCursedChance) ? "cursed"
-                    : "";
+                // G-09: each chest rolls a deterministic variant: mimic (hidden) or cursed
+                // (telegraphed), otherwise a normal altar. Deterministic via run _rng (always 2 rolls, fixed order).
+                // Benefit chests (strategic arena chests) are NEVER mimics: they give rewards, at most
+                // cursed (ambush + blessed offer). Mimics (pure trap) stay for the others only.
+                var mimicRoll = _rng.Chance(GameConfig.ChestMimicChance);
+                var cursedRoll = _rng.Chance(GameConfig.ChestCursedChance);
+                var noMimic = _floors[f].BenefitChests.Contains((cx, cy));
+                var variant = (!noMimic && mimicRoll) ? "mimic" : cursedRoll ? "cursed" : "";
                 _pois.Add(new Poi { Id = nextPoi++, Kind = "chest", Variant = variant, Floor = f, X = cx, Y = cy });
             }
             foreach (var (sx, sy) in _floors[f].Sanctuaries)
@@ -525,7 +586,23 @@ public sealed class GameWorld
             if (_floors[f].LadderDown is { } ladder)
                 _pois.Add(new Poi { Id = nextPoi++, Kind = "ladder", Floor = f, X = ladder.X, Y = ladder.Y });
         }
+        _nextPoiId = nextPoi; // runtime-created chests/teleports continue the id sequence.
     }
+
+    /// <summary>Creates a POI on the current floor at runtime (death-dropped chest, exit teleport) and marks the
+    /// map dirty so the client rerenders the sprite. Deterministic (tick state only).</summary>
+    private void AddRuntimePoi(string kind, string variant, int x, int y)
+    {
+        _pois.Add(new Poi { Id = _nextPoiId++, Kind = kind, Variant = variant, Floor = _currentFloor, X = x, Y = y });
+        MapDirty = true;
+    }
+
+    /// <summary>Is the current floor the boss floor? (the single boss arena has its room marked "boss").</summary>
+    private bool IsBossFloor() => Floor.Rooms.Any(r => r.Role == "boss");
+
+    private int CountAliveOnFloor() => _monsters.Count(m => m.Hp > 0 && m.Floor == _currentFloor);
+
+    private bool LadderExistsOnFloor() => _pois.Any(p => p.Floor == _currentFloor && p.Kind == "ladder");
 
     // ================= commands =================
 
@@ -546,8 +623,8 @@ public sealed class GameWorld
                 cmd = _commands.Dequeue();
             }
 
-            // G-10: ToggleAutoHelper é uma mudança de config (não toca a simulação pausada) — deixa
-            // passar mesmo durante a oferta de carta, senão ajustes do painel HELPER são engolidos.
+            // G-10: ToggleAutoHelper is a config change (does not touch the paused simulation), so let it
+            // pass even during a card offer; otherwise HELPER panel adjustments are swallowed.
             if (cardPause && cmd.Kind is not (CommandKind.SetMoveDir or CommandKind.ChooseCard or CommandKind.RerollCards or CommandKind.BanCard or CommandKind.Abandon or CommandKind.ToggleAutoHelper))
                 continue;
 
@@ -574,6 +651,9 @@ public sealed class GameWorld
                 break;
             case CommandKind.UsePotion:
                 TryUsePotion();
+                break;
+            case CommandKind.Dash:
+                TryDash(cmd.A, cmd.B);
                 break;
             case CommandKind.ToggleStance:
                 ToggleStance();
@@ -608,7 +688,7 @@ public sealed class GameWorld
                 BanCard(cmd.S ?? "");
                 break;
             case CommandKind.Abandon:
-                EndRun(false, "abandono");
+                EndRun(false, "abandoned");
                 break;
         }
     }
@@ -628,8 +708,8 @@ public sealed class GameWorld
 
             DrainCommands(cardPauseAtStart);
 
-            // G-10: auto-pick — escolhe sozinho a carta de maior raridade (depois de um curto flash
-            // na tela), pra autoplay/cavebot não travar nas ofertas. Senão, espera o timeout/jogador.
+            // G-10: auto-pick chooses the highest-rarity card by itself (after a short flash
+            // on screen), so autoplay/cavebot does not stall on offers. Otherwise, wait for timeout/player.
             if (Ended is null && _pendingOffer is not null && _autoHelperAutoCards
                 && (TickCount - _cardOfferStartedTick) * GameConfig.TickMs >= GameConfig.AutoCardPickDelayMs)
                 ChooseCard(BestOfferCardId());
@@ -651,7 +731,7 @@ public sealed class GameWorld
                     TickPlayerRegen();
                     TickPlayerConditions();
                     TickMonsters();
-                    // LM-03 (2b) povoamento contínuo: agendador de waves do modo (no-op no Dungeon).
+                    // LM-03 (2b) continuous population: mode wave scheduler (no-op in Dungeon).
                     _modeRules.OnTick(this);
                     TickPlayerSummons();
                     TickFields();
@@ -772,7 +852,8 @@ public sealed class GameWorld
         var speed = GameConfig.PlayerBaseSpeed
                     * (1 + EquipmentStats.MoveSpeedPercent + CardValue("moveSpeedPercent"));
         if (IsBuffActive("haste")) speed *= 1.30;
-        if (NowMs < _traitHasteUntilMs) speed *= _traitHasteFactor; // Lunara — haste do Estilhaçar
+        if (NowMs < _traitHasteUntilMs) speed *= _traitHasteFactor; // Lunara: Shatter haste
+        if (NowMs < _dashHasteUntilMs) speed *= _dashHasteFactor;   // Archer: Sprint dash haste
         if (NowMs < _playerSlowUntilMs) speed *= _playerSlowFactor;
         return (int)speed;
     }
@@ -848,20 +929,20 @@ public sealed class GameWorld
         Emit("effect", Player.X, Player.Y, 0, 0, Classes.Skills[next.Slots[0]].EffectId);
     }
 
-    // MG-02: tuning do papel da Kaeli (dano de auto vs skill, velocidade, range, AOE).
+    // MG-02: Kaeli role tuning (auto vs skill damage, speed, range, AOE).
     private RoleTuning RoleTuning => _roles[Waifu.Role];
-    // MG-02: a separação auto/skill é feita NOS CALL SITES, nunca dentro de PlayerAttack() (aplicaria
-    // duas vezes). Auto-hit usa * RoleAutoMult(); skill-dmg e todos os procs de trait/echo/carta usam
-    // * RoleSkillMult(). PlayerAttack() devolve o ataque "puro" (sem multiplicador de papel).
+    // MG-02: auto/skill separation is done AT CALL SITES, never inside PlayerAttack() (it would apply
+    // twice). Auto-hit uses * RoleAutoMult(); skill damage and all trait/echo/card procs use
+    // * RoleSkillMult(). PlayerAttack() returns the "pure" attack (without role multiplier).
     private double RoleAutoMult() => RoleTuning.AutoDmgMult;
     private double RoleSkillMult() => RoleTuning.SkillDmgMult;
 
-    // MG-04: tamanho de AOE escalado pelo papel (mage > knight > archer). Raio 0 (golpe de tile
-    // único) é preservado; positivos arredondam pelo AoeScale com piso 1. Math.Round é determinístico.
+    // MG-04: AOE size scaled by role (mage > knight > archer). Radius 0 (single-tile hit)
+    // single-target) is preserved; positives round by AoeScale with floor 1. Math.Round is deterministic.
     private int ScaledRadius(int raw) =>
         raw <= 0 ? 0 : Math.Max(1, (int)Math.Round(raw * RoleTuning.AoeScale, MidpointRounding.AwayFromZero));
-    // Raio efetivo de uma skill no momento do cast. Ultimates capam em UltimateRadiusCap antes do
-    // AoeScale e nunca caem abaixo de 2 — ainda "estouram" (mage 3, archer/knight ~2).
+    // Effective skill radius at cast time. Ultimates cap at UltimateRadiusCap before
+    // AoeScale and never fall below 2: they still "burst" (mage 3, archer/knight ~2).
     private int SkillRadius(int raw, bool isUlt) =>
         isUlt ? Math.Max(2, ScaledRadius(Math.Min(raw, GameConfig.UltimateRadiusCap))) : ScaledRadius(raw);
 
@@ -895,12 +976,12 @@ public sealed class GameWorld
 
     private long AutoAttackInterval()
     {
-        // MG-02: a base de velocidade vem do papel (archer > knight > mage); divisores de carta/buff/Gaia
-        // e o piso de 400ms continuam por cima.
+        // MG-02: base speed comes from role (archer > knight > mage); card/buff/Gaia divisors
+        // and the 400ms floor continue on top.
         var interval = (double)RoleTuning.BaseAutoAttackMs / (1 + CardValue("atkSpeedPercent"));
         if (IsBuffActive("atkspeed")) interval /= 1.40;
         if (IsBuffActive("aegis")) interval /= GameConfig.SentinelAegisAttackSpeedMultiplier;
-        if (NowMs < _preyHuntBonusUntilMs) interval /= 1 + GameConfig.GaiaHuntAtkSpeedBonus; // Gaia — caça
+        if (NowMs < _preyHuntBonusUntilMs) interval /= 1 + GameConfig.GaiaHuntAtkSpeedBonus; // Gaia: hunt
         return (long)Math.Max(interval, 400);
     }
 
@@ -926,12 +1007,12 @@ public sealed class GameWorld
 
         if (Player.IsStunned(NowMs)) return;
 
-        // G-10: auto-heal — usa a poção quando a vida cai abaixo do limiar (a poção respeita cargas/cooldown).
+        // G-10: auto-heal: uses the potion when health drops below the threshold (potion respects charges/cooldown).
         if (_autoHelperAutoHeal && Player.Hp * 100 < Player.MaxHp * _autoHelperHealPct)
             TryUsePotion();
 
-        // G-10: pathing — quando ligado, o helper caminha sozinho até o objetivo (baú/saída),
-        // substituindo o movimento de combate (stand/follow/avoid). Combate (alvo/skills/ult) segue.
+        // G-10: pathing: when enabled, the helper walks by itself to the objective (chest/exit),
+        // replacing combat movement (stand/follow/avoid). Combat (target/skills/ult) continues.
         if (_autoHelperNavMode == GameConfig.AutoHelperNavOff)
             TickAutoHelperMovement();
         else
@@ -947,24 +1028,59 @@ public sealed class GameWorld
 
     // ---- G-10: pathing do helper ("cavebot") + perfil persistido ----
 
-    // Auto-loot: caminha até o coletável (baú OU altar/Santuário) ativo mais próximo, abre, repete;
-    // sem mais nada, segue pra saída (escada/boss). Para pra lutar quando um inimigo encosta. Espera
-    // AutoLootStartDelayMs no início do andar (a tela carrega antes de a Kaeli sair andando).
-    // Determinístico (só estado do tick + ordem estável no NextNavStep).
+    // Auto-loot: walks to the nearest active collectible (chest OR altar/Sanctuary), opens it, repeats;
+    // with nothing left, heads to the exit (ladder/boss). Stops to fight when an enemy closes in. Waits
+    // AutoLootStartDelayMs at floor start (the screen loads before the Kaeli starts walking).
+    // Deterministic (tick state only + stable order in NextNavStep).
     private void TickHelperNav()
     {
         if (NowMs - _floorEnteredMs < GameConfig.AutoLootStartDelayMs) return;
         if (Player.IsMoving(NowMs)) return;
         if (_moveDirX != 0 || _moveDirY != 0 || _hasBufferedMoveDir) return; // input manual tem prioridade
 
-        // Helper, não bot: se há inimigo alcançável "na tela", DERROTA antes de seguir pro loot/saída.
-        // CurrentPlayerTarget só devolve o alvo quando ele está no alcance + linha de visão (mesmo
-        // critério do targeting) — fora disso "não existe inimigo" e a Kaeli vai pro baú/buraco, que o
-        // mapa conexo garante sempre alcançável. Antes o cavebot só pausava com o mob colado (≤1) e
-        // passava reto pelos demais; agora posiciona: aproxima até o alcance de auto-ataque (melee
+        // Helper, not bot: if there is a reachable enemy "on screen", DEFEAT it before moving to loot/exit.
+        // CurrentPlayerTarget only returns the target when it is in range + line of sight (same
+        // targeting criterion); outside that, "no enemy exists" and the Kaeli goes to the chest/hole, which the
+        // connected map guarantees is always reachable. Previously the cavebot only paused with the mob adjacent (<=1) and
+        // walked past the rest; now it positions: approaches to auto-attack range (melee
         // encosta, ranged assenta no alcance) e o combate do mesmo tick (auto/skills/ult) abate. Se a
-        // aproximação direta travar numa parede côncava, cai no pather BFS. Mob nunca é bloqueio — ao
-        // morrer, CurrentPlayerTarget zera e a navegação volta a fluir.
+        // direct approach gets stuck on a concave wall, falls back to BFS pathing. Mobs are never blockers; when
+        // they die, CurrentPlayerTarget clears and navigation flows again.
+        var goals = NavGoals();
+        // Role governs helper combat style: melee closes box (plants and cleaves), ranged mobs/kites.
+        var isMelee = RoleTuning.AutoRange <= GameConfig.MeleeRange;
+
+        // PRIORITY 1: dropped chest (falls on the corpse, near the fight): claim it WHILE luring, pulling the train.
+        // (The central altar waits until after the pile, so the Kaeli does not cut straight across the room for it.)
+        var chest = goals.FirstOrDefault(g => g.Kind == "chest");
+        if (chest.Kind == "chest")
+        {
+            if (Chebyshev(Player.X, Player.Y, chest.X, chest.Y) <= 1) { TryInteract(chest.X, chest.Y); return; }
+            if (StepTowardGoal(chest.X, chest.Y)) return;
+        }
+
+        // PRIORITY 2: the BOSS. Ranged KITEs (keeps distance; only plants to fire during Echo Break/stun);
+        // melee faces it. When far away, lets the exit pather approach (BFS). Boss is the threat, so it comes before the pile.
+        var boss = _monsters.FirstOrDefault(m => m.IsBossActor && m.Hp > 0 && m.Floor == _currentFloor);
+        if (boss is not null && TickHelperBoss(boss, isMelee)) return;
+
+        // PRIORITY 3: aggroed pile. Ranged ORBITS to clump and dump AoE; melee CLOSES BOX (plants and cleaves).
+        var pile = AggroedMobsNear(GameConfig.HelperGatherRange);
+        if (pile.Count >= GameConfig.HelperGatherThreshold)
+        {
+            if (isMelee) TickHelperBox(pile); else TickHelperMobbing(pile);
+            return;
+        }
+
+        // PRIORITY 4: Echo altar (central): with no pile to mob, detour to claim the beat.
+        var altar = goals.FirstOrDefault(g => g.Kind == "sanctuary");
+        if (altar.Kind == "sanctuary")
+        {
+            if (Chebyshev(Player.X, Player.Y, altar.X, altar.Y) <= 1) { TryInteract(altar.X, altar.Y); return; }
+            if (StepTowardGoal(altar.X, altar.Y)) return;
+        }
+
+        // PRIORITY 5: 1-2 loose mobs: engage to auto-attack range (tick combat kills them).
         var foe = CurrentPlayerTarget();
         if (foe is not null)
         {
@@ -976,50 +1092,144 @@ public sealed class GameWorld
             return;
         }
 
-        var goals = NavGoals();
-        if (goals.Count == 0) return;
-
-        // chegou: interage (abre baú/altar, desce escada) quando adjacente ao objetivo mais próximo.
-        var first = goals[0];
-        if (first.Interactable && Chebyshev(Player.X, Player.Y, first.X, first.Y) <= 1)
+        // PRIORITY 6: nothing to fight/collect: head to the exit (portal/boss). But if the room is still NOT
+        // clear and there is no exit/collectible (the last mob is lost outside range/vision), HUNT the nearest
+        // living mob to close the room; otherwise the helper stalls with a straggler in a corner.
+        if (goals.Count == 0)
         {
-            TryInteract(first.X, first.Y);
+            if (NearestMonsterOnFloor() is { } straggler) StepTowardGoal(straggler.X, straggler.Y);
             return;
         }
-
-        // caminha até o primeiro objetivo ALCANÇÁVEL desviando dos mobs (caminho liso, sem tomar dano).
-        // As coordenadas já vêm do servidor (NavGoals lê os POIs direto — não é varredura/fog); um baú
-        // preso em lava/atrás de parede dá NextNavStep == null, então pula o inalcançável e tenta o próximo.
+        if (goals[0].Interactable && Chebyshev(Player.X, Player.Y, goals[0].X, goals[0].Y) <= 1)
+        {
+            TryInteract(goals[0].X, goals[0].Y);
+            return;
+        }
         foreach (var (gx, gy, _, _) in goals)
-            if (NextNavStep(gx, gy, avoidMonsters: true) is { } step)
-            {
-                TryStep(Player, step.Dx, step.Dy, PlayerSpeed());
-                return;
-            }
+            if (StepTowardGoal(gx, gy)) return;
 
-        // nenhum objetivo desviável: o corredor está tampado por mobs vivos (que o BFS-com-desvio trata
-        // como parede) e o bloqueador está longe demais pro alcance de combate — a Kaeli congelava aqui.
-        // Recalcula IGNORANDO os mobs e anda nessa direção: isso leva a Kaeli até o mob que tampa a
-        // passagem, onde o helper de combate o engaja e libera o caminho. Como a dungeon é conexa pelo
-        // terreno, sempre há um próximo passo enquanto o objetivo existir — o helper nunca trava.
-        foreach (var (gx, gy, _, _) in goals)
-            if (NextNavStep(gx, gy, avoidMonsters: false) is { } step)
-            {
-                TryStep(Player, step.Dx, step.Dy, PlayerSpeed());
-                return;
-            }
-
-        // último recurso (objetivo cercado de mobs adjacentes a ponto de TryStep não andar): puxa o
-        // inimigo mais próximo no alcance pra que o combate limpe o entorno e a navegação volte a fluir.
+        // last resort (objective surrounded by adjacent mobs): pull the nearest one so combat can clear it.
         var blocker = BestAutoHelperTarget(GameConfig.AutoHelperTargetRange);
         if (blocker is not null)
             TryStepTowardDistance(blocker, GameConfig.AutoHelperFollowDistance, PlayerSpeed());
     }
 
-    // Objetivos de navegação em ordem de prioridade: coletáveis ativos (baú comum/amaldiçoado OU altar
-    // de Eco — os "roxos" do minimapa) do mais próximo ao mais distante; depois a saída (escada do
-    // andar, ou o boss se não houver escada). As coordenadas vêm direto dos POIs do servidor.
-    // Determinístico: OrderBy é estável e desempata por Id.
+    /// <summary>Um passo rumo ao objetivo: tenta desviar dos mobs (caminho liso); se travado, rota
+    /// IGNORING mobs (goes to the blocker so combat can clear it). False = unreachable for now.</summary>
+    private bool StepTowardGoal(int gx, int gy)
+    {
+        if (NextNavStep(gx, gy, avoidMonsters: true) is { } s1) { TryStep(Player, s1.Dx, s1.Dy, PlayerSpeed()); return true; }
+        if (NextNavStep(gx, gy, avoidMonsters: false) is { } s2) { TryStep(Player, s2.Dx, s2.Dy, PlayerSpeed()); return true; }
+        return false;
+    }
+
+    /// <summary>Helper boss combat. Ranged KITEs: keeps auto-attack distance and only PLANTS to
+    /// fire when the boss is in Echo Break (stunned/broken): standing still against a pursuing boss was
+    /// the anti-pattern (2026-06-29 feedback). Melee faces it (approaches and holds). Returns false when the boss is
+    /// far away (lets the BFS exit pather approach). True = the tick position was resolved here.</summary>
+    private bool TickHelperBoss(Actor boss, bool isMelee)
+    {
+        var dist = Chebyshev(Player, boss);
+        var speed = PlayerSpeed();
+        if (isMelee)
+        {
+            if (dist <= GameConfig.MeleeRange) return true; // colado: segura e cleava (o combate do tick bate)
+            if (TryStepTowardDistance(boss, GameConfig.MeleeRange, speed)) return true;
+            return false; // far/stuck: exit BFS approaches
+        }
+
+        var kite = RoleTuning.AutoRange;
+        if (dist > kite + 3) return false; // far away: approach with exit BFS (local steering gets stuck on rock masses)
+
+        // Echo Break / stunned: the boss is stopped, so plant and dump damage (tick combat/skills unload).
+        if (boss.IsStaggered(NowMs) || boss.IsStunned(NowMs)) return true;
+
+        if (dist > kite)
+        {
+            // slightly far: close in to enter firing range (approach is free; no "U" is needed).
+            if (!TryStepTowardDistance(boss, kite, speed) && NextNavStep(boss.X, boss.Y) is { } s)
+                TryStep(Player, s.Dx, s.Dy, speed);
+            return true;
+        }
+
+        // boss closed in (dist <= kite): retreat. If straight escape hits a wall, slide by tangent (the "U").
+        // If CORNERED (no escape step opens), use DASH (same ability as Shift)
+        // to slide out through the open axis instead of tanking against the wall.
+        if (!KiteAway(boss, speed)) TryHelperDash(boss);
+        return true;
+    }
+
+    /// <summary>Cornered helper: fires dash on the best cardinal, the one that travels the most free tiles
+    /// (tie-breaker: the one that moves farthest from the boss). Same ability/cooldown as Shift; only dashes if there is
+    /// at least 1 free tile on some axis (otherwise it stays and combat/break resolves it).</summary>
+    private void TryHelperDash(Actor boss)
+    {
+        Span<(int dx, int dy)> dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)];
+        var bestLen = 0;
+        var bestAway = -1;
+        (int dx, int dy) best = default;
+        foreach (var (dx, dy) in dirs)
+        {
+            var len = DashReach(dx, dy); // role-aware: Knight blink / Archer pass-through / Mage stop-at-mob
+            if (len == 0) continue;
+            var away = Chebyshev(Player.X + dx * len, Player.Y + dy * len, boss.X, boss.Y);
+            if (len > bestLen || (len == bestLen && away > bestAway)) { bestLen = len; bestAway = away; best = (dx, dy); }
+        }
+        if (bestLen > 0) TryDash(best.dx, best.dy);
+    }
+
+    /// <summary>Wall-aware kite retreat: moves straight away from the boss; if a wall blocks it, slides along
+    /// tangent turned toward the arena center (the "U" back to the middle) before falling back to axes. Returns false
+    /// when NO escape step opens (cornered): the caller then falls back to dash.</summary>
+    private bool KiteAway(Actor boss, int speed)
+    {
+        var (ax, ay) = CardinalFromVector(Player.X - boss.X, Player.Y - boss.Y); // escape direction (radial)
+        int tx = -ay, ty = ax;                                                   // tangente perpendicular
+        if (CurrentArenaRoom() is { } arena
+            && tx * Math.Sign(arena.CenterX - Player.X) + ty * Math.Sign(arena.CenterY - Player.Y) < 0)
+        { tx = -tx; ty = -ty; }                                                  // turn the tangent toward center
+
+        Span<(int dx, int dy)> cands =
+        [
+            (ax, ay),                                  // fuga reta
+            (Math.Sign(ax + tx), Math.Sign(ay + ty)),  // diagonal fuga+tangente
+            (tx, ty),                                  // pure tangent (slides along the wall toward center = the "U")
+            (ax, 0), (0, ay),                          // one-axis escape
+        ];
+        foreach (var (dx, dy) in cands)
+            if ((dx != 0 || dy != 0) && TryStep(Player, dx, dy, speed)) return true;
+        return false;
+    }
+
+    /// <summary>Nearest living mob on the current floor (tie-break by id): helper straggler-seek target.</summary>
+    private Actor? NearestMonsterOnFloor()
+    {
+        Actor? best = null;
+        var bestD = int.MaxValue;
+        foreach (var m in _monsters)
+        {
+            if (m.Hp <= 0 || m.Floor != _currentFloor) continue;
+            var d = Chebyshev(Player, m);
+            if (best is null || d < bestD || (d == bestD && m.Id < best.Id)) { best = m; bestD = d; }
+        }
+        return best;
+    }
+
+    /// <summary>Melee helper box: does NOT orbit/lure; plants in place and lets mobs come in (cleaves around).
+    /// If no mob is adjacent, steps toward the nearest one to engage; with an adjacent mob, HOLD.</summary>
+    private void TickHelperBox(List<Actor> pile)
+    {
+        if (pile.Any(m => Chebyshev(Player, m) <= GameConfig.MeleeRange)) return; // engaged: hold position
+        var nearest = pile.OrderBy(m => Chebyshev(Player, m)).ThenBy(m => m.Id).First();
+        var speed = PlayerSpeed();
+        if (!TryStepTowardDistance(nearest, GameConfig.MeleeRange, speed) && NextNavStep(nearest.X, nearest.Y) is { } s)
+            TryStep(Player, s.Dx, s.Dy, speed);
+    }
+
+    // Navigation objectives in priority order: active collectibles (normal/cursed chest OR Echo
+    // altar: the minimap "purple" targets) from nearest to farthest; then the exit (floor ladder,
+    // or the boss if there is no ladder). Coordinates come directly from server POIs.
+    // Deterministic: OrderBy is stable and tie-breaks by Id.
     private List<(int X, int Y, bool Interactable, string Kind)> NavGoals()
     {
         var goals = _pois
@@ -1032,7 +1242,7 @@ public sealed class GameWorld
         var ladder = _pois.FirstOrDefault(p => !p.Used && p.Floor == _currentFloor && p.Kind == "ladder");
         if (ladder is not null) goals.Add((ladder.X, ladder.Y, true, "ladder"));
 
-        // sem escada (andar do boss): a saída é derrotar o boss → caminha até ele.
+        // no ladder (boss floor): the exit is defeating the boss, so walk to it.
         var boss = _monsters.FirstOrDefault(m => m.IsBossActor && m.Hp > 0 && m.Floor == _currentFloor);
         if (boss is not null) goals.Add((boss.X, boss.Y, false, "boss"));
 
@@ -1045,18 +1255,18 @@ public sealed class GameWorld
         return goals.Count > 0 ? goals[0] : null;
     }
 
-    // G-10: alvo atual do auto-loot pra legibilidade no cliente (null quando o pathing está off).
+    // G-10: current auto-loot target for client readability (null when pathing is off).
     private NavTargetDto? CurrentNavTargetDto()
     {
         if (_autoHelperNavMode != GameConfig.AutoHelperNavLoot || Player.Hp <= 0) return null;
         return NavGoal() is { } g ? new NavTargetDto(g.X, g.Y, g.Kind) : null;
     }
 
-    // Primeiro passo de um caminho mais curto (BFS) do jogador até ficar adjacente a (tx,ty).
-    // BFS real contorna paredes/cantos — o passo guloso travava em becos. Com avoidMonsters=true os
-    // mobs vivos bloqueiam tiles (a Kaeli desvia, caminho sem dano); com false só o terreno bloqueia
-    // (fallback que anda em direção ao mob que tampa o corredor pra o combate limpá-lo). Determinístico:
-    // ordem de vizinhos fixa, sem `_rng`/`DateTime`. Retorna null se não há caminho pelo terreno.
+    // First step of a shortest path (BFS) from the player until adjacent to (tx,ty).
+    // Real BFS contours around walls/corners; greedy step got stuck in dead ends. With avoidMonsters=true,
+    // living mobs block tiles (the Kaeli detours, damage-free path); with false only terrain blocks
+    // (fallback that walks toward the mob blocking the corridor so combat can clear it). Deterministic:
+    // fixed neighbor order, no `_rng`/`DateTime`. Returns null if there is no terrain path.
     private (int Dx, int Dy)? NextNavStep(int tx, int ty, bool avoidMonsters = true)
     {
         var floor = Floor;
@@ -1077,7 +1287,7 @@ public sealed class GameWorld
         seen[sy * w + sx] = true;
         q.Enqueue(sy * w + sx);
 
-        // cardinais antes das diagonais → caminho estável e determinístico.
+        // cardinals before diagonals: stable and deterministic path.
         ReadOnlySpan<(int dx, int dy)> dirs =
         [
             (0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (1, -1), (-1, 1), (1, 1)
@@ -1104,7 +1314,7 @@ public sealed class GameWorld
 
                 seen[ni] = true;
                 var step = firstStep[cur] ?? (dx, dy);
-                if (Chebyshev(nx, ny, tx, ty) <= 1) return step; // adjacente ao alvo → basta interagir/lutar
+                if (Chebyshev(nx, ny, tx, ty) <= 1) return step; // adjacent to target: enough to interact/fight
                 firstStep[ni] = step;
                 q.Enqueue(ni);
             }
@@ -1170,10 +1380,10 @@ public sealed class GameWorld
 
         if (_autoHelperMovementMode == GameConfig.AutoHelperMovementModeFollow)
         {
-            // Aproxima até ficar adjacente (AutoHelperFollowDistance=1). O steering local tenta as 8
-            // direções (inclui diagonal) e contorna obstáculo pequeno; se nenhum passo aproxima
-            // (parede côncava entre a Kaeli e o inimigo, que travava a perseguição), cai no pather
-            // BFS do auto-loot (NextNavStep para na adjacência). Determinístico: nenhum usa _rng/DateTime.
+            // Approaches until adjacent (AutoHelperFollowDistance=1). Local steering tries all 8
+            // directions (including diagonal) and moves around small obstacles; if no step approaches
+            // (concave wall between the Kaeli and the enemy, which used to stall pursuit), it falls back to the
+            // auto-loot BFS path (NextNavStep stops at adjacency). Deterministic: neither uses _rng/DateTime.
             if (Chebyshev(Player, target) > GameConfig.AutoHelperFollowDistance
                 && !TryStepTowardDistance(target, GameConfig.AutoHelperFollowDistance, speed)
                 && NextNavStep(target.X, target.Y) is { } nav)
@@ -1183,16 +1393,16 @@ public sealed class GameWorld
 
         if (_autoHelperMovementMode != GameConfig.AutoHelperMovementModeAvoid) return;
 
-        // Avoid: assenta em AutoHelperAvoidDistance, aproximando ou recuando conforme necessário.
-        // Diagonais permitidas → escorrega ao longo da parede em vez de congelar tomando dano.
+        // Avoid: settles at AutoHelperAvoidDistance, approaching or retreating as needed.
+        // Diagonals allowed: slides along the wall instead of freezing while taking damage.
         TryStepTowardDistance(target, GameConfig.AutoHelperAvoidDistance, speed);
     }
 
-    // Steering local determinístico: entre os 8 passos vizinhos (cardinais antes das diagonais,
-    // mesma ordem do NextNavStep), escolhe o passo desbloqueado cuja distância de Chebyshev ao
-    // alvo fica mais perto de desiredDist. Empate → primeira direção na ordem fixa. Não anda se
-    // nenhum passo melhora a distância atual (evita jitter no equilíbrio). CanStep já barra
-    // paredes, corte de quina e tiles ocupados por monstro.
+    // Deterministic local steering: among the 8 neighbor steps (cardinals before diagonals,
+    // same order as NextNavStep), chooses the unblocked step whose Chebyshev distance to the
+    // target is closest to desiredDist. Tie -> first direction in the fixed order. Does not move if
+    // no step improves the current distance (prevents equilibrium jitter). CanStep already blocks
+    // walls, corner cutting, and monster-occupied tiles.
     private bool TryStepTowardDistance(Actor target, int desiredDist, int speed)
     {
         var bestErr = Math.Abs(Chebyshev(Player, target) - desiredDist);
@@ -1245,7 +1455,7 @@ public sealed class GameWorld
 
     private Actor? BestAutoHelperTarget(int maxRange, Func<Actor, bool>? extra = null)
     {
-        // G-08B: escudeiro força o foco — se há um escudeiro alvo-válido, o helper o prioriza.
+        // G-08B: shieldbearer forces focus: if there is a valid shieldbearer target, the helper prioritizes it.
         var shielder = FindTargetableShielder(maxRange, extra);
         if (shielder is not null) return shielder;
 
@@ -1273,7 +1483,7 @@ public sealed class GameWorld
         return best;
     }
 
-    /// <summary>G-08B: escudeiro alvo-válido mais próximo de ser escolhido (desempate estável por id).</summary>
+    /// <summary>G-08B: nearest valid shieldbearer target to choose (stable tie-break by id).</summary>
     private Actor? FindTargetableShielder(int maxRange, Func<Actor, bool>? extra)
     {
         Actor? best = null;
@@ -1351,24 +1561,29 @@ public sealed class GameWorld
             case "single":
                 return target is not null && CanSkillReachTarget(skill, target);
 
-            case "area":
-            case "barrage":
+            case "barrage": // multi-hit at one point (the ult the user liked): counts as 1 target
                 if (target is null || !CanSkillReachTarget(skill, target)) return false;
                 return AnyMonsterOnTiles(CircleTiles(target.X, target.Y, SkillRadius(skill.Radius, isUlt)));
 
+            case "area":
+                if (target is null || !CanSkillReachTarget(skill, target)) return false;
+                return AoeWorthCasting(CircleTiles(target.X, target.Y, SkillRadius(skill.Radius, isUlt)));
+
             case "field":
                 if (target is null || !CanSkillReachTarget(skill, target)) return false;
-                return AnyMonsterOnTiles(CircleTiles(target.X, target.Y, Math.Max(skill.SummonRadius, 0)));
+                // do not repaint fire where active fire already exists (kills "flame spam": wait for embers to fade).
+                if (HasActiveFieldNear(target.X, target.Y, skill.Element, Math.Max(skill.SummonRadius, 0) + 1))
+                    return false;
+                return AoeWorthCasting(CircleTiles(target.X, target.Y, Math.Max(skill.SummonRadius, 0)));
 
             case "nova":
-                return AnyMonsterOnTiles(CircleTiles(Player.X, Player.Y, SkillRadius(skill.Radius, isUlt)),
-                    skipPlayerTile: true, requiredMonsterId: target?.Id ?? 0);
+                return AoeWorthCasting(CircleTiles(Player.X, Player.Y, SkillRadius(skill.Radius, isUlt)),
+                    skipPlayerTile: true);
 
             case "ring":
-                return AnyMonsterOnTiles(
+                return AoeWorthCasting(
                     RingTiles(Player.X, Player.Y, skill.RingInner,
-                        Math.Max(SkillRadius(skill.Radius, isUlt), skill.RingInner + 1)),
-                    requiredMonsterId: target?.Id ?? 0);
+                        Math.Max(SkillRadius(skill.Radius, isUlt), skill.RingInner + 1)));
 
             case "summon":
                 return AnyMonsterOnTiles(CircleTiles(Player.X, Player.Y, Math.Max(skill.SummonRadius, 1)),
@@ -1378,7 +1593,7 @@ public sealed class GameWorld
                 return BeamWouldHitMonster(skill, target);
 
             case "cone":
-                return ConeWouldHitMonster(skill, target, isUlt);
+                return ConeWorthCasting(skill, target, isUlt);
 
             case "chain":
                 return target is not null && CanSkillReachTarget(skill, target);
@@ -1418,14 +1633,18 @@ public sealed class GameWorld
         return false;
     }
 
-    private bool ConeWouldHitMonster(SkillDef skill, Actor? target, bool isUlt)
+    /// <summary>Cone is worthwhile for the helper when it hits >= AutoHelperAoeMinTargets OR catches a boss/elite.</summary>
+    private bool ConeWorthCasting(SkillDef skill, Actor? target, bool isUlt)
     {
         var (dx, dy) = DirDelta(Player.Facing, target);
+        var reach = Math.Max(skill.Radius, 1);
+        var count = 0;
         foreach (var (tx, ty) in ConeTiles(Player.X, Player.Y, dx, dy, Math.Max(SkillRadius(skill.Radius, isUlt), 1)))
         {
             var victim = MonsterAt(tx, ty);
-            if (victim is not null && IsTargetableByPlayer(victim, Math.Max(skill.Radius, 1)))
-                return true;
+            if (victim is null || !IsTargetableByPlayer(victim, reach)) continue;
+            if (victim.IsBossActor || victim.IsElite) return true;
+            if (++count >= GameConfig.AutoHelperAoeMinTargets) return true;
         }
         return false;
     }
@@ -1443,7 +1662,135 @@ public sealed class GameWorld
         return false;
     }
 
-    // MG-02: alcance do auto vem do papel (archer > mage > knight), não mais da arma (cosmética).
+    /// <summary>AoE only "counts" for the helper if it hits >= AutoHelperAoeMinTargets mobs OR if it catches a
+    /// boss/elite (do not suppress boss damage). Prevents "skill spam into nothing" on a lone target.</summary>
+    private bool AoeWorthCasting(IEnumerable<(int X, int Y)> tiles, bool skipPlayerTile = false)
+    {
+        var count = 0;
+        foreach (var (tx, ty) in tiles)
+        {
+            if (skipPlayerTile && tx == Player.X && ty == Player.Y) continue;
+            var victim = MonsterAt(tx, ty);
+            if (victim is null) continue;
+            if (victim.IsBossActor || victim.IsElite) return true;
+            if (++count >= GameConfig.AutoHelperAoeMinTargets) return true;
+        }
+        return false;
+    }
+
+    /// <summary>True if an active field of the same element is already on/near the point (do not repaint fire onto fire).</summary>
+    private bool HasActiveFieldNear(int x, int y, string element, int radius)
+    {
+        foreach (var f in _fields)
+        {
+            if (f.Floor != _currentFloor || f.Element != element) continue;
+            if (Math.Abs(f.X - x) <= radius && Math.Abs(f.Y - y) <= radius) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Mobs already aggroed on the player within <paramref name="range"/> (Chebyshev): the "pack"
+    /// that orbit-mobbing gathers and melts. Stable order (_monsters scan) -> deterministic.</summary>
+    private List<Actor> AggroedMobsNear(int range)
+    {
+        var list = new List<Actor>();
+        foreach (var m in _monsters)
+        {
+            if (m.Hp <= 0 || m.Floor != Player.Floor || m.TargetId != Player.Id) continue;
+            if (Chebyshev(Player, m) <= range) list.Add(m);
+        }
+        return list;
+    }
+
+    /// <summary>Orbit-mobbing: walks in an arc around the ARENA CENTER (fixed point -> no jitter from a
+    /// jumping centroid), on a short target radius. Mobs chase and cut the curve, piling into a clump
+    /// where AoE lands. Consistent rotation direction (always the same) and anti-backtracking (do not return to the SQM
+    /// it came from) kill the "back and forth". No Rng: deterministic (center + tick geometry).</summary>
+    private void TickHelperMobbing(List<Actor> pile)
+    {
+        var arena = CurrentArenaRoom();
+        double cx, cy;
+        if (arena is not null) { cx = arena.CenterX; cy = arena.CenterY; }
+        else
+        {
+            long sx = 0, sy = 0;
+            foreach (var m in pile) { sx += m.X; sy += m.Y; }
+            cx = (double)sx / pile.Count; cy = (double)sy / pile.Count;
+        }
+
+        double rx = Player.X - cx;       // radial center to player
+        double ry = Player.Y - cy;
+        var dist = Math.Sqrt(rx * rx + ry * ry);
+        double mvx, mvy;
+        if (dist < 0.5)
+        {
+            mvx = 1; mvy = 0; // exactly at center: leave in any direction and the arc starts next tick.
+        }
+        else
+        {
+            // tangential (radial rotated 90 degrees, fixed direction) + correction to target radius (short, so the clump sticks).
+            var tux = -ry / dist;
+            var tuy = rx / dist;
+            var target = GameConfig.HelperMobOrbitRadius;
+            var bias = dist > target + 1 ? -0.9 : dist < target - 1 ? 0.9 : 0.0;
+            mvx = tux + rx / dist * bias;
+            mvy = tuy + ry / dist * bias;
+        }
+
+        var (dx, dy) = CardinalFromVector(mvx, mvy);
+        var speed = PlayerSpeed();
+        // 1st pass: avoid returning to the previous tile (anti-stutter). 2nd: allow backtracking if stuck.
+        foreach (var (ax, ay) in StepCandidates(dx, dy))
+        {
+            if (Player.X + ax == _mobLastX && Player.Y + ay == _mobLastY) continue;
+            if (TryStep(Player, ax, ay, speed)) { _mobLastX = Player.FromX; _mobLastY = Player.FromY; return; }
+        }
+        foreach (var (ax, ay) in StepCandidates(dx, dy))
+            if (TryStep(Player, ax, ay, speed)) { _mobLastX = Player.FromX; _mobLastY = Player.FromY; return; }
+        // fully walled in: stay and let combat (auto/AoE) work; the pile is already close.
+    }
+
+    /// <summary>Reference arena room for orbiting: the one containing the Kaeli, otherwise the largest on the floor.</summary>
+    private Room? CurrentArenaRoom()
+    {
+        Room? best = null;
+        var bestArea = -1;
+        foreach (var r in Floor.Rooms)
+        {
+            if (r.Contains(Player.X, Player.Y)) return r;
+            var area = r.W * r.H;
+            if (area > bestArea) { bestArea = area; best = r; }
+        }
+        return best;
+    }
+
+    /// <summary>Preferred step followed by alternatives (wall contouring), in order.</summary>
+    private static IEnumerable<(int dx, int dy)> StepCandidates(int dx, int dy)
+    {
+        yield return (dx, dy);
+        foreach (var alt in StepAlternatives(dx, dy)) yield return alt;
+    }
+
+    /// <summary>Continuous vector -> 8-direction grid step (nearest cardinal/diagonal).</summary>
+    private static (int dx, int dy) CardinalFromVector(double vx, double vy)
+    {
+        var mag = Math.Max(Math.Abs(vx), Math.Abs(vy));
+        if (mag < 1e-6) return (1, 0);
+        var dx = Math.Abs(vx) > 0.40 * mag ? Math.Sign(vx) : 0;
+        var dy = Math.Abs(vy) > 0.40 * mag ? Math.Sign(vy) : 0;
+        if (dx == 0 && dy == 0) dx = Math.Sign(vx) != 0 ? Math.Sign(vx) : 1;
+        return (dx, dy);
+    }
+
+    /// <summary>Alternative steps to contour around a wall when the preferred step blocks (slides by one axis, then rotates).</summary>
+    private static IEnumerable<(int dx, int dy)> StepAlternatives(int dx, int dy)
+    {
+        if (dx != 0 && dy != 0) { yield return (dx, 0); yield return (0, dy); }
+        else if (dx != 0) { yield return (dx, 1); yield return (dx, -1); yield return (0, 1); yield return (0, -1); }
+        else { yield return (1, dy); yield return (-1, dy); yield return (1, 0); yield return (-1, 0); }
+    }
+
+    // MG-02: auto range comes from role (archer > mage > knight), no longer from the weapon (cosmetic).
     private bool CanPlayerAutoAttack(Actor target) =>
         IsTargetableByPlayer(target, RoleTuning.AutoRange);
 
@@ -1494,24 +1841,24 @@ public sealed class GameWorld
         var target = _monsters.FirstOrDefault(m => m.Id == Player.TargetId && m.Hp > 0 && m.Floor == Player.Floor)
                      ?? NearestMonster(skill.Range > 0 ? skill.Range : GameConfig.AutoHelperTargetRange);
 
-        // skills que precisam de alvo só exigem QUE EXISTA um alvo travado/próximo — não que ele
-        // esteja em alcance. Se estiver longe, a magia dispara na reta da Kaeli até o limite/parede.
+        // target-required skills only require THAT a locked/nearby target EXISTS, not that it
+        // is in range. If it is far away, the spell fires along the Kaeli line up to its limit/wall.
         if (skill.Shape is "single" or "area" or "chain" or "barrage" && target is null) return;
         if (skill.Shape == "chain" && !CanSkillReachTarget(skill, target!)) return;
 
-        // ponto de mira: o alvo travado, mas limitado ao alcance da skill e parando antes da parede
+        // aim point: locked target, but limited to skill range and stopping before the wall
         var aimX = target?.X ?? Player.X;
         var aimY = target?.Y ?? Player.Y;
         if (skill.Shape is "single" or "area" or "barrage" or "field" && target is not null)
         {
             (aimX, aimY) = AimAlongLine(target.X, target.Y, skill.Range);
-            if (aimX == Player.X && aimY == Player.Y) return; // parede colada: nem sai (não gasta CD)
+            if (aimX == Player.X && aimY == Player.Y) return; // wall-adjacent: does not launch (no CD spent)
         }
 
         if (isUlt)
         {
             _gauge = 0;
-            // Eco Núcleo de Trovão: usar a ultimate devolve a Carga cheia.
+            // Echo Thunder Core: using the ultimate refills Charge.
             if (HasEcho("thunder_core")) _staticCharge = GameConfig.RynnaChargeMax;
         }
         else _skillReadyAtMs[slot] = NowMs + (long)(
@@ -1522,11 +1869,11 @@ public sealed class GameWorld
         if (target is not null)
             Player.Facing = FacingFrom(target.X - Player.X, target.Y - Player.Y);
         // CUT-05: visual-only cast cue. Carries the skill id + aim point (+ isUlt via Crit) so the
-        // client can stamp shape-keyed FX from its own skill-footprint catalog. Pure cosmetics — this
+        // client can stamp shape-keyed FX from its own skill-footprint catalog. Pure cosmetics; this
         // event is only appended to the outgoing stream; it never feeds the simulation.
         Emit("skill_cast", Player.X, Player.Y, aimX, aimY, 0, skill.Id, Player.Id, isUlt);
 
-        // maestria: slots 1-4 multiplicam o Power; a ultimate amplifica duração/cura (ultmod)
+        // mastery: slots 1-4 multiply Power; ultimate amplifies duration/heal (ultmod)
         var ultScale = isUlt ? Loadout.Mastery.UltimatePowerMult : 1.0;
         var damage = PlayerAttack() * RoleSkillMult() * skill.Power * EquipmentStats.SkillPowerMultiplier
                      * (isUlt ? 1.0 : Loadout.Mastery.SlotPowerMult(slot));
@@ -1548,7 +1895,7 @@ public sealed class GameWorld
             {
                 if (skill.MissileId > 0) Emit("projectile", Player.X, Player.Y, aimX, aimY, skill.MissileId);
                 Emit("effect", aimX, aimY, 0, 0, skill.EffectId);
-                // acerta o alvo travado se a reta chegou nele; senão o que estiver onde a magia parou
+                // hits the locked target if the line reached it; otherwise hits whatever is where the spell stopped
                 var victim = aimX == target!.X && aimY == target.Y ? target : MonsterAt(aimX, aimY);
                 if (victim is not null) HitMonster(victim, damage, skill, ultScale);
                 break;
@@ -1654,7 +2001,7 @@ public sealed class GameWorld
 
             case "ring":
             {
-                // raio externo escalado, mas nunca colapsa sobre o buraco central (mantém anel válido).
+                // scaled outer radius, but never collapses over the central hole (keeps a valid ring).
                 var outer = Math.Max(SkillRadius(skill.Radius, isUlt), skill.RingInner + 1);
                 foreach (var (tx, ty) in RingTiles(Player.X, Player.Y, skill.RingInner, outer))
                 {
@@ -1667,30 +2014,27 @@ public sealed class GameWorld
 
             case "field":
             {
-                // pinta tiles-perigo no chao (ao redor do alvo, ou de si mesma se sem alvo).
+                // paints danger tiles on the ground (around the target, or itself if no target). With
+                // FieldSpreadChance > 0 turns the seed into a self-spreading fire (Contagion).
                 var dmg = PlayerAttack() * RoleSkillMult() * skill.SummonPower * EquipmentStats.SkillPowerMultiplier
                     * (isUlt ? ultScale : Loadout.Mastery.SlotPowerMult(slot));
                 var tickMs = Math.Max(skill.SummonPulseMs, GameConfig.TickMs);
+                var lifeMs = Math.Max(skill.SummonMs, tickMs);
                 foreach (var (tx, ty) in CircleTiles(aimX, aimY, Math.Max(skill.SummonRadius, 0)))
-                {
-                    Emit("effect", tx, ty, 0, 0, skill.EffectId);
-                    _fields.Add(new GroundField
-                    {
-                        Floor = _currentFloor, X = tx, Y = ty, Element = skill.Element, Fx = skill.EffectId,
-                        DamagePerTick = dmg, SlowFactor = skill.SlowFactor, SlowMs = skill.SlowMs,
-                        TickMs = tickMs, NextTickAtMs = NowMs + tickMs,
-                        ExpireAtMs = NowMs + Math.Max(skill.SummonMs, tickMs),
-                    });
-                }
+                    SpawnField(tx, ty, skill.Element, skill.EffectId, dmg, skill.SlowFactor, skill.SlowMs,
+                        tickMs, lifeMs, skill.FieldSpreadChance, skill.FieldSpreadGenerations, telegraph: true);
                 break;
             }
 
             case "barrage":
             {
-                // golpes em multiplos tempos no ponto alvo (chuva/rajada que cai em sequencia).
+                // hits at multiple timings on the target point (rain/barrage landing in sequence).
                 var strikes = Math.Max(skill.Strikes, 1);
                 var interval = Math.Max(skill.StrikeIntervalMs, GameConfig.TickMs);
                 var dotPerTick = PlayerAttack() * RoleSkillMult() * skill.DotPower * EquipmentStats.SkillPowerMultiplier;
+                var fieldTickMs = Math.Max(skill.SummonPulseMs, GameConfig.TickMs);
+                var fieldPower = PlayerAttack() * RoleSkillMult() * skill.SummonPower
+                    * EquipmentStats.SkillPowerMultiplier * (isUlt ? ultScale : Loadout.Mastery.SlotPowerMult(slot));
                 for (var k = 0; k < strikes; k++)
                     _pendingStrikes.Add(new ScheduledStrike
                     {
@@ -1700,6 +2044,11 @@ public sealed class GameWorld
                         Radius = SkillRadius(skill.Radius, isUlt), RingInner = skill.RingInner,
                         StunMs = skill.StunMs, SlowFactor = skill.SlowFactor, SlowMs = skill.SlowMs,
                         DotTicks = skill.DotTicks, DotTickMs = skill.DotTickMs, DotPower = dotPerTick,
+                        LeavesField = skill.StrikeLeavesField, FieldPower = fieldPower,
+                        FieldRadius = Math.Max(skill.SummonRadius, 0), FieldTickMs = fieldTickMs,
+                        FieldLifeMs = Math.Max(skill.SummonMs, fieldTickMs),
+                        FieldSpreadChance = skill.FieldSpreadChance, FieldSpreadGenerations = skill.FieldSpreadGenerations,
+                        FieldSlowFactor = skill.SlowFactor, FieldSlowMs = skill.SlowMs,
                     });
                 Emit("effect", aimX, aimY, 0, 0, skill.EffectId); // telegrafo inicial
                 break;
@@ -1717,9 +2066,9 @@ public sealed class GameWorld
         {
             case "taunt":
                 AcquirePlayer(monster);
-                // Provocar: o inimigo (mesmo ranged/kiting) é forçado ao corpo-a-corpo por BuffMs.
+                // Taunt: the enemy (even ranged/kiting) is forced into melee by BuffMs.
                 monster.TauntedUntilMs = NowMs + (long)(skill.BuffMs * buffScale);
-                Emit("text", monster.X, monster.Y, 0, 0, 0, "PROVOCADO!");
+                Emit("text", monster.X, monster.Y, 0, 0, 0, "TAUNTED!");
                 break;
             case "exposed":
                 monster.ExposedUntilMs = NowMs + (long)(skill.BuffMs * buffScale);
@@ -1789,7 +2138,7 @@ public sealed class GameWorld
             if (dot.TicksLeft <= 0)
             {
                 monster.Dots.RemoveAt(i);
-                OnConditionExpiredCard(monster, dot); // G-04 Detonação: expira → estouro em área
+                OnConditionExpiredCard(monster, dot); // G-04 Detonation: expires -> area burst
                 if (monster.Hp <= 0) return;
             }
         }
@@ -1849,6 +2198,10 @@ public sealed class GameWorld
     private void ResolveStrike(ScheduledStrike s)
     {
         if (s.Floor != _currentFloor) return;
+        // fire trail: the meteor ignites the ground where it lands, and the fire spreads (Contagion).
+        if (s.LeavesField && s.FieldPower > 0)
+            SpawnField(s.X, s.Y, s.Element, s.Fx, s.FieldPower, s.FieldSlowFactor, s.FieldSlowMs,
+                s.FieldTickMs, s.FieldLifeMs, s.FieldSpreadChance, s.FieldSpreadGenerations, telegraph: false);
         var tiles = s.RingInner > 0 ? RingTiles(s.X, s.Y, s.RingInner, s.Radius) : CircleTiles(s.X, s.Y, s.Radius);
         foreach (var (tx, ty) in tiles)
         {
@@ -1865,25 +2218,109 @@ public sealed class GameWorld
         }
     }
 
-    /// <summary>Ticks player-painted ground fields: each damages/slows the monster on its tile, then expires.</summary>
+    /// <summary>Creates one ground-field tile (terrain hazard). With spreadChance > 0 it will crawl to
+    /// free neighbours over time (Contagion). No-op on blocked tiles. telegraph=true emits the ignition FX.</summary>
+    private void SpawnField(int x, int y, string element, int fx, double dmg, double slowFactor, int slowMs,
+        int tickMs, int lifeMs, int spreadChance, int spreadGenerations, bool telegraph)
+    {
+        if (Floor.IsBlocked(x, y)) return;
+        tickMs = Math.Max(tickMs, GameConfig.TickMs);
+        if (telegraph) Emit("effect", x, y, 0, 0, fx);
+        _fields.Add(new GroundField
+        {
+            Floor = _currentFloor, X = x, Y = y, Element = element, Fx = fx,
+            DamagePerTick = dmg, SlowFactor = slowFactor, SlowMs = slowMs,
+            TickMs = tickMs, NextTickAtMs = NowMs + tickMs,
+            ExpireAtMs = NowMs + Math.Max(lifeMs, tickMs),
+            SpreadChance = spreadChance, SpreadGenerationsLeft = spreadGenerations,
+        });
+    }
+
+    /// <summary>Ticks player-painted ground fields: each damages/slows the monster on its tile, may
+    /// ignite a free neighbour (spreading fire), then expires. Children are queued and only added after
+    /// the pass, so a tile never re-spreads within the same tick (bounded, deterministic crawl).</summary>
     private void TickFields()
     {
         if (_fields.Count == 0) return;
-        for (var i = _fields.Count - 1; i >= 0; i--)
+        var floorFields = 0;
+        foreach (var f in _fields) if (f.Floor == _currentFloor) floorFields++;
+        List<GroundField>? newborns = null;
+        var initialCount = _fields.Count;
+        for (var i = initialCount - 1; i >= 0; i--)
         {
             var field = _fields[i];
-            if (NowMs >= field.ExpireAtMs) { _fields.RemoveAt(i); continue; }
+            if (NowMs >= field.ExpireAtMs)
+            {
+                if (field.Floor == _currentFloor) floorFields--;
+                _fields.RemoveAt(i);
+                continue;
+            }
             if (field.Floor != _currentFloor || NowMs < field.NextTickAtMs) continue;
             field.NextTickAtMs = NowMs + field.TickMs;
             Emit("effect", field.X, field.Y, 0, 0, field.Fx);
             var victim = MonsterAt(field.X, field.Y);
-            if (victim is null) continue;
-            if (field.DamagePerTick > 0)
-                DealDamageToMonster(victim, field.DamagePerTick, field.Element, 0,
-                    fromSkill: false, canCrit: false, canLifeSteal: false);
-            if (victim.Hp > 0 && field.SlowMs > 0 && field.SlowFactor < 1)
-                ApplyMonsterSlow(victim, field.SlowFactor, field.SlowMs);
+            if (victim is not null)
+            {
+                if (field.DamagePerTick > 0)
+                    DealDamageToMonster(victim, field.DamagePerTick, field.Element, 0,
+                        fromSkill: false, canCrit: false, canLifeSteal: false);
+                if (victim.Hp > 0 && field.SlowMs > 0 && field.SlowFactor < 1)
+                    ApplyMonsterSlow(victim, field.SlowFactor, field.SlowMs);
+            }
+
+            // Contagion: the lit tile tries to ignite a free neighbor while generation budget remains
+            // and the floor has not hit the tile cap. The fire front advances; the tail fades by itself.
+            if (field.SpreadGenerationsLeft > 0 && field.SpreadChance > 0
+                && floorFields < GameConfig.FieldMaxTilesPerFloor && _rng.Chance(field.SpreadChance / 100.0))
+            {
+                var child = MakeSpreadChild(field, newborns);
+                if (child is not null) { (newborns ??= []).Add(child); floorFields++; }
+            }
         }
+        if (newborns is not null) _fields.AddRange(newborns);
+    }
+
+    /// <summary>Picks a free cardinal neighbour of a burning tile (not blocked, not already on fire) and
+    /// returns a fresh short-lived child field with one less spread generation. Null if boxed in.</summary>
+    private GroundField? MakeSpreadChild(GroundField parent, List<GroundField>? pending)
+    {
+        Span<int> dx = [1, -1, 0, 0];
+        Span<int> dy = [0, 0, 1, -1];
+        // collect candidates in a stable order and roll one (deterministic on the run Rng).
+        Span<int> okX = stackalloc int[4];
+        Span<int> okY = stackalloc int[4];
+        var n = 0;
+        for (var k = 0; k < 4; k++)
+        {
+            var nx = parent.X + dx[k];
+            var ny = parent.Y + dy[k];
+            if (Floor.IsBlocked(nx, ny) || FieldAlreadyAt(nx, ny, pending)) continue;
+            okX[n] = nx; okY[n] = ny; n++;
+        }
+        if (n == 0) return null;
+        var pick = _rng.Next(n);
+        var cx = okX[pick];
+        var cy = okY[pick];
+        Emit("effect", cx, cy, 0, 0, parent.Fx);
+        return new GroundField
+        {
+            Floor = _currentFloor, X = cx, Y = cy, Element = parent.Element, Fx = parent.Fx,
+            DamagePerTick = parent.DamagePerTick, SlowFactor = parent.SlowFactor, SlowMs = parent.SlowMs,
+            TickMs = parent.TickMs, NextTickAtMs = NowMs + parent.TickMs,
+            ExpireAtMs = NowMs + GameConfig.FieldSpreadChildLifeMs,
+            SpreadChance = parent.SpreadChance, SpreadGenerationsLeft = parent.SpreadGenerationsLeft - 1,
+        };
+    }
+
+    /// <summary>True if a live field already occupies the tile on the current floor (incl. this tick's newborns).</summary>
+    private bool FieldAlreadyAt(int x, int y, List<GroundField>? pending)
+    {
+        foreach (var f in _fields)
+            if (f.Floor == _currentFloor && f.X == x && f.Y == y) return true;
+        if (pending is not null)
+            foreach (var f in pending)
+                if (f.X == x && f.Y == y) return true;
+        return false;
     }
 
     /// <summary>Resolves multi-time strikes whose scheduled moment has arrived.</summary>
@@ -1902,20 +2339,20 @@ public sealed class GameWorld
     private void DealDamageToMonster(Actor monster, double raw, string element, int hitEffect,
         bool fromSkill = false, bool canCrit = true, bool canLifeSteal = true, bool fromTrait = false)
     {
-        // "acerto direto" = auto-attack ou hit de skill (não DoT/campo/invocação/burst de trait).
-        // É o que move o estado das passivas (combo, carga, marca, presa, estilhaço).
+        // "direct hit" = auto-attack or skill hit (not DoT/field/summon/trait burst).
+        // This drives passive state (combo, charge, mark, prey, shatter).
         var directHit = (fromSkill || canCrit) && !fromTrait;
 
         var roll = raw * (GameConfig.DamageRollMin + _rng.NextDouble() * (GameConfig.DamageRollMax - GameConfig.DamageRollMin));
         if (NowMs < monster.ExposedUntilMs)
             roll *= GameConfig.ExposedWeaknessDamageMultiplier;
 
-        // trait: deadeye soma crit por distância; executioner/slayer multiplicam o roll
+        // trait: deadeye adds crit by distance; executioner/slayer multiply the roll
         var critChance = CritChance();
         if (_trait.Kind == "deadeye" && Chebyshev(Player, monster) >= (int)_trait.Param)
             critChance += _trait.Value * _traitMult;
 
-        // K-04: pré-dano das passivas assinatura (ramp/execução/bônus + crit garantido)
+        // K-04: pre-damage signature passives (ramp/execution/bonus + guaranteed crit)
         var forceCrit = false;
         if (!fromTrait)
             ApplyTraitPreDamage(monster, element, directHit, ref roll, ref forceCrit);
@@ -1962,11 +2399,11 @@ public sealed class GameWorld
         var final = Math.Max((int)afterArmor, resist >= 100 ? 0 : 1);
         if (final <= 0)
         {
-            Emit("text", monster.X, monster.Y, 0, 0, 0, "IMUNE");
+            Emit("text", monster.X, monster.Y, 0, 0, 0, "IMMUNE");
             return;
         }
 
-        // G-08B: barreira do escudeiro absorve antes da vida (some o golpe se cobrir tudo).
+        // G-08B: shieldbearer barrier absorbs before health (removes the hit if it covers everything).
         if (monster.MonsterShield > 0)
         {
             var absorbed = Math.Min(monster.MonsterShield, final);
@@ -1974,7 +2411,7 @@ public sealed class GameWorld
             final -= (int)absorbed;
             if (final <= 0)
             {
-                Emit("text", monster.X, monster.Y, 0, 0, 0, "BLOQUEADO");
+                Emit("text", monster.X, monster.Y, 0, 0, 0, "BLOCKED");
                 return;
             }
         }
@@ -1990,7 +2427,7 @@ public sealed class GameWorld
             lifesteal += EquipmentStats.LifeStealAmount;
         if (lifesteal > 0) HealPlayer((int)Math.Max(final * lifesteal, 0));
 
-        // traits de reserva pós-dano: seiva vital (lifesteal de skill) e mordida do norte (slow de gelo)
+        // reserve traits after damage: vital sap (skill lifesteal) and northern bite (ice slow)
         if (fromSkill && _trait.Kind == "skill_lifesteal")
             HealPlayer((int)Math.Max(final * _trait.Value * _traitMult, 0));
         if (_trait.Kind == "chiller" && element == "ice" && monster.Hp > 0)
@@ -1999,10 +2436,10 @@ public sealed class GameWorld
             monster.SlowFactor = Math.Max(1 - _trait.Value * _traitMult, GameConfig.SlowFactorFloor);
         }
 
-        // K-04: pós-dano das passivas assinatura (marcas, stacks, carga, estilhaço, contágio)
+        // K-04: post-damage signature passives (marks, stacks, charge, shatter, contagion)
         if (!fromTrait)
             ApplyTraitPostDamage(monster, final, element, directHit);
-        // G-04: pós-dano das cartas de mecânica (enche ult, golpe extra) — mesmo seam, sem dispatch novo.
+        // G-04: post-damage mechanic cards (fill ult, extra strike): same seam, no new dispatch.
         if (!fromTrait)
             ApplyCardPostDamage(monster, directHit);
 
@@ -2018,13 +2455,13 @@ public sealed class GameWorld
         if (monster.Hp <= 0) KillMonster(monster);
     }
 
-    // ================= G-08B: keyword interaction (mob × tags de G-04) =================
-    // Um mob pode resistir (0-100%) ou amplificar (negativo) uma keyword de carta. Multiplica a
-    // magnitude do efeito daquela tag aplicado AO mob. Determinístico: o multiplicador é puro; o
-    // arredondamento de stacks inteiros usa _rng SÓ quando há resistência configurada (não perturba
-    // o stream de RNG dos mobs sem keyword resist, preservando determinismo das runs existentes).
+    // ================= G-08B: keyword interaction (mob x G-04 tags) =================
+    // A mob may resist (0-100%) or amplify (negative) a card keyword. Multiplies the
+    // magnitude of that tag effect applied TO the mob. Deterministic: the multiplier is pure; the
+    // whole-stack rounding uses _rng ONLY when resistance is configured (does not perturb
+    // the RNG stream for mobs without keyword resist, preserving determinism of existing runs).
 
-    /// <summary>Fração da keyword que afeta o mob: 1 = normal, 0 = imune (100), >1 = amplifica (negativo).</summary>
+    /// <summary>Fraction of the keyword affecting the mob: 1 = normal, 0 = immune (100), >1 = amplified (negative).</summary>
     private static double KeywordResistMult(Actor m, string tag)
     {
         var dict = m.Species?.KeywordResistances;
@@ -2035,8 +2472,8 @@ public sealed class GameWorld
     private static bool HasKeywordResist(Actor m, string tag) =>
         m.Species?.KeywordResistances is { Count: > 0 } d && d.ContainsKey(tag);
 
-    /// <summary>Escala um ganho de stacks inteiro pela resistência de keyword. Sem entrada → devolve o
-    /// valor cru (não toca _rng). Com entrada → parte inteira + 1 extra probabilístico pela fração.</summary>
+    /// <summary>Scales an integer stack gain by keyword resistance. No entry -> returns the raw
+    /// value (does not touch _rng). With entry -> integer part + 1 probabilistic extra by fraction.</summary>
     private int KeywordScaledStacks(Actor m, string tag, int baseStacks)
     {
         if (baseStacks <= 0 || !HasKeywordResist(m, tag)) return baseStacks;
@@ -2048,17 +2485,17 @@ public sealed class GameWorld
     }
 
     // ================= K-04: passivas assinatura =================
-    // Uma família mecânica por Kaeli. Determinístico: só NowMs/_rng da run, contadores estáveis e
-    // seleção de alvo por menor distância com desempate por menor id. _traitMult (maestria) sempre
-    // amplifica o efeito principal. Bursts internos chamam DealDamageToMonster com fromTrait:true
-    // para não re-disparar a própria passiva (a guarda Killed evita dupla contagem de morte).
+    // One mechanical family per Kaeli. Deterministic: only NowMs/_rng from the run, stable counters, and
+    // target selection by shortest distance with lowest-id tie-break. _traitMult (mastery) always
+    // amplifies the main effect. Internal bursts call DealDamageToMonster with fromTrait:true
+    // so it does not retrigger its own passive (Killed guard prevents double death counting).
 
-    /// <summary>Pré-dano: ramp/execução/bônus que multiplicam o roll, e crit garantido (Seren).</summary>
+    /// <summary>Pre-damage: ramp/execution/bonus that multiply the roll, and guaranteed crit (Seren).</summary>
     private void ApplyTraitPreDamage(Actor monster, string element, bool directHit, ref double roll, ref bool forceCrit)
     {
         switch (_trait.Kind)
         {
-            case "discipline": // Seren — combo no mesmo alvo, 3º acerto = Corte Perfeito
+            case "discipline": // Seren: combo on the same target, 3rd hit = Perfect Cut
             {
                 if (!directHit) break;
                 if (_comboTargetId != monster.Id || NowMs > _comboExpireMs)
@@ -2067,15 +2504,15 @@ public sealed class GameWorld
                     _comboHits = 0;
                 }
                 _comboHits++;
-                // Eco Cadência Sem Fim: reset mais severo, ramp sem teto.
+                // Echo Endless Cadence: harsher reset, uncapped ramp.
                 _comboExpireMs = NowMs + (HasEcho("endless_cadence")
                     ? GameConfig.EchoEndlessCadenceResetMs : GameConfig.SerenDisciplineResetMs);
                 var ramp = HasEcho("endless_cadence")
                     ? _comboHits * _trait.Value
                     : Math.Min(_comboHits * _trait.Value, _trait.Param);
-                // G-08B: keyword "combo" — resiste/amplifica o ramp de Disciplina contra este alvo.
+                // G-08B: keyword "combo": resists/amplifies Discipline ramp against this target.
                 roll *= 1 + ramp * _traitMult * KeywordResistMult(monster, "combo");
-                // Eco Execução Perfeita: Corte a cada 2º e o crit garantido executa alvos fracos.
+                // Echo Perfect Execution: Cut every 2nd hit, and guaranteed crit executes weak targets.
                 var cutEvery = HasEcho("perfect_execution")
                     ? GameConfig.EchoPerfectCutEvery : GameConfig.SerenPerfectCutEvery;
                 if (_comboHits % cutEvery == 0)
@@ -2084,14 +2521,14 @@ public sealed class GameWorld
                     if (HasEcho("perfect_execution")
                         && monster.Hp < monster.MaxHp * GameConfig.EchoPerfectExecuteHpFraction)
                     {
-                        Emit("text", monster.X, monster.Y, 0, 0, 0, "EXECUÇÃO");
-                        roll = Math.Max(roll, monster.MaxHp * 10); // estouro letal através da armadura
+                        Emit("text", monster.X, monster.Y, 0, 0, 0, "EXECUTION");
+                        roll = Math.Max(roll, monster.MaxHp * 10); // lethal burst through armor
                     }
                 }
                 break;
             }
 
-            case "decay": // Velvet — limiar de execução sobe com os stacks de Decadência
+            case "decay": // Velvet: execution threshold rises with Decay stacks
             {
                 var threshold = Math.Min(
                     _trait.Param + ActiveDecayStacks(monster) * GameConfig.VelvetThresholdPerStack,
@@ -2101,12 +2538,12 @@ public sealed class GameWorld
                 break;
             }
 
-            case "shatter": // Lunara — dano bônus contra alvo já lento
+            case "shatter": // Lunara: bonus damage against an already slowed target
                 if (element == "ice" && NowMs < monster.SlowUntilMs)
                     roll *= 1 + _trait.Value * _traitMult;
                 break;
 
-            case "contagion": // Rin — Eco Pira: o dano cresce com o nº de inimigos queimando
+            case "contagion": // Rin: Echo Pyre, damage grows with the number of burning enemies
                 if (HasEcho("pyre"))
                 {
                     var burning = _monsters.Count(m => m.Hp > 0 && m.Floor == _currentFloor && IsBurning(m));
@@ -2114,22 +2551,22 @@ public sealed class GameWorld
                 }
                 break;
 
-            case "prey": // Gaia — ramp por tempo de caça contra a Presa
+            case "prey": // Gaia: hunt-time ramp against the Prey
             {
                 if (!directHit) break;
                 if (_preyId == 0 || !IsMonsterAlive(_preyId)) SetPrey(monster);
-                // Eco Matilha: marca uma segunda Presa quando há mais alvos.
+                // Echo Pack: marks a second Prey when there are more targets.
                 if (HasEcho("pack") && (_preyId2 == 0 || !IsMonsterAlive(_preyId2)))
                     SetSecondPrey(monster);
                 if (monster.Id == _preyId || monster.Id == _preyId2)
                 {
-                    // Eco Caça Eterna: ramp e teto dobrados.
+                    // Echo Eternal Hunt: doubled ramp and cap.
                     var rampPerSec = _trait.Value * (HasEcho("eternal_hunt") ? GameConfig.EchoEternalHuntRampMult : 1);
                     var cap = _trait.Param * (HasEcho("eternal_hunt") ? GameConfig.EchoEternalHuntCapMult : 1);
                     var huntSec = (NowMs - _preyStartMs) / 1000.0;
-                    // G-08B: keyword "prey" — resiste/amplifica o ramp de caça contra este alvo.
+                    // G-08B: keyword "prey": resists/amplifies the hunt ramp against this target.
                     roll *= 1 + Math.Min(huntSec * rampPerSec, cap) * _traitMult * KeywordResistMult(monster, "prey");
-                    // Eco Raízes Profundas: cada acerto na Presa a enraíza e crava veneno de terra.
+                    // Echo Deep Roots: each hit on the Prey roots it and plants earth poison.
                     if (HasEcho("deep_roots") && monster.Hp > 0)
                     {
                         monster.SlowUntilMs = NowMs + GameConfig.EchoDeepRootsSlowMs;
@@ -2144,14 +2581,14 @@ public sealed class GameWorld
         }
     }
 
-    /// <summary>Pós-dano: marcas, stacks, carga, contágio e estilhaço (alvo ainda vivo).</summary>
+    /// <summary>Post-damage: marks, stacks, charge, contagion, and shatter (target still alive).</summary>
     private void ApplyTraitPostDamage(Actor monster, int final, string element, bool directHit)
     {
         switch (_trait.Kind)
         {
-            case "judgment": // Eloa — Pecado acumula; ao Julgar, o próximo acerto detona
+            case "judgment": // Eloa: Sin accumulates; when Judged, the next hit detonates
                 if (!directHit || monster.Hp <= 0) break;
-                // Eco Sentença: Julga com menos Pecados.
+                // Echo Sentence: Judges with fewer Sins.
                 var sinToJudge = HasEcho("sentence")
                     ? GameConfig.EchoSentenceStacksToJudge : GameConfig.EloaSinStacksToJudge;
                 if (ActiveSinStacks(monster) >= sinToJudge)
@@ -2162,7 +2599,7 @@ public sealed class GameWorld
                 }
                 else
                 {
-                    // G-08B: keyword "sin" — alvo resistente acumula Pecado mais devagar (imune = nunca).
+                    // G-08B: keyword "sin": resistant target accumulates Sin more slowly (immune = never).
                     var sinGain = KeywordScaledStacks(monster, "sin", 1);
                     if (sinGain > 0)
                     {
@@ -2172,9 +2609,9 @@ public sealed class GameWorld
                 }
                 break;
 
-            case "decay": // Velvet — cada acerto empilha Decadência (DoT) e sobe o limiar
+            case "decay": // Velvet: each hit stacks Decay (DoT) and raises the threshold
                 if (!directHit || monster.Hp <= 0) break;
-                // G-08B: keyword "curse" — alvo resistente recebe menos stacks de Maldição (imune = nenhum).
+                // G-08B: keyword "curse": resistant target receives fewer Curse stacks (immune = none).
                 var decayGain = KeywordScaledStacks(monster, "curse", 1);
                 if (decayGain <= 0) break;
                 monster.DecayStacks = Math.Min(ActiveDecayStacks(monster) + decayGain, GameConfig.VelvetDecayMaxStacks);
@@ -2182,51 +2619,51 @@ public sealed class GameWorld
                 var decayPower = PlayerAttack() * RoleSkillMult() * GameConfig.VelvetDecayDamagePerStack * monster.DecayStacks;
                 ApplyDotToMonster(monster, "death", GameConfig.ConditionTickFx["curse"],
                     decayPower, GameConfig.VelvetDecayTicks, GameConfig.VelvetDecayTickMs);
-                // Eco Pacto de Sangue: a carga de Maldição ergue escudo em vez de Velvet curar.
+                // Echo Blood Pact: Curse charge raises shield instead of healing Velvet.
                 if (HasEcho("blood_pact"))
                     GainEchoShield(decayPower * GameConfig.VelvetDecayTicks * GameConfig.EchoBloodPactShieldFraction);
                 break;
 
-            case "contagion": // Rin — acerto incendeia; tick de burn cura (pacto)
-                // Eco Fogo Selvagem: qualquer elemento incendeia, não só fogo.
+            case "contagion": // Rin: hit ignites; burn tick heals (pact)
+                // Echo Wildfire: any element ignites, not only fire.
                 if (directHit && monster.Hp > 0 && (element == "fire" || HasEcho("wildfire")))
                     ApplyContagionBurn(monster);
                 else if (!directHit && element == "fire")
                     HealPlayer((int)Math.Max(final * _trait.Value * _traitMult, 0));
                 break;
 
-            case "static_charge": // Rynna — acertos enchem a carga; cheia, descarrega
+            case "static_charge": // Rynna: hits fill Charge; full Charge discharges
                 if (!directHit || monster.Hp <= 0) break;
-                // Eco Tempestade Perpétua: a Carga enche o dobro de rápido.
-                // G-08B: keyword "charge" — alvo resistente enche a Carga mais devagar.
+                // Echo Perpetual Storm: Charge fills twice as fast.
+                // G-08B: keyword "charge": resistant target fills Charge more slowly.
                 _staticCharge += GameConfig.RynnaChargePerHit
                     * (HasEcho("perpetual_storm") ? GameConfig.EchoPerpetualChargeMult : 1)
                     * KeywordResistMult(monster, "charge");
                 if (_staticCharge >= GameConfig.RynnaChargeMax)
                 {
-                    // Eco Tempestade Perpétua: a Descarga retém metade da Carga.
+                    // Echo Perpetual Storm: Discharge retains half of Charge.
                     _staticCharge = HasEcho("perpetual_storm")
                         ? GameConfig.RynnaChargeMax * GameConfig.EchoPerpetualDischargeRetain : 0;
                     RynnaDischarge(monster, final);
                 }
                 break;
 
-            case "shatter": // Lunara — acerto no lento dá haste e conta pro estilhaço
+            case "shatter": // Lunara: hit on slowed target gives haste and counts toward shatter
                 if (directHit && element == "ice" && monster.Hp > 0) ApplyShatter(monster);
                 break;
         }
     }
 
-    /// <summary>Gaia/Rin: ao matar um alvo, a caça salta de presa e o incêndio se propaga.</summary>
+    /// <summary>Gaia/Rin: on kill, the hunt jumps Prey and the fire spreads.</summary>
     private void OnMonsterKilledTrait(Actor monster)
     {
         if (_trait.Kind == "prey" && (monster.Id == _preyId || monster.Id == _preyId2))
         {
             monster.IsPrey = false;
-            // Eco Matilha: bônus de caça maior ao executar.
+            // Echo Pack: bigger hunt bonus on execution.
             _preyHuntBonusUntilMs = NowMs + (HasEcho("pack")
                 ? GameConfig.EchoPackHuntBonusMs : GameConfig.GaiaHuntBonusMs);
-            if (monster.Id == _preyId2) _preyId2 = 0; // a Matilha re-marca a 2ª no próximo acerto
+            if (monster.Id == _preyId2) _preyId2 = 0; // the Pack re-marks the 2nd on the next hit
             if (monster.Id == _preyId)
             {
                 _preyId = 0;
@@ -2240,7 +2677,7 @@ public sealed class GameWorld
         }
     }
 
-    /// <summary>Rin: salto periódico do incêndio independente de mortes.</summary>
+    /// <summary>Rin: periodic fire jump independent of deaths.</summary>
     private void TickTraitTimers()
     {
         if (_trait.Kind != "contagion" || NowMs < _contagionNextJumpMs) return;
@@ -2248,11 +2685,11 @@ public sealed class GameWorld
         var src = FirstBurningMonster();
         if (src is null) return;
         SpreadBurnFrom(src);
-        // Eco Fogo Selvagem: a queimadura não expira enquanto houver alvo em chamas.
+        // Echo Wildfire: burn does not expire while any target is burning.
         if (HasEcho("wildfire")) RefreshAllBurns();
     }
 
-    /// <summary>Rin — Fogo Selvagem: renova a duração dos incêndios ativos (não acumula potência).</summary>
+    /// <summary>Rin: Wildfire renews active burn duration (does not stack potency).</summary>
     private void RefreshAllBurns()
     {
         foreach (var m in _monsters)
@@ -2267,13 +2704,13 @@ public sealed class GameWorld
         }
     }
 
-    // ================= G-04: mecânica de cartas (raro/eco) =================
-    // Hooks-irmãos das passivas de Kaeli: leem _cards (stacks) + tags, sem dispatch novo no engine.
-    // Determinístico (só NowMs/_rng da run, contadores estáveis, desempate por id, soma de stacks
-    // independe da ordem do dicionário). Bursts chamam DealDamageToMonster com fromTrait:true para
-    // não re-disparar os próprios hooks (a guarda !fromTrait fecha trait e carta de uma vez).
+    // ================= G-04: card mechanics (rare/echo) =================
+    // Sibling hooks to Kaeli passives: read _cards (stacks) + tags, no new engine dispatch.
+    // Deterministic (only NowMs/_rng from the run, stable counters, id tie-break, stack sums
+    // independent of dictionary order). Bursts call DealDamageToMonster with fromTrait:true to
+    // avoid retriggering their own hooks (the !fromTrait guard closes trait and card together).
 
-    /// <summary>Stacks somados das cartas com um Kind de mecânica (0 se nenhuma equipada).</summary>
+    /// <summary>Summed stacks from cards with a mechanic Kind (0 if none equipped).</summary>
     private int CardKindStacks(string kind)
     {
         var total = 0;
@@ -2284,10 +2721,10 @@ public sealed class GameWorld
 
     private int CountEchoSpectres() => _summons.Count(s => s.IsEchoSpectre);
 
-    /// <summary>G-04B: um Eco está equipado (cap de 1 stack → presença do Kind entre as cartas).</summary>
+    /// <summary>G-04B: an Echo is equipped (1-stack cap -> Kind presence among cards).</summary>
     private bool HasEcho(string kind) => CardKindStacks(kind) > 0;
 
-    /// <summary>Ergue escudo de Eco (sobre-vida), limitado a uma fração da vida máxima.</summary>
+    /// <summary>Raises Echo shield (overhealth), limited to a fraction of max health.</summary>
     private void GainEchoShield(double amount)
     {
         if (amount <= 0) return;
@@ -2295,7 +2732,7 @@ public sealed class GameWorld
         _echoShield = Math.Min(_echoShield + amount, cap);
     }
 
-    /// <summary>Absorve dano do escudo de Eco antes da vida; devolve o que sobrou para a vida levar.</summary>
+    /// <summary>Absorbs Echo shield damage before health; returns what remains for health to take.</summary>
     private int AbsorbWithEchoShield(int damage)
     {
         if (_echoShield <= 0 || damage <= 0) return damage;
@@ -2304,8 +2741,8 @@ public sealed class GameWorld
         return damage - (int)absorbed;
     }
 
-    /// <summary>Pós-dano das cartas: enche a ultimate (Eco Sobrecarregado) e golpe extra (Golpe Duplo).
-    /// Só conta acerto direto (auto/skill), igual às passivas.</summary>
+    /// <summary>Card post-damage: fills ultimate (Echo Overloaded) and extra strike (Double Strike).
+    /// Only direct hits count (auto/skill), same as passives.</summary>
     private void ApplyCardPostDamage(Actor monster, bool directHit)
     {
         if (!directHit) return;
@@ -2323,7 +2760,7 @@ public sealed class GameWorld
             if (_cardDoubleStrikeHits >= GameConfig.CardDoubleStrikeEvery)
             {
                 _cardDoubleStrikeHits = 0;
-                Emit("text", monster.X, monster.Y, 0, 0, 0, "GOLPE DUPLO");
+                Emit("text", monster.X, monster.Y, 0, 0, 0, "DOUBLE STRIKE");
                 DealDamageToMonster(monster,
                     PlayerAttack() * RoleSkillMult() * GameConfig.CardDoubleStrikeDamageMult * doubleStrike,
                     CurrentStance.Element, 0,
@@ -2332,11 +2769,11 @@ public sealed class GameWorld
         }
     }
 
-    /// <summary>Hooks de carta no on-kill (Velvet Colheita/Praga, Rin Holocausto). Cada Eco é
-    /// checado de forma independente; lê o estado do alvo (Decadência/queimadura) antes da limpeza.</summary>
+    /// <summary>Card hooks on kill (Velvet Harvest/Plague, Rin Holocaust). Each Echo is
+    /// checked independently; reads target state (Decay/burn) before cleanup.</summary>
     private void OnMonsterKilledCard(Actor monster)
     {
-        // Velvet — Colheita: morto sob Decadência ergue um espectro que pulsa dano (máx N).
+        // Velvet: Harvest raises a specter that pulses damage when killing under Decay (max N).
         if (HasEcho("harvest") && ActiveDecayStacks(monster) > 0
             && CountEchoSpectres() < GameConfig.CardHarvestMaxSpectres)
         {
@@ -2351,11 +2788,11 @@ public sealed class GameWorld
                 ExpireAtMs = NowMs + GameConfig.CardHarvestSpectreDurationMs,
                 IsEchoSpectre = true,
             });
-            Emit("text", monster.X, monster.Y, 0, 0, 0, "COLHEITA");
+            Emit("text", monster.X, monster.Y, 0, 0, 0, "HARVEST");
             Emit("effect", monster.X, monster.Y, 0, 0, GameConfig.CardHarvestSpectreFx);
         }
 
-        // Velvet — Praga Viral: ao morrer, a Decadência salta com seus stacks ao vivo mais próximo.
+        // Velvet: Viral Plague makes Decay jump with its stacks to the nearest living target on death.
         if (HasEcho("viral_plague"))
         {
             var stacks = ActiveDecayStacks(monster);
@@ -2368,15 +2805,15 @@ public sealed class GameWorld
                     PlayerAttack() * RoleSkillMult() * GameConfig.VelvetDecayDamagePerStack * next.DecayStacks,
                     GameConfig.VelvetDecayTicks, GameConfig.VelvetDecayTickMs);
                 Emit("projectile", monster.X, monster.Y, next.X, next.Y, 11); // death missile
-                Emit("text", next.X, next.Y, 0, 0, 0, "PRAGA");
+                Emit("text", next.X, next.Y, 0, 0, 0, "PLAGUE");
             }
         }
 
-        // Rin — Holocausto: alvo que morre em chamas explode num estouro de fogo em área.
+        // Rin: Holocaust makes a burning target explode in a fire burst on death.
         if (HasEcho("holocaust") && IsBurning(monster))
         {
             var burst = PlayerAttack() * RoleSkillMult() * GameConfig.EchoHolocaustDamageMult;
-            Emit("text", monster.X, monster.Y, 0, 0, 0, "HOLOCAUSTO");
+            Emit("text", monster.X, monster.Y, 0, 0, 0, "HOLOCAUST");
             foreach (var (tx, ty) in CircleTiles(monster.X, monster.Y, GameConfig.EchoHolocaustRadius))
             {
                 Emit("effect", tx, ty, 0, 0, GameConfig.ConditionTickFx["fire"]);
@@ -2388,14 +2825,14 @@ public sealed class GameWorld
         }
     }
 
-    /// <summary>Detonação: uma condição que expira naturalmente (não por morte) explode em área.</summary>
+    /// <summary>Detonation: a condition that expires naturally (not by death) explodes in an area.</summary>
     private void OnConditionExpiredCard(Actor monster, MonsterDot dot)
     {
         if (monster.Hp <= 0) return;
         var stacks = CardKindStacks("detonate");
         if (stacks <= 0) return;
         var burst = PlayerAttack() * RoleSkillMult() * GameConfig.CardDetonateDamageMult * stacks;
-        Emit("text", monster.X, monster.Y, 0, 0, 0, "DETONAÇÃO");
+        Emit("text", monster.X, monster.Y, 0, 0, 0, "DETONATION");
         foreach (var (tx, ty) in CircleTiles(monster.X, monster.Y, GameConfig.CardDetonateRadius))
         {
             Emit("effect", tx, ty, 0, 0, dot.Fx);
@@ -2406,18 +2843,18 @@ public sealed class GameWorld
         }
     }
 
-    // Eloa — detona o Selo numa pequena área e cura a Serafim por fração do estouro.
+    // Eloa: detonates the Seal in a small area and heals the Seraph by a fraction of the burst.
     private void EloaDetonate(Actor center, int triggerDamage)
     {
         var burst = triggerDamage * _trait.Value * _traitMult;
-        // Eco Sentença: cada Julgamento amplia o próximo estouro (acumula até um teto).
+        // Echo Sentence: each Judgment amplifies the next burst (stacks up to a cap).
         if (HasEcho("sentence"))
         {
             burst *= 1 + _eloaSentenceStacks * GameConfig.EchoSentenceBurstPerStack;
             _eloaSentenceStacks = Math.Min(_eloaSentenceStacks + 1, GameConfig.EchoSentenceMaxStacks);
         }
         var chain = HasEcho("chain_judgment"); // espalha Pecado nos atingidos
-        Emit("text", center.X, center.Y, 0, 0, 0, "JULGADO");
+        Emit("text", center.X, center.Y, 0, 0, 0, "JUDGED");
         foreach (var (tx, ty) in CircleTiles(center.X, center.Y, GameConfig.EloaJudgmentRadius))
         {
             Emit("effect", tx, ty, 0, 0, 40); // holy area fx
@@ -2432,21 +2869,21 @@ public sealed class GameWorld
                 victim.SinUntilMs = NowMs + GameConfig.EloaSinDurationMs;
             }
         }
-        // Eco Mártir: a cura do Julgamento vira escudo acima da vida, em vez de curar.
+        // Echo Martyr: Judgment healing becomes shield above health instead of healing.
         var grace = Math.Max(burst * _trait.Param, 0);
         if (HasEcho("martyr")) GainEchoShield(grace);
         else HealPlayer((int)grace);
     }
 
-    // Rynna — corrente curta que paralisa os alvos próximos e acelera a ultimate.
+    // Rynna: short chain that paralyzes nearby targets and accelerates the ultimate.
     private void RynnaDischarge(Actor origin, int triggerDamage)
     {
-        Emit("text", origin.X, origin.Y, 0, 0, 0, "DESCARGA");
+        Emit("text", origin.X, origin.Y, 0, 0, 0, "DISCHARGE");
         var dmg = PlayerAttack() * RoleSkillMult() * GameConfig.RynnaDischargeDamageMult;
-        // Eco Núcleo de Trovão: a Descarga enche a ultimate muito mais rápido.
+        // Echo Thunder Core: Discharge fills the ultimate much faster.
         var gaugeBonus = GameConfig.RynnaParalyzeGaugeBonus
             * (HasEcho("thunder_core") ? GameConfig.EchoThunderCoreGaugeMult : 1);
-        var overload = HasEcho("overload"); // paralyze vira DoT de eletrocussão
+        var overload = HasEcho("overload"); // paralyze becomes shock DoT
         var hit = new HashSet<int>();
         var current = origin;
         int fromX = Player.X, fromY = Player.Y;
@@ -2468,25 +2905,25 @@ public sealed class GameWorld
         }
     }
 
-    // Lunara — haste breve ao bater no lento; o 3º acerto estilhaça e consome o slow.
+    // Lunara: brief haste when hitting a slowed target; the 3rd hit shatters and consumes slow.
     private void ApplyShatter(Actor monster)
     {
-        // Eco Dança da Lua: estilhaça já no 2º acerto; a haste do trait quase não expira em combate.
+        // Echo Moon Dance: shatters on the 2nd hit; trait haste almost never expires in combat.
         var shatterHits = HasEcho("moon_dance") ? GameConfig.EchoMoonDanceShatterHits : GameConfig.LunaraShatterHits;
         if (NowMs < monster.SlowUntilMs)
         {
             _traitHasteUntilMs = NowMs + (HasEcho("moon_dance") ? GameConfig.LunaraHasteMs * 15 : GameConfig.LunaraHasteMs);
             _traitHasteFactor = GameConfig.LunaraHasteFactor;
-            // G-08B: keyword "frost" — alvo resistente acumula acertos de gelo mais devagar (imune = nunca estilhaça).
+            // G-08B: keyword "frost": resistant target accumulates frost hits more slowly (immune = never shatters).
             monster.FrostHits += KeywordScaledStacks(monster, "frost", 1);
             if (monster.FrostHits >= shatterHits)
             {
                 monster.FrostHits = 0;
-                Emit("text", monster.X, monster.Y, 0, 0, 0, "ESTILHAÇO");
+                Emit("text", monster.X, monster.Y, 0, 0, 0, "SHATTER");
                 Emit("effect", monster.X, monster.Y, 0, 0, 44); // ice fx
                 DealDamageToMonster(monster, PlayerAttack() * RoleSkillMult() * GameConfig.LunaraShatterDamageMult, "ice", 0,
                     fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
-                // Eco Estilhaço em Cadeia: repassa o estouro aos lentos próximos.
+                // Echo Chain Shatter: carries the burst to nearby slowed targets.
                 if (HasEcho("chain_shatter")) ChainShatterFrom(monster);
                 monster.SlowUntilMs = NowMs; // consome o slow
                 return;
@@ -2497,19 +2934,19 @@ public sealed class GameWorld
             monster.FrostHits = KeywordScaledStacks(monster, "frost", 1);
         }
         monster.SlowUntilMs = NowMs + (long)_trait.Param;
-        // Eco Inverno Eterno: lentidão mais forte (sem piso).
+        // Echo Eternal Winter: stronger slow (no floor).
         monster.SlowFactor = HasEcho("eternal_winter")
             ? GameConfig.EchoEternalWinterSlowFactor : GameConfig.LunaraSlowFactor;
     }
 
-    /// <summary>Lunara — Estilhaço em Cadeia: o estouro salta para os lentos próximos (fração do dano).</summary>
+    /// <summary>Lunara: Chain Shatter jumps the burst to nearby slowed targets (damage fraction).</summary>
     private void ChainShatterFrom(Actor source)
     {
         var burst = PlayerAttack() * RoleSkillMult() * GameConfig.LunaraShatterDamageMult * GameConfig.EchoChainShatterDamageMult;
         foreach (var m in _monsters)
         {
             if (m.Hp <= 0 || m.Floor != _currentFloor || m.Id == source.Id) continue;
-            if (NowMs >= m.SlowUntilMs) continue; // só lentos
+            if (NowMs >= m.SlowUntilMs) continue; // slowed targets only
             if (Chebyshev(source.X, source.Y, m.X, m.Y) > GameConfig.EchoChainShatterRange) continue;
             Emit("projectile", source.X, source.Y, m.X, m.Y, 29); // ice missile
             Emit("effect", m.X, m.Y, 0, 0, 44);
@@ -2520,7 +2957,7 @@ public sealed class GameWorld
 
     private void ApplyContagionBurn(Actor monster)
     {
-        // G-08B: keyword "burn" — alvo resistente queima menos; imune (100) não pega fogo.
+        // G-08B: keyword "burn": resistant target burns less; immune (100) does not ignite.
         var mult = KeywordResistMult(monster, "burn");
         if (mult <= 0) return;
         ApplyDotToMonster(monster, "fire", GameConfig.ConditionTickFx["fire"],
@@ -2541,21 +2978,21 @@ public sealed class GameWorld
     private void SetPrey(Actor m)
     {
         foreach (var mon in _monsters)
-            if (mon.IsPrey && mon.Id != m.Id && mon.Id != _preyId2) mon.IsPrey = false; // Matilha preserva a 2ª
+            if (mon.IsPrey && mon.Id != m.Id && mon.Id != _preyId2) mon.IsPrey = false; // Pack preserves the 2nd
         _preyId = m.Id;
         _preyStartMs = NowMs;
         m.IsPrey = true;
-        Emit("text", m.X, m.Y, 0, 0, 0, "PRESA");
+        Emit("text", m.X, m.Y, 0, 0, 0, "PREY");
     }
 
-    /// <summary>Gaia — Matilha: marca uma segunda Presa simultânea (compartilha o ramp da caça).</summary>
+    /// <summary>Gaia: Pack marks a second simultaneous Prey (shares the hunt ramp).</summary>
     private void SetSecondPrey(Actor primary)
     {
         var second = NearestLivingMonster(primary.X, primary.Y, m => m.Id != _preyId && m.Id != primary.Id);
         if (second is null) return;
         _preyId2 = second.Id;
         second.IsPrey = true;
-        Emit("text", second.X, second.Y, 0, 0, 0, "PRESA");
+        Emit("text", second.X, second.Y, 0, 0, 0, "PREY");
     }
 
     private int ActiveSinStacks(Actor m)
@@ -2609,7 +3046,7 @@ public sealed class GameWorld
         var gain = fromSkill ? GameConfig.PostureGainPerSkill : GameConfig.PostureGainPerAuto;
         if (boss.Species!.Elements.GetValueOrDefault(element, 0) < 0)
             gain *= GameConfig.PostureWeaknessMult; // hitting a weakness breaks faster
-        // G-08B: keyword "posture" — alvo resistente é mais difícil de quebrar (negativo = quebra mais rápido).
+        // G-08B: keyword "posture": resistant target is harder to break (negative = breaks faster).
         gain *= KeywordResistMult(boss, "posture");
         boss.Posture += gain;
         boss.PostureLastHitMs = NowMs;
@@ -2627,7 +3064,7 @@ public sealed class GameWorld
         boss.PostureMax = boss.PostureBaseMax * (1 + boss.PostureCycle * GameConfig.PostureMaxGrowthPerCycle);
         boss.Posture = 0;
         Emit("effect", boss.X, boss.Y, 0, 0, 35); // big explosion
-        Emit("text", boss.X, boss.Y, 0, 0, 0, "QUEBRADO!");
+        Emit("text", boss.X, boss.Y, 0, 0, 0, "BROKEN!");
     }
 
     /// <summary>Posture bleeds back down once the boss stops taking pressure (no free fill).</summary>
@@ -2720,8 +3157,8 @@ public sealed class GameWorld
 
     private void KillMonster(Actor monster, bool overkill = false)
     {
-        // guarda contra dupla contagem: bursts de trait (julgamento, estilhaço, descarga) podem
-        // matar o mesmo alvo já marcado pra morrer pelo acerto que os disparou.
+        // guard against double counting: trait bursts (judgment, shatter, discharge) can
+        // kill the same target already marked for death by the hit that triggered them.
         if (monster.Killed) return;
         monster.Killed = true;
         monster.Hp = 0;
@@ -2729,14 +3166,14 @@ public sealed class GameWorld
         var speciesId = monster.Species!.StableId;
         KillsBySpecies[speciesId] = KillsBySpecies.GetValueOrDefault(speciesId) + 1;
 
-        // K-04: caça da Gaia salta de presa; incêndio da Rin se propaga ao morrer um alvo em chamas
+        // K-04: Gaia hunt jumps Prey; Rin fire spreads when a burning target dies
         OnMonsterKilledTrait(monster);
-        // G-04: Colheita da Velvet — espectro ao matar sob Decadência (lê o estado antes de limpar).
+        // G-04: Velvet Harvest: specter on killing under Decay (reads state before cleanup).
         OnMonsterKilledCard(monster);
 
         Emit("death", monster.X, monster.Y, 0, 0, monster.Species.Corpse, monster.Species.Name, monster.Id);
 
-        // G-08B: bomber/suicida — estoura em área ao morrer perto do player.
+        // G-08B: bomber/suicider bursts in an area when dying near the player.
         if (GameConfig.BehaviorProfile(monster.Species.BehaviorId) is { ExplodeRadius: > 0 } bomber)
             BomberExplode(monster, bomber);
 
@@ -2748,19 +3185,46 @@ public sealed class GameWorld
 
         if (!monster.IsSummon) DropLoot(monster); // summons give xp but no loot (anti-farm)
 
-        // G-09: o mímico (baú-Eco corrompido) garante material de gear ao cair.
+        // G-09: the mimic (corrupted Echo chest) guarantees gear material on death.
         if (monster.IsMimic)
             for (var i = 0; i < GameConfig.CursedChestMaterialDrops; i++) GrantGearMaterial(monster.X, monster.Y);
 
-        // G-06: derrotar um elite de sala comum é um beat — concede uma escolha de carta pesada.
+        // G-06: defeating a common-room elite is a beat: grants a heavy card choice.
         if (monster.IsElite && !monster.IsSummon) OfferCardBeat();
 
-        // LM-03 (3) condição de fim: o modo decide o que uma morte significa (Dungeon: boss = vitória).
+        // Horde-floor dynamic loot (2026-06-29 feedback, 8th pass): the chest DROPS on the corpse every N
+        // deaths (the Kaeli detours to claim it while luring), and the exit appears only as a TELEPORT on the
+        // last mob corpse when clearing the room. Summons do not count for the counter (anti-farm). Boss floor has none
+        // of this (exit = defeat the boss). monster.Hp is already 0 here, so CountAliveOnFloor excludes this one.
+        if (!monster.IsSummon && !IsBossFloor())
+        {
+            _killsSinceChest++;
+            var aliveLeft = CountAliveOnFloor();
+            if (_killsSinceChest >= GameConfig.ChestDropEveryKills && aliveLeft > 0)
+            {
+                _killsSinceChest = 0;
+                var (dcx, dcy) = OpenTileNear(_currentFloor, monster.X, monster.Y);
+                // dropped chest is never a mimic (always a benefit); it may be cursed (ambush + blessed offer).
+                var variant = _rng.Chance(GameConfig.ChestCursedChance) ? "cursed" : "";
+                AddRuntimePoi("chest", variant, dcx, dcy);
+                Emit("effect", dcx, dcy, 0, 0, 29); // fireworks: chest appeared
+            }
+            // room cleared -> open the exit portal on the last mob corpse.
+            if (aliveLeft == 0 && !LadderExistsOnFloor())
+            {
+                var (lx, ly) = OpenTileNear(_currentFloor, monster.X, monster.Y);
+                AddRuntimePoi("ladder", "", lx, ly);
+                Emit("effect", lx, ly, 0, 0, 11); // teleport burst
+                Emit("text", lx, ly, 0, 0, 0, "PORTAL OPEN");
+            }
+        }
+
+        // LM-03 (3) end condition: the mode decides what a death means (Dungeon: boss = victory).
         _modeRules.OnMonsterKilled(this, monster);
     }
 
-    /// <summary>G-08B: estouro do bomber ao morrer — pinta a área e fere o player se estiver no raio.
-    /// Determinístico: dano derivado do kit (maior MaxDamage) × escala, sem _rng.</summary>
+    /// <summary>G-08B: bomber burst on death: paints the area and hurts the player if in radius.
+    /// Deterministic: damage derived from kit (largest MaxDamage) * scale, no _rng.</summary>
     private void BomberExplode(Actor bomber, MonsterBehaviorProfile profile)
     {
         Emit("effect", bomber.X, bomber.Y, 0, 0, GameConfig.BomberExplodeFx);
@@ -2799,7 +3263,7 @@ public sealed class GameWorld
                 EmitLootFly(GameConfig.GoldCoinItemId, $"+{gold} gold", monster.X, monster.Y, isGold: true);
                 continue;
             }
-            // comida/poção/equip são coletados na hora (voam até o player); o resto (lixo) vira ouro
+            // food/potion/equipment is collected immediately (flies to the player); the rest (junk) becomes gold
             if (_data.IsFood(entry.ItemId) || _data.PotionHealFraction(entry.ItemId) > 0
                 || _data.IsEquippableLoot(entry.ItemId))
             {
@@ -2893,8 +3357,8 @@ public sealed class GameWorld
     }
 
     /// <summary>
-    /// Credita um item de loot imediatamente (sem cair no chão): consumíveis curam na hora,
-    /// o resto vai pra mochila da run. Sempre dispara o efeito de voo do item até o player.
+    /// Credits a loot item immediately (without dropping on the ground): consumables heal immediately,
+    /// the rest goes to the run backpack. Always emits the item flight effect to the player.
     /// </summary>
     private void CollectLoot(int itemId, string name, int count, int fromX, int fromY)
     {
@@ -2909,14 +3373,14 @@ public sealed class GameWorld
         EmitLootFly(itemId, name, fromX, fromY, isGold: false);
     }
 
-    /// <summary>Evento visual: o item/moeda voa em arco da origem até o player. crit=true marca ouro (cor dourada).</summary>
+    /// <summary>Visual event: the item/coin flies in an arc from origin to player. crit=true marks gold (gold color).</summary>
     private void EmitLootFly(int spriteItemId, string label, int fromX, int fromY, bool isGold) =>
         Emit("loot", fromX, fromY, 0, 0, spriteItemId, label, 0, isGold);
 
     private void TryUsePotion()
     {
         if (Player.Hp <= 0 || _potionCharges <= 0 || NowMs < _potionReadyAtMs) return;
-        if (Player.Hp >= Player.MaxHp) return; // não desperdiça carga com vida cheia
+        if (Player.Hp >= Player.MaxHp) return; // do not waste a charge at full health
         var heal = (int)Math.Ceiling(Player.MaxHp * GameConfig.PotionSlotHealFraction(Tier.Tier));
         HealPlayer(heal);
         _potionCharges--;
@@ -2924,6 +3388,183 @@ public sealed class GameWorld
         Emit("effect", Player.X, Player.Y, 0, 0, 12); // sparkles
         Emit("heal", Player.X, Player.Y, 0, 0, heal);
     }
+
+    /// <summary>Dash/Dodge (Space, or triggered by helper). Repositions the player in the requested direction
+    /// (otherwise current movement direction, otherwise facing direction), with short i-frames. The exact
+    /// movement is role-keyed (see PerformDash): Mage slide-and-trail, Archer pass-through sprint, Knight blink.
+    /// Cardinal-only. Shared cooldown (input and helper use the SAME ability).</summary>
+    private void TryDash(int dirX, int dirY)
+    {
+        if (Player.Hp <= 0 || Player.IsStunned(NowMs) || NowMs < _dashReadyAtMs) return;
+        int dx = Math.Sign(dirX), dy = Math.Sign(dirY);
+        if (dx == 0 && dy == 0) { dx = Math.Sign(_moveDirX); dy = Math.Sign(_moveDirY); }
+        if (dx == 0 && dy == 0) (dx, dy) = FacingDelta(Player.Facing);
+        // CARDINAL-ONLY: there is no diagonal dash. If the direction is diagonal, align it by the facing axis.
+        if (dx != 0 && dy != 0) (dx, dy) = FacingDelta(Player.Facing);
+        if (dx == 0 && dy == 0) return;
+        PerformDash(dx, dy);
+    }
+
+    /// <summary>Executes the dash. The MOVEMENT and payoff differ by role ("Dash Signature"):
+    /// Mage slides and seeds a scorch trail; Archer slides through mobs and gains haste; Knight blinks and cleaves.
+    /// Blocked with no valid landing: does not fire or spend cooldown. Shared cooldown/i-frames for all roles.</summary>
+    private void PerformDash(int dx, int dy)
+    {
+        switch (_dashSignature)
+        {
+            case DashSignature.Cleave: PerformKnightBlink(dx, dy); break;
+            case DashSignature.Sprint: PerformArcherSprint(dx, dy); break;
+            default: PerformMageDash(dx, dy); break;
+        }
+    }
+
+    /// <summary>Mage: slides up to DashTiles, STOPPING before the first wall/mob, and seeds a weak spreading
+    /// scorch trail (Contagion) on the tiles crossed. The slide reads as motion, not a teleport.</summary>
+    private void PerformMageDash(int dx, int dy)
+    {
+        var len = DashClearLen(dx, dy);
+        if (len == 0) return; // blocked immediately: do not spend cooldown
+        int ox = Player.X, oy = Player.Y;
+        SlideDash(ox, oy, dx, dy, len);
+        DashScorchTrail(ox, oy, dx, dy, len);
+        SpendDash();
+    }
+
+    /// <summary>Archer: slides up to DashTiles, PASSING THROUGH mobs (stops only at walls) and landing on the
+    /// farthest free tile, then gains a brief move-speed haste (kite identity). No damage.</summary>
+    private void PerformArcherSprint(int dx, int dy)
+    {
+        var len = PassThroughLanding(dx, dy, GameConfig.DashTiles);
+        if (len == 0) return; // no free tile to land on: do not spend cooldown
+        int ox = Player.X, oy = Player.Y;
+        SlideDash(ox, oy, dx, dy, len);
+        _dashHasteUntilMs = NowMs + GameConfig.DashArcherHasteMs;
+        _dashHasteFactor = GameConfig.DashArcherHasteFactor;
+        SpendDash();
+    }
+
+    /// <summary>Knight: a short BLINK (instant, not a slide) of DashKnightBlinkTiles. It may pass OVER a mob in
+    /// front, but the landing tile must be FREE; falls back to a shorter free tile. On landing it cleaves an
+    /// Exori-style nova around itself. Damage only on landing — never on the terrain crossed.</summary>
+    private void PerformKnightBlink(int dx, int dy)
+    {
+        var len = BlinkLanding(dx, dy, GameConfig.DashKnightBlinkTiles);
+        if (len == 0) return; // no free landing tile: do not spend cooldown
+        int ox = Player.X, oy = Player.Y;
+        int landX = ox + dx * len, landY = oy + dy * len;
+        // BLINK: the sprite appears at the destination instantly (From == land, so the client does not
+        // interpolate any slide). A poof marks where it vanished; the cleave nova marks where it lands.
+        Emit("effect", ox, oy, 0, 0, GameConfig.DashTrailFx);
+        Player.FromX = landX; Player.FromY = landY;
+        Player.X = landX; Player.Y = landY;
+        Player.StepStartMs = NowMs;
+        Player.StepDurMs = 0;
+        Player.Facing = FacingFrom(dx, dy);
+        DashCleave(landX, landY);
+        SpendDash();
+    }
+
+    /// <summary>Slides the player from origin to the landing tile (the client interpolates From→X over StepDurMs,
+    /// like the monster charge) leaving a poof trail — reads as fast motion, not a blink.</summary>
+    private void SlideDash(int ox, int oy, int dx, int dy, int len)
+    {
+        Player.FromX = ox; Player.FromY = oy;
+        Player.X = ox + dx * len; Player.Y = oy + dy * len;
+        Player.StepStartMs = NowMs;
+        Player.StepDurMs = Math.Max(len * GameConfig.DashStepMs, 1);
+        Player.Facing = FacingFrom(dx, dy);
+        for (var i = 0; i <= len; i++)
+            Emit("effect", ox + dx * i, oy + dy * i, 0, 0, GameConfig.DashTrailFx);
+    }
+
+    private void SpendDash()
+    {
+        _dashReadyAtMs = NowMs + GameConfig.DashCooldownMs;
+        _dashInvulnUntilMs = NowMs + GameConfig.DashIFramesMs;
+    }
+
+    /// <summary>Knight cleave: an Exori-style nova hitting every enemy within DashCleaveRadius of the landing.</summary>
+    private void DashCleave(int cx, int cy)
+    {
+        var dmg = PlayerAttack() * RoleSkillMult() * GameConfig.DashCleaveAtkScale;
+        var hit = false;
+        foreach (var m in _monsters)
+        {
+            if (m.Hp <= 0 || m.Floor != Player.Floor) continue;
+            if (Chebyshev(m.X, m.Y, cx, cy) > GameConfig.DashCleaveRadius) continue;
+            DealDamageToMonster(m, dmg, GameConfig.DashStrikeElement, 0, fromSkill: true);
+            hit = true;
+        }
+        if (hit) Emit("effect", cx, cy, 0, 0, GameConfig.DashCleaveFx);
+    }
+
+    /// <summary>Mage scorch trail: each dashed tile seeds a weak, short spreading field (the Contagion identity).
+    /// Deliberately weaker than a cast field (low power, short life, crawls <=1 gen) so dash never replaces
+    /// casting; still bounded by FieldMaxTilesPerFloor.</summary>
+    private void DashScorchTrail(int ox, int oy, int dx, int dy, int len)
+    {
+        var dmg = PlayerAttack() * RoleSkillMult() * GameConfig.DashTrailFieldAtkScale;
+        for (var i = 0; i <= len; i++)
+            SpawnField(ox + dx * i, oy + dy * i, Waifu.Element, GameConfig.DashTrailFieldFx, dmg,
+                1.0, 0, GameConfig.DashTrailFieldTickMs, GameConfig.DashTrailFieldLifeMs,
+                GameConfig.DashTrailFieldSpreadChance, GameConfig.DashTrailFieldGenerations, telegraph: true);
+    }
+
+    /// <summary>Role-aware dash reach for direction (dx,dy): used to execute the dash and for the helper to pick
+    /// the best escape cardinal. Mage stops at wall/mob; Archer passes through mobs (stops at walls); Knight blinks.</summary>
+    private int DashReach(int dx, int dy) => _dashSignature switch
+    {
+        DashSignature.Cleave => BlinkLanding(dx, dy, GameConfig.DashKnightBlinkTiles),
+        DashSignature.Sprint => PassThroughLanding(dx, dy, GameConfig.DashTiles),
+        _ => DashClearLen(dx, dy),
+    };
+
+    /// <summary>Mage dash reach: up to DashTiles, stopping before the first wall OR mob (no pass-through).</summary>
+    private int DashClearLen(int dx, int dy)
+    {
+        int x = Player.X, y = Player.Y, n = 0;
+        for (var i = 0; i < GameConfig.DashTiles; i++)
+        {
+            int nx = x + dx, ny = y + dy;
+            if (Floor.IsBlocked(nx, ny) || OccupiedBy(_currentFloor, nx, ny) is not null) break;
+            x = nx; y = ny; n++;
+        }
+        return n;
+    }
+
+    /// <summary>Archer sprint reach: up to maxTiles, PASSING THROUGH mobs but never through walls. Returns the
+    /// distance of the farthest FREE (unblocked &amp; unoccupied) tile before the first wall, or 0 if none is free.</summary>
+    private int PassThroughLanding(int dx, int dy, int maxTiles)
+    {
+        int best = 0;
+        for (var i = 1; i <= maxTiles; i++)
+        {
+            int nx = Player.X + dx * i, ny = Player.Y + dy * i;
+            if (Floor.IsBlocked(nx, ny)) break; // cannot slide through a wall
+            if (OccupiedBy(_currentFloor, nx, ny) is null) best = i; // landable (passes over occupied tiles)
+        }
+        return best;
+    }
+
+    /// <summary>Knight blink reach: tries to land EXACTLY `tiles` ahead (passing over a mob in front), but the
+    /// landing tile must be FREE (unblocked &amp; unoccupied). Falls back to a nearer free tile; 0 if none.</summary>
+    private int BlinkLanding(int dx, int dy, int tiles)
+    {
+        for (var i = tiles; i >= 1; i--)
+        {
+            int nx = Player.X + dx * i, ny = Player.Y + dy * i;
+            if (!Floor.IsBlocked(nx, ny) && OccupiedBy(_currentFloor, nx, ny) is null) return i;
+        }
+        return 0;
+    }
+
+    private static (int dx, int dy) FacingDelta(Dir facing) => facing switch
+    {
+        Dir.North => (0, -1),
+        Dir.South => (0, 1),
+        Dir.East => (1, 0),
+        _ => (-1, 0),
+    };
 
     private void GainXp(long xp)
     {
@@ -2934,38 +3575,38 @@ public sealed class GameWorld
             _runLevel++;
             Emit("levelup", Player.X, Player.Y, 0, 0, _runLevel);
             Emit("effect", Player.X, Player.Y, 0, 0, 182); // magic powder
-            // G-06: level-up = status pequeno automático (sem tela). As escolhas pesadas vêm dos
-            // beats (elite/andar/santuário), não de cada level.
+            // G-06: level-up = small automatic stat (no screen). Heavy choices come from
+            // beats (elite/floor/sanctuary), not every level.
             GrantAutoStatus();
         }
     }
 
     /// <summary>
-    /// G-06: progresso da run em [0,1] medido pela fração de escolhas já concedidas — usado pra
-    /// escalar a raridade da oferta (começo monta a engine, fim define). Determinístico.
+    /// G-06: run progress in [0,1] measured by the fraction of choices already granted: used to
+    /// scale offer rarity (early builds the engine, late defines it). Deterministic.
     /// </summary>
     private double RunChoiceProgress => GameConfig.MaxCardChoicesPerRun <= 1
         ? 1.0
         : Math.Clamp((_choicesOffered - 1) / (double)(GameConfig.MaxCardChoicesPerRun - 1), 0, 1);
 
     /// <summary>
-    /// G-06: concede uma escolha de carta pesada num beat fixo (elite derrotado, andar limpo, sala
-    /// Santuário). Respeita o teto de escolhas por run e reusa a fila quando já há oferta aberta.
+    /// G-06: grants a heavy card choice on a fixed beat (defeated elite, cleared floor, sanctuary room).
+    /// Sanctuary). Respects the choices-per-run cap and reuses the queue when an offer is already open.
     /// </summary>
     private void OfferCardBeat(bool blessed = false)
     {
         if (Ended is not null || _choicesOffered >= GameConfig.MaxCardChoicesPerRun) return;
         if (AvailableCardPool(null).Count == 0) return;
         _choicesOffered++;
-        // G-09: oferta abençoada (baú amaldiçoado) só vale para a oferta aberta na hora; as enfileiradas
-        // usam ponderação normal (mantém o teto/cadência sem acumular bênçãos).
+        // G-09: blessed offer (cursed chest) only applies to the offer opened now; queued offers
+        // use normal weighting (keeps cap/cadence without stacking blessings).
         if (_pendingOffer is null) OfferCards(blessed);
         else _queuedOffers++;
     }
 
     /// <summary>
-    /// G-06: status pequeno automático do level-up — sorteia uma carta comum (respeitando bans/caps)
-    /// e aplica um stack na hora, sem abrir tela de escolha. Determinístico via _rng da run.
+    /// G-06: small automatic stat on level-up: rolls a common card (respecting bans/caps)
+    /// and applies one stack immediately, without opening the choice screen. Deterministic via run _rng.
     /// </summary>
     private void GrantAutoStatus()
     {
@@ -2979,7 +3620,7 @@ public sealed class GameWorld
         Emit("text", Player.X, Player.Y, 0, 0, 0, pick.Name);
     }
 
-    /// <summary>Aplica um stack de carta e seu efeito imediato (ex. maxhp cura o bônus ganho).</summary>
+    /// <summary>Applies a card stack and its immediate effect (for example, maxhp heals the gained bonus).</summary>
     private void ApplyCardStack(string cardId)
     {
         _cards[cardId] = _cards.GetValueOrDefault(cardId) + 1;
@@ -2994,9 +3635,9 @@ public sealed class GameWorld
 
     private void OfferCards(bool blessed = false)
     {
-        // G-04: pool ciente de raridade. Eco filtra pela Kaeli ativa; cada raridade tem seu cap de
-        // stacks. A amostragem é ponderada por raridade (sem repor), determinística via _rng da run.
-        // G-09: blessed (baú amaldiçoado) pondera como o fim da run — favorece raro/eco.
+        // G-04: rarity-aware pool. Echo filters by active Kaeli; each rarity has its stack cap.
+        // stacks. Sampling is rarity-weighted (without replacement), deterministic via run _rng.
+        // G-09: blessed (cursed chest) weights like the end of the run: favors rare/echo.
         _offerBlessed = blessed;
         var offer = BuildCardOffer();
         if (offer.Count == 0) { _offerBlessed = false; return; }
@@ -3004,12 +3645,12 @@ public sealed class GameWorld
         _cardOfferStartedTick = TickCount;
     }
 
-    /// <summary>G-09: progresso de ponderação da oferta atual — abençoada salta para o fim da curva.</summary>
+    /// <summary>G-09: current offer weighting progress: blessed jumps to the end of the curve.</summary>
     private double OfferProgress => _offerBlessed
         ? Math.Max(RunChoiceProgress, GameConfig.BlessedOfferProgress)
         : RunChoiceProgress;
 
-    /// <summary>Monta uma oferta usando o pool de cartas disponivel para a run.</summary>
+    /// <summary>Builds an offer using the card pool available for the run.</summary>
     private List<CardOfferDto> BuildCardOffer(IReadOnlySet<string>? temporaryExcluded = null)
     {
         var offer = DrawCardOffer(AvailableCardPool(temporaryExcluded));
@@ -3056,11 +3697,11 @@ public sealed class GameWorld
         return offer;
     }
 
-    /// <summary>Amostra uma carta do pool com peso por raridade. Ordem estavel do pool + _rng -> deterministico.</summary>
+    /// <summary>Samples a card from the pool with rarity weight. Stable pool order + _rng -> deterministic.</summary>
     private CardDef WeightedPickByRarity(List<CardDef> pool)
     {
-        // G-06: pesos escalados pelo progresso da run (raro/eco ganham peso perto do fim).
-        // G-09: ofertas abençoadas (baú amaldiçoado) usam o progresso saltado de OfferProgress.
+        // G-06: weights scaled by run progress (rare/echo gain weight near the end).
+        // G-09: blessed offers (cursed chest) use the jumped progress from OfferProgress.
         var progress = OfferProgress;
         var total = 0.0;
         foreach (var c in pool) total += GameConfig.CardRarityWeight(c.Rarity, progress);
@@ -3070,15 +3711,15 @@ public sealed class GameWorld
             roll -= GameConfig.CardRarityWeight(c.Rarity, progress);
             if (roll <= 0) return c;
         }
-        return pool[^1]; // guarda contra erro de ponto flutuante
+        return pool[^1]; // guard against floating-point error
     }
 
     private CardOfferDto ToOfferDto(CardDef c) => new(
         c.Id, c.Name, c.Description, _cards.GetValueOrDefault(c.Id),
         c.Rarity, c.TagList, GameConfig.MaxStacksForRarity(c.Rarity));
 
-    // G-10: melhor carta da oferta atual para o auto-pick — maior raridade, desempate por ordem
-    // estável (índice na oferta). Determinístico.
+    // G-10: best card from the current offer for auto-pick: highest rarity, tie-break by offer order
+    // stable (offer index). Deterministic.
     private string BestOfferCardId()
     {
         var offer = _pendingOffer!;
@@ -3120,7 +3761,7 @@ public sealed class GameWorld
     private void RerollCards()
     {
         if (_pendingOffer is null) return;
-        // G-09: rerolls grátis primeiro; esgotados, vira reroll pago (a "loja" do altar da run).
+        // G-09: free rerolls first; once exhausted, reroll becomes paid (the run altar "shop").
         var paid = _cardRerollsRemaining <= 0;
         if (paid && _gold < GameConfig.CardRerollGoldCost) return;
 
@@ -3158,7 +3799,7 @@ public sealed class GameWorld
 
         _pendingOffer = kept.Count > 0 ? kept : null;
         _cardOfferStartedTick = TickCount;
-        Emit("text", Player.X, Player.Y, 0, 0, 0, "BANIDA");
+        Emit("text", Player.X, Player.Y, 0, 0, 0, "BANNED");
 
         if (_pendingOffer is null && _queuedOffers > 0)
         {
@@ -3176,7 +3817,7 @@ public sealed class GameWorld
     private void TickPlayerRegen()
     {
         if (Player.Hp <= 0) return;
-        // regen baseline (sem depender de card) + bônus do card de regen
+        // baseline regen (independent of card) + regen card bonus
         var baselinePct = GameConfig.BaselineRegenPctPerSec
                           + GameConfig.BaselineRegenPctPerRunLevel * (_runLevel - 1);
         var regen = CardValue("regenPerSec") + Player.MaxHp * baselinePct;
@@ -3240,7 +3881,7 @@ public sealed class GameWorld
             {
                 Player.Hp = 0;
                 Emit("effect", Player.X, Player.Y, 0, 0, 18); // mort area
-                EndRun(false, $"morta por {GameConfig.ConditionLabelPt.GetValueOrDefault(cond.Type, cond.Type)}");
+                EndRun(false, $"killed by {GameConfig.ConditionLabel.GetValueOrDefault(cond.Type, cond.Type)}");
                 return;
             }
         }
@@ -3256,7 +3897,7 @@ public sealed class GameWorld
             var duration = attack.DurationMs > 0 ? Math.Min(attack.DurationMs, GameConfig.SlowDurationCapMs) : GameConfig.SlowDurationCapMs;
             _playerSlowUntilMs = NowMs + duration;
             _playerSlowFactor = Math.Clamp(1 + attack.SpeedChange / GameConfig.SpeedChangeReference, GameConfig.SlowFactorFloor, 1.0);
-            Emit("text", Player.X, Player.Y, 0, 0, 0, "LENTIDÃO");
+            Emit("text", Player.X, Player.Y, 0, 0, 0, "SLOWED");
         }
     }
 
@@ -3284,7 +3925,7 @@ public sealed class GameWorld
                     Emit("voice", monster.X, monster.Y, 0, 0, 0, _rng.Pick(species.Voices), monster.Id);
             }
 
-            // acquire target (requires line of sight — no aggro through cave walls)
+            // acquire target (requires line of sight; no aggro through cave walls)
             if (monster.TargetId == 0 && Player.Hp > 0
                 && dist <= GameConfig.MonsterAggroRange
                 && hasLos)
@@ -3328,19 +3969,21 @@ public sealed class GameWorld
 
             if (monster.IsMoving(NowMs)) continue;
 
-            // Provocado (rider "taunt" das melee): abandona o kiting e a fuga, marcha pro corpo-a-corpo.
+            // Taunted (melee rider "taunt"): drops kiting and flight, marches into melee.
+            // BOSS always pursues: runs after the player instead of planting as a ranged turret.
             var taunted = NowMs < monster.TauntedUntilMs;
+            var chaser = taunted || monster.IsBossActor;
 
-            // low-health flight (tibia runHealth: dragons & co. retreat while still attacking)
-            if (!taunted && species.RunOnHealth > 0 && monster.Hp <= species.RunOnHealth * monster.StatMult)
+            // low-health flight (tibia runHealth: dragons & co. retreat while still attacking): boss does not flee.
+            if (!chaser && species.RunOnHealth > 0 && monster.Hp <= species.RunOnHealth * monster.StatMult)
             {
                 StepAway(monster, Player.X, Player.Y);
                 continue;
             }
 
             // chase: move toward player keeping targetDistance for ranged species.
-            // Provocado só pára pra atacar quando já está em melee — senão fecha a distância.
-            if ((!taunted || dist <= GameConfig.MeleeRange)
+            // Pursuer (taunted/boss) only stops to attack when already adjacent; otherwise closes distance.
+            if ((!chaser || dist <= GameConfig.MeleeRange)
                 && CanAttackPlayer(monster, dist, hasLos)
                 && _rng.Chance(Math.Clamp(species.StaticAttackChance, 0, 100) / 100.0))
             {
@@ -3348,10 +3991,10 @@ public sealed class GameWorld
                 continue;
             }
 
-            var desired = taunted ? 1 : Math.Max(species.TargetDistance, 1);
+            var desired = chaser ? 1 : Math.Max(species.TargetDistance, 1);
             if (dist > desired)
                 StepToward(monster, Player.X, Player.Y);
-            else if (dist < desired && species.TargetDistance > 1 && _rng.Chance(0.5))
+            else if (dist < desired && !chaser && species.TargetDistance > 1 && _rng.Chance(0.5))
                 StepAway(monster, Player.X, Player.Y);
             else
                 monster.Facing = FacingFrom(Player.X - monster.X, Player.Y - monster.Y);
@@ -3363,7 +4006,7 @@ public sealed class GameWorld
         monster.TargetId = Player.Id;
         monster.LastSawPlayerAtMs = NowMs;
         monster.AggroOutOfRangeSinceMs = 0;
-        // Lunara — Inverno Eterno: o inimigo já entra lento ao ver Lunara.
+        // Lunara: Eternal Winter makes the enemy start slowed when seeing Lunara.
         if (HasEcho("eternal_winter") && monster.Hp > 0 && NowMs >= monster.SlowUntilMs)
         {
             monster.SlowUntilMs = NowMs + GameConfig.EchoEternalWinterAggroSlowMs;
@@ -3420,7 +4063,7 @@ public sealed class GameWorld
 
             if (attack.Kind == "charge")
             {
-                // G-08B: investida — precisa de espaço para correr (não já colado) e linha de visão.
+                // G-08B: charge needs room to run (not already adjacent) and line of sight.
                 if (monster.IsMoving(NowMs)) continue;
                 var chargeRange = attack.Range > 0 ? attack.Range : GameConfig.ChargeMaxTiles + 1;
                 if (dist < 2 || dist > chargeRange) continue;
@@ -3493,9 +4136,9 @@ public sealed class GameWorld
         ApplyAttackSideEffects(monster, attack);
     }
 
-    /// <summary>G-08B: charger — avança em linha reta até o alvo (para a 1 tile), depois golpeia se colar.
-    /// O deslocamento é um único passo "longo" que o cliente interpola como um dash. Determinístico:
-    /// a chance já foi rolada pelo chamador; aqui só caminha tiles livres.</summary>
+    /// <summary>G-08B: charger advances in a straight line to the target (stops 1 tile away), then strikes if adjacent.
+    /// The displacement is a single "long" step that the client interpolates as a dash. Deterministic:
+    /// the chance was already rolled by the caller; here it only walks free tiles.</summary>
     private void ChargeAt(Actor monster, MonsterAttack attack)
     {
         var startX = monster.X;
@@ -3505,7 +4148,7 @@ public sealed class GameWorld
         var floor = _floors[monster.Floor];
         for (var step = 0; step < GameConfig.ChargeMaxTiles; step++)
         {
-            if (Chebyshev(cx, cy, Player.X, Player.Y) <= 1) break; // para a 1 tile do alvo
+            if (Chebyshev(cx, cy, Player.X, Player.Y) <= 1) break; // stop 1 tile from the target
             var dx = Math.Sign(Player.X - cx);
             var dy = Math.Sign(Player.Y - cy);
             if (dx == 0 && dy == 0) break;
@@ -3612,8 +4255,8 @@ public sealed class GameWorld
         }
     }
 
-    /// <summary>G-08B: escudeiro — ergue uma barreira de eco no aliado próximo mais ferido sem escudo.
-    /// Determinístico: varre _monsters em ordem estável, desempate por menor id; sem _rng.</summary>
+    /// <summary>G-08B: shieldbearer raises an echo barrier on the nearby wounded ally without a shield.
+    /// Deterministic: scans _monsters in stable order, tie-breaks by lowest id; no _rng.</summary>
     private void TickMonsterShield(Actor shielder)
     {
         if (GameConfig.BehaviorProfile(shielder.Species!.BehaviorId) is not { ShieldFraction: > 0 } profile) return;
@@ -3697,13 +4340,19 @@ public sealed class GameWorld
     private void DamagePlayer(int damage, string damageType, Actor source)
     {
         if (Player.Hp <= 0) return;
+        // Dodge: short i-frames right after dash cancel the hit (market-standard dodge).
+        if (NowMs < _dashInvulnUntilMs)
+        {
+            Emit("text", Player.X, Player.Y, 0, 0, 0, "DODGE");
+            return;
+        }
         var traitReduction = _trait.Kind switch
         {
             "fortress" => _trait.Value * _traitMult,
             "bulwark" when Player.Hp < Player.MaxHp * _trait.Param => _trait.Value * _traitMult,
             _ => 0
         };
-        // Seren — Postura Imortal: com o combo alto, a Postura do Zênite corta o dano recebido.
+        // Seren: Immortal Stance cuts incoming damage with high combo and Zenith Stance.
         var immortal = HasEcho("immortal_stance") && NowMs <= _comboExpireMs
                        && _comboHits >= GameConfig.EchoImmortalComboThreshold
             ? GameConfig.EchoImmortalDamageReduction : 0;
@@ -3718,11 +4367,11 @@ public sealed class GameWorld
         if (IsBuffActive("shield")) final *= 0.5;
         var value = Math.Max((int)final, 1);
 
-        // Eloa Mártir / Velvet Pacto: o escudo de Eco absorve antes da vida.
+        // Eloa Martyr / Velvet Pact: Echo shield absorbs before health.
         value = AbsorbWithEchoShield(value);
         if (value <= 0)
         {
-            Emit("text", Player.X, Player.Y, 0, 0, 0, "ESCUDO");
+            Emit("text", Player.X, Player.Y, 0, 0, 0, "SHIELD");
             return;
         }
 
@@ -3734,7 +4383,7 @@ public sealed class GameWorld
         {
             Player.Hp = 0;
             Emit("effect", Player.X, Player.Y, 0, 0, 18); // mort area
-            EndRun(false, $"morta por {source.Species?.Name ?? "?"}");
+            EndRun(false, $"killed by {source.Species?.Name ?? "?"}");
         }
     }
 
@@ -3840,15 +4489,15 @@ public sealed class GameWorld
 
         if (poi.Kind == "sanctuary")
         {
-            // G-06: altar do Santuário de Eco — beat de escolha garantido (sinalizado no minimapa).
+            // G-06: Echo Sanctuary altar: guaranteed choice beat (signaled on minimap).
             poi.Used = true;
             Emit("effect", x, y, 0, 0, 49); // holy/energy burst
-            Emit("text", x, y, 0, 0, 0, "SANTUÁRIO DE ECO");
+            Emit("text", x, y, 0, 0, 0, "ECHO SANCTUARY");
             OfferCardBeat();
             return;
         }
 
-        // G-09: baú = altar de Eco / loja da run. Variantes: mímico (luta), amaldiçoado (ganância) e comum.
+        // G-09: chest = Echo altar / run shop. Variants: mimic (fight), cursed (greed), and normal.
         poi.Used = true;
         _chestsOpened++;
 
@@ -3862,20 +4511,20 @@ public sealed class GameWorld
         var cursed = poi.Variant == "cursed";
         if (cursed) ApplyChestCurse(x, y);
 
-        // loot do baú (mantém o baú gratificante além da carta do altar)
+        // chest loot (keeps the chest gratifying beyond the altar card)
         GrantChestLoot(x, y);
 
-        // material de Eco (cresce a conta): amaldiçoado garante N, comum por chance
+        // Echo material (grows the account): cursed guarantees N, normal by chance
         if (cursed)
             for (var i = 0; i < GameConfig.CursedChestMaterialDrops; i++) GrantGearMaterial(x, y);
         else if (_rng.Chance(GameConfig.ChestMaterialDropChance))
             GrantGearMaterial(x, y);
 
-        // altar: abre uma oferta de carta (overlay reusa reroll/banir/loja). Amaldiçoado = oferta abençoada.
+        // altar: opens a card offer (overlay reuses reroll/ban/shop). Cursed = blessed offer.
         OfferCardBeat(blessed: cursed);
     }
 
-    /// <summary>G-09: loot bruto do baú (ouro + itens equipáveis do tier), voando até o jogador.</summary>
+    /// <summary>G-09: raw chest loot (gold + equippable tier items), flying to the player.</summary>
     private void GrantChestLoot(int x, int y)
     {
         var gold = (long)(_rng.Range(40, 120) * Tier.StatMultiplier * (1 + CardValue("goldPercent")));
@@ -3903,7 +4552,7 @@ public sealed class GameWorld
         }
     }
 
-    /// <summary>G-09: material de Eco do tier (cresce a conta, alimenta a tela de equipamento da Kaeli).</summary>
+    /// <summary>G-09: tier Echo material (grows the account, feeds the Kaeli equipment screen).</summary>
     private void GrantGearMaterial(int x, int y)
     {
         var name = GameConfig.GearMaterialName(Tier.Tier);
@@ -3911,7 +4560,7 @@ public sealed class GameWorld
         EmitLootFly(GameConfig.GearMaterialFlySpriteId, name, x, y, isGold: false);
     }
 
-    /// <summary>G-09: emboscada de comuns no baú (custo de risco). Determinístico via _rng.</summary>
+    /// <summary>G-09: common ambush in the chest (risk cost). Deterministic via _rng.</summary>
     private void SpawnChestAmbush(int x, int y, int count)
     {
         var room = Floor.Rooms.FirstOrDefault(r => r.Contains(x, y)) ?? Floor.Rooms[0];
@@ -3926,21 +4575,21 @@ public sealed class GameWorld
         }
     }
 
-    /// <summary>G-09: baú amaldiçoado — emboscada + maldição (lentidão) no jogador. Ganância vs. segurança.</summary>
+    /// <summary>G-09: cursed chest: ambush + curse (slow) on the player. Greed vs safety.</summary>
     private void ApplyChestCurse(int x, int y)
     {
         Emit("effect", x, y, 0, 0, 18); // mort area
-        Emit("text", x, y, 0, 0, 0, "BAÚ AMALDIÇOADO!");
+        Emit("text", x, y, 0, 0, 0, "CURSED CHEST!");
         SpawnChestAmbush(x, y, GameConfig.CursedChestAmbush);
         _playerSlowUntilMs = NowMs + GameConfig.CursedChestSlowMs;
         _playerSlowFactor = GameConfig.CursedChestSlowFactor;
     }
 
-    /// <summary>G-09: mímico — baú-Eco corrompido que nasce em cima do baú, reforçado, e parte pra cima.</summary>
+    /// <summary>G-09: mimic: corrupted Echo chest that spawns on top of the chest, reinforced, and charges in.</summary>
     private void OpenMimic(int x, int y)
     {
         Emit("effect", x, y, 0, 0, 11); // teleport
-        Emit("text", x, y, 0, 0, 0, "MÍMICO!");
+        Emit("text", x, y, 0, 0, 0, "MIMIC!");
         var room = Floor.Rooms.FirstOrDefault(r => r.Contains(x, y)) ?? Floor.Rooms[0];
         var mimic = SpawnMonster(_currentFloor, _rng.Pick(Tier.EliteMobs), room, isElite: true);
         if (mimic is null) return;
@@ -3955,7 +4604,9 @@ public sealed class GameWorld
     {
         _currentFloor = floorIndex;
         Player.Floor = floorIndex;
-        _floorEnteredMs = NowMs; // G-10: re-arma o atraso do auto-loot ao chegar no novo andar
+        _floorEnteredMs = NowMs; // G-10: re-arms auto-loot delay on entering the new floor
+        _mobLastX = int.MinValue; _mobLastY = int.MinValue; // resets orbit anti-backtracking on the new floor
+        _killsSinceChest = 0; // re-arms the dropped-chest cadence on the new floor
         var entry = _floors[floorIndex].Entry;
         Player.X = entry.X; Player.Y = entry.Y;
         Player.FromX = entry.X; Player.FromY = entry.Y;
@@ -3965,7 +4616,7 @@ public sealed class GameWorld
         MapDirty = true;
         Emit("effect", entry.X, entry.Y, 0, 0, 11);
 
-        // G-06: limpar um andar é um beat — concede uma escolha (milestone de progressão antecipável).
+        // G-06: clearing a floor is a beat: grants a choice (predictable progression milestone).
         if (GameConfig.OfferChoiceOnFloorClear) OfferCardBeat();
     }
 
@@ -4009,9 +4660,9 @@ public sealed class GameWorld
     }
 
     /// <summary>
-    /// Anda a reta player→(tx,ty) e devolve o tile mais distante alcançável: limitado a
-    /// <paramref name="maxRange"/> (Chebyshev) e parando antes de qualquer parede. Devolve o tile
-    /// do alvo se ele estiver no alcance e visível. Usado para a magia "disparar na reta da Kaeli".
+    /// Walks the player -> (tx,ty) line and returns the farthest reachable tile: limited to
+    /// <paramref name="maxRange"/> (Chebyshev) and stopping before any wall. Returns the tile
+    /// the target if it is in range and visible. Used for the spell to "fire along the Kaeli line".
     /// </summary>
     private (int x, int y) AimAlongLine(int tx, int ty, int maxRange)
     {
@@ -4095,18 +4746,18 @@ public sealed class GameWorld
 
     private IEnumerable<(int X, int Y)> ConeTiles(int ox, int oy, int dx, int dy, int reach)
     {
-        // leque frontal simétrico com a MESMA abertura angular em qualquer das 8 direções.
-        // forward = projeção na direção do alvo; perp = componente perpendicular ao eixo.
-        // O cone independe de o alvo estar em diagonal ou em linha reta.
+        // symmetric frontal fan with the SAME angular spread in any of the 8 directions.
+        // forward = projection in target direction; perp = component perpendicular to the axis.
+        // The cone is independent of whether the target is diagonal or in a straight line.
         for (var ry = -reach; ry <= reach; ry++)
             for (var rx = -reach; rx <= reach; rx++)
             {
                 if (rx == 0 && ry == 0) continue;
                 if (Math.Max(Math.Abs(rx), Math.Abs(ry)) > reach) continue;
                 var forward = rx * dx + ry * dy;
-                if (forward <= 0) continue;                 // só tiles à frente
+                if (forward <= 0) continue;                 // tiles ahead only
                 var perp = Math.Abs(rx * dy - ry * dx);
-                if (perp > forward) continue;               // meia-abertura de 45° (cone de 90°)
+                if (perp > forward) continue;               // 45-degree half-spread (90-degree cone)
                 var x = ox + rx;
                 var y = oy + ry;
                 if (!Floor.IsBlocked(x, y)) yield return (x, y);
@@ -4121,13 +4772,13 @@ public sealed class GameWorld
 
     private MapDto BuildMap()
     {
-        // G-09: mímico viaja como variante vazia (só "cursed" é telegrafado pro cliente).
+        // G-09: mimic travels as the empty variant (only "cursed" is telegraphed to the client).
         var pois = _pois.Where(p => p.Floor == _currentFloor)
             .Select(p => new PoiDto(p.Id, p.Kind, p.X, p.Y, PoiSpriteId(p.Kind),
                 p.Variant == "cursed" ? "cursed" : "", p.Used))
             .ToList();
-        // LM-08: helper compartilhado com o preview de bioma do admin (LM-09). Bioma resolvido na
-        // construção (não relido no tick); ground/wall/decor + salas + paleta lidos de forma idêntica.
+        // LM-08: helper shared with the admin biome preview (LM-09). Biome resolved at
+        // construction (not reread in the tick); ground/wall/decor + rooms + palette are read identically.
         return MapDto.FromFloor(Floor, _biome.Atmosphere, _currentFloor, pois);
     }
 
@@ -4145,44 +4796,44 @@ public sealed class GameWorld
         return conditions;
     }
 
-    /// <summary>K-04: estado vivo da passiva assinatura (lado do jogador) para o HUD.</summary>
+    /// <summary>K-04: live signature-passive state (player side) for the HUD.</summary>
     private TraitStateDto BuildTraitState()
     {
         var kind = _trait.Kind;
         var name = _trait.Name;
         switch (kind)
         {
-            case "discipline": // Seren — combo no mesmo alvo
+            case "discipline": // Seren: combo on the same target
             {
                 var hits = NowMs <= _comboExpireMs ? _comboHits : 0;
                 var steps = _trait.Value > 0 ? Math.Ceiling(_trait.Param / _trait.Value) : 0;
                 var bonus = Math.Min(hits * _trait.Value, _trait.Param) * _traitMult;
                 return new TraitStateDto(kind, name, hits, steps,
-                    hits > 0 ? $"x{hits} (+{Math.Round(bonus * 100)}%)" : "—");
+                    hits > 0 ? $"x{hits} (+{Math.Round(bonus * 100)}%)" : "-");
             }
-            case "static_charge": // Rynna — barra de carga
+            case "static_charge": // Rynna: charge bar
                 return new TraitStateDto(kind, name, Math.Round(_staticCharge), GameConfig.RynnaChargeMax,
                     $"{Math.Round(_staticCharge)}/{GameConfig.RynnaChargeMax:0}");
-            case "contagion": // Rin — inimigos em chamas
+            case "contagion": // Rin: burning enemies
             {
                 var burning = _monsters.Count(m => m.Hp > 0 && m.Floor == _currentFloor && IsBurning(m));
-                return new TraitStateDto(kind, name, burning, 0, burning > 0 ? $"{burning} em chamas" : "—");
+                return new TraitStateDto(kind, name, burning, 0, burning > 0 ? $"{burning} burning" : "-");
             }
-            case "prey": // Gaia — ramp de caça contra a Presa
+            case "prey": // Gaia: hunt ramp against the Prey
             {
                 var prey = _monsters.FirstOrDefault(m => m.Id == _preyId && m.Hp > 0);
-                if (prey is null) return new TraitStateDto(kind, name, 0, 0, "sem presa");
+                if (prey is null) return new TraitStateDto(kind, name, 0, 0, "no prey");
                 var ramp = Math.Min((NowMs - _preyStartMs) / 1000.0 * _trait.Value, _trait.Param) * _traitMult;
                 return new TraitStateDto(kind, name, Math.Round(ramp * 100), 0, $"+{Math.Round(ramp * 100)}%");
             }
-            case "shatter": // Lunara — haste do Estilhaçar
-                return new TraitStateDto(kind, name, 0, 0, NowMs < _traitHasteUntilMs ? "HASTE" : "—");
-            default: // judgment / decay: o estado vivo aparece como marca por-alvo
+            case "shatter": // Lunara: Shatter haste
+                return new TraitStateDto(kind, name, 0, 0, NowMs < _traitHasteUntilMs ? "HASTE" : "-");
+            default: // judgment / decay: live state appears as a per-target mark
                 return new TraitStateDto(kind, name, 0, 0, "");
         }
     }
 
-    /// <summary>K-04: marca por-alvo (stacks/tag) que o render desenha sobre o monstro.</summary>
+    /// <summary>K-04: per-target mark (stacks/tag) that the renderer draws over the monster.</summary>
     private (int Stacks, string Tag) MonsterTraitState(Actor m)
     {
         switch (_trait.Kind)
@@ -4229,7 +4880,7 @@ public sealed class GameWorld
             Player.FromX, Player.FromY, Player.StepDurMs, Player.StepStartMs,
             new OutfitDto(Loadout.Skin.LookType, Loadout.Skin.Head, Loadout.Skin.Body,
                 Loadout.Skin.Legs, Loadout.Skin.Feet,
-                // os addons vêm exclusivamente da skin escolhida (0 = nenhum); ascensão não os força
+                // addons come exclusively from the selected skin (0 = none); ascension does not force them
                 Loadout.Skin.Addons,
                 Loadout.Skin.MountLookType > 0 ? Loadout.Skin.MountLookType : EquipmentStats.MountLookType),
             Player.TargetId, _gauge, skills,
@@ -4254,6 +4905,7 @@ public sealed class GameWorld
             _potionCharges, GameConfig.PotionChargesPerRun, GameConfig.PotionSlotItemId(Tier.Tier),
             Math.Max(_potionReadyAtMs - NowMs, 0), GameConfig.PotionCooldownMs,
             GameConfig.PotionSlotHealFraction(Tier.Tier),
+            Math.Max(_dashReadyAtMs - NowMs, 0), GameConfig.DashCooldownMs, NowMs >= _dashReadyAtMs,
             BuildTraitState());
 
         var monsters = _monsters

@@ -3,12 +3,12 @@ using KaezanArenaFable.Api.Domain;
 namespace KaezanArenaFable.Api.Meta;
 
 /// <summary>
-/// Repara contas após mudanças de roster (refundação Kaelis / K-02: roster passa a ser as 7
-/// Kaelis 5★ — Eloa, Seren, Velvet, Rin, Rynna, Lunara, Gaia — e os IDs antigos saem do jogo).
-/// Como adotamos IDs finais novos, qualquer Kaeli que não exista mais em <see cref="Waifus.All"/>
-/// cai no caminho genérico abaixo: é removida com refund em Kaeros, o equipamento dela volta
-/// para a Mochila e as referências órfãs (skins, maestria, afinidade) são limpas. Conta que
-/// ficar sem nenhuma Kaeli recebe o starter. Roda uma vez no boot, fora do tick.
+/// Repairs accounts after roster changes (Kaeli refoundation / K-02: roster becomes the 7
+/// 5★ Kaelis — Eloa, Seren, Velvet, Rin, Rynna, Lunara, Gaia — and old IDs leave the game).
+/// Since we adopted new final IDs, any Kaeli no longer in <see cref="Waifus.All"/>
+/// takes the generic path below: removed with a Kaeros refund, equipment returned to the
+/// Backpack, and orphaned references (skins, mastery, affinity) cleaned up. Accounts left
+/// with no Kaeli receive the starter. Runs once on boot, outside the tick.
 /// </summary>
 public static class AccountSanitizer
 {
@@ -16,8 +16,8 @@ public static class AccountSanitizer
     {
         var changed = false;
 
-        // Migração sets por tier: loadout único legado (chave = waifuId) vira o set do tier 1
-        // (chave = "waifuId#1"). Idempotente — chaves já com "#" são ignoradas.
+        // Per-tier set migration: legacy single loadout (key = waifuId) becomes tier 1 set
+        // (key = "waifuId#1"). Idempotent — keys already containing "#" are skipped.
         var legacyKeys = state.Equipment.Keys.Where(k => !k.Contains('#')).ToList();
         foreach (var key in legacyKeys)
         {
@@ -28,7 +28,7 @@ public static class AccountSanitizer
             changed = true;
         }
 
-        // Kaelis removidas do roster: refund + devolução de equipamento (de todos os tiers)
+        // Kaelis removed from roster: refund + equipment return (across all tiers)
         var unknown = state.OwnedWaifus.Where(id => !Waifus.ById.ContainsKey(id)).ToList();
         foreach (var waifuId in unknown)
         {
@@ -73,7 +73,7 @@ public static class AccountSanitizer
             changed = true;
         }
 
-        // skins órfãs ou que não pertencem mais à Kaeli selecionada (inclui skins autorais)
+        // orphaned skins or skins that no longer belong to the selected Kaeli (includes authored skins)
         var skinById = kaelis.SkinById;
         var skinOwner = kaelis.SkinOwner;
         var badSkins = state.OwnedSkins.Where(id => !skinById.ContainsKey(id)).ToList();
@@ -93,7 +93,7 @@ public static class AccountSanitizer
             changed = true;
         }
 
-        // nodes de maestria que não existem mais: devolve os pontos
+        // mastery nodes that no longer exist: refund the points
         foreach (var (waifuId, mastery) in state.Mastery)
         {
             var invalid = mastery.Nodes.Where(id => !Mastery.NodeById.ContainsKey(id)).ToList();

@@ -6,18 +6,18 @@ import { ApiService } from '../../core/api.service';
   standalone: true,
   template: `
     <div class="page">
-      <h1>Bestiário</h1>
-      <p class="sub">Cada rank (10/50/100/250 abates) dá +1% de dano permanente contra a espécie.</p>
+      <h1>Bestiary</h1>
+      <p class="sub">Each rank (10/50/100/250 kills) grants +1% permanent damage against that species.</p>
       <div class="grid">
         @for (b of bestiary(); track b.name) {
           <div class="entry panel">
             <b>{{ b.name }}</b>
-            <span class="kills">{{ b.kills }} abates</span>
+            <span class="kills">{{ b.kills }} kills</span>
             <span class="rank">Rank {{ b.rank }}</span>
             <div class="bar"><div class="fill" [style.width.%]="b.pct"></div></div>
           </div>
         } @empty {
-          <p class="muted">Nenhum abate registrado ainda — vá caçar!</p>
+          <p class="muted">No kills recorded yet - go hunt!</p>
         }
       </div>
     </div>

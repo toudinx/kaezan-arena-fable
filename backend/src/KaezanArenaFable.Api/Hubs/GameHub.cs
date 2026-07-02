@@ -120,6 +120,11 @@ public sealed class GameHub(
         runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.ToggleAutoHelper, flags, movement, payload));
     }
 
+    // Training Room sandbox toggle: when on, skills and the ultimate ignore cooldown/gauge.
+    // The engine ignores this outside Training mode, so it is always safe to send.
+    public void SetTrainingFreeCast(bool enabled) =>
+        runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.SetTrainingFreeCast, enabled ? 1 : 0, 0, null));
+
     // G-10: persists the helper config as the default for the run's Kaeli (loaded on the next JoinRun).
     public void SaveHelperProfile()
     {

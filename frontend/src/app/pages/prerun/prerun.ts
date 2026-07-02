@@ -21,15 +21,21 @@ import { ELEMENT_LABELS, RARITY_COLORS, SkinDef, WaifuDef } from '../../core/typ
       <div class="wash" aria-hidden="true"></div>
       <div class="tier-ghost" aria-hidden="true">{{ roman(tierNum()) }}</div>
 
-      <button class="back" (click)="back()">‹ Back to tiers</button>
+      <button class="back" (click)="back()">‹ {{ isTraining() ? 'Back to Hunt' : 'Back to tiers' }}</button>
 
       @if (tierDef(); as t) {
         <main class="deploy">
           <aside class="selector" aria-label="Select Kaeli">
             <div class="selector-head">
-              <span class="tier-badge">Tier {{ t.tier }} · {{ biome(t.tier).label }} · ×{{ t.statMultiplier }}</span>
-              <h1>{{ t.name }}</h1>
-              <p>Choose who will face <b>{{ t.boss }}</b>.</p>
+              @if (isTraining()) {
+                <span class="tier-badge">Training Room · Sandbox</span>
+                <h1>Training Room</h1>
+                <p>Choose who steps into the <b>practice arena</b> — passive dummy, no pressure.</p>
+              } @else {
+                <span class="tier-badge">Tier {{ t.tier }} · {{ biome(t.tier).label }} · ×{{ t.statMultiplier }}</span>
+                <h1>{{ t.name }}</h1>
+                <p>Choose who will face <b>{{ t.boss }}</b>.</p>
+              }
             </div>
 
             <div class="roster">
@@ -343,6 +349,9 @@ export class PrerunPage implements OnDestroy {
   readonly tierNum = signal(1);
   readonly selected = signal<WaifuDef | null>(null);
   readonly runCount = signal(1);
+  /** Run mode passed through from Hunt ('training' opens the sandbox; default is the dungeon run). */
+  readonly mode = signal('');
+  readonly isTraining = computed(() => this.mode() === 'training');
 
   readonly tierDef = computed(() =>
     this.api.catalog()?.tiers.find((t) => t.tier === this.tierNum()) ?? null);
@@ -365,6 +374,7 @@ export class PrerunPage implements OnDestroy {
     private readonly art: KaeliArtService,
   ) {
     this.tierNum.set(Number(this.route.snapshot.paramMap.get('tier') ?? '1'));
+    this.mode.set(this.route.snapshot.queryParamMap.get('mode') ?? '');
     this.runCount.set(normalizeFarmRunCount(Number(this.route.snapshot.queryParamMap.get('runs') ?? readFarmRunCount())));
     this.initTimer = setInterval(() => {
       if (this.selected()) { this.stopInit(); return; }
@@ -406,8 +416,12 @@ export class PrerunPage implements OnDestroy {
   enter(): void {
     const w = this.selected();
     if (!w) return;
-    void this.router.navigate(['/game', this.tierNum()], { queryParams: { waifu: w.id, runs: this.runCount() } });
+    const params: Record<string, string | number> = { waifu: w.id, runs: this.runCount() };
+    if (this.isTraining()) params['mode'] = 'training';
+    void this.router.navigate(['/game', this.tierNum()], { queryParams: params });
   }
 
-  back(): void { void this.router.navigate(['/hunt', 'dungeon']); }
+  back(): void {
+    void this.router.navigate(this.isTraining() ? ['/hunt'] : ['/hunt', 'dungeon']);
+  }
 }

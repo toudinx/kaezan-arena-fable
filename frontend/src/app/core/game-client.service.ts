@@ -6,6 +6,7 @@ import { MapDto, SnapshotDto } from './types';
 export const enum GameMode {
   Dungeon = 0,
   Arena = 1,
+  Training = 2,
 }
 
 export interface JoinRunResult {
@@ -109,6 +110,11 @@ export class GameClientService {
       ?.invoke('SetAutoHelper', targeting, skills, ultimate, targetPreference, movementMode,
         autoHeal, autoHealPct, navMode, autoCards)
       .catch(() => undefined);
+  }
+
+  /** Training Room sandbox toggle: when on, skills and the ultimate ignore cooldown/gauge. */
+  setTrainingFreeCast(enabled: boolean): void {
+    void this.connection?.invoke('SetTrainingFreeCast', enabled).catch(() => undefined);
   }
 
   /** G-10: saves the current helper config as the run Kaeli's default. */

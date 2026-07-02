@@ -17,8 +17,12 @@ com sprites/FX reaproveitados dos assets do Canary/OTClient do repo `kaezan`, e 
 O frontend segue a direção **"Cathedral Ink + Aurum"** — gacha premium (alvo Wuthering Waves):
 superfícies de vidro com aresta de luz, tipografia editorial (Fraunces display + Sora UI) e
 **acento duplo** (íris para UI, aurum para recompensa). A Home é um hub full-bleed com a Kaeli
-fixada; a página Kaelis traz idle rotativo (3 poses, crossfade a cada 7s); o reveal de convocação
-é cinematográfico em CSS. O contrato de tokens/primitivos vive em
+fixada; a página Kaelis é uma "reliquary" full-bleed — a arte da própria Kaeli (desfocada) vira a
+atmosfera atrás da tela inteira, o retrato dissolve (feather) no dossiê, um halo de rosácea
+gótica pulsa atrás dela, e a tela **retematiza pela cor do elemento** da Kaeli (fogo/sagrado/energia…)
+nas superfícies-herói (aba ativa, barra de afinidade, card de atributos), mantendo íris nos
+sub-controles densos e aurum na recompensa. Idle rotativo (3 poses, crossfade a cada 7s); o reveal
+de convocação é cinematográfico em CSS. O contrato de tokens/primitivos vive em
 [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md); o remap completo está em
 [`docs/FRONTEND_REMAP.md`](docs/FRONTEND_REMAP.md). Todas as animações de destaque respeitam
 `prefers-reduced-motion`.
@@ -144,7 +148,7 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
 |---|---|
 | WASD / setas | Movimento cardinal (combinações de duas teclas também formam diagonais) |
 | Q / E / Z / C | Movimento diagonal (sem cortar quinas; diagonal bloqueada desliza pelo eixo livre) |
-| Espaço | **Dash/Esquiva** — esquiva cardinal (N/S/L/O, sem diagonal) com i-frames curtos e cooldown no HUD; o autopilot usa a mesma habilidade pra sair da quina ao kitar o boss. (Saiu do Shift: 5× Shift abre o popup de Teclas de Aderência do Windows.) A **assinatura muda por papel**: **Mage** desliza **3 tiles** parando na 1ª parede/mob e deixa uma *trilha incandescente* (campos de fogo fracos que se alastram — Contágio); **Archer** desliza **3 tiles** *atravessando mobs* (só para em parede, pousa no tile livre mais distante) e ganha *move speed* — pura mobilidade, sem dano; **Knight** dá um *blink* curto de **2 tiles** (instantâneo, pode passar por cima de um mob na frente, mas o tile de pouso tem que estar livre) e solta um *cleave estilo Exori* ao redor do pouso (dano só no pouso, nunca no terreno). Constantes em `GameConfig` (`Dash*` / `DashKnightBlinkTiles` / `DashArcherHaste*` / `DashTrailField*`). |
+| Espaço | **Dash/Esquiva** — esquiva cardinal (N/S/L/O, sem diagonal) com i-frames curtos e cooldown no HUD; o autopilot usa a mesma habilidade pra sair da quina ao kitar o boss. (Saiu do Shift: 5× Shift abre o popup de Teclas de Aderência do Windows.) A **assinatura muda por papel**, e cada uma tem **FX próprio** (não mais o mesmo poof azul): **Mage** desliza **3 tiles** parando na 1ª parede/mob e deixa uma *trilha do seu próprio elemento* (campos fracos que se alastram — Contágio: fogo p/ Rin, morte p/ Velvet, sagrado p/ Eloa, via `GameConfig.ElementFieldFx`); **Archer** desliza **3 tiles** *atravessando mobs* (só para em parede, pousa no tile livre mais distante) com um *rastro ciano de haste* e ganha *move speed* — pura mobilidade, sem dano; **Knight** dá um *blink* curto de **2 tiles** (some num *poof* de fumaça, instantâneo, pode passar por cima de um mob na frente, mas o tile de pouso tem que estar livre) e solta um *cleave estilo Exori* (burst de impacto) ao redor do pouso (dano só no pouso, nunca no terreno). Os três sentem distintos por papel (engage que pune × pura mobilidade × zona-de-perigo do Contágio) — tuning final travado: cooldown/i-frames compartilhados (a diferença vem do movimento+payoff) e a haste do Archer cobre ~72% do cooldown pra o kite ficar à frente. Constantes em `GameConfig` (`Dash*` / `DashKnightBlinkTiles` / `DashKnightVanishFx` / `DashArcherHaste*` / `DashArcherTrailFx` / `DashTrailField*`). |
 | V | Mirar no inimigo mais próximo |
 | Clique / F | Mirar inimigo / interagir (baú, **Santuário de Eco**, escada) |
 | Painel Helper | Controla alvo automático, preferência de alvo, skills, ultimate e modo de movimento; abre o **editor de táticas** (gambit) |
@@ -248,6 +252,15 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
 ## Loop de jogo
 
 1. **Home Hub** — vitrine da Kaeli ativa, contratos diários, progresso de conta.
+1b. **Sala de Treino** (aba Caçada → *Training Room*) — sandbox p/ testar kit/dash/FX e debug. Um mapa
+   pequeno e fixo (não procedural, `GameConfig.TrainingRoomSize`) com **um boneco passivo** no centro:
+   muita vida + regen (`TrainingDummyHp` / `TrainingDummyRegenPctPerSec`), não ataca nem persegue, não
+   dropa nada e **respawna** se morrer — a run só termina no ESC e não dá recompensa (anti-AFK-farm).
+   Pula o seletor de tier: do Hunt vai direto pro seletor de Kaeli (tier 1, `mode=training`). É o modo
+   `GameMode.Training` no seam de modos (`TrainingModeStrategy`: `BuildFloors`+`Populate`+respawn).
+   Tem um switch **Free cast** (acima da skill bar, só nesse modo): liga/desliga ignorar cooldown e
+   energia, deixando skills e a **ultimate** sempre prontas pra testar (`SetTrainingFreeCast` no hub →
+   guard por `Mode == Training` no engine; nunca afeta runs reais).
 2. **Caçada** — 5 tiers de dungeon (gate por nível de conta). Cada run: 2 andares procedurais e
    um **boss Kaezan** no fundo. **Arena única organica** (ajuste de feeling): cada andar é UMA caverna
    aberta (`RoomsFloorN=1`) recortada por autômato celular (`ErodeArena` — ruído no miolo inteiro, não um
@@ -322,8 +335,8 @@ O roster alvo da refundação reúne 7 Kaelis autorais:
 | Seren | Physical | melee | cavaleira astral, duelo e disciplina |
 | Velvet | Death | ranged | pesadelo, maldição, DoT e execução |
 | Rin | Fire | ranged | súcubus, pacto, charme e burn |
-| Rynna | Energy | melee | dragoa guerreira de raio, engage e stun |
-| Lunara | Ice | melee | lebre lunar, mobilidade e slow |
+| Rynna | Energy | melee | dragoa berserker de raio, pull, lifesteal e descarga |
+| Lunara | Ice | ranged | lebre lunar, frost marksman e shatter |
 | Gaia | Earth | ranged | arqueira da terra, raízes, caça e monólitos |
 
 Cada kit usa um **shape diferente por slot** para que nenhuma habilidade seja "a mesma área com
@@ -333,7 +346,8 @@ podem todos aparecer no mesmo kit.
 
 Os kits autorais seguem a fantasia de cada Kaeli: Eloa julga e absolve com luz, Seren duela com
 disciplina astral, Velvet corrói e executa, Rin queima por pacto, Rynna engaja com raio, Lunara
-dança entre slows lunares e Gaia prende alvos com raízes e monólitos. Geometrias seguem o Tibia,
+espalha Frostbite por autos e cobra em shatters, e Gaia caça uma Prey serialmente com Hunter's Aim,
+Coup de Grace, Monolith Fall e Ricochet. Geometrias seguem o Tibia,
 **reescaladas para o mapa da arena** (sem círculos de ~37 tiles em slots básicos).
 
 **Terreno que se alastra (Contágio da Rin).** O shape `field` ganhou propagação determinística: um
@@ -344,6 +358,18 @@ o **Contrato Ardente** salta por mais alvos (chain mais longo). Tudo casa com a 
 burn que pula entre inimigos). Limitado por `GameConfig.FieldMaxTilesPerFloor` para a simulação nunca
 explodir. Os params moram em `SkillDef` (`FieldSpreadChance`/`FieldSpreadGenerations`/`StrikeLeavesField`).
 
+Seren agora joga como duelista de autoattack: Astral Sweep arma cleave com reset por kill, Star Lance
+fura em linha, War Cadence acelera e cura por lifesteal, Duelist's Call provoca com dois pulsos, e
+Zenith libera a Discipline no maximo com Perfect Cut em todo hit.
+
+Lunara agora joga como frost marksman de autoattack: Moonlight Volley arma pierce nos próximos autos,
+Frozen Garden e New Moon concentram o slow de kite/peel, Lunar Focus acelera e aumenta alcance, e
+Absolute Zero é o único hard-freeze, detonando toda a Frostbite acumulada em mass shatter.
+
+Eloa agora tem Dawn Ring como anel expansivo em bandas temporizadas (não burst instantâneo), e Rynna
+entra com preset próprio do helper: movimento de melee/follow e auto-heal desligado por padrão para
+deixar o lifesteal e a Static Charge sustentarem o box.
+
 Cada Kaeli também tem uma **passiva assinatura** de arquétipo distinto — um mini-game dentro da run,
 com decisão de gameplay e **estado vivo visível no HUD** (chip da passiva + marcas sobre os alvos):
 
@@ -353,8 +379,8 @@ com decisão de gameplay e **estado vivo visível no HUD** (chip da passiva + ma
 | Seren | **Disciplina** | acertos consecutivos no mesmo alvo escalam o dano (+8%/acerto até +40%); cada 3º é crit garantido | comprometer-se num duelo vs limpar adds |
 | Velvet | **Maldição Acumulada** | cada acerto empilha Decadência (DoT) e eleva o limiar de execução (de <15% até <25%) | empilhar maldição e então executar |
 | Rin | **Contágio** | acertos de fogo incendeiam; o burn salta entre inimigos e cada tick cura Rin | posicionar pra encadear o incêndio |
-| Rynna | **Carga Estática** | acertos enchem a Carga; cheia, descarrega numa corrente que paralisa e acelera a ultimate | ritmar os golpes pra soltar no pico |
-| Lunara | **Estilhaçar** | bater num alvo lento dá dano bônus e haste; o 3º acerto estilhaça e consome o slow | hit-and-run: slow, mergulho, estilhaço |
+| Rynna | **Carga Estática** | acertos marcam alvos e enchem a Carga; apanhar também carrega; cheia, o próximo golpe detona a marca de um alvo com stun, e Storm Heart detona marcas em massa | abraçar o box, sugar vida e escolher o alvo da descarga |
+| Lunara | **Estilhaçar** | autos e hits de gelo acumulam Frostbite; bater em alvo frosted dá dano bônus e haste; stacks suficientes estilhaçam e cascateiam | espalhar frost no trem e cobrar o shatter |
 | Gaia | **Presa** | marca um alvo; o dano contra a Presa cresce com o tempo de caça; ao morrer, a marca salta e dá cadência | escolher a prioridade e perseguir |
 
 Os cooldowns pertencem aos slots 1-4. A página Kaelis (abas Perfil / Skins / Maestria /

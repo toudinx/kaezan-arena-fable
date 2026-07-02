@@ -82,7 +82,9 @@ public sealed record PlayerDto(
     int PotionCharges, int PotionMaxCharges, int PotionItemId,
     long PotionCooldownRemainingMs, long PotionCooldownTotalMs, double PotionHealPct,
     long DashCooldownRemainingMs, long DashCooldownTotalMs, bool DashReady,
-    TraitStateDto Trait);
+    TraitStateDto Trait,
+    // Training Room sandbox toggle: skills/ult ignore cooldown & gauge. Always false outside Training.
+    bool TrainingFreeCast);
 
 /// <summary>
 /// K-04: live signature-passive state for the HUD. Kind identifies the mechanic; Value/Max

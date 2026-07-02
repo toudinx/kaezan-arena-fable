@@ -124,7 +124,12 @@ public static class GameConfig
     public const int DashTiles = 3;
     public const int DashCooldownMs = 2500;
     public const int DashIFramesMs = 300;
-    public const int DashTrailFx = 11; // poof used as a trail along the dash path
+    public const int DashTrailFx = 11; // generic poof (fallback) for the dash path
+    // Per-role dash FX so the three signatures read differently (not all the same blue poof):
+    public const int DashKnightVanishFx = 3;  // Knight blink: grey smoke "poff" at the origin (warps out)
+    public const int DashArcherTrailFx = 13;  // Archer sprint: cyan haste streak (pure-mobility identity)
+    // Mage's slide trail + scorch field use the Kaeli's OWN element FX (see ElementFieldFx), so Rin trails
+    // fire, Velvet trails death, Eloa trails holy — not all fire. Resolved at dash time from Waifu.Element.
     /// <summary>Dash slide duration (ms) PER tile travelled. The dash does not teleport: it slides fast from
     /// origin to destination (like the monster charge) leaving a poof trail — reads as motion, not a blink.
     /// 55ms/tile = ~165ms for 3 tiles (much faster than the normal ~294ms/tile step).</summary>
@@ -142,14 +147,39 @@ public static class GameConfig
     public const int DashCleaveRadius = 1;          // Exori-style nova: the 8 tiles around the landing
     public const double DashCleaveAtkScale = 0.70;  // Knight: concentrated burst at the landing
     public const int DashCleaveFx = 35;             // impact burst FX at the landing tile
-    public const int DashArcherHasteMs = 1500;      // Archer: brief move-speed buff after the sprint (kite identity)
+    public const int DashArcherHasteMs = 1800;      // Archer: move-speed buff after the sprint (kite identity). DT-10 final tune: ~72% of the 2500ms cooldown so the kite stays ahead until the next sprint is nearly ready (was 1500).
     public const double DashArcherHasteFactor = 1.5;
     public const double DashTrailFieldAtkScale = 0.18; // Mage: weak DoT per tick (Rin's cast field ~0.40)
-    public const int DashTrailFieldFx = 7;             // fire FX (matches Rin's cast fire field)
+    public const int DashTrailFieldFx = 7;             // fire FX — fallback only; ElementFieldFx overrides per Kaeli
     public const int DashTrailFieldTickMs = 600;
     public const int DashTrailFieldLifeMs = 1600;      // short — expires fast vs the ~5s cast field
-    public const int DashTrailFieldSpreadChance = 20;  // vs 45 for the cast field
-    public const int DashTrailFieldGenerations = 1;    // <=1 — barely crawls (cast field crawls 3)
+    // The dash trail does NOT spread (Contagion is a CAST-field identity, not a dash one): it stays
+    // contained to the tiles the mage slid across. Set both to 0 = static field on the dashed path only.
+    public const int DashTrailFieldSpreadChance = 0;
+    public const int DashTrailFieldGenerations = 0;
+    /// <summary>Field/area effect sprite per element, mirroring the FX each Kaeli's own field skill uses
+    /// (Rin's fire = 7, Lunara's Frozen Garden = 44, Gaia's Roots = 46, etc.). Used by the Mage
+    /// dash trail so the scorch matches the caster's element instead of always reading as fire.</summary>
+    public static int ElementFieldFx(string element) => element switch
+    {
+        "fire" => 7,
+        "ice" => 44,
+        "energy" => 41,
+        "earth" => 46,
+        "holy" => 40,
+        "death" => 18,
+        "physical" => 10,
+        _ => DashTrailFieldFx,
+    };
+
+    // ---- Training Room (Hunt > Training) — a sandbox to test kits/dashes/FX, and a debug stage ----
+    /// <summary>Square open arena for the Training Room (non-procedural, no erosion/POIs). Small and simple.</summary>
+    public const int TrainingRoomSize = 18;
+    /// <summary>Training dummy hit points — large enough to wail on indefinitely while watching damage numbers.</summary>
+    public const int TrainingDummyHp = 200_000;
+    /// <summary>Training dummy self-heal, as a fraction of MaxHp per second (so the bar visibly recovers between
+    /// bursts but a focused beatdown still drives it down). Applied each tick in TickTrainingDummy.</summary>
+    public const double TrainingDummyRegenPctPerSec = 0.04;
     /// <summary>Taunt (rider "taunt"): how long a taunted enemy abandons kiting and
     /// marches to melee (ignores TargetDistance and low-health flee). Melee skill.</summary>
     public const int MeleeTauntMs = 2500;
@@ -959,11 +989,36 @@ public static class GameConfig
     public const int EloaSinStacksToJudge = 3;
     public const int EloaJudgmentRadius = 1;
     public const int EloaSinDurationMs = 4000;
+    // §4E — Judging Lance (s0) seeds this many EXTRA Sin on a direct hit (on top of the base 1),
+    // driving a priority target toward Judged faster. Wired via SkillDef.TraitChargeBonus.
+    public const int EloaJudgingLanceSinBonus = 1;
+    // Chaos pass: a base detonation always seeds this much Sin on nearby enemies (the sentence
+    // spreads). Capped at the judge threshold and deferred to their next hit — never recurses here,
+    // so judgments chain across a pack without a runaway. The chain_judgment echo adds more on top.
+    public const int EloaBaseChainSinSeed = 1;
+    // KR-08 polish: Dawn Ring expands as timed bands instead of resolving as one instant footprint.
+    public const int EloaDawnRingRadius = 4;
+    public const int EloaDawnRingExpansionBands = 3;
+    public const int EloaDawnRingPulseDelayMs = 250;
+    public const int EloaDawnRingPulseIntervalMs = 650;
 
     // Seren — Discipline (combo cadence). Consecutive hits on the SAME target scale damage;
     // switching targets or standing still resets it. Every Nth hit is a Perfect Cut (guaranteed crit).
     public const int SerenDisciplineResetMs = 3000;
     public const int SerenPerfectCutEvery = 3;
+    // KR-05 — Seren kit v2. Astral Sweep empowers the next cleaving autos and refunds on kill;
+    // War Cadence is an attack-speed + lifesteal window; Duelist's Call adds two close-range beats.
+    public const int SerenAstralSweepCharges = 3;
+    public const int SerenAstralSweepWindowMs = 7000;
+    public const string SerenWarCadenceBuff = "war_cadence";
+    public const double SerenWarCadenceAttackSpeedMultiplier = 1.35;
+    public const double SerenWarCadenceLifesteal = 0.10;
+    public const int SerenDuelistCallPulseCount = 2;
+    public const int SerenDuelistCallPulseDelayMs = 350;
+    public const int SerenDuelistCallPulseIntervalMs = 450;
+    public const int SerenDuelistCallPulseRadius = 1;
+    public const double SerenDuelistCallPulsePower = 0.75;
+    public const int SerenZenithBuffMs = 7000;
 
     // Velvet — Accumulated Curse (stacks + execute). Each hit stacks Decay (DoT) and
     // raises the execute threshold; the more invested, the sooner the target bursts.
@@ -974,6 +1029,24 @@ public static class GameConfig
     public const int VelvetDecayTickMs = 2000;
     public const double VelvetDecayDamagePerStack = 0.10; // damage/tick per stack = fraction of attack
     public const int VelvetDecayDurationMs = 5000;      // stack expiry window without refresh
+    // §4G — Soul Rend (s0) finisher: a direct hit deals +bonus damage when the target is below the
+    // threshold of its max HP. Same execution family as the Decay threshold, but a per-skill knob.
+    public const double VelvetSoulRendLowHpThreshold = 0.35; // "wounded" = below 35% HP
+    public const double VelvetSoulRendLowHpBonus = 0.60;     // +60% damage on the finisher
+
+    // Velvet — Soul Detonation (chaos pass): an enemy that dies under Decay drops a Death Orb that
+    // bursts after a short delay in a death area. Only DIRECT kills (auto/skill/DoT) drop orbs — an
+    // orb's own burst never spawns more orbs, so the effect is a single controlled generation, not a
+    // runaway chain. Capped per floor as a second guard.
+    public const int VelvetDeathOrbDelayMs = 600;
+    public const int VelvetDeathOrbRadius = 1;
+    public const double VelvetDeathOrbDamageMult = 0.22;      // base fraction of attack*roleSkill per orb
+    public const double VelvetDeathOrbDamagePerStack = 0.04;  // plus this per Decay stack on the corpse
+    public const int VelvetDeathOrbFx = 18;                   // death area FX (matches her kit)
+    public const int VelvetDeathOrbMaxPerFloor = 5;           // hard cap on simultaneous pending orbs
+    // Velvet — Abyssal Shade corrosion trail: the field the roaming shade seeds ticks for this
+    // fraction of the shade's pulse damage.
+    public const double VelvetShadeCorrosionFraction = 0.5;
 
     // Rin — Contagion (spreading fire). Fire hits ignite; burn jumps between enemies and each
     // burn tick heals Rin a little (pact). Value=heal, Param=jump radius.
@@ -981,29 +1054,112 @@ public static class GameConfig
     public const double RinContagionBurnPower = 0.30;   // burn damage/tick = fraction of attack
     public const int RinContagionBurnTicks = 4;
     public const int RinContagionBurnTickMs = 1000;
+    // Wildfire Reckoning (s2, §4F): the nova REAPS each burning target — burst = ConsumeBurnMult ×
+    // the remaining burn (per-tick × ticks-left, itself amplified by the ult's burn multiplier), then
+    // consumes the burn and re-seeds only a short, faint ember.
+    public const double RinReckoningConsumeMult = 1.0;
+    public const double RinReckoningEmberPowerFraction = 0.5; // light ember per-tick vs the normal burn
+    public const int RinReckoningEmberTicks = 2;
+    // Infernal Ball (ult, §4F): each meteor impact stacks a room-wide burn-damage multiplier (does NOT
+    // consume — contrast with Reckoning). Stacks amplify every fire DoT tick and the Reckoning reap;
+    // they bleed off one at a time so the boost is a fading window, not permanent.
+    public const double RinInfernalBurnMultPerStack = 0.12;
+    public const int RinInfernalBurnMultMaxStacks = 6;
+    public const int RinInfernalBurnMultDecayMs = 1500;
 
-    // Rynna — Static Charge (charge bar). Hits fill the charge; when full, the hit that completes it
-    // becomes a Discharge (short chain + paralyze) and the paralyze accelerates the ultimate.
+    // Rynna — Static Charge (mark + detonate, §4B). Direct hits mark targets and fill Charge; taking
+    // damage also feeds it. Once full, the next direct hit detonates that target's mark as a single-
+    // target burst + short stun. Storm Heart detonates all marked targets caught by each wave.
     public const double RynnaChargeMax = 100;
-    public const double RynnaChargePerHit = 20;         // 5 hits fill it
-    public const double RynnaDischargeDamageMult = 1.5; // ~150% of attack per target
-    public const int RynnaDischargeChainJumps = 3;
-    public const int RynnaDischargeChainRange = 3;
-    public const int RynnaParalyzeMs = 800;
+    public const double RynnaChargePerHit = 16;
+    public const double RynnaChargePerDamageTaken = 0.45;
+    public const int RynnaStaticMarkDurationMs = 7000;
+    public const int RynnaVoltaicClawChargeBonus = 1; // extra charge unit: Voltaic Claw builds twice as fast
+    public const double RynnaStaticDetonateDamageMult = 1.65;
+    public const int RynnaStaticDetonateStunMs = 650;
+    public const double RynnaStaticDetonateLifesteal = 0.12;
     public const double RynnaParalyzeGaugeBonus = 8;
+    public const int RynnaChainLightningJumps = 4;
+    public const int RynnaChainLightningRange = 3;
+    public const double RynnaChainLightningFalloff = 0.20;
+    public const double RynnaChainLightningLifesteal = 0.10;
+    public const string RynnaBloodlustBuff = "bloodlust";
+    public const int RynnaBloodlustMs = 5500;
+    public const double RynnaBloodlustAttackMultiplier = 1.22;
+    public const double RynnaBloodlustLifesteal = 0.08;
+    public const double RynnaBloodlustDamageTakenMultiplier = 1.25;
+    public const double RynnaBloodlustChargeTakenMultiplier = 1.35;
+    public const int RynnaStormPullTiles = 2;
+    public const double RynnaStormPullShieldPerTarget = 0.045; // fraction of max HP per caught target
+    public const int RynnaStormHeartWaves = 3;
+    public const int RynnaStormHeartWaveIntervalMs = 420;
+    public const double RynnaStormHeartChargePerWave = 28;
+    public const bool RynnaHelperAutoHealDefault = false;
+    public const int RynnaHelperHealPctDefault = 20;
 
-    // Lunara — Shatter (hit-and-run). Hitting a slowed target deals bonus damage + brief haste;
-    // the Nth hit on the slowed target shatters it (burst and consumes the slow). Value=bonus, Param=slow dur.
-    public const double LunaraSlowFactor = 0.65;        // 35% slow applied by ice
+    // Lunara — Frostbite / Shatter (§4C). Autos and ice direct hits build frost stacks independent
+    // from slow; the Nth stack shatters, consuming frost and cascading through nearby frosted targets.
+    // Value=bonus vs frosted, Param remains a legacy display duration for the trait text.
+    public const int LunaraFrostDurationMs = 6000;
     public const double LunaraHasteFactor = 1.2;
     public const int LunaraHasteMs = 2000;
     public const int LunaraShatterHits = 3;
-    public const double LunaraShatterDamageMult = 1.5;
+    public const double LunaraShatterDamagePerStack = 0.50;
+    public const int LunaraBaselineSplashRange = 2;
+    public const double LunaraBaselineSplashDamageScale = 0.22;
+    public const int LunaraShatterCascadeRange = 2;
+    public const int LunaraShatterCascadeJumps = 3;
+    public const double LunaraShatterCascadeFalloff = 0.55;
+    public const int LunaraMoonlightVolleyCharges = 4;
+    public const int LunaraMoonlightVolleyWindowMs = 7000;
+    public const int LunaraMoonlightVolleyExtraFrostStacks = 1;
+    public const string LunaraLunarFocusBuff = "lunar_focus";
+    public const int LunaraLunarFocusMs = 6500;
+    public const double LunaraLunarFocusAttackSpeedMultiplier = 1.35;
+    public const int LunaraLunarFocusRangeBonus = 2;
+    public const double LunaraNewMoonSlowFactor = 0.45;
+    public const int LunaraNewMoonSlowMs = 2200;
+    public const int LunaraAbsoluteZeroFreezeMs = 1400;
+    public const double LunaraAbsoluteZeroDamagePerStack = 0.70;
 
     // Gaia — Prey (chase and execute). Marks a target; damage against the Prey grows the longer
     // the hunt lasts; when the Prey dies the mark jumps and Gaia gains cadence. Value=ramp/s, Param=cap.
     public const double GaiaHuntAtkSpeedBonus = 0.20;
     public const int GaiaHuntBonusMs = 3000;
+    // §4D — Coup de Grace consumes the current hunt ramp into one finishing shot. It still uses the
+    // normal Prey ramp on the hit, then adds this extra fraction of the same ramp and restarts the hunt.
+    public const double GaiaCoupLowHpThreshold = 0.35;
+    public const double GaiaCoupLowHpBonus = 0.50;
+    public const double GaiaCoupPreyRampConsumeBonus = 1.0;
+    // §4D — Ricochet: an auto-chain ult-state. Primary auto keeps full damage (and locks to Prey when
+    // legal); secondary jumps are reduced and picked deterministically by distance, then id.
+    public const int GaiaRicochetChainJumps = 3;
+    public const int GaiaRicochetChainRange = 3;
+    public const double GaiaRicochetSecondaryDamageScale = 0.45;
+    public const double GaiaRicochetAttackMultiplier = 1.12;
+    public const double GaiaRicochetAttackSpeedMultiplier = 1.18;
+
+    // ================= KR-00: shared kit seams (auto-modifier + ult-state) =================
+    // Two mechanisms reused across the reformulated kits — built once so they are not reinvented per
+    // Kaeli (Seren/Lunara/Gaia auto-mods; Gaia/Seren ult-states). Deterministic: the secondary target
+    // is picked by shortest distance with a lowest-id tie-break, and the auto-mod only draws _rng
+    // (via the normal hit roll) while it is armed.
+
+    // Auto-modifier: a temporary empowerment of the autoattack (the next N autos, or all autos for a
+    // window, gain an effect that is applied and consumed per auto). Kinds: "cleave" (small area at the
+    // primary target), "pierce"/"lock_pierce" (splash to the nearest neighbor with falloff).
+    public const int AutoModDefaultWindowMs = 6000;       // safety cap for charge-based mods (BuffMs overrides)
+    public const int AutoModCleaveRadius = 1;             // small diamond around the primary target
+    public const double AutoModCleaveDamageScale = 0.60;  // cleaved neighbors take this fraction of the auto
+    public const int AutoModPierceRange = 2;             // reach of the pierce splash to the nearest neighbor
+    public const double AutoModPierceDamageScale = 0.50;  // the pierced 2nd target takes this fraction (falloff)
+
+    // Ult-state: a buff-shaped ultimate can toggle a NAMED state (reusing the buff timers) that other
+    // paths (auto/trait) consult, without dealing direct damage. These are the reserved hook keys — a
+    // buff ult sets them via SkillDef.Buff, and the kits read them via IsBuffActive.
+    // Gaia Ricochet acts on auto_chain; Seren Zenith will wire ramp_unlocked later.
+    public const string UltStateAutoChain = "auto_chain";
+    public const string UltStateRampUnlocked = "ramp_unlocked";
 
     // ================= G-04B: Echoes per Kaeli (3 × 7) =================
     // Each Echo (cap of 1 stack) branches into the trait/card hooks of GameWorld — no new dispatch.

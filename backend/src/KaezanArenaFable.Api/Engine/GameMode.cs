@@ -7,7 +7,7 @@ namespace KaezanArenaFable.Api.Engine;
 /// (procedural floors + boss). <see cref="Arena"/> is the wave-survival room (LM-04).
 /// Stable IDs: the numeric value is part of the client↔hub contract — do not reorder.
 /// </summary>
-public enum GameMode { Dungeon = 0, Arena = 1 }
+public enum GameMode { Dungeon = 0, Arena = 1, Training = 2 }
 
 /// <summary>
 /// Minimal mode/map seam (LM-03). Localizes the <b>3 only differences</b> between modes:
@@ -39,6 +39,7 @@ public abstract class GameModeStrategy
     public static GameModeStrategy For(GameMode mode) => mode switch
     {
         GameMode.Arena => throw new NotImplementedException("Arena mode arrives in LM-04"),
+        GameMode.Training => new TrainingModeStrategy(),
         _ => new DungeonModeStrategy()
     };
 }
@@ -69,5 +70,27 @@ public sealed class DungeonModeStrategy : GameModeStrategy
     {
         if (monster.IsBossActor)
             world.EndRun(true, $"{monster.Species!.Name} defeated");
+    }
+}
+
+/// <summary>
+/// Training Room: a single small fixed arena with one passive, huge-HP/regen dummy. A sandbox to test
+/// kits, dashes and FX, and a debug stage. The dummy never attacks/chases and respawns if it ever dies,
+/// so the run never clears or ends on its own — the player leaves with ESC. No rewards (see EndRun).
+/// </summary>
+public sealed class TrainingModeStrategy : GameModeStrategy
+{
+    public override GameMode Id => GameMode.Training;
+
+    public override DungeonFloor[] BuildFloors(Rng rng, BiomeDef biome) =>
+        [DungeonGenerator.GenerateTrainingRoom(rng, biome)];
+
+    public override void Populate(GameWorld world) => world.SpawnTrainingDummy();
+
+    public override void OnMonsterKilled(GameWorld world, Actor monster)
+    {
+        // Belt-and-braces: the dummy is built to survive (huge HP + regen), but if it ever dies, bring a
+        // fresh one back so the sandbox stays usable and the run never soft-locks on an empty room.
+        if (monster.IsTrainingDummy) world.SpawnTrainingDummy();
     }
 }

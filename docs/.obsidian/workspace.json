@@ -27,30 +27,16 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "roadmap/not started/roadmap_custom_sprites.md",
+                "file": "roadmap/not started/roadmap_kaelis_kit_reformulation.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "roadmap_custom_sprites"
-            }
-          },
-          {
-            "id": "494a193bb697adc6",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "roadmap_i18n_english_migration.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "roadmap_i18n_english_migration"
+              "title": "roadmap_kaelis_kit_reformulation"
             }
           }
         ],
-        "currentTab": 2
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -212,23 +198,35 @@
       "bases:Criar nova base": false
     }
   },
-  "active": "494a193bb697adc6",
+  "active": "f6868d5fdd6836e0",
   "lastOpenFiles": [
+    "roadmap/not started/roadmap_kaelis_kit_reformulation.md.tmp.42888.b66d29e0fc6d",
+    "roadmap/not started/roadmap_kaelis_kit_reformulation.md.tmp.42888.9886b5eb0f66",
+    "roadmap/not started/roadmap_kaelis_kit_reformulation.md.tmp.17280.f9ec85d0dfd4",
+    "roadmap/not started/roadmap_kaelis_kit_reformulation.md.tmp.17280.63adb01a8b53",
+    "KNOWLEDGE_wan_idle_bust.md",
+    "roadmap_i18n_english_migration.md",
+    "KNOWLEDGE_gen_premium_gap.md",
+    "KNOWLEDGE_wall_mountain_family.md",
+    "design/kaelis_kits_summary.md",
+    "roadmap/not started/roadmap_kaelis_kit_reformulation.md.tmp.47352.11f6e21a2bf1",
+    "roadmap/not started/roadmap_kaelis_kit_reformulation.md.tmp.47352.639852fc3702",
+    "roadmap/not started/roadmap_kaelis_kit_reformulation.md",
+    "design/kaelis_kit_reformulation.md.tmp.54896.b89ffcdfb472",
+    "design/kaelis_kit_reformulation.md.tmp.54896.9659dbd7c929",
+    "design/kaelis_kit_reformulation.md",
+    "design/kaelis_combat_archetypes_research.md",
+    "DESIGN_NOTES.md",
+    "roadmap/ongoing/roadmap_dash_training.md",
+    "design/kaelis_combat_archetypes_research.md.tmp.24432.251bb3e64d5c",
+    "design/kaelis_combat_archetypes_research.md.tmp.24432.7fe3f6e8dc00",
+    "roadmap/ongoing/roadmap_dungeons.md",
+    "WORKFLOW_imagem_e_cutscenes.md",
     "roadmap/not started/roadmap_skins.md",
     "roadmap/not started/roadmap_comfyui_geracao.md",
     "roadmap/not started/roadmap_producao_visual.md",
     "roadmap/not started/roadmap_hunts.md",
     "roadmap/not started/roadmap_hunts.md.tmp.13684.e31a1d45135d",
-    "roadmap/not started/roadmap_hunts.md.tmp.13684.a5c94802e048",
-    "roadmap/not started/roadmap_hunts.md.tmp.13684.690dce9e43be",
-    "roadmap/not started/roadmap_hunts.md.tmp.7484.b43ad431b545",
-    "roadmap/not started/roadmap_hunts.md.tmp.7484.27eb8f55783b",
-    "roadmap/not started/roadmap_hunts.md.tmp.37912.fef80af7eb13",
-    "roadmap/not started/roadmap_hunts.md.tmp.37912.7c4bec592c96",
-    "KNOWLEDGE_wall_mountain_family.md",
-    "KNOWLEDGE_wall_mountain_family.md.tmp.37912.ee6dc759f0f7",
-    "roadmap/not started/roadmap_comfyui_geracao.md.tmp.26588.34325d23827b",
-    "roadmap/not started/roadmap_comfyui_geracao.md.tmp.26588.641956894c03",
     "prompts/prompts por imagem.md",
     "prompts/skins/humanas/rin.md",
     "prompts/skins/verao/seren.md",
@@ -238,18 +236,6 @@
     "prompts/skins/celestiais-caidas/rin.md",
     "prompts/skins/verao/gaia.md",
     "prompts/skins/celestiais-caidas/rynna.md",
-    "prompts/skins/verao/velvet.md",
-    "prompts/skins/miko/eloa.md",
-    "prompts/skins/humanas/eloa.md",
-    "prompts/skins/miko/velvet.md",
-    "prompts/skins/verao/rin.md",
-    "prompts/skins/celestiais-caidas/eloa.md",
-    "prompts/skins/casual/seren.md",
-    "prompts/skins/casual/lunara.md",
-    "prompts/skins/casual/gaia.md",
-    "prompts/skins/casual/velvet.md",
-    "prompts/skins/humanas/lunara.md",
-    "prompts/skins/humanas/rynna.md",
     "prompts/hunt-redesign/hunt-menu-anchor.png",
     "prompts/hunt-redesign/hunt-dungeon-anchor.png",
     "prompts/hunt-redesign/prerun-anchor.png"

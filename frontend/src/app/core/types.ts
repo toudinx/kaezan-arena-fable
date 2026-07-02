@@ -676,6 +676,8 @@ export interface PlayerDto {
   dashCooldownTotalMs: number;
   dashReady: boolean;
   trait: TraitStateDto;
+  /** Training Room sandbox toggle: skills/ult ignore cooldown & gauge. Always false outside Training. */
+  trainingFreeCast: boolean;
 }
 
 export interface TraitStateDto {

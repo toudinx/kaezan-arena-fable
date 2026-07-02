@@ -114,6 +114,41 @@ public static class DungeonGenerator
         return floor;
     }
 
+    /// <summary>
+    /// Training Room (Hunt &gt; Training): one small fixed open arena — no erosion, no corridors, no POIs,
+    /// no chests/ladder. Just a clean walled box themed by the biome, with the entry near the bottom edge.
+    /// The single passive dummy is spawned by <see cref="GameWorld.SpawnTrainingDummy"/>. Deterministic
+    /// (PaintTiles consumes the run rng only for ambient ground/decor variety).
+    /// </summary>
+    public static DungeonFloor GenerateTrainingRoom(Rng rng, BiomeDef biome)
+    {
+        const int size = GameConfig.TrainingRoomSize;
+        var floor = new DungeonFloor
+        {
+            Index = 0,
+            W = size,
+            H = size,
+            Ground = new ushort[size * size],
+            Wall = new ushort[size * size],
+            Decor = new ushort[size * size],
+            Blocked = new bool[size * size],
+            Rooms = []
+        };
+        Array.Fill(floor.Blocked, true);
+
+        // One open rectangle with a 3-tile margin for the biome wall (no erosion: stays a clean box).
+        const int margin = 3;
+        var room = new Room { X = margin, Y = margin, W = size - 2 * margin, H = size - 2 * margin, Role = "mob" };
+        floor.Rooms.Add(room);
+        for (var yy = room.Y; yy < room.Y + room.H; yy++)
+            for (var xx = room.X; xx < room.X + room.W; xx++)
+                floor.Blocked[yy * size + xx] = false;
+
+        floor.Entry = (room.CenterX, room.Y + room.H - 2); // player stands near the bottom, dummy at center
+        PaintTiles(floor, rng, biome);
+        return floor;
+    }
+
     private static int Manhattan(Room a, Room b) =>
         Math.Abs(a.CenterX - b.CenterX) + Math.Abs(a.CenterY - b.CenterY);
 

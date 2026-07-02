@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { AssetsService } from '../../core/assets.service';
 import { normalizeFarmRunCount, readFarmRunCount } from '../../core/farm-settings';
-import { GameClientService } from '../../core/game-client.service';
+import { GameClientService, GameMode } from '../../core/game-client.service';
 import { GameRenderer } from '../../core/renderer';
 import { ItemIcon } from '../../core/item-icon';
 import { SoundService } from '../../core/sound.service';
@@ -182,6 +182,17 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
 
       <!-- minimap -->
       <canvas #mini class="minimap" width="160" height="160"></canvas>
+
+      <!-- training sandbox controls -->
+      @if (isTraining() && snapshot(); as s) {
+        <button class="train-toggle" [class.on]="s.player.trainingFreeCast"
+                (click)="toggleFreeCast()"
+                title="Skills and the ultimate ignore cooldown & gauge — spam anything to test it">
+          <span class="dot"></span>
+          <span>Free cast</span>
+          <small>no cooldown / energy</small>
+        </button>
+      }
 
       <!-- skill bar -->
       @if (snapshot(); as s) {
@@ -460,6 +471,16 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
     .hp-reset:hover { color: #cfcde0; border-color: rgba(255,255,255,0.2); }
     .minimap { position: absolute; right: 14px; top: 64px; border: 1px solid #2c2c3e; border-radius: 8px; background: #000; opacity: 0.9; }
     .hud.skills { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
+    .train-toggle {
+      position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); z-index: 16;
+      display: flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+      background: rgba(16,16,26,0.9); border: 2px solid #2c2c3e; color: #cfcde0; font-size: 12px; font-weight: 800;
+    }
+    .train-toggle small { color: #707088; font-weight: 600; font-size: 10px; }
+    .train-toggle .dot { width: 9px; height: 9px; border-radius: 50%; background: #3a3a4e; }
+    .train-toggle.on { border-color: #e8a93c; color: #fbe7c0; box-shadow: 0 0 12px rgba(232,169,60,0.4); }
+    .train-toggle.on .dot { background: #e8a93c; box-shadow: 0 0 8px rgba(232,169,60,0.8); }
+    .train-toggle.on small { color: #d9b878; }
     .skill {
       position: relative; width: 104px; height: 72px; border-radius: 10px; overflow: hidden;
       background: rgba(16,16,26,0.9); border: 2px solid #2c2c3e; color: #cfcde0;
@@ -553,6 +574,8 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   readonly resumeToast = signal(false);
   readonly showBag = signal(false);
   readonly showHelper = signal(false);
+  /** Training Room only: reveals the free-cast switch (skills/ult ignore cooldown & gauge). */
+  readonly isTraining = signal(false);
 
   // G-10: feedback for the HELPER panel "Save as default" button.
   readonly helperSaved = signal(false);
@@ -564,6 +587,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   private raf = 0;
   private tier = 1;
   private waifuId: string | undefined;
+  private mode: GameMode = GameMode.Dungeon;
   private keys = new Set<string>();
   private lastDir = { x: 0, y: 0 };
   private moveHeartbeat = 0;
@@ -598,6 +622,8 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     this.tier = Number(this.route.snapshot.paramMap.get('tier') ?? '1');
     this.waifuId = this.route.snapshot.queryParamMap.get('waifu') ?? undefined;
+    this.mode = this.route.snapshot.queryParamMap.get('mode') === 'training' ? GameMode.Training : GameMode.Dungeon;
+    this.isTraining.set(this.mode === GameMode.Training);
     const runs = normalizeFarmRunCount(Number(this.route.snapshot.queryParamMap.get('runs') ?? readFarmRunCount()));
     this.plannedRuns.set(runs);
     this.autoRunsRemaining.set(Math.max(0, runs - 1));
@@ -623,7 +649,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     if (map) this.renderer.setMap(map);
 
     try {
-      const joined = await this.client.joinRun(this.tier, this.waifuId, undefined, true);
+      const joined = await this.client.joinRun(this.tier, this.waifuId, undefined, true, this.mode);
       if (joined.resumed) {
         this.resumeToast.set(true);
         this.resumeToastTimer = window.setTimeout(() => this.resumeToast.set(false), RESUME_TOAST_MS);
@@ -791,6 +817,11 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
 
   toggleStance(): void {
     this.client.toggleStance();
+  }
+
+  /** Training Room only: flip the free-cast switch (skills/ult ignore cooldown & gauge). */
+  toggleFreeCast(): void {
+    this.client.setTrainingFreeCast(!this.snapshot()?.player.trainingFreeCast);
   }
 
   // G-10: applies a partial helper config change (merges with current state and sends it).
@@ -1017,7 +1048,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   async again(fromAutoRepeat = false): Promise<void> {
     this.clearAutoRepeatSchedule();
     if (!fromAutoRepeat) this.autoRunsRemaining.set(0);
-    await this.client.joinRun(this.tier, this.waifuId, undefined, false);
+    await this.client.joinRun(this.tier, this.waifuId, undefined, false, this.mode);
     void this.api.refreshAccount();
   }
 

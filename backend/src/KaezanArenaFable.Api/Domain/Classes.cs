@@ -28,7 +28,48 @@ public sealed record SkillDef(
     // away from the origin. 0 = static field (old behavior). StrikeLeavesField makes each barrage blow
     // drop a field (reuses SummonMs/SummonPulseMs/SummonPower/SummonRadius + the spread params) — the
     // meteor rain sets the ground ablaze where it falls.
-    int FieldSpreadChance = 0, int FieldSpreadGenerations = 0, bool StrikeLeavesField = false);
+    int FieldSpreadChance = 0, int FieldSpreadGenerations = 0, bool StrikeLeavesField = false,
+    // Roaming summon (shape "summon"): the construct drifts one tile toward the nearest enemy each
+    // pulse and, with SummonLeavesField, seeds a spreading field of its element on the tiles it crosses
+    // (reuses FieldSpreadChance/FieldSpreadGenerations). 0 = the classic stationary pulser.
+    bool SummonRoams = false, bool SummonLeavesField = false,
+    // Auto-modifier (shape "buff", KR-00 shared seam): arms an empowered-autoattack state. Kind is
+    // "cleave" (small area at the target), "pierce" (splash to the nearest neighbor) or "lock_pierce"
+    // (redirects the auto onto the trait mark, then pierces). AutoModCharges > 0 = charge-based (one
+    // spent per auto, refunded on kill when AutoModResetOnKill, capped at AutoModCharges); 0 =
+    // time-windowed by BuffMs.
+    string? AutoModKind = null, int AutoModCharges = 0, bool AutoModResetOnKill = false,
+    // Signature-trait charge bonus: a direct hit by this cast seeds this many EXTRA charges of the
+    // Kaeli's trait (on top of the base 1) — e.g. Eloa's Judging Lance seeds extra Sin to drive the
+    // priority target toward Judged faster. Read in ApplyTraitPostDamage. 0 = normal (one per hit).
+    int TraitChargeBonus = 0,
+    // Low-HP finisher (Velvet's Soul Rend, §4G): a direct hit by this cast deals +LowHpBonus damage
+    // when the target sits below LowHpThreshold of its max HP — the same execution family as the Decay
+    // trait threshold, but a per-skill knob independent of the passive. 0 = no finisher bonus.
+    double LowHpBonus = 0, double LowHpThreshold = 0,
+    // Death Orb detonation (Velvet's Reign of Shadows, §4G): on cast, immediately resolve every pending
+    // Death Orb on the current floor instead of waiting out its delay. Reuses the orb-burst path, so the
+    // anti-cascade guard (_resolvingDeathOrb) and the per-floor cap stay intact. false = no-op.
+    bool DetonateDeathOrbs = false,
+    // Burn reap (Rin's Wildfire Reckoning, §4F): each hit CONSUMES the target's pending fire burn,
+    // dealing ConsumeBurnBonus × the remaining burn as an instant burst (amplified by any active
+    // Infernal Ball multiplier) and leaving only a light ember. 0 = no reap. Read in HitMonster.
+    double ConsumeBurnBonus = 0,
+    // Burn multiplier stacking (Rin's Infernal Ball, §4F): each impact of this barrage adds one stack
+    // to the room-wide burn-damage multiplier (does NOT consume — the explicit contrast with Reckoning).
+    // Stacks amplify every fire DoT tick and decay one at a time. false = no stack. Read in ResolveStrike.
+    bool StackBurnMult = false,
+    // Prey ramp cash-out (Gaia's Coup de Grace, §4D): a direct hit against the marked Prey gets an
+    // extra multiplier from the current hunt ramp, then consumes that ramp by restarting the hunt timer.
+    double ConsumePreyRampBonus = 0,
+    // Frost cash-out (Lunara's Absolute Zero, §4C): after the skill hit lands, consume all Frostbite
+    // stacks on the target as an immediate shatter burst. The skill's own StunMs is the hard-freeze.
+    bool MassShatterFrost = false,
+    // Skill lifesteal / brawler riders (Rynna): direct damage by this skill heals for this extra
+    // fraction of final damage; PullTiles drags targets toward the player; EchoShieldOnHit grants
+    // player shield per caught target; DetonateStaticMarks lets scheduled ult waves cash Static marks.
+    double SkillLifesteal = 0, int PullTiles = 0, double EchoShieldOnHit = 0,
+    bool DetonateStaticMarks = false);
 
 public sealed record ClassStanceDef(
     string Id, string Name, string Element, string[] Slots, string Ultimate);
@@ -93,166 +134,201 @@ public static class Classes
     {
         // ============================ ROSTER — SIGNATURE KITS (K-03) ============================
 
-        // Eloa — Seraph (holy ranged). Ranged judgment: precise lance, judgment in sequence,
-        // sacred beam, defensive halo and the final absolution in a nova.
-        new SkillDef("skill:eloa:lance", "Light Lance", "single", "holy",
+        // Eloa — Seraph (holy ranged / AoE queen, §4E). Pure simultaneous burst: nothing pings, everything
+        // explodes. No lingering field — the dash trail (§2.7) covers the residual holy ground, so the old
+        // Consecrated Halo is cut. Judging Lance seeds extra Sin; barrage is confined to the ult.
+        new SkillDef("skill:eloa:lance", "Judging Lance", "single", "holy",
             1.15, 2000, 5, 0, 38, 40, 0, null, 0,
-            "Hurls a precise lance of light at a target."),
-        new SkillDef("skill:eloa:judgment", "Judgment", "barrage", "holy",
-            1.20, 9000, 6, 1, 38, 40, 0, null, 0,
-            "Summons holy lances that fall in sequence onto the target.",
-            Strikes: 3, StrikeIntervalMs: 450, StrikeDelayMs: 300),
+            "Hurls a lance of judgment at a priority target, searing extra Sin into it.",
+            TraitChargeBonus: GameConfig.EloaJudgingLanceSinBonus),
+        new SkillDef("skill:eloa:judgment", "Dawn Ring", "ring", "holy",
+            1.20, 9000, 6, GameConfig.EloaDawnRingRadius, 38, 40, 0, null, 0,
+            "A ring of dawnlight bursts outward around the Seraph, judging everything caught in the band.",
+            Strikes: GameConfig.EloaDawnRingExpansionBands,
+            StrikeIntervalMs: GameConfig.EloaDawnRingPulseIntervalMs,
+            StrikeDelayMs: GameConfig.EloaDawnRingPulseDelayMs,
+            RingInner: 1),
+        new SkillDef("skill:eloa:zenith", "Zenith Strike", "area", "holy",
+            1.60, 7000, 6, 2, 0, 50, 0, null, 0,
+            "Calls down an instant pillar of light onto a distant area, detonating it in holy fire."),
         new SkillDef("skill:eloa:radiance", "Sacred Ray", "beam", "holy",
             1.75, 6000, 5, 0, 0, 40, 0, null, 0,
             "Channels a long holy beam in a line."),
-        new SkillDef("skill:eloa:halo", "Halo", "ring", "holy",
-            1.45, 7000, 0, 2, 0, 50, 0, null, 0,
-            "Opens a holy halo around the Seraph, leaving the center untouched.",
-            RingInner: 1),
-        new SkillDef("skill:eloa:absolution", "Absolution", "nova", "holy",
-            2.60, 0, 0, 3, 0, 40, 0, null, 0,
-            "Releases all the stored light in a wave of absolution around the Seraph."),
+        new SkillDef("skill:eloa:absolution", "Absolution", "barrage", "holy",
+            2.20, 0, 6, 2, 0, 40, 0, null, 0,
+            "Calls down a rapid storm of light pillars all at once — the sky itself passes sentence.",
+            Strikes: 7, StrikeIntervalMs: 180, StrikeDelayMs: 150),
 
-        // Seren — Astral Knight (physical melee). Duelist: precise cut, advance that ricochets
-        // between targets, wide arc, offensive stance and the zenith that stuns all around.
-        new SkillDef("skill:seren:cut", "Precise Cut", "single", "physical",
-            1.35, 1800, 1, 0, 0, 10, 0, null, 0,
-            "A clean, decisive cut on the adjacent target."),
-        new SkillDef("skill:seren:advance", "Astral Advance", "chain", "physical",
-            1.35, 7000, 2, 0, 0, 10, 0, null, 0,
-            "Charges the target and the strike carries on to the nearest enemies.",
-            ChainJumps: 3, ChainRange: 3, ChainFalloff: 0.25),
-        new SkillDef("skill:seren:arc", "Sword Arc", "cone", "physical",
-            1.55, 6000, 0, 2, 0, 10, 0, "taunt", GameConfig.MeleeTauntMs,
-            "Sweeps a blade arc ahead, cutting everyone in the fan and taunting them: "
-            + "ranged enemies drop their retreat and march into melee."),
-        new SkillDef("skill:seren:stance", "Zenith Stance", "buff", "support",
-            0, 14000, 0, 0, 0, 13, 0, "aegis", 10000,
-            "Takes the dueling stance: increases attack and attack speed for 10s."),
-        new SkillDef("skill:seren:zenith", "Zenith", "nova", "physical",
-            2.60, 0, 0, 3, 0, 35, 500, null, 0,
-            "Unleashes the zenith blow in a blast that stuns those nearby."),
+        // Seren — Astral Knight (physical melee auto duelist, §4). Discipline stays the identity:
+        // Astral Sweep gives pack-cleave windows, War Cadence sustains the box, and Zenith unlocks
+        // the ramp so her boss damage can spill through a mob stack.
+        new SkillDef("skill:seren:cut", "Astral Sweep", "buff", "physical",
+            0, 6500, 0, 0, 0, 10, 0, null, GameConfig.SerenAstralSweepWindowMs,
+            "Empowers the next cuts: autos cleave around the target, and a kill refreshes the sweep.",
+            AutoModKind: "cleave",
+            AutoModCharges: GameConfig.SerenAstralSweepCharges,
+            AutoModResetOnKill: true),
+        new SkillDef("skill:seren:advance", "Star Lance", "beam", "physical",
+            1.70, 7000, 3, 0, 0, 10, 0, null, 0,
+            "Thrusts a concentrated astral line through the enemies ahead."),
+        new SkillDef("skill:seren:arc", "Duelist's Call", "cone", "physical",
+            1.20, 9000, 0, 2, 0, 10, 0, "taunt", GameConfig.MeleeTauntMs,
+            "Calls the duel in a blade fan, taunting enemies into the box before two close-range beats land.",
+            Strikes: GameConfig.SerenDuelistCallPulseCount,
+            StrikeIntervalMs: GameConfig.SerenDuelistCallPulseIntervalMs,
+            StrikeDelayMs: GameConfig.SerenDuelistCallPulseDelayMs,
+            SummonRadius: GameConfig.SerenDuelistCallPulseRadius,
+            SummonPower: GameConfig.SerenDuelistCallPulsePower),
+        new SkillDef("skill:seren:stance", "War Cadence", "buff", "support",
+            0, 14000, 0, 0, 0, 13, 0, GameConfig.SerenWarCadenceBuff, 6000,
+            "Settles into a battle cadence, accelerating her cuts and drinking life back from them."),
+        new SkillDef("skill:seren:zenith", "Zenith", "buff", "physical",
+            0, 0, 0, 0, 0, 35, 0, GameConfig.UltStateRampUnlocked, GameConfig.SerenZenithBuffMs,
+            "Reaches the zenith: Discipline opens to every target, and every hit becomes a Perfect Cut."),
 
-        // Velvet — Necromancer (death ranged). Curse and execution: mortal strike, an area curse
-        // that rots, nightmare beam, summoned shade and the eternal plague in a nova.
-        new SkillDef("skill:velvet:strike", "Mortal Strike", "single", "death",
+        // Velvet — Necromancer (death ranged / soul-reaping caster, §4G). The Decay trait already is the
+        // right engine (hits stack Decay + lower the execute threshold; a kill under Decay drops a Death
+        // Orb). The kit only reshapes the slots around it: Soul Rend finishes low-HP targets, Cursed
+        // Ground and Abyssal Shade stay as they were, Nightmare (beam) moves to s3 (§2.7), and the ult
+        // Reign of Shadows gains the one new piece — it force-detonates every pending Death Orb at once.
+        new SkillDef("skill:velvet:strike", "Soul Rend", "single", "death",
             1.30, 2000, 4, 0, 11, 18, 0, null, 0,
-            "Fires precise deadly energy at a target."),
-        new SkillDef("skill:velvet:curse", "Curse", "area", "death",
-            0.70, 6000, 5, 1, 11, 18, 0, null, 0,
-            "Curses an area; those hit rot over time.",
-            DotTicks: 5, DotTickMs: 1000, DotPower: 0.55),
+            "Tears the soul from a target — a finisher that bites far deeper into the wounded.",
+            LowHpBonus: GameConfig.VelvetSoulRendLowHpBonus,
+            LowHpThreshold: GameConfig.VelvetSoulRendLowHpThreshold),
+        new SkillDef("skill:velvet:curse", "Cursed Ground", "field", "death",
+            0, 6000, 5, 0, 11, 18, 0, null, 0,
+            "Curses the ground with a creeping rot that spreads tile by tile, devouring whoever lingers.",
+            SummonMs: 4000, SummonPulseMs: 700, SummonPower: 0.45, SummonRadius: 1,
+            FieldSpreadChance: 30, FieldSpreadGenerations: 2),
+        new SkillDef("skill:velvet:shade", "Abyssal Shade", "summon", "death",
+            0, 12000, 0, 1, 0, 18, 0, null, 0,
+            "Raises an abyssal shade that drifts toward the living, pulsing death and trailing creeping corrosion.",
+            SummonMs: 6000, SummonPulseMs: 700, SummonPower: 0.70, SummonRadius: 1,
+            FieldSpreadChance: 20, FieldSpreadGenerations: 1,
+            SummonRoams: true, SummonLeavesField: true),
         new SkillDef("skill:velvet:nightmare", "Nightmare", "beam", "death",
             1.80, 8000, 7, 0, 0, 18, 0, null, 0,
             "Projects a long nightmare beam in a line."),
-        new SkillDef("skill:velvet:shade", "Abyssal Shade", "summon", "death",
-            0, 12000, 0, 1, 0, 18, 0, null, 0,
-            "Raises an abyssal shade that pulses death around it for a few seconds.",
-            SummonMs: 6000, SummonPulseMs: 800, SummonPower: 0.70, SummonRadius: 1),
-        new SkillDef("skill:velvet:plague", "Eternal Plague", "nova", "death",
-            1.40, 0, 0, 3, 0, 18, 0, null, 0,
-            "Detonates an area plague that keeps corroding those hit.",
-            DotTicks: 6, DotTickMs: 1000, DotPower: 0.80),
+        new SkillDef("skill:velvet:plague", "Reign of Shadows", "barrage", "death",
+            1.30, 0, 6, 2, 11, 18, 0, null, 0,
+            "Calls down a slow rain of shadow and rips every lingering Death Orb open at once — the harvest of the whole run cashed in on command.",
+            Strikes: 5, StrikeIntervalMs: 350, StrikeDelayMs: 250,
+            DotTicks: 4, DotTickMs: 1000, DotPower: 0.45,
+            SummonMs: 3500, SummonPulseMs: 700, SummonPower: 0.35, SummonRadius: 1,
+            StrikeLeavesField: true, FieldSpreadChance: 35, FieldSpreadGenerations: 2,
+            DetonateDeathOrbs: true),
 
-        // Rin — Pact Succubus (fire ranged). Charm and ember: ember kiss, a contract that ignites
-        // in a chain, hall of flames on the ground, ashen wings in a cone and the infernal ball.
+        // Rin — Pact Succubus (fire ranged / DoT with rhythm, §4F). The Contagion trait is already the
+        // engine (hits ignite; burn heals her and jumps between burning enemies on its own). The kit gives
+        // her agency over that DoT: Ember Kiss reliably ignites a cold target, Cinder Storm seeds ignite in
+        // an area (no slow-jump wait), Wildfire Reckoning REAPS the pending burn as a burst (consume), Ashen
+        // Breath is the universal s3 beam (§2.7), and the ult Infernal Ball stacks a burn multiplier per
+        // impact (amplify — never consume, the explicit contrast with Reckoning).
         new SkillDef("skill:rin:ember-kiss", "Ember Kiss", "single", "fire",
             1.30, 1700, 5, 0, 4, 7, 0, null, 0,
-            "Blows a precise ember kiss at a target — fast, in frantic succession."),
-        new SkillDef("skill:rin:contract", "Burning Contract", "chain", "fire",
-            1.25, 7000, 6, 0, 4, 7, 0, null, 0,
-            "Seals a burning pact: the fire leaps from enemy to enemy, igniting the whole chain.",
-            ChainJumps: 5, ChainRange: 4, ChainFalloff: 0.15,
-            DotTicks: 4, DotTickMs: 1000, DotPower: 0.30),
-        new SkillDef("skill:rin:hall", "Hall of Flames", "field", "fire",
-            0, 9000, 6, 1, 4, 7, 0, null, 0,
-            "Throws an ember that sets the ground ablaze — and the fire spreads tile by tile across the fight, "
-            + "devouring whoever stays in its path.",
-            SummonMs: 5000, SummonPulseMs: 700, SummonPower: 0.40, SummonRadius: 1,
-            FieldSpreadChance: 45, FieldSpreadGenerations: 3),
-        new SkillDef("skill:rin:ashwings", "Ashen Wings", "cone", "fire",
-            1.65, 6000, 0, 3, 0, 7, 0, null, 0,
-            "Spreads the ashen wings and sweeps a broad wave of fire ahead."),
+            "Blows a precise ember kiss that always catches — a reliable starter that ignites even a cold target.",
+            DotTicks: GameConfig.RinContagionBurnTicks, DotTickMs: GameConfig.RinContagionBurnTickMs,
+            DotPower: GameConfig.RinContagionBurnPower),
+        new SkillDef("skill:rin:contract", "Cinder Storm", "area", "fire",
+            1.10, 7000, 6, 2, 4, 7, 0, null, 0,
+            "Scatters a storm of cinders over a zone, setting everyone caught ablaze at once."),
+        new SkillDef("skill:rin:hall", "Wildfire Reckoning", "nova", "fire",
+            1.20, 9000, 0, 3, 4, 7, 0, null, 0,
+            "Erupts in a ring of wildfire, tearing the pent-up flames out of every burning enemy for a "
+            + "massive burst — then leaves only a light ember behind.",
+            ConsumeBurnBonus: GameConfig.RinReckoningConsumeMult),
+        new SkillDef("skill:rin:ashwings", "Ashen Breath", "beam", "fire",
+            1.55, 6000, 5, 0, 0, 7, 0, null, 0,
+            "Exhales a searing line of fire that pierces everything directly ahead."),
         new SkillDef("skill:rin:infernal-ball", "Infernal Ball", "barrage", "fire",
             1.50, 0, 7, 2, 4, 7, 400, null, 0,
-            "Conducts a ball of meteors that fall in sequence: each impact stuns and ignites the ground, "
-            + "and the fire spreads until the whole arena becomes a furnace.",
+            "Conducts a ball of meteors that fall in sequence: each impact stuns, ignites the ground and "
+            + "stokes every fire in the arena hotter — the burn keeps climbing while the meteors fall.",
             Strikes: 4, StrikeIntervalMs: 480, StrikeDelayMs: 380,
             SummonMs: 3200, SummonPulseMs: 600, SummonPower: 0.30, SummonRadius: 1,
-            StrikeLeavesField: true, FieldSpreadChance: 38, FieldSpreadGenerations: 2),
+            StrikeLeavesField: true, FieldSpreadChance: 38, FieldSpreadGenerations: 2,
+            StackBurnMult: true),
 
-        // Rynna — Thunder Dragoness (energy melee). Engages and paralyzes: electric claw that
-        // paralyzes, thundering tail in a cone, short discharge in a chain, conductive scale (buff)
-        // and the storm heart in a nova. Short range — she's a dragoness of impact, not a ranged mage.
-        new SkillDef("skill:rynna:claw", "Electric Claw", "single", "energy",
-            1.30, 1800, 1, 0, 0, 12, 300, null, 0,
-            "Drives the charged claw into the adjacent target, paralyzing it briefly."),
-        new SkillDef("skill:rynna:tail", "Thundering Tail", "cone", "energy",
-            1.55, 6000, 0, 2, 0, 12, 0, "taunt", GameConfig.MeleeTauntMs,
-            "Spins and lashes with the thundering tail, hitting everyone in the fan and taunting them: "
-            + "ranged enemies drop their retreat and march into melee."),
-        new SkillDef("skill:rynna:discharge", "Short Discharge", "chain", "energy",
-            1.30, 7000, 2, 0, 0, 12, 0, null, 0,
-            "Releases a discharge that ricochets between nearby enemies.",
-            ChainJumps: 3, ChainRange: 3, ChainFalloff: 0.25),
-        new SkillDef("skill:rynna:scale", "Conductive Scale", "buff", "support",
-            0, 11000, 0, 0, 0, 41, 0, "atkspeed", 5000,
-            "Charges the conductive scale: quickens the cadence of blows for a few seconds."),
+        // Rynna — Thunder Dragoness (energy melee caster / vampiric berserker, §4B). Static Charge
+        // marks targets and detonates one marked victim when full; Chain Lightning and Storm Heart
+        // provide the vampiric AoE, Bloodlust embraces risk, and Storm Pull gathers the box.
+        new SkillDef("skill:rynna:claw", "Voltaic Claw", "single", "energy",
+            1.25, 1800, 1, 0, 0, 12, 0, null, 0,
+            "Rakes the adjacent target with a charged claw, building Static Charge faster.",
+            TraitChargeBonus: GameConfig.RynnaVoltaicClawChargeBonus),
+        new SkillDef("skill:rynna:discharge", "Chain Lightning", "chain", "energy",
+            1.25, 6500, 2, 0, 0, 12, 0, null, 0,
+            "Releases vampiric lightning that jumps through the pack and drinks back health.",
+            ChainJumps: GameConfig.RynnaChainLightningJumps,
+            ChainRange: GameConfig.RynnaChainLightningRange,
+            ChainFalloff: GameConfig.RynnaChainLightningFalloff,
+            SkillLifesteal: GameConfig.RynnaChainLightningLifesteal),
+        new SkillDef("skill:rynna:scale", "Bloodlust", "buff", "support",
+            0, 12000, 0, 0, 0, 41, 0, GameConfig.RynnaBloodlustBuff, GameConfig.RynnaBloodlustMs,
+            "Lets the storm run wild: more damage and lifesteal, but incoming hits bite harder."),
+        new SkillDef("skill:rynna:tail", "Storm Pull", "nova", "energy",
+            0.55, 8500, 0, 3, 0, 12, 0, null, 0,
+            "Hooks nearby enemies with lightning, dragging them into the box and raising an echo shield.",
+            PullTiles: GameConfig.RynnaStormPullTiles,
+            EchoShieldOnHit: GameConfig.RynnaStormPullShieldPerTarget),
         new SkillDef("skill:rynna:storm-heart", "Storm Heart", "nova", "energy",
-            2.70, 0, 0, 3, 0, 41, 0, null, 0,
-            "Brings the sky down with it: discharges the storm around the dragoness."),
+            1.05, 0, 0, 3, 0, 41, GameConfig.RynnaStaticDetonateStunMs, null, 0,
+            "Beats the storm heart in waves, detonating every Static mark caught and drinking the lightning back.",
+            Strikes: GameConfig.RynnaStormHeartWaves,
+            StrikeIntervalMs: GameConfig.RynnaStormHeartWaveIntervalMs,
+            DetonateStaticMarks: true),
 
-        // Lunara — Ice Archer (ice ranged, bow). Ranged single-target with some AoE: lunar shard that
-        // slows, frost leaps in a chain, frozen garden on the ground for kiting, crescent that cuts the
-        // target and the new moon. The Lunar Frost trait stacks slow on top of the kit's ice.
-        new SkillDef("skill:lunara:cut", "Lunar Cut", "single", "ice",
-            1.30, 1800, 5, 0, 29, 42, 0, null, 0,
-            "Fires a shard of icy moonlight that wounds and slows the target at range.",
-            SlowFactor: 0.7, SlowMs: 1500),
-        new SkillDef("skill:lunara:frost-leap", "Frost Leap", "chain", "ice",
-            1.30, 7000, 5, 0, 29, 42, 0, null, 0,
-            "Leaps between enemies, leaving frost on each one.",
-            ChainJumps: 3, ChainRange: 4, ChainFalloff: 0.25,
-            SlowFactor: 0.7, SlowMs: 1200),
+        // Lunara — Ice Archer (ice ranged auto / frost marksman, §4C). Frostbite is now the damage
+        // engine: autos spread frost and trigger cascaded shatters. Only the kite tools slow/root
+        // (Frozen Garden and New Moon); the ult is the sole hard-freeze.
+        new SkillDef("skill:lunara:cut", "Moonlight Volley", "buff", "ice",
+            0, 6500, 0, 0, 29, 42, 0, null, GameConfig.LunaraMoonlightVolleyWindowMs,
+            "Loads the next moonlit shots: autos pierce through the pack and seed extra frost.",
+            AutoModKind: "pierce",
+            AutoModCharges: GameConfig.LunaraMoonlightVolleyCharges),
         new SkillDef("skill:lunara:garden", "Frozen Garden", "field", "ice",
             0, 10000, 5, 0, 37, 44, 0, null, 0,
             "Blooms a garden of ice on the ground, slowing and wounding whoever stays in it.",
             SummonMs: 5000, SummonPulseMs: 1000, SummonPower: 0.35, SummonRadius: 1,
             SlowFactor: 0.5, SlowMs: 1500),
-        new SkillDef("skill:lunara:crescent", "Crescent", "area", "ice",
-            1.45, 7000, 5, 1, 29, 44, 0, null, 0,
-            "Hurls a crescent of ice over the target, slicing and slowing around it.",
-            SlowFactor: 0.7, SlowMs: 1200),
+        new SkillDef("skill:lunara:frost-leap", "Lunar Focus", "buff", "support",
+            0, 12000, 0, 0, 0, 42, 0, GameConfig.LunaraLunarFocusBuff, GameConfig.LunaraLunarFocusMs,
+            "Draws the bow under a cold moon, quickening autos and extending her firing lane."),
         new SkillDef("skill:lunara:new-moon", "New Moon", "nova", "ice",
-            2.50, 0, 0, 3, 0, 44, 0, null, 0,
-            "Summons the new moon: a wave of absolute cold that freezes the step of everyone around.",
-            SlowFactor: 0.6, SlowMs: 2000),
+            0.85, 8500, 0, 3, 0, 44, 0, null, 0,
+            "Drops the new moon around her, peeling a closing pack away with a heavy frost snare.",
+            SlowFactor: GameConfig.LunaraNewMoonSlowFactor,
+            SlowMs: GameConfig.LunaraNewMoonSlowMs),
+        new SkillDef("skill:lunara:crescent", "Absolute Zero", "nova", "ice",
+            1.20, 0, 0, 3, 0, 44, GameConfig.LunaraAbsoluteZeroFreezeMs, null, 0,
+            "Stops the room at absolute zero, hard-freezing enemies and cashing out every frost stack in one mass shatter.",
+            MassShatterFrost: true),
 
-        // Gaia — Monolith Archer (earth ranged, bow). Mineral ranger: stone arrow, monolith fall in
-        // an area that stuns, roots that bind to the ground, shards in a cone and the tectonic rain.
-        // The Mineral Eye trait rewards keeping distance — roots help with that.
-        // MG-06: Gaia was consistently the slowest archer in hunt (Lunara kites faster at every tier;
-        // the gap grows T3 +8% → T4 +17%). Her single-target cadence was the outlier (2200ms vs 1800
-        // for the rest): arrow 2200→1800 speeds up her hunt without touching effective damage (capped
-        // by mob HP) or the `prey` trait.
-        new SkillDef("skill:gaia:arrow", "Mineral Arrow", "single", "earth",
-            1.30, 1800, 5, 0, 30, 46, 0, null, 0,
-            "Fires a petrified stone arrow, true from afar."),
+        // Gaia — Monolith Archer (earth ranged serial hunter, §4D). Prey stays as the identity: Hunter's
+        // Aim keeps autos locked on the mark, Binding Roots preserves the kite, Coup de Grace cashes the
+        // hunt ramp, Monolith Fall is real damage + stun, and Ricochet turns the hunt parallel briefly.
+        new SkillDef("skill:gaia:arrow", "Hunter's Aim", "buff", "earth",
+            0, 6500, 0, 0, 30, 46, 0, null, 4500,
+            "Focuses the hunt: the next shots lock onto the Prey and pierce into a nearby target.",
+            AutoModKind: "lock_pierce", AutoModCharges: 4),
         new SkillDef("skill:gaia:monolith", "Monolith Fall", "area", "earth",
-            1.45, 4000, 7, 2, 30, 46, 300, null, 0,
-            "Drops a monolith onto the target area, stunning whoever is beneath it."),
+            1.75, 7000, 7, 2, 30, 46, 450, null, 0,
+            "Drops a heavy monolith onto the target area, crushing and stunning whoever is beneath it."),
         new SkillDef("skill:gaia:roots", "Binding Roots", "field", "earth",
             0, 9000, 6, 0, 30, 46, 0, null, 0,
             "Sprouts stone roots from the ground, binding and wounding whoever steps on them.",
             SummonMs: 5000, SummonPulseMs: 1000, SummonPower: 0.40, SummonRadius: 1,
             SlowFactor: 0.4, SlowMs: 2000),
-        new SkillDef("skill:gaia:shards", "Stone Shards", "cone", "earth",
-            1.55, 6000, 0, 3, 0, 46, 0, null, 0,
-            "Splinters the rock ahead in a broad burst of shards."),
-        new SkillDef("skill:gaia:tectonic", "Tectonic Rain", "barrage", "earth",
-            1.45, 0, 7, 2, 30, 46, 300, null, 0,
-            "Tears the crust and makes tectonic stones fall in sequence, stunning the survivors.",
-            Strikes: 3, StrikeIntervalMs: 450, StrikeDelayMs: 400),
+        new SkillDef("skill:gaia:shards", "Coup de Grace", "single", "earth",
+            1.85, 6000, 7, 0, 30, 46, 0, null, 0,
+            "Fires the finishing shot, stronger against wounded Prey and cashing out the hunt.",
+            LowHpBonus: GameConfig.GaiaCoupLowHpBonus,
+            LowHpThreshold: GameConfig.GaiaCoupLowHpThreshold,
+            ConsumePreyRampBonus: GameConfig.GaiaCoupPreyRampConsumeBonus),
+        new SkillDef("skill:gaia:tectonic", "Ricochet", "buff", "earth",
+            0, 0, 0, 0, 30, 46, 0, GameConfig.UltStateAutoChain, 7000,
+            "Turns the hunt parallel: shots keep full force on the Prey and ricochet through nearby foes."),
 
         // ============================ RESERVE — no Kaeli yet (ItemAuthoring) ============================
         // Sentinel: precise physical shooter (distance/shield). Kept for the weapon→class map and
@@ -300,28 +376,28 @@ public static class Classes
     public static readonly IReadOnlyList<ClassDef> All =
     [
         new ClassDef(WarriorId, "Astral Knight",
-            "Physical melee duelist: precise cut, advance that ricochets between targets, sword arc and the dueling stance — closes on the zenith that stuns all around.",
+            "Physical melee auto duelist: Astral Sweep cleaves packs, Star Lance pierces a line, War Cadence sustains the box and Duelist's Call pulls enemies in — closing on Zenith, where Discipline is unleashed.",
             "physical",
             [
                 new ClassStanceDef("physical", "Physical", "physical",
                     [
                         "skill:seren:cut",
                         "skill:seren:advance",
-                        "skill:seren:arc",
-                        "skill:seren:stance"
+                        "skill:seren:stance",
+                        "skill:seren:arc"
                     ],
                     "skill:seren:zenith")
             ]),
         new ClassDef(OracleId, "Seraph",
-            "Ranged seraph of light: precise lance, judgment in sequence, sacred ray and defensive halo — ends on absolution in a nova.",
+            "Ranged seraph of light and AoE queen: a Sin-searing lance, an expanding dawn ring, a distant zenith strike and the universal sacred ray — ends on Absolution, a rapid storm of light.",
             "holy",
             [
                 new ClassStanceDef("holy", "Holy", "holy",
                     [
                         "skill:eloa:lance",
                         "skill:eloa:judgment",
-                        "skill:eloa:radiance",
-                        "skill:eloa:halo"
+                        "skill:eloa:zenith",
+                        "skill:eloa:radiance"
                     ],
                     "skill:eloa:absolution")
             ]),
@@ -339,33 +415,33 @@ public static class Classes
                     "skill:sentinel:aegis")
             ]),
         new ClassDef(CryomancerId, "Ice Archer",
-            "Ranged ice archer, all mobility and slow: lunar shard, frost leaps in a chain, frozen garden for kiting and crescent over the target — ends on the new moon that locks everyone around.",
+            "Ranged frost marksman: Moonlight Volley empowers piercing autos, Frozen Garden and New Moon keep the kite clean, Lunar Focus extends the firing lane, and Absolute Zero cashes out the whole frost stack.",
             "ice",
             [
                 new ClassStanceDef("ice", "Ice", "ice",
                     [
                         "skill:lunara:cut",
-                        "skill:lunara:frost-leap",
                         "skill:lunara:garden",
-                        "skill:lunara:crescent"
+                        "skill:lunara:frost-leap",
+                        "skill:lunara:new-moon"
                     ],
-                    "skill:lunara:new-moon")
+                    "skill:lunara:crescent")
             ]),
         new ClassDef(ShamanId, "Monolith Archer",
-            "Ranged mineral archer: stone arrow, monolith fall that stuns, roots that bind and shards in a cone — closes on the tectonic rain.",
+            "Ranged mineral hunter: Hunter's Aim locks autos onto the Prey, roots hold the chase, Coup de Grace executes the mark and Monolith Fall crushes packs — closes on Ricochet.",
             "earth",
             [
                 new ClassStanceDef("earth", "Earth", "earth",
                     [
                         "skill:gaia:arrow",
-                        "skill:gaia:monolith",
                         "skill:gaia:roots",
-                        "skill:gaia:shards"
+                        "skill:gaia:shards",
+                        "skill:gaia:monolith"
                     ],
                     "skill:gaia:tectonic")
             ]),
         new ClassDef(PyromancerId, "Pact Succubus",
-            "Ranged fire conjurer: ember kiss, a contract that ignites in a chain, hall of flames on the ground and ashen wings in a cone — ends on the infernal ball.",
+            "Ranged fire conjurer of spreading burn: a reliable ember kiss, a cinder storm that ignites a whole zone, wildfire reckoning that reaps the flames and the universal ashen breath — ends on the infernal ball, whose meteors stoke every burn hotter.",
             "fire",
             [
                 new ClassStanceDef("fire", "Fire", "fire",
@@ -378,15 +454,15 @@ public static class Classes
                     "skill:rin:infernal-ball")
             ]),
         new ClassDef(StormcallerId, "Thunder Dragoness",
-            "Energy melee dragoness: a claw that paralyzes, thundering tail in a cone, discharge in a chain and the conductive scale that hastes — closes on the storm heart.",
+            "Energy melee berserker: Voltaic Claw builds Static Charge, Chain Lightning sustains the pack, Bloodlust trades safety for hunger and Storm Pull gathers the box — closes on Storm Heart detonating every mark.",
             "energy",
             [
                 new ClassStanceDef("energy", "Energy", "energy",
                     [
                         "skill:rynna:claw",
-                        "skill:rynna:tail",
                         "skill:rynna:discharge",
-                        "skill:rynna:scale"
+                        "skill:rynna:scale",
+                        "skill:rynna:tail"
                     ],
                     "skill:rynna:storm-heart")
             ]),
@@ -404,15 +480,15 @@ public static class Classes
                     "skill:barbarian:spiritual-outburst")
             ]),
         new ClassDef(NecromancerId, "Necromancer",
-            "Ranged death conjurer: mortal strike, an area curse that rots, nightmare beam and the summoned abyssal shade — ends on the eternal plague.",
+            "Ranged soul-reaper: soul rend finishes the wounded, cursed ground rots, an abyssal shade roams and the nightmare beam pierces — reign of shadows harvests every Death Orb at once.",
             "death",
             [
                 new ClassStanceDef("death", "Death", "death",
                     [
                         "skill:velvet:strike",
                         "skill:velvet:curse",
-                        "skill:velvet:nightmare",
-                        "skill:velvet:shade"
+                        "skill:velvet:shade",
+                        "skill:velvet:nightmare"
                     ],
                     "skill:velvet:plague")
             ])

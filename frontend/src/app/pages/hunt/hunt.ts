@@ -255,6 +255,11 @@ export class HuntPage {
 
   enter(mode: GameModeDef): void {
     if (mode.status !== 'live') return;
+    // Training skips tier selection: straight to the Kaeli picker (fixed tier 1) flagged as a training run.
+    if (mode.id === 'training') {
+      void this.router.navigate(['/play', 1], { queryParams: { mode: 'training', runs: 1 } });
+      return;
+    }
     void this.router.navigate(['/hunt', mode.id]);
   }
 }

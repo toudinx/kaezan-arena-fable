@@ -133,8 +133,36 @@ public static class KaezanContentSeed
     private static readonly int[] ElementDamageByTier = [0, 8, 16, 32, 52, 78];
     private static readonly int[] MountSpeedByTier = [0, 14, 24, 38, 54, 70];
 
+    /// <summary>Stable id of the dedicated Training Room target. Authored, but referenced by NO dungeon tier,
+    /// so it never appears in a run — only <see cref="GameWorld.SpawnTrainingDummy"/> spawns it.</summary>
+    public const string TrainingDummyId = "monster:training-dummy";
+
     public static IReadOnlyList<MonsterDefinition> Monsters =>
-        MonsterSeeds.Select((seed, index) => Monster(seed, index)).ToList();
+        MonsterSeeds.Select((seed, index) => Monster(seed, index))
+            .Append(TrainingDummy())
+            .ToList();
+
+    /// <summary>The Training Room dummy: a passive practice target, distinct from any dungeon creature. Its
+    /// stats here are placeholders — <see cref="GameWorld.SpawnTrainingDummy"/> overrides HP/regen and the tick
+    /// short-circuits its AI (never moves, attacks, or chases). Grey stone-construct look reads as an inert dummy.</summary>
+    private static MonsterDefinition TrainingDummy() =>
+        MonsterAuthoring.Normalize(new MonsterDefinition(
+            TrainingDummyId,
+            "Training Dummy",
+            "A weighted practice target for the Training Room. It soaks hits and never strikes back.",
+            new MonsterOutfit(61, 0, 19, 19, 19, 0),
+            7349,
+            1,            // PowerTier (placeholder — HP is overridden at spawn)
+            "common",     // Rank: kept out of dungeons because no DungeonTier references this id
+            "juggernaut", // BehaviorId: irrelevant, the dummy's AI is short-circuited
+            "physical",   // neutral element (no resist/weakness)
+            "tank",
+            1, 1, 1, 1,
+            "Training",
+            new Dictionary<string, double>(),
+            "",
+            true,
+            null), TrainingDummyId);
 
     public static IReadOnlyList<AuthoredItemDefinition> AuthoredItems =>
         BuildItems().Select(item => ItemAuthoring.Normalize(item, item.ItemId)).ToList();

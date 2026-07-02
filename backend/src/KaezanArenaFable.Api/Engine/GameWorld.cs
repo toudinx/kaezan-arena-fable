@@ -29,6 +29,7 @@ public sealed class Actor
     public bool IsBossActor;
     public bool IsElite;        // G-06: common-room elite: defeating it grants a choice beat
     public bool IsMimic;        // G-09: corrupted Echo chest: drops gear material on death
+    public bool IsTrainingDummy; // Training Room: passive, huge-HP/regen target (no attack, no loot, respawns)
     public double StatMult = 1.0;
 
     // monster kit (T-53): reactive defenses, summon timers, self-haste
@@ -51,8 +52,11 @@ public sealed class Actor
     public long SinUntilMs;
     public int DecayStacks;     // Velvet: Accumulated Curse (raises the execution threshold)
     public long DecayUntilMs;
-    public int FrostHits;       // Lunara: hits on the slowed target until shatter
+    public int FrostHits;       // Lunara: Frostbite stacks until shatter
+    public long FrostUntilMs;
     public bool IsPrey;         // Gaia: target marked as Prey (HUD/render)
+    public bool HasStaticMark;   // Rynna: Static Charge mark, detonated by full Charge / Storm Heart
+    public long StaticMarkUntilMs;
     public bool Killed;         // guard: KillMonster processes each death exactly once
 
     // DoT left on this monster by a player skill (necromancer wither / eternal suffering).
@@ -116,6 +120,12 @@ public sealed class PlayerSummon
     public long NextPulseAtMs;
     public long ExpireAtMs;
     public bool IsEchoSpectre; // G-04: Harvest specter (Velvet), counted against the cap of 5.
+    // Roaming shade (Velvet): drifts one tile toward the nearest enemy each pulse and, when
+    // LeavesField, seeds a spreading field of its element on the tiles it crosses (corrosion trail).
+    public bool Roams;
+    public bool LeavesField;
+    public double FieldPower;
+    public int FieldTickMs, FieldLifeMs, FieldSpreadChance, FieldSpreadGenerations;
 }
 
 /// <summary>A hazard tile painted by a player skill (shape "field"): damages/slows the monster
@@ -160,6 +170,14 @@ public sealed class ScheduledStrike
     public int FieldRadius, FieldTickMs, FieldLifeMs, FieldSpreadChance, FieldSpreadGenerations;
     public double FieldSlowFactor = 1;
     public int FieldSlowMs;
+    // Velvet Soul Detonation: a Death Orb burst (re-seeds Decay on survivors so it can cascade).
+    public bool IsDeathOrb;
+    // Rin Infernal Ball: this impact stacks the room-wide burn-damage multiplier.
+    public bool StacksBurnMult;
+    // Rynna Storm Heart: scheduled nova waves detonate Static marks in their footprint.
+    public bool DetonatesStaticMarks;
+    public double SkillLifesteal;
+    public double StaticChargeGain;
 }
 
 public sealed class GroundItem
@@ -181,7 +199,7 @@ public sealed class Poi
     public bool Used;
 }
 
-public enum CommandKind { SetMoveDir, SetTarget, CastSkill, ToggleStance, ToggleAutoHelper, Interact, ChooseCard, RerollCards, BanCard, Abandon, UsePotion, Dash }
+public enum CommandKind { SetMoveDir, SetTarget, CastSkill, ToggleStance, ToggleAutoHelper, Interact, ChooseCard, RerollCards, BanCard, Abandon, UsePotion, Dash, SetTrainingFreeCast }
 
 public sealed record Command(CommandKind Kind, int A, int B, string? S);
 
@@ -272,6 +290,10 @@ public sealed class GameWorld
     private bool _autoHelperTargeting = true;
     private bool _autoHelperSkills = true;
     private bool _autoHelperUltimate = true;
+    // Training Room only: when on, skills and the ultimate ignore cooldown/gauge so kits (and FX of the
+    // never-otherwise-reachable ult) can be spammed. Guarded by Mode so it can never leak into real runs.
+    private bool _trainingFreeCast;
+    private bool FreeCast => _trainingFreeCast && Mode == GameMode.Training;
     private string _autoHelperTargetPreference = GameConfig.AutoHelperTargetPreferenceNearest;
     private string _autoHelperMovementMode = GameConfig.AutoHelperMovementModeNone;
     private string _savedAutoHelperMovementMode = GameConfig.AutoHelperMovementModeNone;
@@ -303,6 +325,8 @@ public sealed class GameWorld
     private readonly List<PlayerSummon> _summons = [];
     private readonly List<GroundField> _fields = [];
     private readonly List<ScheduledStrike> _pendingStrikes = [];
+    // True while a Death Orb burst is being resolved, so its kills do not spawn more orbs (no cascade).
+    private bool _resolvingDeathOrb;
     private long _playerSlowUntilMs;
     private double _playerSlowFactor = 1.0;
 
@@ -317,7 +341,17 @@ public sealed class GameWorld
     private long _traitHasteUntilMs;     // Lunara: Shatter haste (move speed)
     private double _traitHasteFactor = 1.0;
     private long _contagionNextJumpMs;   // Rin: Contagion, next periodic burn jump
+    private int _rinBurnMultStacks;      // Rin: Infernal Ball, room-wide burn-damage multiplier stacks
+    private long _rinBurnMultNextDecayMs; // when the next stack bleeds off
     private int _cardDoubleStrikeHits;   // G-04: Double Strike direct-hit counter
+
+    // KR-00: shared auto-modifier state (empowered autoattack). Armed by a buff-shaped skill; consumed
+    // per auto in TickPlayerCombat. Dormant until a Kaeli kit wires an AutoModKind (Seren/Lunara/Gaia).
+    private string? _autoModKind;        // null = inactive; "cleave" | "pierce" | "lock_pierce"
+    private long _autoModUntilMs;        // window expiry (also a safety cap for charge-based mods)
+    private int _autoModChargesLeft;     // remaining empowered autos (charge-based only)
+    private int _autoModMaxCharges;      // 0 = time-windowed; > 0 = charge-based (reset-on-kill cap)
+    private bool _autoModResetOnKill;    // a kill during the window refunds a charge, up to the cap
 
     // G-04B: live Echo state per Kaeli (1-stack cap; presence = HasEcho).
     private double _echoShield;          // Eloa Martyr / Velvet Pact: overheal shield that absorbs damage
@@ -390,6 +424,11 @@ public sealed class GameWorld
             ? GameConfig.AutoHelperMovementModeFollow
             : GameConfig.AutoHelperMovementModeAvoid;
         _autoHelperMovementMode = _defaultAutoHelperMovementMode;
+        if (waifu.ClassId == Classes.StormcallerId)
+        {
+            _autoHelperAutoHeal = GameConfig.RynnaHelperAutoHealDefault;
+            _autoHelperHealPct = GameConfig.RynnaHelperHealPctDefault;
+        }
         if (!string.IsNullOrWhiteSpace(helperProfile)) ApplyHelperProfile(helperProfile);
 
         // LM-08: biome comes from ContentStore (editable in admin); fallback to canonical defaults for
@@ -560,6 +599,46 @@ public sealed class GameWorld
         return null;
     }
 
+    /// <summary>Training Room: one passive dummy at the arena centre — a DEDICATED practice creature
+    /// (KaezanContentSeed.TrainingDummyId), not a dungeon mob or boss. Huge HP + regen (TickTrainingDummy) so it
+    /// can be wailed on forever; never attacks, never chases, drops nothing. Re-callable (TrainingModeStrategy
+    /// respawns it if it ever dies).</summary>
+    internal void SpawnTrainingDummy()
+    {
+        var floor = _floors[0];
+        var room = floor.Rooms[0];
+        var species = _monsterRegistry.Get(KaezanContentSeed.TrainingDummyId);
+        var (cx, cy) = (room.CenterX, room.CenterY);
+        if (floor.IsBlocked(cx, cy) || OccupiedBy(0, cx, cy) is not null)
+            (cx, cy) = OpenTileNear(0, cx, cy);
+        _monsters.Add(new Actor
+        {
+            Id = _nextActorId++,
+            Species = species,
+            Floor = 0,
+            X = cx, Y = cy, FromX = cx, FromY = cy,
+            Hp = GameConfig.TrainingDummyHp,
+            MaxHp = GameConfig.TrainingDummyHp,
+            AttackReadyAtMs = new long[Math.Max(species.Attacks.Count, 1)],
+            DefenseReadyAtMs = new long[species.Defenses.Count],
+            SummonReadyAtMs = new long[species.Summons.Count],
+            IsTrainingDummy = true,
+            Facing = Dir.North,
+        });
+    }
+
+    /// <summary>Per-tick behaviour of the training dummy: regenerates toward full (so the HP bar recovers
+    /// between bursts) and faces the player. It never moves or attacks — the AI loop short-circuits here.</summary>
+    private void TickTrainingDummy(Actor dummy)
+    {
+        if (dummy.Hp < dummy.MaxHp)
+        {
+            var regen = (int)(dummy.MaxHp * GameConfig.TrainingDummyRegenPctPerSec * (GameConfig.TickMs / 1000.0));
+            dummy.Hp = Math.Min(dummy.MaxHp, dummy.Hp + Math.Max(regen, 1));
+        }
+        dummy.Facing = FacingFrom(Player.X - dummy.X, Player.Y - dummy.Y);
+    }
+
     /// <summary>G-08B: common spawn budget cost (swarm costs 1, filling the room with chaff).</summary>
     private int SpawnCostFor(string speciesName) =>
         GameConfig.BehaviorProfile(_monsterRegistry.Get(speciesName).BehaviorId)?.SpawnCost ?? 2;
@@ -686,6 +765,9 @@ public sealed class GameWorld
                 break;
             case CommandKind.BanCard:
                 BanCard(cmd.S ?? "");
+                break;
+            case CommandKind.SetTrainingFreeCast:
+                if (Mode == GameMode.Training) _trainingFreeCast = cmd.A != 0;
                 break;
             case CommandKind.Abandon:
                 EndRun(false, "abandoned");
@@ -936,6 +1018,9 @@ public sealed class GameWorld
     // * RoleSkillMult(). PlayerAttack() returns the "pure" attack (without role multiplier).
     private double RoleAutoMult() => RoleTuning.AutoDmgMult;
     private double RoleSkillMult() => RoleTuning.SkillDmgMult;
+    private int EffectiveAutoRange() =>
+        RoleTuning.AutoRange + (IsBuffActive(GameConfig.LunaraLunarFocusBuff)
+            ? GameConfig.LunaraLunarFocusRangeBonus : 0);
 
     // MG-04: AOE size scaled by role (mage > knight > archer). Radius 0 (single-tile hit)
     // single-target) is preserved; positives round by AoeScale with floor 1. Math.Round is deterministic.
@@ -961,6 +1046,8 @@ public sealed class GameWorld
             atk *= 1 + Math.Min(packed * _trait.Value, _trait.Param) * _traitMult;
         }
         if (IsBuffActive("atk")) atk *= 1.35;
+        if (IsBuffActive(GameConfig.UltStateAutoChain)) atk *= GameConfig.GaiaRicochetAttackMultiplier;
+        if (IsBuffActive(GameConfig.RynnaBloodlustBuff)) atk *= GameConfig.RynnaBloodlustAttackMultiplier;
         if (IsBuffActive("bloodrage")) atk *= GameConfig.BloodRageAttackMultiplier;
         if (IsBuffActive("aegis")) atk *= GameConfig.SentinelAegisAttackMultiplier;
         return atk * GameConfig.PlayerDamageMult;
@@ -980,6 +1067,9 @@ public sealed class GameWorld
         // and the 400ms floor continue on top.
         var interval = (double)RoleTuning.BaseAutoAttackMs / (1 + CardValue("atkSpeedPercent"));
         if (IsBuffActive("atkspeed")) interval /= 1.40;
+        if (IsBuffActive(GameConfig.SerenWarCadenceBuff)) interval /= GameConfig.SerenWarCadenceAttackSpeedMultiplier;
+        if (IsBuffActive(GameConfig.LunaraLunarFocusBuff)) interval /= GameConfig.LunaraLunarFocusAttackSpeedMultiplier;
+        if (IsBuffActive(GameConfig.UltStateAutoChain)) interval /= GameConfig.GaiaRicochetAttackSpeedMultiplier;
         if (IsBuffActive("aegis")) interval /= GameConfig.SentinelAegisAttackSpeedMultiplier;
         if (NowMs < _preyHuntBonusUntilMs) interval /= 1 + GameConfig.GaiaHuntAtkSpeedBonus; // Gaia: hunt
         return (long)Math.Max(interval, 400);
@@ -1085,8 +1175,9 @@ public sealed class GameWorld
         if (foe is not null)
         {
             var combatSpeed = PlayerSpeed();
-            if (Chebyshev(Player, foe) > RoleTuning.AutoRange
-                && !TryStepTowardDistance(foe, RoleTuning.AutoRange, combatSpeed)
+            var autoRange = EffectiveAutoRange();
+            if (Chebyshev(Player, foe) > autoRange
+                && !TryStepTowardDistance(foe, autoRange, combatSpeed)
                 && NextNavStep(foe.X, foe.Y) is { } chase)
                 TryStep(Player, chase.Dx, chase.Dy, combatSpeed);
             return;
@@ -1138,7 +1229,7 @@ public sealed class GameWorld
             return false; // far/stuck: exit BFS approaches
         }
 
-        var kite = RoleTuning.AutoRange;
+        var kite = EffectiveAutoRange();
         if (dist > kite + 3) return false; // far away: approach with exit BFS (local steering gets stuck on rock masses)
 
         // Echo Break / stunned: the boss is stopped, so plant and dump damage (tick combat/skills unload).
@@ -1499,8 +1590,8 @@ public sealed class GameWorld
 
     private void TryAutoHelperSkill(int slot)
     {
-        if (slot < 4 && NowMs < _skillReadyAtMs[slot]) return;
-        if (slot == 4 && _gauge < GameConfig.UltimateGaugeMax) return;
+        if (slot < 4 && !FreeCast && NowMs < _skillReadyAtMs[slot]) return;
+        if (slot == 4 && !FreeCast && _gauge < GameConfig.UltimateGaugeMax) return;
 
         var skill = CurrentSkillBar()[slot];
         if (!ShouldAutoHelperCast(skill, slot == 4, out var target)) return;
@@ -1792,7 +1883,7 @@ public sealed class GameWorld
 
     // MG-02: auto range comes from role (archer > mage > knight), no longer from the weapon (cosmetic).
     private bool CanPlayerAutoAttack(Actor target) =>
-        IsTargetableByPlayer(target, RoleTuning.AutoRange);
+        IsTargetableByPlayer(target, EffectiveAutoRange());
 
     private bool IsTargetableByPlayer(Actor target, int maxRange) =>
         target.Hp > 0
@@ -1813,6 +1904,12 @@ public sealed class GameWorld
 
         if (!CanPlayerAutoAttack(target)) return;
 
+        // KR-00/KR-04: lock_pierce and Ricochet keep Gaia's autos committed to the Prey when that
+        // marked target is still a legal auto target.
+        if (((IsAutoModArmed && _autoModKind == "lock_pierce") || IsBuffActive(GameConfig.UltStateAutoChain))
+            && TraitMarkedTarget() is { } marked && CanPlayerAutoAttack(marked))
+            target = marked;
+
         _autoAttackReadyAtMs = NowMs + AutoAttackInterval();
         Player.Facing = FacingFrom(target.X - Player.X, target.Y - Player.Y);
 
@@ -1823,8 +1920,156 @@ public sealed class GameWorld
         var attackElement = string.IsNullOrWhiteSpace(EquipmentStats.WeaponElement)
             ? Waifu.Element
             : EquipmentStats.WeaponElement;
-        DealDamageToMonster(target, PlayerAttack() * RoleAutoMult(), attackElement, hitEffect: missile > 0 ? 0 : 216);
+        var autoDamage = PlayerAttack() * RoleAutoMult();
+        DealDamageToMonster(target, autoDamage, attackElement, hitEffect: missile > 0 ? 0 : 216);
+        ApplyLunaraBaselineAutoSplash(target, autoDamage, attackElement, missile);
+        if (IsBuffActive(GameConfig.UltStateAutoChain))
+            ApplyRicochetAutoChain(target, autoDamage, attackElement, missile);
+        // KR-00: while armed, the same auto splashes per its kind (cleave/pierce) and spends a charge.
+        if (IsAutoModArmed) ConsumeAutoModifier(target, autoDamage, attackElement);
     }
+
+    /// <summary>Gaia Ricochet (§4D): while auto_chain is active, the primary auto stays full-strength
+    /// on the Prey and reduced follow-up shots jump through nearby foes. The jump target is stable:
+    /// shortest distance from the previous hit, then lowest id. Boss-only fights simply have no jumps.</summary>
+    private void ApplyRicochetAutoChain(Actor primary, double autoDamage, string element, int missile)
+    {
+        if (_trait.Kind != "prey") return;
+        var hit = new HashSet<int> { primary.Id };
+        var fromX = primary.X;
+        var fromY = primary.Y;
+        for (var h = 0; h < GameConfig.GaiaRicochetChainJumps; h++)
+        {
+            var next = NearestUnhitMonster(fromX, fromY, GameConfig.GaiaRicochetChainRange, hit);
+            if (next is null) break;
+            if (missile > 0) Emit("projectile", fromX, fromY, next.X, next.Y, missile);
+            Emit("effect", next.X, next.Y, 0, 0, 216);
+            DealDamageToMonster(next, autoDamage * GameConfig.GaiaRicochetSecondaryDamageScale, element, 0);
+            hit.Add(next.Id);
+            fromX = next.X;
+            fromY = next.Y;
+        }
+    }
+
+    /// <summary>Lunara Frostbite (§4C): her baseline auto is not pure single-target. It splashes a
+    /// small moonshot into the nearest neighbor, seeding frost through the pack while keeping caster
+    /// AoE modest. Stable target choice: distance from the primary, then id.</summary>
+    private void ApplyLunaraBaselineAutoSplash(Actor primary, double autoDamage, string element, int missile)
+    {
+        if (_trait.Kind != "shatter") return;
+        var neighbor = NearestUnhitMonster(primary.X, primary.Y, GameConfig.LunaraBaselineSplashRange,
+            new HashSet<int> { primary.Id });
+        if (neighbor is null) return;
+        if (missile > 0) Emit("projectile", primary.X, primary.Y, neighbor.X, neighbor.Y, missile);
+        Emit("effect", neighbor.X, neighbor.Y, 0, 0, 44);
+        DealDamageToMonster(neighbor, autoDamage * GameConfig.LunaraBaselineSplashDamageScale, element, 0);
+    }
+
+    // ================= KR-00: auto-modifier seam (empowered autoattack) =================
+    // Shared by the auto-Kaelis (Seren cleave, Lunara/Gaia pierce, Gaia lock_pierce). Deterministic:
+    // the neighbor is chosen by shortest distance with a lowest-id tie-break; only draws _rng through
+    // the normal hit roll. Dormant until a kit sets SkillDef.AutoModKind on one of its buff skills.
+
+    /// <summary>True while an auto-modifier is active: a kind is set, the window has not lapsed, and
+    /// (for charge-based mods) at least one charge remains.</summary>
+    private bool IsAutoModArmed =>
+        _autoModKind is not null && NowMs < _autoModUntilMs
+        && (_autoModMaxCharges == 0 || _autoModChargesLeft > 0);
+
+    /// <summary>Arms the auto-modifier from a buff-shaped skill. Charge-based when AutoModCharges > 0
+    /// (reset-on-kill refunds up to that cap); otherwise time-windowed by BuffMs (default window as a fallback).</summary>
+    private void ActivateAutoModifier(SkillDef skill, double scale)
+    {
+        _autoModKind = skill.AutoModKind;
+        _autoModMaxCharges = Math.Max(skill.AutoModCharges, 0);
+        _autoModChargesLeft = _autoModMaxCharges;
+        _autoModResetOnKill = skill.AutoModResetOnKill;
+        var windowMs = skill.BuffMs > 0 ? skill.BuffMs : GameConfig.AutoModDefaultWindowMs;
+        _autoModUntilMs = NowMs + (long)(windowMs * scale);
+    }
+
+    private void DisarmAutoModifier()
+    {
+        _autoModKind = null;
+        _autoModChargesLeft = 0;
+        _autoModMaxCharges = 0;
+        _autoModResetOnKill = false;
+        _autoModUntilMs = 0;
+    }
+
+    /// <summary>Applies the armed auto-modifier's secondary effect on the same auto and spends a charge.
+    /// cleave hits the small diamond around the primary; pierce/lock_pierce splash to the nearest
+    /// neighbor with falloff. Called only while <see cref="IsAutoModArmed"/> (so charges &gt; 0 here).</summary>
+    private void ConsumeAutoModifier(Actor primary, double autoDamage, string element)
+    {
+        // Spend this auto's charge first; a kill from the splash below can then refund it (net-0 on kill).
+        if (_autoModMaxCharges > 0) _autoModChargesLeft--;
+
+        switch (_autoModKind)
+        {
+            case "cleave":
+                foreach (var (tx, ty) in CircleTiles(primary.X, primary.Y, GameConfig.AutoModCleaveRadius))
+                {
+                    if (tx == primary.X && ty == primary.Y) continue;
+                    var victim = MonsterAt(tx, ty);
+                    if (victim is null || victim.Id == primary.Id) continue;
+                    Emit("effect", tx, ty, 0, 0, 216);
+                    DealDamageToMonster(victim, autoDamage * GameConfig.AutoModCleaveDamageScale, element, 0);
+                }
+                break;
+
+            case "pierce":
+            case "lock_pierce":
+                if (NearestAutoModNeighbor(primary) is { } neighbor)
+                {
+                    Emit("effect", neighbor.X, neighbor.Y, 0, 0, 216);
+                    DealDamageToMonster(neighbor, autoDamage * GameConfig.AutoModPierceDamageScale, element, 0);
+                    if (_trait.Kind == "shatter" && neighbor.Hp > 0)
+                    {
+                        AddFrostStacks(neighbor, GameConfig.LunaraMoonlightVolleyExtraFrostStacks);
+                        TryShatterFrost(neighbor);
+                    }
+                }
+                break;
+        }
+
+        if (_autoModMaxCharges > 0 && _autoModChargesLeft <= 0) DisarmAutoModifier();
+    }
+
+    /// <summary>KR-00 reset-on-kill hook: a kill during an armed window refunds one charge (capped).</summary>
+    private void OnMonsterKilledAutoMod()
+    {
+        if (_autoModKind is null || !_autoModResetOnKill || _autoModMaxCharges <= 0) return;
+        if (NowMs >= _autoModUntilMs) return;
+        _autoModChargesLeft = Math.Min(_autoModChargesLeft + 1, _autoModMaxCharges);
+    }
+
+    /// <summary>Nearest living neighbor (other than the primary) within the pierce reach, on the current
+    /// floor. Deterministic: shortest Chebyshev distance, ties broken by lowest id.</summary>
+    private Actor? NearestAutoModNeighbor(Actor primary)
+    {
+        Actor? best = null;
+        var bestDist = int.MaxValue;
+        foreach (var m in _monsters)
+        {
+            if (m.Hp <= 0 || m.Floor != _currentFloor || m.Id == primary.Id) continue;
+            var d = Chebyshev(primary.X, primary.Y, m.X, m.Y);
+            if (d > GameConfig.AutoModPierceRange) continue;
+            if (d < bestDist || (d == bestDist && (best is null || m.Id < best.Id)))
+            {
+                bestDist = d;
+                best = m;
+            }
+        }
+        return best;
+    }
+
+    /// <summary>The current trait mark used by lock_pierce (Gaia's Prey today); null for traits without a
+    /// single marked target. Reads existing state only — no kit is wired to lock_pierce yet.</summary>
+    private Actor? TraitMarkedTarget() =>
+        _trait.Kind == "prey" && _preyId != 0
+            ? _monsters.FirstOrDefault(m => m.Id == _preyId && m.Hp > 0 && m.Floor == _currentFloor)
+            : null;
 
     private void TryCastSkill(int slot)
     {
@@ -1834,9 +2079,9 @@ public sealed class GameWorld
 
         if (isUlt)
         {
-            if (_gauge < GameConfig.UltimateGaugeMax) return;
+            if (!FreeCast && _gauge < GameConfig.UltimateGaugeMax) return;
         }
-        else if (NowMs < _skillReadyAtMs[slot]) return;
+        else if (!FreeCast && NowMs < _skillReadyAtMs[slot]) return;
 
         var target = _monsters.FirstOrDefault(m => m.Id == Player.TargetId && m.Hp > 0 && m.Floor == Player.Floor)
                      ?? NearestMonster(skill.Range > 0 ? skill.Range : GameConfig.AutoHelperTargetRange);
@@ -1857,11 +2102,12 @@ public sealed class GameWorld
 
         if (isUlt)
         {
-            _gauge = 0;
+            // Free-cast (Training) keeps the gauge full so the ult stays spammable.
+            if (!FreeCast) _gauge = 0;
             // Echo Thunder Core: using the ultimate refills Charge.
             if (HasEcho("thunder_core")) _staticCharge = GameConfig.RynnaChargeMax;
         }
-        else _skillReadyAtMs[slot] = NowMs + (long)(
+        else if (!FreeCast) _skillReadyAtMs[slot] = NowMs + (long)(
             skill.CooldownMs
             * Loadout.Mastery.CooldownMult
             * (1 - EquipmentStats.CooldownReduction));
@@ -1880,6 +2126,10 @@ public sealed class GameWorld
         switch (skill.Shape)
         {
             case "buff":
+                // KR-00: a buff-shaped skill may arm the shared auto-modifier (empowered autos), toggle
+                // a named state (reused by ult-states like ramp_unlocked/auto_chain), and/or heal.
+                if (skill.AutoModKind is not null)
+                    ActivateAutoModifier(skill, ultScale);
                 if (skill.Buff == "heal")
                 {
                     HealPlayer((int)Math.Ceiling(Player.MaxHp * GameConfig.NaturesEmbraceHealFraction * ultScale));
@@ -1915,12 +2165,40 @@ public sealed class GameWorld
 
             case "nova":
             {
-                foreach (var (tx, ty) in CircleTiles(Player.X, Player.Y, SkillRadius(skill.Radius, isUlt)))
+                var radius = SkillRadius(skill.Radius, isUlt);
+                if (skill.Strikes > 0)
+                {
+                    var strikes = Math.Max(skill.Strikes, 1);
+                    var interval = Math.Max(skill.StrikeIntervalMs, GameConfig.TickMs);
+                    for (var k = 0; k < strikes; k++)
+                        _pendingStrikes.Add(new ScheduledStrike
+                        {
+                            Floor = _currentFloor, X = Player.X, Y = Player.Y,
+                            AtMs = NowMs + (long)k * interval,
+                            Element = skill.Element, Fx = skill.EffectId, Damage = damage,
+                            Radius = radius, StunMs = skill.StunMs,
+                            DetonatesStaticMarks = skill.DetonateStaticMarks,
+                            SkillLifesteal = skill.SkillLifesteal,
+                            StaticChargeGain = skill.DetonateStaticMarks ? GameConfig.RynnaStormHeartChargePerWave : 0,
+                        });
+                    Emit("effect", Player.X, Player.Y, 0, 0, skill.EffectId);
+                    break;
+                }
+
+                var victims = new List<Actor>();
+                foreach (var (tx, ty) in CircleTiles(Player.X, Player.Y, radius))
                 {
                     if (tx == Player.X && ty == Player.Y) continue;
                     Emit("effect", tx, ty, 0, 0, skill.EffectId);
                     var victim = MonsterAt(tx, ty);
-                    if (victim is not null) HitMonster(victim, damage, skill, ultScale);
+                    if (victim is not null && !victims.Contains(victim)) victims.Add(victim);
+                }
+                foreach (var victim in victims)
+                {
+                    if (skill.PullTiles > 0) PullMonsterTowardPlayer(victim, skill.PullTiles);
+                    if (skill.EchoShieldOnHit > 0)
+                        GainEchoShield(Player.MaxHp * skill.EchoShieldOnHit * ultScale);
+                    HitMonster(victim, damage, skill, ultScale);
                 }
                 break;
             }
@@ -1953,6 +2231,26 @@ public sealed class GameWorld
                     var victim = MonsterAt(tx, ty);
                     if (victim is not null) HitMonster(victim, damage, skill, ultScale);
                 }
+                if (skill.Strikes > 0 && skill.SummonPower > 0)
+                {
+                    var pulseDamage = PlayerAttack() * RoleSkillMult() * skill.SummonPower
+                        * EquipmentStats.SkillPowerMultiplier
+                        * (isUlt ? ultScale : Loadout.Mastery.SlotPowerMult(slot));
+                    var interval = Math.Max(skill.StrikeIntervalMs, GameConfig.TickMs);
+                    var radius = SkillRadius(Math.Max(skill.SummonRadius, 1), isUlt);
+                    for (var k = 0; k < skill.Strikes; k++)
+                        _pendingStrikes.Add(new ScheduledStrike
+                        {
+                            Floor = _currentFloor,
+                            X = Player.X,
+                            Y = Player.Y,
+                            AtMs = NowMs + skill.StrikeDelayMs + (long)k * interval,
+                            Element = skill.Element,
+                            Fx = skill.EffectId,
+                            Damage = pulseDamage,
+                            Radius = radius,
+                        });
+                }
                 break;
             }
 
@@ -1961,16 +2259,24 @@ public sealed class GameWorld
                 // construct dropped on the caster's tile; pulses area damage for SummonMs.
                 var pulseMs = Math.Max(skill.SummonPulseMs, GameConfig.TickMs);
                 var slotMult = isUlt ? ultScale : Loadout.Mastery.SlotPowerMult(slot);
+                var summonPulse = PlayerAttack() * RoleSkillMult() * skill.SummonPower
+                    * EquipmentStats.SkillPowerMultiplier * slotMult;
                 _summons.Add(new PlayerSummon
                 {
                     Floor = _currentFloor, X = Player.X, Y = Player.Y,
                     Element = skill.Element, Fx = skill.EffectId,
                     Radius = Math.Max(skill.SummonRadius, 1),
-                    DamagePerPulse = PlayerAttack() * RoleSkillMult() * skill.SummonPower
-                        * EquipmentStats.SkillPowerMultiplier * slotMult,
+                    DamagePerPulse = summonPulse,
                     PulseMs = pulseMs,
                     NextPulseAtMs = NowMs + pulseMs,
                     ExpireAtMs = NowMs + Math.Max(skill.SummonMs, pulseMs),
+                    Roams = skill.SummonRoams,
+                    LeavesField = skill.SummonLeavesField,
+                    FieldPower = summonPulse * GameConfig.VelvetShadeCorrosionFraction,
+                    FieldTickMs = pulseMs,
+                    FieldLifeMs = GameConfig.FieldSpreadChildLifeMs,
+                    FieldSpreadChance = skill.FieldSpreadChance,
+                    FieldSpreadGenerations = skill.FieldSpreadGenerations,
                 });
                 Emit("effect", Player.X, Player.Y, 0, 0, skill.EffectId);
                 break;
@@ -2003,6 +2309,40 @@ public sealed class GameWorld
             {
                 // scaled outer radius, but never collapses over the central hole (keeps a valid ring).
                 var outer = Math.Max(SkillRadius(skill.Radius, isUlt), skill.RingInner + 1);
+                if (skill.Strikes > 0)
+                {
+                    var availableBands = Math.Max(1, outer - skill.RingInner);
+                    var bands = Math.Min(Math.Max(skill.Strikes, 1), availableBands);
+                    var interval = Math.Max(skill.StrikeIntervalMs, GameConfig.TickMs);
+                    var previousOuter = skill.RingInner;
+                    for (var k = 0; k < bands && previousOuter < outer; k++)
+                    {
+                        var bandOuter = k == bands - 1
+                            ? outer
+                            : skill.RingInner + (int)Math.Round(
+                                (outer - skill.RingInner) * (k + 1) / (double)bands,
+                                MidpointRounding.AwayFromZero);
+                        bandOuter = Math.Clamp(bandOuter, previousOuter + 1, outer);
+                        _pendingStrikes.Add(new ScheduledStrike
+                        {
+                            Floor = _currentFloor,
+                            X = Player.X,
+                            Y = Player.Y,
+                            AtMs = NowMs + skill.StrikeDelayMs + (long)k * interval,
+                            Element = skill.Element,
+                            Fx = skill.EffectId,
+                            Damage = damage,
+                            Radius = bandOuter,
+                            RingInner = previousOuter,
+                            StunMs = skill.StunMs,
+                            SlowFactor = skill.SlowFactor,
+                            SlowMs = skill.SlowMs,
+                        });
+                        previousOuter = bandOuter;
+                    }
+                    Emit("effect", Player.X, Player.Y, 0, 0, skill.EffectId);
+                    break;
+                }
                 foreach (var (tx, ty) in RingTiles(Player.X, Player.Y, skill.RingInner, outer))
                 {
                     Emit("effect", tx, ty, 0, 0, skill.EffectId);
@@ -2049,17 +2389,41 @@ public sealed class GameWorld
                         FieldLifeMs = Math.Max(skill.SummonMs, fieldTickMs),
                         FieldSpreadChance = skill.FieldSpreadChance, FieldSpreadGenerations = skill.FieldSpreadGenerations,
                         FieldSlowFactor = skill.SlowFactor, FieldSlowMs = skill.SlowMs,
+                        StacksBurnMult = skill.StackBurnMult,
                     });
                 Emit("effect", aimX, aimY, 0, 0, skill.EffectId); // telegrafo inicial
                 break;
             }
         }
+
+        // Reign of Shadows (§4G): the ult cashes in the whole run's harvest — every Death Orb still
+        // waiting out its delay bursts now, alongside the shadow rain above.
+        if (skill.DetonateDeathOrbs) DetonatePendingDeathOrbs();
     }
 
     private void HitMonster(Actor monster, double damage, SkillDef skill, double buffScale = 1.0)
     {
+        // Wildfire Reckoning (§4F): read the pending burn BEFORE the hit re-ignites it via Contagion, so the
+        // reap scales with what the target had accumulated (amplified by the ult's burn multiplier), not a
+        // fresh burn. Reaped after the hit's riders resolve.
+        double burnToReap = 0;
+        if (skill.ConsumeBurnBonus > 0)
+        {
+            foreach (var d in monster.Dots)
+                if (d.Element == "fire") burnToReap += d.DamagePerTick * d.TicksLeft;
+            burnToReap *= 1 + RinBurnMult();
+        }
+
         if (skill.Power > 0)
-            DealDamageToMonster(monster, damage, skill.Element, 0, fromSkill: true);
+        {
+            // Soul Rend (§4G): a finisher — extra damage against an already-wounded target.
+            if (skill.LowHpBonus > 0 && monster.Hp < monster.MaxHp * skill.LowHpThreshold)
+                damage *= 1 + skill.LowHpBonus;
+                DealDamageToMonster(monster, damage, skill.Element, 0, fromSkill: true,
+                traitChargeBonus: skill.TraitChargeBonus,
+                consumePreyRampBonus: skill.ConsumePreyRampBonus,
+                skillLifesteal: skill.SkillLifesteal);
+        }
         if (monster.Hp <= 0) return;
 
         switch (skill.Buff)
@@ -2091,6 +2455,35 @@ public sealed class GameWorld
 
         if (monster.Hp > 0 && skill.SlowMs > 0 && skill.SlowFactor < 1)
             ApplyMonsterSlow(monster, skill.SlowFactor, skill.SlowMs);
+
+        if (monster.Hp > 0 && skill.MassShatterFrost)
+            MassShatterFrost(monster);
+
+        // Wildfire Reckoning (§4F): cash in the pending burn as a burst, then leave a light ember.
+        if (skill.ConsumeBurnBonus > 0 && burnToReap > 0 && monster.Hp > 0)
+            ReapBurn(monster, burnToReap, skill.ConsumeBurnBonus);
+    }
+
+    /// <summary>Wildfire Reckoning (§4F): cash in a target's pending burn. burnToReap is the pre-hit fire
+    /// damage (already amplified by any Infernal Ball multiplier). Consumes the fire DoT — the deliberate
+    /// contrast with the ult, which never consumes — dealing bonusMult × of it as an instant burst, then
+    /// re-seeds a short faint ember so the DoT engine keeps ticking. The burst is fromTrait so it never
+    /// re-ignites via Contagion. Deterministic: no Rng.</summary>
+    private void ReapBurn(Actor monster, double burnToReap, double bonusMult)
+    {
+        monster.Dots.RemoveAll(d => d.Element == "fire"); // consume the accumulated burn (incl. this hit's re-ignite)
+        var burst = burnToReap * bonusMult;
+        if (burst >= 1)
+        {
+            Emit("text", monster.X, monster.Y, 0, 0, 0, "REAP");
+            DealDamageToMonster(monster, burst, "fire", GameConfig.ConditionTickFx["fire"],
+                fromSkill: false, canCrit: false, canLifeSteal: false, fromTrait: true);
+        }
+        if (monster.Hp <= 0) return;
+        // light ember: a faint burn left behind so Contagion has something to keep spreading from.
+        ApplyDotToMonster(monster, "fire", GameConfig.ConditionTickFx["fire"],
+            PlayerAttack() * RoleSkillMult() * GameConfig.RinContagionBurnPower * GameConfig.RinReckoningEmberPowerFraction,
+            GameConfig.RinReckoningEmberTicks, GameConfig.RinContagionBurnTickMs);
     }
 
     /// <summary>Slows a monster's movement (reuses the chiller/reaction slow fields).</summary>
@@ -2132,7 +2525,11 @@ public sealed class GameWorld
             if (NowMs < dot.NextTickAtMs) continue;
             dot.NextTickAtMs = NowMs + dot.TickMs;
             dot.TicksLeft--;
-            DealDamageToMonster(monster, dot.DamagePerTick, dot.Element, dot.Fx,
+            // Infernal Ball (§4F): the room-wide multiplier stokes each fire burn tick hotter.
+            var tickDmg = dot.Element == "fire" && _trait.Kind == "contagion"
+                ? dot.DamagePerTick * (1 + RinBurnMult())
+                : dot.DamagePerTick;
+            DealDamageToMonster(monster, tickDmg, dot.Element, dot.Fx,
                 fromSkill: false, canCrit: false, canLifeSteal: false);
             if (monster.Hp <= 0) { monster.Dots.Clear(); return; }
             if (dot.TicksLeft <= 0)
@@ -2154,6 +2551,27 @@ public sealed class GameWorld
             if (NowMs >= summon.ExpireAtMs) { _summons.RemoveAt(i); continue; }
             if (summon.Floor != _currentFloor || NowMs < summon.NextPulseAtMs) continue;
             summon.NextPulseAtMs = NowMs + summon.PulseMs;
+            // Roaming shade: drift one cardinal step toward the nearest living enemy before pulsing,
+            // and leave a spreading corrosion field on the tile it now occupies.
+            if (summon.Roams)
+            {
+                var prey = NearestLivingMonster(summon.X, summon.Y, _ => true);
+                if (prey is not null)
+                {
+                    var stepX = summon.X + Math.Sign(prey.X - summon.X);
+                    var stepY = summon.Y;
+                    if (prey.X == summon.X || Math.Abs(prey.Y - summon.Y) > Math.Abs(prey.X - summon.X))
+                    {
+                        stepX = summon.X;
+                        stepY = summon.Y + Math.Sign(prey.Y - summon.Y);
+                    }
+                    if (!Floor.IsBlocked(stepX, stepY)) { summon.X = stepX; summon.Y = stepY; }
+                }
+            }
+            if (summon.LeavesField && summon.FieldPower > 0)
+                SpawnField(summon.X, summon.Y, summon.Element, summon.Fx, summon.FieldPower, 1, 0,
+                    summon.FieldTickMs, summon.FieldLifeMs, summon.FieldSpreadChance,
+                    summon.FieldSpreadGenerations, telegraph: false);
             Emit("effect", summon.X, summon.Y, 0, 0, summon.Fx);
             foreach (var (tx, ty) in CircleTiles(summon.X, summon.Y, summon.Radius))
             {
@@ -2175,7 +2593,11 @@ public sealed class GameWorld
         {
             if (m.Hp <= 0 || m.Floor != _currentFloor || exclude.Contains(m.Id)) continue;
             var d = Chebyshev(x, y, m.X, m.Y);
-            if (d <= range && d < bestDist) { bestDist = d; best = m; }
+            if (d <= range && (d < bestDist || (d == bestDist && (best is null || m.Id < best.Id))))
+            {
+                bestDist = d;
+                best = m;
+            }
         }
         return best;
     }
@@ -2198,6 +2620,24 @@ public sealed class GameWorld
     private void ResolveStrike(ScheduledStrike s)
     {
         if (s.Floor != _currentFloor) return;
+        // Soul Detonation: while an orb burst resolves, suppress new orbs from its kills (no cascade).
+        var prevOrb = _resolvingDeathOrb;
+        if (s.IsDeathOrb) _resolvingDeathOrb = true;
+        try
+        {
+            ResolveStrikeBody(s);
+        }
+        finally
+        {
+            _resolvingDeathOrb = prevOrb;
+        }
+    }
+
+    private void ResolveStrikeBody(ScheduledStrike s)
+    {
+        // Infernal Ball (§4F): every meteor impact stokes the room's burn hotter (no consume).
+        if (s.StacksBurnMult) AddBurnMultStack();
+        if (s.StaticChargeGain > 0) AddRynnaCharge(s.StaticChargeGain);
         // fire trail: the meteor ignites the ground where it lands, and the fire spreads (Contagion).
         if (s.LeavesField && s.FieldPower > 0)
             SpawnField(s.X, s.Y, s.Element, s.Fx, s.FieldPower, s.FieldSlowFactor, s.FieldSlowMs,
@@ -2208,7 +2648,12 @@ public sealed class GameWorld
             Emit("effect", tx, ty, 0, 0, s.Fx);
             var victim = MonsterAt(tx, ty);
             if (victim is null) continue;
-            DealDamageToMonster(victim, s.Damage, s.Element, 0, fromSkill: true, canCrit: false, canLifeSteal: false);
+            DealDamageToMonster(victim, s.Damage, s.Element, 0, fromSkill: true, canCrit: false,
+                canLifeSteal: !s.DetonatesStaticMarks, fromTrait: s.DetonatesStaticMarks,
+                skillLifesteal: s.SkillLifesteal);
+            if (victim.Hp <= 0) continue;
+            if (s.DetonatesStaticMarks && ActiveStaticMark(victim))
+                RynnaDetonateStaticMark(victim, massDetonation: true);
             if (victim.Hp <= 0) continue;
             if (s.StunMs > 0) victim.StunUntilMs = NowMs + s.StunMs;
             if (s.SlowMs > 0 && s.SlowFactor < 1) ApplyMonsterSlow(victim, s.SlowFactor, s.SlowMs);
@@ -2337,7 +2782,8 @@ public sealed class GameWorld
     }
 
     private void DealDamageToMonster(Actor monster, double raw, string element, int hitEffect,
-        bool fromSkill = false, bool canCrit = true, bool canLifeSteal = true, bool fromTrait = false)
+        bool fromSkill = false, bool canCrit = true, bool canLifeSteal = true, bool fromTrait = false,
+        int traitChargeBonus = 0, double consumePreyRampBonus = 0, double skillLifesteal = 0)
     {
         // "direct hit" = auto-attack or skill hit (not DoT/field/summon/trait burst).
         // This drives passive state (combo, charge, mark, prey, shatter).
@@ -2355,7 +2801,7 @@ public sealed class GameWorld
         // K-04: pre-damage signature passives (ramp/execution/bonus + guaranteed crit)
         var forceCrit = false;
         if (!fromTrait)
-            ApplyTraitPreDamage(monster, element, directHit, ref roll, ref forceCrit);
+            ApplyTraitPreDamage(monster, element, directHit, ref roll, ref forceCrit, consumePreyRampBonus);
 
         var crit = canCrit && (forceCrit || _rng.Chance(critChance));
         if (crit) roll *= GameConfig.CritMultiplier + EquipmentStats.CritDamage;
@@ -2422,6 +2868,12 @@ public sealed class GameWorld
         if (crit) Emit("effect", monster.X, monster.Y, 0, 0, 173);
 
         var lifesteal = canLifeSteal ? CardValue("lifesteal") + GameConfig.BaselineLifesteal : 0;
+        if (canLifeSteal && IsBuffActive(GameConfig.SerenWarCadenceBuff))
+            lifesteal += GameConfig.SerenWarCadenceLifesteal;
+        if (canLifeSteal && IsBuffActive(GameConfig.RynnaBloodlustBuff))
+            lifesteal += GameConfig.RynnaBloodlustLifesteal;
+        if (canLifeSteal && skillLifesteal > 0)
+            lifesteal += skillLifesteal;
         if (canLifeSteal && EquipmentStats.LifeStealAmount > 0
             && _rng.Chance(EquipmentStats.LifeStealChance))
             lifesteal += EquipmentStats.LifeStealAmount;
@@ -2438,7 +2890,7 @@ public sealed class GameWorld
 
         // K-04: post-damage signature passives (marks, stacks, charge, shatter, contagion)
         if (!fromTrait)
-            ApplyTraitPostDamage(monster, final, element, directHit);
+            ApplyTraitPostDamage(monster, final, element, directHit, fromSkill, traitChargeBonus);
         // G-04: post-damage mechanic cards (fill ult, extra strike): same seam, no new dispatch.
         if (!fromTrait)
             ApplyCardPostDamage(monster, directHit);
@@ -2491,23 +2943,27 @@ public sealed class GameWorld
     // so it does not retrigger its own passive (Killed guard prevents double death counting).
 
     /// <summary>Pre-damage: ramp/execution/bonus that multiply the roll, and guaranteed crit (Seren).</summary>
-    private void ApplyTraitPreDamage(Actor monster, string element, bool directHit, ref double roll, ref bool forceCrit)
+    private void ApplyTraitPreDamage(Actor monster, string element, bool directHit, ref double roll,
+        ref bool forceCrit, double consumePreyRampBonus = 0)
     {
         switch (_trait.Kind)
         {
             case "discipline": // Seren: combo on the same target, 3rd hit = Perfect Cut
             {
                 if (!directHit) break;
-                if (_comboTargetId != monster.Id || NowMs > _comboExpireMs)
+                var rampUnlocked = IsBuffActive(GameConfig.UltStateRampUnlocked);
+                if (!rampUnlocked && (_comboTargetId != monster.Id || NowMs > _comboExpireMs))
                 {
                     _comboTargetId = monster.Id;
                     _comboHits = 0;
                 }
+                if (rampUnlocked)
+                    _comboTargetId = monster.Id;
                 _comboHits++;
                 // Echo Endless Cadence: harsher reset, uncapped ramp.
                 _comboExpireMs = NowMs + (HasEcho("endless_cadence")
                     ? GameConfig.EchoEndlessCadenceResetMs : GameConfig.SerenDisciplineResetMs);
-                var ramp = HasEcho("endless_cadence")
+                var ramp = rampUnlocked ? _trait.Param : HasEcho("endless_cadence")
                     ? _comboHits * _trait.Value
                     : Math.Min(_comboHits * _trait.Value, _trait.Param);
                 // G-08B: keyword "combo": resists/amplifies Discipline ramp against this target.
@@ -2515,7 +2971,7 @@ public sealed class GameWorld
                 // Echo Perfect Execution: Cut every 2nd hit, and guaranteed crit executes weak targets.
                 var cutEvery = HasEcho("perfect_execution")
                     ? GameConfig.EchoPerfectCutEvery : GameConfig.SerenPerfectCutEvery;
-                if (_comboHits % cutEvery == 0)
+                if (rampUnlocked || _comboHits % cutEvery == 0)
                 {
                     forceCrit = true;
                     if (HasEcho("perfect_execution")
@@ -2538,8 +2994,8 @@ public sealed class GameWorld
                 break;
             }
 
-            case "shatter": // Lunara: bonus damage against an already slowed target
-                if (element == "ice" && NowMs < monster.SlowUntilMs)
+            case "shatter": // Lunara: bonus damage against an already frosted target
+                if (directHit && ActiveFrostStacks(monster) > 0)
                     roll *= 1 + _trait.Value * _traitMult;
                 break;
 
@@ -2564,8 +3020,16 @@ public sealed class GameWorld
                     var rampPerSec = _trait.Value * (HasEcho("eternal_hunt") ? GameConfig.EchoEternalHuntRampMult : 1);
                     var cap = _trait.Param * (HasEcho("eternal_hunt") ? GameConfig.EchoEternalHuntCapMult : 1);
                     var huntSec = (NowMs - _preyStartMs) / 1000.0;
+                    var huntRamp = Math.Min(huntSec * rampPerSec, cap) * _traitMult
+                                   * KeywordResistMult(monster, "prey");
                     // G-08B: keyword "prey": resists/amplifies the hunt ramp against this target.
-                    roll *= 1 + Math.Min(huntSec * rampPerSec, cap) * _traitMult * KeywordResistMult(monster, "prey");
+                    roll *= 1 + huntRamp;
+                    if (consumePreyRampBonus > 0 && monster.Id == _preyId)
+                    {
+                        roll *= 1 + huntRamp * consumePreyRampBonus;
+                        _preyStartMs = NowMs;
+                        Emit("text", monster.X, monster.Y, 0, 0, 0, "EXECUTE");
+                    }
                     // Echo Deep Roots: each hit on the Prey roots it and plants earth poison.
                     if (HasEcho("deep_roots") && monster.Hp > 0)
                     {
@@ -2582,7 +3046,8 @@ public sealed class GameWorld
     }
 
     /// <summary>Post-damage: marks, stacks, charge, contagion, and shatter (target still alive).</summary>
-    private void ApplyTraitPostDamage(Actor monster, int final, string element, bool directHit)
+    private void ApplyTraitPostDamage(Actor monster, int final, string element, bool directHit, bool fromSkill,
+        int traitChargeBonus = 0)
     {
         switch (_trait.Kind)
         {
@@ -2600,7 +3065,8 @@ public sealed class GameWorld
                 else
                 {
                     // G-08B: keyword "sin": resistant target accumulates Sin more slowly (immune = never).
-                    var sinGain = KeywordScaledStacks(monster, "sin", 1);
+                    // Judging Lance (§4E) seeds traitChargeBonus extra Sin on top of the base 1.
+                    var sinGain = KeywordScaledStacks(monster, "sin", 1 + traitChargeBonus);
                     if (sinGain > 0)
                     {
                         monster.SinStacks = ActiveSinStacks(monster) + sinGain;
@@ -2632,24 +3098,27 @@ public sealed class GameWorld
                     HealPlayer((int)Math.Max(final * _trait.Value * _traitMult, 0));
                 break;
 
-            case "static_charge": // Rynna: hits fill Charge; full Charge discharges
+            case "static_charge": // Rynna: direct hits mark; full Charge detonates one marked target
                 if (!directHit || monster.Hp <= 0) break;
-                // Echo Perpetual Storm: Charge fills twice as fast.
-                // G-08B: keyword "charge": resistant target fills Charge more slowly.
-                _staticCharge += GameConfig.RynnaChargePerHit
-                    * (HasEcho("perpetual_storm") ? GameConfig.EchoPerpetualChargeMult : 1)
-                    * KeywordResistMult(monster, "charge");
-                if (_staticCharge >= GameConfig.RynnaChargeMax)
+                ApplyStaticMark(monster);
+                if (_staticCharge >= GameConfig.RynnaChargeMax && ActiveStaticMark(monster))
                 {
-                    // Echo Perpetual Storm: Discharge retains half of Charge.
                     _staticCharge = HasEcho("perpetual_storm")
                         ? GameConfig.RynnaChargeMax * GameConfig.EchoPerpetualDischargeRetain : 0;
-                    RynnaDischarge(monster, final);
+                    RynnaDetonateStaticMark(monster, massDetonation: false);
+                    break;
                 }
+
+                // Echo Perpetual Storm: Charge fills twice as fast.
+                // G-08B: keyword "charge": resistant target fills Charge more slowly.
+                AddRynnaCharge(GameConfig.RynnaChargePerHit
+                    * (1 + traitChargeBonus)
+                    * (HasEcho("perpetual_storm") ? GameConfig.EchoPerpetualChargeMult : 1)
+                    * KeywordResistMult(monster, "charge"));
                 break;
 
-            case "shatter": // Lunara: hit on slowed target gives haste and counts toward shatter
-                if (directHit && element == "ice" && monster.Hp > 0) ApplyShatter(monster);
+            case "shatter": // Lunara: autos and ice hits build Frostbite stacks.
+                if (directHit && monster.Hp > 0 && (element == "ice" || !fromSkill)) ApplyShatter(monster);
                 break;
         }
     }
@@ -2675,18 +3144,83 @@ public sealed class GameWorld
         {
             SpreadBurnFrom(monster);
         }
+        else if (_trait.Kind == "decay" && !_resolvingDeathOrb)
+        {
+            // Velvet Soul Detonation: a corpse that dies under Decay drops a Death Orb. Orb-burst kills
+            // are excluded (_resolvingDeathOrb) so the effect is a single generation, never a chain.
+            var stacks = ActiveDecayStacks(monster);
+            if (stacks > 0) SpawnDeathOrb(monster.X, monster.Y, stacks);
+        }
     }
 
-    /// <summary>Rin: periodic fire jump independent of deaths.</summary>
+    /// <summary>Velvet Soul Detonation: schedules a delayed death burst at a slain decayed enemy. The
+    /// burst re-seeds Decay on survivors so it can cascade through a decayed pack; capped per floor so
+    /// the chain stays bounded. Deterministic: timing off NowMs, no Rng.</summary>
+    private void SpawnDeathOrb(int x, int y, int decayStacks)
+    {
+        var orbs = 0;
+        foreach (var s in _pendingStrikes)
+            if (s.IsDeathOrb && s.Floor == _currentFloor) orbs++;
+        if (orbs >= GameConfig.VelvetDeathOrbMaxPerFloor) return;
+
+        var dmg = PlayerAttack() * RoleSkillMult() * EquipmentStats.SkillPowerMultiplier
+            * (GameConfig.VelvetDeathOrbDamageMult + GameConfig.VelvetDeathOrbDamagePerStack * decayStacks);
+        _pendingStrikes.Add(new ScheduledStrike
+        {
+            Floor = _currentFloor, X = x, Y = y,
+            AtMs = NowMs + GameConfig.VelvetDeathOrbDelayMs,
+            Element = "death", Fx = GameConfig.VelvetDeathOrbFx, Damage = dmg,
+            Radius = decayStacks >= GameConfig.VelvetDecayMaxStacks
+                ? GameConfig.VelvetDeathOrbRadius + 1 : GameConfig.VelvetDeathOrbRadius,
+            IsDeathOrb = true,
+        });
+        Emit("effect", x, y, 0, 0, GameConfig.VelvetDeathOrbFx);
+        Emit("text", x, y, 0, 0, 0, "SOUL");
+    }
+
+    /// <summary>Reign of Shadows (§4G): force every pending Death Orb on the current floor to burst now
+    /// instead of waiting out its delay. Reuses ResolveStrike, so the orb-burst anti-cascade guard
+    /// (_resolvingDeathOrb) is set and kills during the burst spawn no new orbs. Iterates back-to-front
+    /// over stable insertion order — deterministic, no Rng.</summary>
+    private void DetonatePendingDeathOrbs()
+    {
+        for (var i = _pendingStrikes.Count - 1; i >= 0; i--)
+        {
+            var s = _pendingStrikes[i];
+            if (!s.IsDeathOrb || s.Floor != _currentFloor) continue;
+            _pendingStrikes.RemoveAt(i);
+            ResolveStrike(s);
+        }
+    }
+
+    /// <summary>Rin: periodic fire jump independent of deaths, plus the Infernal Ball burn-multiplier decay.</summary>
     private void TickTraitTimers()
     {
-        if (_trait.Kind != "contagion" || NowMs < _contagionNextJumpMs) return;
+        if (_trait.Kind != "contagion") return;
+        // Infernal Ball (§4F): the room-wide burn multiplier bleeds off one stack at a time.
+        if (_rinBurnMultStacks > 0 && NowMs >= _rinBurnMultNextDecayMs)
+        {
+            _rinBurnMultStacks--;
+            _rinBurnMultNextDecayMs = NowMs + GameConfig.RinInfernalBurnMultDecayMs;
+        }
+        if (NowMs < _contagionNextJumpMs) return;
         _contagionNextJumpMs = NowMs + GameConfig.RinContagionIntervalMs;
         var src = FirstBurningMonster();
         if (src is null) return;
         SpreadBurnFrom(src);
         // Echo Wildfire: burn does not expire while any target is burning.
         if (HasEcho("wildfire")) RefreshAllBurns();
+    }
+
+    /// <summary>Rin Infernal Ball: current burn-damage bonus fraction from active multiplier stacks
+    /// (0 when none). Amplifies fire DoT ticks and the Wildfire Reckoning reap.</summary>
+    private double RinBurnMult() => _rinBurnMultStacks * GameConfig.RinInfernalBurnMultPerStack;
+
+    /// <summary>Rin Infernal Ball: adds one burn-multiplier stack (capped) and refreshes the decay clock.</summary>
+    private void AddBurnMultStack()
+    {
+        _rinBurnMultStacks = Math.Min(_rinBurnMultStacks + 1, GameConfig.RinInfernalBurnMultMaxStacks);
+        _rinBurnMultNextDecayMs = NowMs + GameConfig.RinInfernalBurnMultDecayMs;
     }
 
     /// <summary>Rin: Wildfire renews active burn duration (does not stack potency).</summary>
@@ -2853,7 +3387,9 @@ public sealed class GameWorld
             burst *= 1 + _eloaSentenceStacks * GameConfig.EchoSentenceBurstPerStack;
             _eloaSentenceStacks = Math.Min(_eloaSentenceStacks + 1, GameConfig.EchoSentenceMaxStacks);
         }
-        var chain = HasEcho("chain_judgment"); // espalha Pecado nos atingidos
+        // The sentence spreads: a base seed always marks nearby enemies; chain_judgment adds more.
+        var chainSeed = GameConfig.EloaBaseChainSinSeed
+            + (HasEcho("chain_judgment") ? GameConfig.EchoEloaChainSinSeed : 0);
         Emit("text", center.X, center.Y, 0, 0, 0, "JUDGED");
         foreach (var (tx, ty) in CircleTiles(center.X, center.Y, GameConfig.EloaJudgmentRadius))
         {
@@ -2862,10 +3398,10 @@ public sealed class GameWorld
             if (victim is null) continue;
             DealDamageToMonster(victim, burst, "holy", 0,
                 fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
-            if (chain && victim.Id != center.Id && victim.Hp > 0)
+            if (chainSeed > 0 && victim.Id != center.Id && victim.Hp > 0)
             {
                 victim.SinStacks = Math.Min(
-                    ActiveSinStacks(victim) + GameConfig.EchoEloaChainSinSeed, GameConfig.EloaSinStacksToJudge);
+                    ActiveSinStacks(victim) + chainSeed, GameConfig.EloaSinStacksToJudge);
                 victim.SinUntilMs = NowMs + GameConfig.EloaSinDurationMs;
             }
         }
@@ -2875,84 +3411,185 @@ public sealed class GameWorld
         else HealPlayer((int)grace);
     }
 
-    // Rynna: short chain that paralyzes nearby targets and accelerates the ultimate.
-    private void RynnaDischarge(Actor origin, int triggerDamage)
+    private void AddRynnaCharge(double amount)
     {
-        Emit("text", origin.X, origin.Y, 0, 0, 0, "DISCHARGE");
-        var dmg = PlayerAttack() * RoleSkillMult() * GameConfig.RynnaDischargeDamageMult;
-        // Echo Thunder Core: Discharge fills the ultimate much faster.
-        var gaugeBonus = GameConfig.RynnaParalyzeGaugeBonus
-            * (HasEcho("thunder_core") ? GameConfig.EchoThunderCoreGaugeMult : 1);
-        var overload = HasEcho("overload"); // paralyze becomes shock DoT
-        var hit = new HashSet<int>();
-        var current = origin;
-        int fromX = Player.X, fromY = Player.Y;
-        for (var h = 0; h < GameConfig.RynnaDischargeChainJumps && current is not null; h++)
+        if (_trait.Kind != "static_charge" || amount <= 0) return;
+        _staticCharge = Math.Min(_staticCharge + amount, GameConfig.RynnaChargeMax);
+    }
+
+    private bool ActiveStaticMark(Actor monster)
+    {
+        if (NowMs >= monster.StaticMarkUntilMs)
         {
-            hit.Add(current.Id);
-            Emit("projectile", fromX, fromY, current.X, current.Y, 5); // energy
-            current.StunUntilMs = Math.Max(current.StunUntilMs, NowMs + GameConfig.RynnaParalyzeMs);
-            Emit("effect", current.X, current.Y, 0, 0, 32); // stun stars
-            _gauge = Math.Min(_gauge + gaugeBonus, GameConfig.UltimateGaugeMax);
-            if (overload)
-                ApplyDotToMonster(current, "energy", GameConfig.ConditionTickFx["energy"],
-                    PlayerAttack() * RoleSkillMult() * GameConfig.EchoOverloadDotPower,
-                    GameConfig.EchoOverloadDotTicks, GameConfig.EchoOverloadDotTickMs);
-            fromX = current.X; fromY = current.Y;
-            DealDamageToMonster(current, dmg, "energy", 12,
-                fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
-            current = NearestUnhitMonster(fromX, fromY, GameConfig.RynnaDischargeChainRange, hit);
+            monster.HasStaticMark = false;
+            return false;
+        }
+        return monster.HasStaticMark;
+    }
+
+    private void ApplyStaticMark(Actor monster)
+    {
+        monster.HasStaticMark = true;
+        monster.StaticMarkUntilMs = NowMs + GameConfig.RynnaStaticMarkDurationMs;
+    }
+
+    private void RynnaDetonateStaticMark(Actor target, bool massDetonation)
+    {
+        target.HasStaticMark = false;
+        target.StaticMarkUntilMs = 0;
+        Emit("text", target.X, target.Y, 0, 0, 0, massDetonation ? "STORM" : "DISCHARGE");
+        target.StunUntilMs = Math.Max(target.StunUntilMs, NowMs + GameConfig.RynnaStaticDetonateStunMs);
+        Emit("effect", target.X, target.Y, 0, 0, 32);
+        _gauge = Math.Min(_gauge + GameConfig.RynnaParalyzeGaugeBonus
+            * (HasEcho("thunder_core") ? GameConfig.EchoThunderCoreGaugeMult : 1), GameConfig.UltimateGaugeMax);
+        if (HasEcho("overload"))
+            ApplyDotToMonster(target, "energy", GameConfig.ConditionTickFx["energy"],
+                PlayerAttack() * RoleSkillMult() * GameConfig.EchoOverloadDotPower,
+                GameConfig.EchoOverloadDotTicks, GameConfig.EchoOverloadDotTickMs);
+        var dmg = PlayerAttack() * RoleSkillMult() * EquipmentStats.SkillPowerMultiplier
+            * GameConfig.RynnaStaticDetonateDamageMult;
+        DealDamageToMonster(target, dmg, "energy", 12,
+            fromSkill: true, canCrit: false, canLifeSteal: true, fromTrait: true,
+            skillLifesteal: GameConfig.RynnaStaticDetonateLifesteal);
+    }
+
+    private void PullMonsterTowardPlayer(Actor monster, int tiles)
+    {
+        if (monster.Hp <= 0 || monster.Floor != Player.Floor || tiles <= 0) return;
+        for (var i = 0; i < tiles && Chebyshev(monster, Player) > 1; i++)
+        {
+            var dx = Math.Sign(Player.X - monster.X);
+            var dy = Math.Sign(Player.Y - monster.Y);
+            var moved = false;
+            foreach (var (sx, sy) in StepAlternatives(dx, dy))
+            {
+                if (!CanStep(monster, sx, sy)) continue;
+                var fromX = monster.X;
+                var fromY = monster.Y;
+                monster.X += sx;
+                monster.Y += sy;
+                monster.FromX = fromX;
+                monster.FromY = fromY;
+                monster.StepStartMs = NowMs;
+                monster.StepDurMs = Math.Min(StepDuration(MonsterSpeed(monster), sx != 0 && sy != 0), GameConfig.TickMs);
+                monster.Facing = FacingFrom(Player.X - monster.X, Player.Y - monster.Y, monster.Facing);
+                Emit("effect", monster.X, monster.Y, 0, 0, 12);
+                AcquirePlayer(monster);
+                moved = true;
+                break;
+            }
+            if (!moved) break;
         }
     }
 
-    // Lunara: brief haste when hitting a slowed target; the 3rd hit shatters and consumes slow.
+    private int ActiveFrostStacks(Actor monster) => NowMs < monster.FrostUntilMs ? monster.FrostHits : 0;
+
+    private void AddFrostStacks(Actor monster, int stacks)
+    {
+        var gain = KeywordScaledStacks(monster, "frost", stacks);
+        if (gain <= 0) return;
+        monster.FrostHits = Math.Min(ActiveFrostStacks(monster) + gain, GameConfig.LunaraShatterHits * 3);
+        monster.FrostUntilMs = NowMs + GameConfig.LunaraFrostDurationMs;
+    }
+
+    private void ClearFrost(Actor monster)
+    {
+        monster.FrostHits = 0;
+        monster.FrostUntilMs = 0;
+    }
+
+    private double FrostShatterDamage(Actor monster, int stacks, double perStack) =>
+        PlayerAttack() * RoleSkillMult() * EquipmentStats.SkillPowerMultiplier
+        * perStack * Math.Max(stacks, 1) * KeywordResistMult(monster, "frost") * _traitMult;
+
+    // Lunara: autos and ice hits build frost. Hitting an already-frosted target grants haste; the
+    // threshold shatters it and cascades through nearby frosted enemies.
     private void ApplyShatter(Actor monster)
     {
-        // Echo Moon Dance: shatters on the 2nd hit; trait haste almost never expires in combat.
-        var shatterHits = HasEcho("moon_dance") ? GameConfig.EchoMoonDanceShatterHits : GameConfig.LunaraShatterHits;
-        if (NowMs < monster.SlowUntilMs)
+        var hadFrost = ActiveFrostStacks(monster) > 0;
+        if (hadFrost)
         {
             _traitHasteUntilMs = NowMs + (HasEcho("moon_dance") ? GameConfig.LunaraHasteMs * 15 : GameConfig.LunaraHasteMs);
             _traitHasteFactor = GameConfig.LunaraHasteFactor;
-            // G-08B: keyword "frost": resistant target accumulates frost hits more slowly (immune = never shatters).
-            monster.FrostHits += KeywordScaledStacks(monster, "frost", 1);
-            if (monster.FrostHits >= shatterHits)
-            {
-                monster.FrostHits = 0;
-                Emit("text", monster.X, monster.Y, 0, 0, 0, "SHATTER");
-                Emit("effect", monster.X, monster.Y, 0, 0, 44); // ice fx
-                DealDamageToMonster(monster, PlayerAttack() * RoleSkillMult() * GameConfig.LunaraShatterDamageMult, "ice", 0,
-                    fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
-                // Echo Chain Shatter: carries the burst to nearby slowed targets.
-                if (HasEcho("chain_shatter")) ChainShatterFrom(monster);
-                monster.SlowUntilMs = NowMs; // consome o slow
-                return;
-            }
         }
-        else
-        {
-            monster.FrostHits = KeywordScaledStacks(monster, "frost", 1);
-        }
-        monster.SlowUntilMs = NowMs + (long)_trait.Param;
-        // Echo Eternal Winter: stronger slow (no floor).
-        monster.SlowFactor = HasEcho("eternal_winter")
-            ? GameConfig.EchoEternalWinterSlowFactor : GameConfig.LunaraSlowFactor;
+
+        AddFrostStacks(monster, 1);
+        TryShatterFrost(monster);
     }
 
-    /// <summary>Lunara: Chain Shatter jumps the burst to nearby slowed targets (damage fraction).</summary>
-    private void ChainShatterFrom(Actor source)
+    private bool TryShatterFrost(Actor monster)
     {
-        var burst = PlayerAttack() * RoleSkillMult() * GameConfig.LunaraShatterDamageMult * GameConfig.EchoChainShatterDamageMult;
+        var shatterHits = HasEcho("moon_dance") ? GameConfig.EchoMoonDanceShatterHits : GameConfig.LunaraShatterHits;
+        var stacks = ActiveFrostStacks(monster);
+        if (stacks >= shatterHits)
+        {
+            ShatterFrost(monster, stacks, GameConfig.LunaraShatterDamagePerStack, cascade: true);
+            return true;
+        }
+        return false;
+    }
+
+    private void ShatterFrost(Actor monster, int stacks, double perStack, bool cascade)
+    {
+        ClearFrost(monster);
+        Emit("text", monster.X, monster.Y, 0, 0, 0, "SHATTER");
+        Emit("effect", monster.X, monster.Y, 0, 0, 44);
+        DealDamageToMonster(monster, FrostShatterDamage(monster, stacks, perStack), "ice", 0,
+            fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
+        if (cascade) CascadeShatterFrom(monster);
+    }
+
+    private void MassShatterFrost(Actor monster)
+    {
+        var stacks = ActiveFrostStacks(monster);
+        if (stacks <= 0) return;
+        ShatterFrost(monster, stacks, GameConfig.LunaraAbsoluteZeroDamagePerStack, cascade: false);
+    }
+
+    /// <summary>Lunara Frostbite cascade (§4C): after a shatter, nearby frosted enemies may shatter too.
+    /// The chain is bounded by jumps/range/falloff and picks the next target deterministically.</summary>
+    private void CascadeShatterFrom(Actor source)
+    {
+        var range = HasEcho("chain_shatter")
+            ? Math.Max(GameConfig.LunaraShatterCascadeRange, GameConfig.EchoChainShatterRange)
+            : GameConfig.LunaraShatterCascadeRange;
+        var scale = HasEcho("chain_shatter") ? GameConfig.EchoChainShatterDamageMult : 1.0;
+        var hit = new HashSet<int> { source.Id };
+        var from = source;
+        var perStack = GameConfig.LunaraShatterDamagePerStack
+            * GameConfig.LunaraShatterCascadeFalloff
+            * scale;
+
+        for (var jump = 0; jump < GameConfig.LunaraShatterCascadeJumps; jump++)
+        {
+            var next = NearestFrostedMonster(from.X, from.Y, range, hit);
+            if (next is null) break;
+            hit.Add(next.Id);
+            var stacks = ActiveFrostStacks(next);
+            Emit("projectile", from.X, from.Y, next.X, next.Y, 29);
+            ShatterFrost(next, stacks, perStack, cascade: false);
+            from = next;
+            perStack *= GameConfig.LunaraShatterCascadeFalloff;
+        }
+    }
+
+    private Actor? NearestFrostedMonster(int x, int y, int range, HashSet<int> excluded)
+    {
+        Actor? best = null;
+        var bestDist = int.MaxValue;
         foreach (var m in _monsters)
         {
-            if (m.Hp <= 0 || m.Floor != _currentFloor || m.Id == source.Id) continue;
-            if (NowMs >= m.SlowUntilMs) continue; // slowed targets only
-            if (Chebyshev(source.X, source.Y, m.X, m.Y) > GameConfig.EchoChainShatterRange) continue;
-            Emit("projectile", source.X, source.Y, m.X, m.Y, 29); // ice missile
-            Emit("effect", m.X, m.Y, 0, 0, 44);
-            DealDamageToMonster(m, burst, "ice", 0,
-                fromSkill: true, canCrit: false, canLifeSteal: false, fromTrait: true);
+            if (m.Hp <= 0 || m.Floor != _currentFloor || excluded.Contains(m.Id)) continue;
+            if (ActiveFrostStacks(m) <= 0) continue;
+            var d = Chebyshev(x, y, m.X, m.Y);
+            if (d > range) continue;
+            if (d < bestDist || (d == bestDist && (best is null || m.Id < best.Id)))
+            {
+                bestDist = d;
+                best = m;
+            }
         }
+        return best;
     }
 
     private void ApplyContagionBurn(Actor monster)
@@ -3160,6 +3797,16 @@ public sealed class GameWorld
         // guard against double counting: trait bursts (judgment, shatter, discharge) can
         // kill the same target already marked for death by the hit that triggered them.
         if (monster.Killed) return;
+        // Training dummy: it is built to survive, but if a burst ever drops it, emit the death FX and let the
+        // mode respawn a fresh one. No xp/loot/gauge/chest/portal — the Training Room is a reward-free sandbox.
+        if (monster.IsTrainingDummy)
+        {
+            monster.Killed = true;
+            monster.Hp = 0;
+            Emit("death", monster.X, monster.Y, 0, 0, monster.Species!.Corpse, monster.Species.Name, monster.Id);
+            _modeRules.OnMonsterKilled(this, monster);
+            return;
+        }
         monster.Killed = true;
         monster.Hp = 0;
         _kills++;
@@ -3170,6 +3817,8 @@ public sealed class GameWorld
         OnMonsterKilledTrait(monster);
         // G-04: Velvet Harvest: specter on killing under Decay (reads state before cleanup).
         OnMonsterKilledCard(monster);
+        // KR-00: reset-on-kill auto-modifiers (Seren's cleave) refund a charge on any kill in the window.
+        OnMonsterKilledAutoMod();
 
         Emit("death", monster.X, monster.Y, 0, 0, monster.Species.Corpse, monster.Species.Name, monster.Id);
 
@@ -3425,7 +4074,8 @@ public sealed class GameWorld
         var len = DashClearLen(dx, dy);
         if (len == 0) return; // blocked immediately: do not spend cooldown
         int ox = Player.X, oy = Player.Y;
-        SlideDash(ox, oy, dx, dy, len);
+        // Slide poof + scorch field both use the Kaeli's own element (fire/death/holy/…), not always fire.
+        SlideDash(ox, oy, dx, dy, len, GameConfig.ElementFieldFx(Waifu.Element));
         DashScorchTrail(ox, oy, dx, dy, len);
         SpendDash();
     }
@@ -3437,7 +4087,8 @@ public sealed class GameWorld
         var len = PassThroughLanding(dx, dy, GameConfig.DashTiles);
         if (len == 0) return; // no free tile to land on: do not spend cooldown
         int ox = Player.X, oy = Player.Y;
-        SlideDash(ox, oy, dx, dy, len);
+        // Cyan haste streak (no element, no damage) — reads as pure speed, distinct from the mage trail.
+        SlideDash(ox, oy, dx, dy, len, GameConfig.DashArcherTrailFx);
         _dashHasteUntilMs = NowMs + GameConfig.DashArcherHasteMs;
         _dashHasteFactor = GameConfig.DashArcherHasteFactor;
         SpendDash();
@@ -3453,8 +4104,8 @@ public sealed class GameWorld
         int ox = Player.X, oy = Player.Y;
         int landX = ox + dx * len, landY = oy + dy * len;
         // BLINK: the sprite appears at the destination instantly (From == land, so the client does not
-        // interpolate any slide). A poof marks where it vanished; the cleave nova marks where it lands.
-        Emit("effect", ox, oy, 0, 0, GameConfig.DashTrailFx);
+        // interpolate any slide). A grey smoke "poff" marks where it vanished; the cleave nova marks the landing.
+        Emit("effect", ox, oy, 0, 0, GameConfig.DashKnightVanishFx);
         Player.FromX = landX; Player.FromY = landY;
         Player.X = landX; Player.Y = landY;
         Player.StepStartMs = NowMs;
@@ -3465,8 +4116,9 @@ public sealed class GameWorld
     }
 
     /// <summary>Slides the player from origin to the landing tile (the client interpolates From→X over StepDurMs,
-    /// like the monster charge) leaving a poof trail — reads as fast motion, not a blink.</summary>
-    private void SlideDash(int ox, int oy, int dx, int dy, int len)
+    /// like the monster charge) leaving a <paramref name="trailFx"/> poof trail — reads as fast motion, not a
+    /// blink. The trail FX is role-keyed (Archer haste streak, Mage element scorch) so each dash looks distinct.</summary>
+    private void SlideDash(int ox, int oy, int dx, int dy, int len, int trailFx)
     {
         Player.FromX = ox; Player.FromY = oy;
         Player.X = ox + dx * len; Player.Y = oy + dy * len;
@@ -3474,7 +4126,7 @@ public sealed class GameWorld
         Player.StepDurMs = Math.Max(len * GameConfig.DashStepMs, 1);
         Player.Facing = FacingFrom(dx, dy);
         for (var i = 0; i <= len; i++)
-            Emit("effect", ox + dx * i, oy + dy * i, 0, 0, GameConfig.DashTrailFx);
+            Emit("effect", ox + dx * i, oy + dy * i, 0, 0, trailFx);
     }
 
     private void SpendDash()
@@ -3498,16 +4150,18 @@ public sealed class GameWorld
         if (hit) Emit("effect", cx, cy, 0, 0, GameConfig.DashCleaveFx);
     }
 
-    /// <summary>Mage scorch trail: each dashed tile seeds a weak, short spreading field (the Contagion identity).
-    /// Deliberately weaker than a cast field (low power, short life, crawls <=1 gen) so dash never replaces
-    /// casting; still bounded by FieldMaxTilesPerFloor.</summary>
+    /// <summary>Mage scorch trail: each dashed tile seeds a weak, short field of the Kaeli's element. It does
+    /// NOT spread — the trail stays contained to the tiles the mage slid across (spread is a cast-field
+    /// identity). Deliberately weaker than a cast field (low power, short life) so dash never replaces casting.</summary>
     private void DashScorchTrail(int ox, int oy, int dx, int dy, int len)
     {
         var dmg = PlayerAttack() * RoleSkillMult() * GameConfig.DashTrailFieldAtkScale;
+        var fx = GameConfig.ElementFieldFx(Waifu.Element); // own element: Rin=fire, Velvet=death, Eloa=holy…
         for (var i = 0; i <= len; i++)
-            SpawnField(ox + dx * i, oy + dy * i, Waifu.Element, GameConfig.DashTrailFieldFx, dmg,
+            // telegraph:false — SlideDash already drew the ignition poof on each tile (same element FX).
+            SpawnField(ox + dx * i, oy + dy * i, Waifu.Element, fx, dmg,
                 1.0, 0, GameConfig.DashTrailFieldTickMs, GameConfig.DashTrailFieldLifeMs,
-                GameConfig.DashTrailFieldSpreadChance, GameConfig.DashTrailFieldGenerations, telegraph: true);
+                GameConfig.DashTrailFieldSpreadChance, GameConfig.DashTrailFieldGenerations, telegraph: false);
     }
 
     /// <summary>Role-aware dash reach for direction (dx,dy): used to execute the dash and for the helper to pick
@@ -3873,6 +4527,8 @@ public sealed class GameWorld
             var damage = Math.Max((int)(cond.DamagePerTick * (1 - resist)), 1);
             Player.Hp -= damage;
             _gauge = Math.Min(_gauge + damage * GameConfig.GaugeFillPerDamageTaken * (1 + CardValue("gaugePercent")) * _gaugeRate, GameConfig.UltimateGaugeMax);
+            AddRynnaCharge(damage * GameConfig.RynnaChargePerDamageTaken
+                * (IsBuffActive(GameConfig.RynnaBloodlustBuff) ? GameConfig.RynnaBloodlustChargeTakenMultiplier : 1));
             Emit("damage", Player.X, Player.Y, 0, 0, damage, cond.Type, Player.Id);
             if (GameConfig.ConditionTickFx.TryGetValue(cond.Type, out var fx))
                 Emit("effect", Player.X, Player.Y, 0, 0, fx);
@@ -3913,6 +4569,8 @@ public sealed class GameWorld
             var monster = _monsters[idx];
             if (monster.Hp <= 0 || monster.Floor != _currentFloor) continue;
             if (monster.Dots.Count > 0) { TickMonsterDots(monster); if (monster.Hp <= 0) continue; }
+            // Training dummy: DoTs still apply (above) so curses/burns read, but it never chases or attacks.
+            if (monster.IsTrainingDummy) { TickTrainingDummy(monster); continue; }
             var species = monster.Species!;
             var dist = Chebyshev(monster, Player);
             var hasLos = HasLineOfSight(monster.X, monster.Y, Player.X, Player.Y);
@@ -4365,6 +5023,8 @@ public sealed class GameWorld
         if (NowMs < source.SappedUntilMs)
             final *= GameConfig.SappedStrengthDamageMultiplier;
         if (IsBuffActive("shield")) final *= 0.5;
+        if (IsBuffActive(GameConfig.RynnaBloodlustBuff))
+            final *= GameConfig.RynnaBloodlustDamageTakenMultiplier;
         var value = Math.Max((int)final, 1);
 
         // Eloa Martyr / Velvet Pact: Echo shield absorbs before health.
@@ -4377,6 +5037,8 @@ public sealed class GameWorld
 
         Player.Hp -= value;
         _gauge = Math.Min(_gauge + value * GameConfig.GaugeFillPerDamageTaken * (1 + CardValue("gaugePercent")) * _gaugeRate, GameConfig.UltimateGaugeMax);
+        AddRynnaCharge(value * GameConfig.RynnaChargePerDamageTaken
+            * (IsBuffActive(GameConfig.RynnaBloodlustBuff) ? GameConfig.RynnaBloodlustChargeTakenMultiplier : 1));
         Emit("damage", Player.X, Player.Y, 0, 0, value, damageType, Player.Id);
 
         if (Player.Hp <= 0)
@@ -4625,6 +5287,12 @@ public sealed class GameWorld
     internal void EndRun(bool victory, string reason)
     {
         if (Ended is not null) return;
+        // Training Room is a sandbox: leaving grants nothing (no gold/xp/kaeros) so it can't be AFK-farmed.
+        if (Mode == GameMode.Training)
+        {
+            Ended = new RunEndDto(false, reason, 0, 0, 0, _kills, _runLevel, NowMs, ItemsLooted.ToList(), []);
+            return;
+        }
         var goldEarned = victory ? _gold : (long)(_gold * GameConfig.DefeatGoldKeptFraction);
         var kaeros = victory ? GameConfig.VictoryKaerosBase + GameConfig.VictoryKaerosPerTier * (Tier.Tier - 1) : 0;
         var accountXp = (victory ? GameConfig.AccountXpPerVictory : GameConfig.AccountXpPerDefeat)
@@ -4805,6 +5473,12 @@ public sealed class GameWorld
         {
             case "discipline": // Seren: combo on the same target
             {
+                if (IsBuffActive(GameConfig.UltStateRampUnlocked))
+                {
+                    var maxBonus = _trait.Param * _traitMult;
+                    return new TraitStateDto(kind, name, GameConfig.SerenPerfectCutEvery, GameConfig.SerenPerfectCutEvery,
+                        $"ZENITH (+{Math.Round(maxBonus * 100)}%)");
+                }
                 var hits = NowMs <= _comboExpireMs ? _comboHits : 0;
                 var steps = _trait.Value > 0 ? Math.Ceiling(_trait.Param / _trait.Value) : 0;
                 var bonus = Math.Min(hits * _trait.Value, _trait.Param) * _traitMult;
@@ -4812,12 +5486,19 @@ public sealed class GameWorld
                     hits > 0 ? $"x{hits} (+{Math.Round(bonus * 100)}%)" : "-");
             }
             case "static_charge": // Rynna: charge bar
-                return new TraitStateDto(kind, name, Math.Round(_staticCharge), GameConfig.RynnaChargeMax,
-                    $"{Math.Round(_staticCharge)}/{GameConfig.RynnaChargeMax:0}");
-            case "contagion": // Rin: burning enemies
+            {
+                var marked = _monsters.Count(m => m.Hp > 0 && m.Floor == _currentFloor && ActiveStaticMark(m));
+                var detail = $"{Math.Round(_staticCharge)}/{GameConfig.RynnaChargeMax:0}";
+                if (marked > 0) detail += $" · {marked} marked";
+                return new TraitStateDto(kind, name, Math.Round(_staticCharge), GameConfig.RynnaChargeMax, detail);
+            }
+            case "contagion": // Rin: burning enemies (+ Infernal Ball burn multiplier while active)
             {
                 var burning = _monsters.Count(m => m.Hp > 0 && m.Floor == _currentFloor && IsBurning(m));
-                return new TraitStateDto(kind, name, burning, 0, burning > 0 ? $"{burning} burning" : "-");
+                var mult = RinBurnMult();
+                var detail = burning > 0 ? $"{burning} burning" : "-";
+                if (mult > 0) detail += $" ·×{1 + mult:0.0} burn";
+                return new TraitStateDto(kind, name, burning, 0, detail);
             }
             case "prey": // Gaia: hunt ramp against the Prey
             {
@@ -4826,8 +5507,13 @@ public sealed class GameWorld
                 var ramp = Math.Min((NowMs - _preyStartMs) / 1000.0 * _trait.Value, _trait.Param) * _traitMult;
                 return new TraitStateDto(kind, name, Math.Round(ramp * 100), 0, $"+{Math.Round(ramp * 100)}%");
             }
-            case "shatter": // Lunara: Shatter haste
-                return new TraitStateDto(kind, name, 0, 0, NowMs < _traitHasteUntilMs ? "HASTE" : "-");
+            case "shatter": // Lunara: Frostbite stacks and Shatter haste
+            {
+                var frosted = _monsters.Count(m => m.Hp > 0 && m.Floor == _currentFloor && ActiveFrostStacks(m) > 0);
+                var detail = frosted > 0 ? $"{frosted} frosted" : "-";
+                if (NowMs < _traitHasteUntilMs) detail += " · HASTE";
+                return new TraitStateDto(kind, name, frosted, 0, detail);
+            }
             default: // judgment / decay: live state appears as a per-target mark
                 return new TraitStateDto(kind, name, 0, 0, "");
         }
@@ -4844,10 +5530,12 @@ public sealed class GameWorld
             case "decay":
                 return (NowMs < m.DecayUntilMs ? m.DecayStacks : 0, "");
             case "shatter":
-                var slowed = NowMs < m.SlowUntilMs;
-                return (slowed ? m.FrostHits : 0, slowed ? "frozen" : "");
+                var frost = ActiveFrostStacks(m);
+                return (frost, frost > 0 ? "frosted" : "");
             case "prey":
                 return (0, m.IsPrey ? "prey" : "");
+            case "static_charge":
+                return (ActiveStaticMark(m) ? 1 : 0, ActiveStaticMark(m) ? "static" : "");
             default:
                 return (0, "");
         }
@@ -4861,8 +5549,8 @@ public sealed class GameWorld
         {
             var skill = skillBar[i];
             var isUlt = i == 4;
-            var remaining = isUlt ? 0 : Math.Max(_skillReadyAtMs[i] - NowMs, 0);
-            var ready = isUlt ? _gauge >= GameConfig.UltimateGaugeMax : remaining == 0;
+            var remaining = isUlt || FreeCast ? 0 : Math.Max(_skillReadyAtMs[i] - NowMs, 0);
+            var ready = FreeCast || (isUlt ? _gauge >= GameConfig.UltimateGaugeMax : remaining == 0);
             var cooldownTotal = isUlt
                 ? skill.CooldownMs
                 : (int)(skill.CooldownMs
@@ -4883,7 +5571,7 @@ public sealed class GameWorld
                 // addons come exclusively from the selected skin (0 = none); ascension does not force them
                 Loadout.Skin.Addons,
                 Loadout.Skin.MountLookType > 0 ? Loadout.Skin.MountLookType : EquipmentStats.MountLookType),
-            Player.TargetId, _gauge, skills,
+            Player.TargetId, FreeCast ? GameConfig.UltimateGaugeMax : _gauge, skills,
             PlayerClass.Id, PlayerClass.Name,
             CurrentStance.Id, CurrentStance.Name, CurrentStance.Element, PlayerClass.CanToggleStance,
             Math.Max(_autoAttackReadyAtMs - NowMs, 0),
@@ -4906,7 +5594,7 @@ public sealed class GameWorld
             Math.Max(_potionReadyAtMs - NowMs, 0), GameConfig.PotionCooldownMs,
             GameConfig.PotionSlotHealFraction(Tier.Tier),
             Math.Max(_dashReadyAtMs - NowMs, 0), GameConfig.DashCooldownMs, NowMs >= _dashReadyAtMs,
-            BuildTraitState());
+            BuildTraitState(), FreeCast);
 
         var monsters = _monsters
             .Where(m => m.Hp > 0 && m.Floor == _currentFloor)

@@ -11,7 +11,7 @@ namespace KaezanArenaFable.Api.Domain;
 /// - discipline (Seren): combo on the same target. Value=+damage/hit, Param=ramp cap.
 /// - decay (Velvet): DoT stacks that raise the execution threshold. Value=execution bonus, Param=base threshold.
 /// - contagion (Rin): fire that spreads. Value=burn lifesteal, Param=jump radius.
-/// - static_charge (Rynna): charge bar → discharge. Value=gauge bonus (overcharge style), Param=0.
+/// - static_charge (Rynna): mark + charge bar -> single-target detonation. Value=gauge bonus, Param=0.
 /// - shatter (Lunara): bonus vs slowed + haste + shatter. Value=bonus vs slowed, Param=slow duration (ms).
 /// - prey (Gaia): prey mark with ramp per hunt time. Value=ramp/s, Param=ramp cap.
 ///
@@ -237,9 +237,9 @@ public static class Waifus
             "fall from the sky: she is the point where the sky decides to come down and strike first.",
             "Impetuous, loud, generous with loyalty and stingy with patience. Engages first, thinks on the way.",
             new TraitDef("trait:rynna", "Static Charge", "static_charge", 0.30, 0, "charge",
-                "Hits fill a Charge bar; when full, the blow that completes it becomes a Discharge — " +
-                "a short current that paralyzes nearby targets. Each paralyze speeds up the ultimate, " +
-                "and the storm already fills the gauge 30% faster. Time your blows to release at the peak."),
+                "Direct hits mark enemies and fill a Charge bar; taking damage feeds it too. When full, " +
+                "the next hit detonates that target's mark for a single-target burst and short stun. " +
+                "Storm Heart detonates every marked enemy caught by its waves."),
             [
                 "She hatched from an egg that fell out of a storm cloud — literally, according to " +
                 "the village that found it smoking in a crater. The elders wanted it gone. A " +
@@ -275,9 +275,9 @@ public static class Waifus
             "herself makes, and by the time you notice she passed, you're already slower than she is.",
             "Playful, evasive, melancholy in the quiet hours. She dodges the question and comes back with the answer.",
             new TraitDef("trait:lunara", "Shatter", "shatter", 0.25, 2000, "frost",
-                "Lunara's ice slows. Hitting an already-slowed target deals bonus damage and grants " +
-                "brief haste; the 3rd hit on the slowed target shatters it in a burst and consumes " +
-                "the slow. Apply slow, dive in with haste, shatter and reposition: hit-and-run rewards mobility."),
+                "Lunara's autos and ice hits build Frostbite. Hitting a frosted target deals bonus " +
+                "damage and grants brief haste; enough frost shatters in a burst that cascades through " +
+                "nearby frosted enemies. Spread frost, kite cleanly, then cash out the pack."),
             [
                 "It's said the moon was lonely and made herself a companion of light and frost to " +
                 "run with her across the sky. Lunara slipped down to earth on a night of eclipse and " +

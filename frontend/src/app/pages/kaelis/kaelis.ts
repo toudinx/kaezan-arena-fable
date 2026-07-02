@@ -18,7 +18,15 @@ type KaeliTab = 'profile' | 'skins' | 'mastery' | 'equipment' | 'info';
   standalone: true,
   imports: [OutfitPreview, ItemIcon, KaeliIdle],
   template: `
-    <div class="atelier">
+    <div class="atelier" [style.--accent-el]="accentEl()">
+
+      <!-- ── FULL-BLEED AMBIENT: the art becomes the atmosphere behind the whole screen ── -->
+      @for (w of stageWaifu(); track w.id) {
+        <div class="ambient" [style.--el]="elementColor(w.element)" aria-hidden="true">
+          <img class="ambient-img" [src]="bgPortrait(w) ?? bgFallback(w)" alt="" decoding="async" />
+          <div class="ambient-wash"></div>
+        </div>
+      }
 
       <!-- ── ROSTER STRIP ── -->
       <nav class="roster" aria-label="Selecionar Kaeli">
@@ -42,7 +50,7 @@ type KaeliTab = 'profile' | 'skins' | 'mastery' | 'equipment' | 'info';
 
       <!-- ── ART ALCOVE ── -->
       <div class="stage">
-        @if (selected(); as w) {
+        @for (w of stageWaifu(); track w.id) {
           <div class="bg">
             @if (bgPortrait(w); as bp) {
               <img class="bg-img" [src]="bp" alt="" decoding="async" />
@@ -51,6 +59,7 @@ type KaeliTab = 'profile' | 'skins' | 'mastery' | 'equipment' | 'info';
             }
           </div>
           <div class="vignette"></div>
+          <div class="rose" [style.--el]="elementColor(w.element)" aria-hidden="true"></div>
           <div class="floor" [style.--el]="elementColor(w.element)"></div>
 
           <div class="figure">
@@ -77,7 +86,7 @@ type KaeliTab = 'profile' | 'skins' | 'mastery' | 'equipment' | 'info';
               <span class="chip">{{ classFor(w)?.name }}</span>
             </div>
           </div>
-        } @else {
+        } @empty {
           <div class="stage-empty">
             <p class="muted">Select a Kaeli from the sidebar.</p>
           </div>
@@ -86,7 +95,7 @@ type KaeliTab = 'profile' | 'skins' | 'mastery' | 'equipment' | 'info';
 
       <!-- ── DOSSIER ── -->
       <div class="dossier">
-        @if (selected(); as w) {
+        @for (w of stageWaifu(); track w.id) {
           @if (owned(w.id)) {
             <div class="tabs">
               @for (t of tabs; track t.id) {
@@ -227,86 +236,100 @@ type KaeliTab = 'profile' | 'skins' | 'mastery' | 'equipment' | 'info';
 
             <!-- ═══ EQUIPMENT ═══ -->
             @if (tab() === 'equipment') {
-              <div class="tab-content">
-                <div class="tier-bar">
-                  <span class="eyebrow">Set by tier</span>
-                  <div class="tier-seg">
-                    @for (t of setTiers; track t) {
-                      <button class="tier-tab" [class.active]="selectedTier() === t" (click)="selectTier(t)">T{{ t }}</button>
-                    }
-                  </div>
-                  <button class="btn secondary compact auto-equip-btn" [disabled]="busy()" (click)="autoEquip(w.id)" title="Equips the best available item in every empty or weaker slot">
-                    Auto Equip
-                  </button>
-                  <span class="muted small tier-hint">The dungeon uses the selected tier set.</span>
-                </div>
-                <!-- G-09: Echo material dropped by hunt chests (account growth) -->
-                @if (gearMaterials().length > 0) {
-                  <div class="materials">
-                    <span class="eyebrow">Echo Materials</span>
-                    <div class="mat-chips">
-                      @for (m of gearMaterials(); track m.tier) {
-                        <span class="mat-chip" [class.active]="m.tier === selectedTier()">T{{ m.tier }} <b>×{{ m.count }}</b></span>
+              <div class="tab-content equip-tab">
+                <div class="equip-topbar">
+                  <div class="tier-group">
+                    <span class="eyebrow">Tier set</span>
+                    <div class="tier-seg">
+                      @for (t of setTiers; track t) {
+                        <button class="tier-tab" [class.active]="selectedTier() === t" (click)="selectTier(t)">T{{ t }}</button>
                       }
                     </div>
-                    <span class="muted small mat-hint">Loot from hunt chests (altars, cursed chests, and mimics). Gear forging arrives in a future update.</span>
                   </div>
-                }
-                @if (equipmentTotals(w.id).length > 0) {
-                  <div class="equip-summary">
-                    @for (stat of equipmentTotals(w.id); track stat.label) {
-                      <div class="summary-stat">
-                        <span>{{ stat.label }}</span>
-                        <b>{{ stat.value }}</b>
+                  @if (equipmentTotals(w.id).length > 0) {
+                    <div class="readout-vals">
+                      @for (stat of equipmentTotals(w.id); track stat.label) {
+                        <div class="readout-stat">
+                          <b>{{ stat.value }}</b>
+                          <span>{{ stat.label }}</span>
+                        </div>
+                      }
+                    </div>
+                  }
+                  <button class="btn secondary compact" [disabled]="busy()" (click)="autoEquip(w.id)" title="Equips the best available item in every empty or weaker slot">
+                    Auto Equip
+                  </button>
+                </div>
+
+                <div class="equip-bay">
+                  <div class="paperdoll">
+                    @for (slot of equipmentSlots; track slot.id) {
+                      <button class="gear-slot" [class.active]="selectedEquipmentSlot() === slot.id"
+                              [class.filled]="!!equippedItem(w.id, slot.id)"
+                              (click)="selectedEquipmentSlot.set(slot.id)">
+                        @if (equippedItem(w.id, slot.id); as item) {
+                          <span class="slot-icon"><app-item-icon [itemId]="item.itemId" [size]="36" /></span>
+                          <span class="slot-text">
+                            <span class="slot-name">{{ slot.label }}</span>
+                            <b>{{ item.name }}</b>
+                            <small>{{ itemStats(item) }}</small>
+                          </span>
+                        } @else {
+                          <span class="slot-icon empty">+</span>
+                          <span class="slot-text">
+                            <span class="slot-name">{{ slot.label }}</span>
+                            <span class="empty-slot">Empty</span>
+                          </span>
+                        }
+                      </button>
+                    }
+                  </div>
+
+                  <div class="gear-detail">
+                    @if (selectedEquipmentSlot(); as slot) {
+                      <div class="detail-head">
+                        <b>{{ slotLabel(slot) }}</b>
+                        @if (equippedItem(w.id, slot)) {
+                          <button class="btn secondary compact" [disabled]="busy()" (click)="unequip(w.id, slot)">Unequip</button>
+                        }
+                      </div>
+                      <div class="gear-options">
+                        @for (item of equipmentCandidates(w.id, slot); track item.itemId) {
+                          <button class="gear-option" [disabled]="busy() || !canEquip(w, item)"
+                                  [title]="itemRequirement(w, item)"
+                                  (click)="equip(w.id, slot, item.itemId)">
+                            <app-item-icon [itemId]="item.itemId" [size]="38" />
+                            <span>
+                              <b>{{ item.name }}</b>
+                              <small>{{ itemStats(item) }}</small>
+                              @if (itemRequirement(w, item)) {
+                                <small class="req-locked">{{ itemRequirement(w, item) }}</small>
+                              }
+                            </span>
+                          </button>
+                        } @empty {
+                          <span class="muted">No gear for this slot in your Backpack yet.</span>
+                        }
+                      </div>
+                    } @else {
+                      <div class="detail-empty">
+                        <span class="eyebrow">Equipment bay</span>
+                        <p class="muted small">Pick a slot on the left to swap its gear. The dungeon uses the selected tier set.</p>
+                        @if (gearMaterials().length > 0) {
+                          <div class="mat-block">
+                            <span class="eyebrow">Echo materials</span>
+                            <div class="mat-chips">
+                              @for (m of gearMaterials(); track m.tier) {
+                                <span class="mat-chip" [class.active]="m.tier === selectedTier()">T{{ m.tier }} <b>×{{ m.count }}</b></span>
+                              }
+                            </div>
+                            <span class="muted small">From hunt chests · forging arrives later.</span>
+                          </div>
+                        }
                       </div>
                     }
                   </div>
-                }
-                <div class="paperdoll">
-                  @for (slot of equipmentSlots; track slot.id) {
-                    <button class="gear-slot" [class.active]="selectedEquipmentSlot() === slot.id"
-                            [class.filled]="!!equippedItem(w.id, slot.id)"
-                            (click)="selectedEquipmentSlot.set(slot.id)">
-                      <span class="slot-name">{{ slot.label }}</span>
-                      @if (equippedItem(w.id, slot.id); as item) {
-                        <span class="slot-icon"><app-item-icon [itemId]="item.itemId" [size]="40" /></span>
-                        <b>{{ item.name }}</b>
-                        <small>{{ itemStats(item) }}</small>
-                      } @else {
-                        <span class="slot-icon empty">+</span>
-                        <span class="empty-slot">empty</span>
-                      }
-                    </button>
-                  }
                 </div>
-                @if (selectedEquipmentSlot(); as slot) {
-                  <div class="gear-picker glass">
-                    <div class="picker-title">
-                      <b>{{ slotLabel(slot) }}</b>
-                      @if (equippedItem(w.id, slot)) {
-                        <button class="btn secondary compact" [disabled]="busy()" (click)="unequip(w.id, slot)">Unequip</button>
-                      }
-                    </div>
-                    <div class="gear-options">
-                      @for (item of equipmentCandidates(w.id, slot); track item.itemId) {
-                        <button class="gear-option" [disabled]="busy() || !canEquip(w, item)"
-                                [title]="itemRequirement(w, item)"
-                                (click)="equip(w.id, slot, item.itemId)">
-                          <app-item-icon [itemId]="item.itemId" [size]="38" />
-                          <span>
-                            <b>{{ item.name }}</b>
-                            <small>{{ itemStats(item) }}</small>
-                            @if (itemRequirement(w, item)) {
-                              <small class="req-locked">{{ itemRequirement(w, item) }}</small>
-                            }
-                          </span>
-                        </button>
-                      } @empty {
-                        <span class="muted">No items for this slot in the Backpack.</span>
-                      }
-                    </div>
-                  </div>
-                }
               </div>
             }
 
@@ -438,17 +461,15 @@ type KaeliTab = 'profile' | 'skins' | 'mastery' | 'equipment' | 'info';
                     @for (skin of w.skins; track skin.id) {
                       <div class="skin-card glass" [class.selected]="isSelectedSkin(w, skin)"
                            [class.locked]="!skinUnlocked(w, skin)">
-                        @if (isSelectedSkin(w, skin)) { <span class="skin-pin">✓ In use</span> }
                         <div class="skin-art">
                           <app-outfit-preview [lookType]="skin.lookType" [head]="skin.head" [body]="skin.body"
                             [legs]="skin.legs" [feet]="skin.feet" [addons]="skin.addons ?? 0"
-                            [mountLookType]="skin.mountLookType ?? 0" [size]="128" />
+                            [mountLookType]="skin.mountLookType ?? 0" [size]="140" />
                         </div>
-                        <div class="skin-body">
-                          <div class="skin-top">
-                            <b>{{ skin.name }}</b>
-                            <span class="skin-badge" [class.gold]="skin.unlock === 'gold' || skin.unlock === 'kaeros'">{{ skinBadge(skin) }}</span>
-                          </div>
+                        <span class="skin-badge" [class.gold]="skin.unlock === 'gold' || skin.unlock === 'kaeros'">{{ skinBadge(skin) }}</span>
+                        @if (isSelectedSkin(w, skin)) { <span class="skin-pin">In use</span> }
+                        <div class="skin-plate">
+                          <b class="skin-name">{{ skin.name }}</b>
                           <p class="skin-desc">{{ skin.description }}</p>
                           <div class="skin-cta">
                             @if (isSelectedSkin(w, skin)) {
@@ -485,7 +506,7 @@ type KaeliTab = 'profile' | 'skins' | 'mastery' | 'equipment' | 'info';
               </div>
             </div>
           }
-        } @else {
+        } @empty {
           <p class="muted" style="padding:24px">Loading...</p>
         }
       </div>
@@ -495,14 +516,30 @@ type KaeliTab = 'profile' | 'skins' | 'mastery' | 'equipment' | 'info';
     /* local accent mixes (deduped) */
     :host { display: block; }
     .atelier {
+      position: relative; isolation: isolate;
       display: grid;
       grid-template-columns: minmax(320px, 36%) 1fr;
       grid-template-rows: auto 1fr;
       grid-template-areas: "roster roster" "stage dossier";
       height: calc(100dvh - 53px); background: var(--bg-1);
+      --accent-el: var(--accent); /* overridden per-Kaeli inline from her element */
       --af: color-mix(in srgb, var(--accent) 12%, var(--bg-2));
       --ae: color-mix(in srgb, var(--accent) 38%, transparent);
+      /* element-tinted derivations — spent on hero surfaces only */
+      --af-el: color-mix(in srgb, var(--accent-el) 12%, var(--bg-2));
+      --ae-el: color-mix(in srgb, var(--accent-el) 42%, transparent);
+      --el-bright: color-mix(in srgb, var(--accent-el) 64%, white);
+      --el-glow: color-mix(in srgb, var(--accent-el) 45%, transparent);
     }
+
+    /* full-bleed ambient: the character's own art, blurred, is the atmosphere behind everything */
+    .ambient { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; animation: ambient-in var(--dur-slow) var(--ease-out); }
+    .ambient-img { width: 100%; height: 100%; object-fit: cover; object-position: center 16%; transform: scale(1.08); filter: blur(44px) brightness(0.4) saturate(1.05); }
+    .ambient-wash { position: absolute; inset: 0; background:
+        radial-gradient(120% 92% at 24% 38%, color-mix(in srgb, var(--el, var(--accent-el)) 26%, transparent), transparent 62%),
+        linear-gradient(180deg, rgba(7,7,13,0.52) 0%, rgba(7,7,13,0.28) 34%, rgba(7,7,13,0.74) 100%),
+        linear-gradient(90deg, rgba(7,7,13,0) 42%, rgba(7,7,13,0.46) 100%); }
+    @keyframes ambient-in { from { opacity: 0; } to { opacity: 1; } }
 
     /* roster — horizontal strip; only art + rarity frame */
     .roster { grid-area: roster; display: flex; flex-direction: row; align-items: center; justify-content: safe center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); overflow-x: auto; overflow-y: hidden; background: var(--bg-0); border-bottom: 1px solid var(--line); }
@@ -520,40 +557,60 @@ type KaeliTab = 'profile' | 'skins' | 'mastery' | 'equipment' | 'info';
     .bust img { width: 100%; height: 100%; object-fit: cover; }
     .lock { position: absolute; top: 2px; right: 2px; font-size: 11px; filter: drop-shadow(0 1px 2px #000); }
 
-    /* stage / art alcove */
-    .stage { grid-area: stage; position: relative; overflow: hidden; isolation: isolate; }
+    /* stage / art alcove — feathered on the right so the art dissolves into the ambient (no hard seam) */
+    .stage { grid-area: stage; position: relative; overflow: hidden; isolation: isolate;
+      -webkit-mask-image: linear-gradient(90deg, #000 58%, transparent 100%);
+      mask-image: linear-gradient(90deg, #000 58%, transparent 100%); }
     .bg { position: absolute; inset: 0; z-index: -2; }
     .bg-img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
     .bg-img.gradient { object-position: center; }
     .vignette { position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(0deg, rgba(7,7,13,0.96) 2%, rgba(7,7,13,0.15) 45%, rgba(7,7,13,0.42) 100%); }
+    /* signature: a stained-glass rose window haloing the Kaeli — gothic, element-tinted, breathing */
+    .rose { position: absolute; left: 50%; top: 45%; z-index: -1; width: min(80%, 540px); aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none; opacity: 0.46; mix-blend-mode: screen;
+      background:
+        radial-gradient(circle at center, color-mix(in srgb, var(--el) 60%, transparent) 0%, transparent 40%),
+        repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--el) 46%, transparent) 0deg 14deg, transparent 14deg 30deg);
+      -webkit-mask-image: radial-gradient(circle at center, #000 26%, rgba(0,0,0,0.55) 50%, transparent 70%);
+      mask-image: radial-gradient(circle at center, #000 26%, rgba(0,0,0,0.55) 50%, transparent 70%);
+      animation: rose-breathe 9s var(--ease-in-out) infinite; }
+    @keyframes rose-breathe {
+      0%, 100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 0.4; }
+      50% { transform: translate(-50%, -50%) scale(1.05) rotate(7deg); opacity: 0.56; }
+    }
     .floor { position: absolute; left: 50%; bottom: 9%; z-index: -1; transform: translateX(-50%); width: 64%; height: 64px; border-radius: 50%; pointer-events: none; background: radial-gradient(ellipse at center, color-mix(in srgb, var(--el) 55%, transparent), transparent 70%); filter: blur(10px); opacity: 0.7; }
     .figure { position: absolute; inset: 0; padding-bottom: 4%; filter: drop-shadow(0 14px 34px rgba(0,0,0,0.55)); }
     .sprite-stand { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8%; filter: drop-shadow(0 18px 40px rgba(0,0,0,0.6)); }
-    .identity { position: absolute; left: clamp(16px, 4%, 32px); right: 16px; bottom: clamp(18px, 4vh, 32px); z-index: 2; }
+    .identity { position: absolute; left: clamp(16px, 4%, 32px); right: 16px; bottom: clamp(18px, 4vh, 32px); z-index: 2; animation: kaeli-enter var(--dur-slow) var(--ease-out) 60ms both; }
+    @keyframes kaeli-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
     .id-tags { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
     .el-tag { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: var(--tracking-eyebrow); color: var(--el); padding: 4px 11px; border-radius: var(--r-full); border: 1px solid color-mix(in srgb, var(--el) 50%, transparent); background: color-mix(in srgb, var(--el) 14%, transparent); }
     .kaeli-tag { font-size: var(--fs-xs); font-weight: 900; text-transform: uppercase; letter-spacing: var(--tracking-eyebrow); color: #2a1700; padding: 4px 11px; border-radius: var(--r-full); background: linear-gradient(180deg, var(--gold-bright), var(--gold-deep)); box-shadow: 0 6px 18px rgba(232,169,60,0.18); }
     .id-name { font-family: var(--font-display); font-weight: 900; font-size: clamp(1.9rem, 4vw, 2.9rem); line-height: 0.96; margin: 0; letter-spacing: -0.01em; text-shadow: 0 4px 30px rgba(0,0,0,0.7); }
-    .id-title { font-family: var(--font-display); font-style: italic; color: var(--accent-bright); font-size: 1.1rem; margin: 4px 0 10px; }
+    .id-title { font-family: var(--font-display); font-style: italic; color: var(--el-bright); font-size: 1.1rem; margin: 4px 0 10px; text-shadow: 0 2px 18px rgba(0,0,0,0.6); }
     .id-class { display: flex; gap: 6px; flex-wrap: wrap; }
     .id-class .chip { font-size: var(--fs-xs); font-weight: 700; color: var(--text-dim); background: var(--glass-bg); border: 1px solid var(--line-strong); border-radius: var(--r-full); padding: 3px 10px; }
     .stage-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: var(--sp-5); }
 
     /* dossier */
     .dossier { grid-area: dossier; display: flex; flex-direction: column; overflow-y: auto; padding: var(--sp-5) var(--sp-5) var(--sp-7); }
-    .tabs { position: sticky; top: calc(-1 * var(--sp-5)); z-index: 4; display: flex; gap: 2px; flex-wrap: wrap; padding: var(--sp-2) 0; margin-bottom: var(--sp-4); border-bottom: 1px solid var(--line); background: linear-gradient(180deg, var(--bg-1) 70%, transparent); }
-    .tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-mute); padding: 8px 14px; font-size: var(--fs-sm); font-weight: 700; transition: all var(--dur) var(--ease-out); }
-    .tab.active { color: var(--accent-bright); border-bottom-color: var(--accent); }
+    /* tabs — a chapter index: equal-width, no bar/background, active marked by a short centered tick */
+    .tabs { position: sticky; top: calc(-1 * var(--sp-5)); z-index: 4; display: flex; gap: var(--sp-2); padding: var(--sp-2) 0 0; margin-bottom: var(--sp-4); }
+    .tab { flex: 1; position: relative; background: none; border: none; color: var(--text-mute); padding: 8px 4px 12px; font-size: var(--fs-sm); font-weight: 700; letter-spacing: 0.03em; transition: color var(--dur) var(--ease-out); }
+    .tab::after { content: ''; position: absolute; left: 50%; bottom: 4px; width: 0; height: 2px; border-radius: 2px; background: var(--accent-el); transform: translateX(-50%); transition: width var(--dur) var(--ease-out); }
+    .tab.active { color: var(--el-bright); }
+    .tab.active::after { width: 24px; }
     .tab:hover:not(.active) { color: var(--text-dim); }
-    .tab-content { display: flex; flex-direction: column; gap: var(--sp-4); }
+    .tab-content { display: flex; flex-direction: column; gap: var(--sp-4); animation: kaeli-enter var(--dur) var(--ease-out) 120ms both; }
 
-    /* profile - character sheet */
-    .sheet { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
+    /* profile — character sheet. The stat trio is the focal "reliquary": element-lit, top-billed. */
+    .sheet { padding: var(--sp-5) var(--sp-4) var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-4);
+      border-color: var(--ae-el);
+      box-shadow: var(--glass-edge), inset 0 1px 0 var(--el-glow), 0 14px 40px var(--el-glow), var(--sh-2); }
     .sheet-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); }
-    .big-stat { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 12px 8px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md); text-align: center; }
+    .big-stat { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 8px 14px; background: color-mix(in srgb, var(--accent-el) 6%, var(--bg-2)); border: 1px solid var(--line); border-top: 1px solid var(--ae-el); border-radius: var(--r-md); text-align: center; }
     .bs-label { font-size: var(--fs-xs); color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.05em; line-height: 1.2; }
-    .bs-val { font-family: var(--font-display); font-size: 1.7rem; font-weight: 700; line-height: 1; }
-    .bs-val.accent { color: var(--accent-bright); }
+    .bs-val { font-family: var(--font-display); font-size: 2rem; font-weight: 700; line-height: 1; }
+    .bs-val.accent { color: var(--el-bright); }
     .sheet-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
     .fact { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 13px; background: var(--bg-2); }
     .fact span { font-size: var(--fs-sm); color: var(--text-mute); }
@@ -562,13 +619,13 @@ type KaeliTab = 'profile' | 'skins' | 'mastery' | 'equipment' | 'info';
     .fact-el { color: var(--el); }
 
     .trait-card { padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
-    .trait-label { color: var(--accent-bright); }
+    .trait-label { color: var(--el-bright); }
     .trait-card p { margin: 0; color: var(--text-dim); font-size: var(--fs-sm); line-height: 1.5; }
     .personality { color: var(--text-mute); font-style: italic; }
 
     .aff-card, .asc-card { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
     .aff-head, .asc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .aff-lvl { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; color: var(--accent-bright); }
+    .aff-lvl { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; color: var(--el-bright); }
     .aff-lvl i { font-style: normal; font-size: 0.85rem; color: var(--text-mute); }
     .asc-dots { display: flex; gap: 6px; }
     .dot { color: var(--line-strong); font-size: 14px; }
@@ -599,47 +656,56 @@ type KaeliTab = 'profile' | 'skins' | 'mastery' | 'equipment' | 'info';
     .node-actions { display: flex; align-items: center; gap: 8px; }
     .node-cost { color: var(--gold-bright); font-size: 11px; font-weight: 800; }
 
-    /* equipment */
-    .tier-bar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+    /* equipment — a fixed bay: tier + loadout on top, slot list ↔ item chooser below (no page scroll) */
+    .equip-tab { flex: 1; min-height: 0; overflow: hidden; }
+    .equip-topbar { display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap; }
+    .tier-group { display: flex; align-items: center; gap: var(--sp-2); }
     .tier-seg { display: inline-flex; gap: 2px; padding: 3px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md); }
-    .tier-tab { border: none; background: none; color: var(--text-dim); padding: 5px 14px; font-size: 12px; font-weight: 800; border-radius: var(--r-sm); transition: all var(--dur) var(--ease-out); }
+    .tier-tab { border: none; background: none; color: var(--text-dim); padding: 5px 13px; font-size: 12px; font-weight: 800; border-radius: var(--r-sm); transition: all var(--dur) var(--ease-out); }
     .tier-tab:hover:not(.active) { color: var(--text); }
     .tier-tab.active { background: color-mix(in srgb, var(--gold) 16%, var(--bg-3)); color: var(--gold-bright); box-shadow: var(--glass-edge); }
-    .auto-equip-btn { margin-left: auto; }
-    .tier-hint { flex-basis: 100%; }
-    /* G-09: Echo materials (chest loot) */
-    .materials { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin: var(--sp-1) 0 var(--sp-2); }
-    .mat-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
-    .mat-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 11px; font-weight: 800; color: var(--text-dim); background: var(--bg-2); border: 1px solid var(--line); border-radius: 999px; }
-    .mat-chip b { color: #c47dff; }
-    .mat-chip.active { border-color: color-mix(in srgb, #c47dff 50%, var(--line)); color: var(--text); box-shadow: var(--glass-edge); }
-    .mat-hint { flex-basis: 100%; }
-    .equip-summary { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
-    .summary-stat { flex: 1; min-width: 64px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 8px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md); }
-    .summary-stat span { font-size: 10px; color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.05em; }
-    .summary-stat b { font-family: var(--font-display); font-size: 1.3rem; color: var(--accent-bright); }
-    .paperdoll { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); }
-    .gear-slot { min-height: 124px; border-radius: var(--r-md); padding: 11px 8px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px; background: var(--bg-2); border: 1px solid var(--line); color: inherit; transition: all var(--dur) var(--ease-out); }
-    .gear-slot:hover { border-color: var(--line-strong); transform: translateY(-1px); }
-    .gear-slot.active { border-color: var(--accent); background: var(--af); box-shadow: var(--glass-edge), var(--sh-accent); }
+
+    /* loadout totals: engraved readout, not stat cards */
+    .readout-vals { display: flex; align-items: baseline; gap: var(--sp-4); flex-wrap: wrap; }
+    .readout-stat { display: flex; align-items: baseline; gap: 6px; padding-right: var(--sp-4); border-right: 1px solid var(--line); }
+    .readout-stat:last-child { border-right: none; padding-right: 0; }
+    .readout-stat b { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; color: var(--el-bright); line-height: 1; }
+    .readout-stat span { font-size: 10px; color: var(--text-mute); text-transform: uppercase; letter-spacing: 0.08em; }
+    .equip-topbar .btn { margin-left: auto; }
+
+    .equip-bay { display: grid; grid-template-columns: minmax(230px, 300px) 1fr; gap: var(--sp-3); flex: 1; min-height: 0; }
+    .paperdoll { display: flex; flex-direction: column; gap: var(--sp-2); min-height: 0; overflow-y: auto; padding-right: 2px; }
+    .gear-slot { display: flex; align-items: center; gap: 11px; text-align: left; padding: 8px 11px; border-radius: var(--r-md); background: var(--bg-2); border: 1px solid var(--line); color: inherit; transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out); }
+    .gear-slot:hover { border-color: var(--line-strong); }
+    .gear-slot.active { border-color: var(--accent-el); background: var(--af-el); box-shadow: var(--glass-edge), inset 0 0 0 1px var(--ae-el); }
+    .slot-icon { flex-shrink: 0; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--r-sm); }
+    .slot-icon.empty { font-size: 20px; color: var(--text-faint); border-style: dashed; }
+    .slot-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
     .slot-name { color: var(--text-mute); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
-    .gear-slot.filled .slot-name, .gear-slot.active .slot-name { color: var(--accent-bright); }
-    .slot-icon { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; margin: 2px 0; }
-    .slot-icon.empty { font-size: 22px; color: var(--text-faint); border: 1px dashed var(--line-strong); border-radius: var(--r-sm); }
-    .gear-slot b { font-size: 11px; text-align: center; line-height: 1.2; }
-    .gear-slot small { color: var(--text-dim); font-size: 10px; text-align: center; line-height: 1.3; }
+    .gear-slot.filled .slot-name, .gear-slot.active .slot-name { color: var(--el-bright); }
+    .gear-slot b { font-size: 12.5px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .gear-slot small { color: var(--text-dim); font-size: 10px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .empty-slot { color: var(--text-faint); font-size: 11px; }
-    .gear-picker { padding: 14px 16px; }
-    .picker-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-    .picker-title b { font-family: var(--font-display); font-size: var(--fs-h3); }
-    .gear-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: var(--sp-2); max-height: 300px; overflow-y: auto; padding-right: 2px; }
-    .gear-option { border-radius: var(--r-sm); padding: 8px 10px; display: flex; align-items: center; gap: 10px; text-align: left; background: var(--bg-2); border: 1px solid var(--line); color: inherit; transition: all var(--dur) var(--ease-out); }
-    .gear-option:not([disabled]):hover { border-color: var(--accent); transform: translateY(-1px); }
+
+    .gear-detail { display: flex; flex-direction: column; min-height: 0; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px 16px; }
+    .detail-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .detail-head b { font-family: var(--font-display); font-size: var(--fs-h3); }
+    .gear-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); grid-auto-rows: min-content; align-content: start; gap: var(--sp-2); flex: 1; min-height: 0; overflow-y: auto; padding-right: 2px; }
+    .gear-option { border-radius: var(--r-md); padding: 8px 10px; display: flex; align-items: center; gap: 10px; text-align: left; background: var(--bg-3); border: 1px solid var(--line); color: inherit; transition: all var(--dur) var(--ease-out); }
+    .gear-option:not([disabled]):hover { border-color: var(--accent-el); transform: translateY(-1px); }
     .gear-option[disabled] { opacity: 0.5; cursor: not-allowed; }
     .gear-option span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
     .gear-option b { font-size: 12px; }
     .gear-option small { color: var(--text-dim); font-size: 10px; }
     .req-locked { color: var(--danger) !important; }
+
+    .detail-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-3); text-align: center; }
+    .detail-empty p { margin: 0; max-width: 32ch; }
+    .mat-block { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); }
+    .mat-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+    .mat-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 11px; font-weight: 800; color: var(--text-dim); background: var(--bg-3); border: 1px solid var(--line); border-radius: 999px; }
+    .mat-chip b { color: #c47dff; }
+    .mat-chip.active { border-color: color-mix(in srgb, #c47dff 50%, var(--line)); color: var(--text); box-shadow: var(--glass-edge); }
 
     /* info - vertical sub-nav + single panel */
     .info-layout { display: grid; grid-template-columns: 176px 1fr; gap: var(--sp-3); align-items: start; }
@@ -652,7 +718,7 @@ type KaeliTab = 'profile' | 'skins' | 'mastery' | 'equipment' | 'info';
     .ina-sub { font-size: 10px; color: var(--text-mute); }
     .info-panel { padding: 16px 18px; display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
     .aff-bar { height: 8px; background: var(--bg-3); border-radius: var(--r-full); overflow: hidden; }
-    .aff-fill { height: 100%; background: linear-gradient(90deg, var(--accent-bright), var(--accent-dim)); border-radius: var(--r-full); transition: width var(--dur-slow) var(--ease-out); }
+    .aff-fill { height: 100%; background: linear-gradient(90deg, var(--el-bright), var(--accent-el)); border-radius: var(--r-full); box-shadow: 0 0 12px var(--el-glow); transition: width var(--dur-slow) var(--ease-out); }
 
     /* gifts */
     .gift-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
@@ -701,22 +767,23 @@ type KaeliTab = 'profile' | 'skins' | 'mastery' | 'equipment' | 'info';
     .skins-tab { flex: 1; min-height: 0; }
     .skins-carousel-wrap { position: relative; flex: 1; min-height: 0; }
     .skins-carousel { display: flex; gap: var(--sp-3); height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; padding: 4px 2px 8px; scroll-padding: 0 44px; }
-    .skin-card { position: relative; flex: 1 1 260px; min-width: 240px; max-width: 460px; height: 100%; scroll-snap-align: center; padding: 0; display: flex; flex-direction: column; overflow: hidden; transition: transform var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out); }
+    /* skins — framed portraits: art is the plate, info on a scrim */
+    .skin-card { position: relative; flex: 1 1 260px; min-width: 240px; max-width: 460px; height: 100%; min-height: 340px; scroll-snap-align: center; padding: 0; overflow: hidden; border-color: var(--line-strong); transition: transform var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out); }
     .skin-card:hover { transform: translateY(-3px); }
-    .skin-card.selected { border-color: var(--accent); box-shadow: var(--glass-edge), var(--sh-accent); }
-    .skin-card.locked { opacity: 0.86; }
-    .skin-pin { position: absolute; top: 10px; right: 10px; z-index: 2; background: var(--accent); color: #0b0820; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: var(--r-full); box-shadow: var(--sh-1); }
-    .skin-art { flex: 1; min-height: 160px; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 58%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%), var(--bg-2); border-bottom: 1px solid var(--line); }
-    .skin-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 7px; }
-    .skin-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-    .skin-top b { font-size: 15px; font-family: var(--font-display); line-height: 1.15; }
-    .skin-badge { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-mute); white-space: nowrap; padding-top: 3px; }
-    .skin-badge.gold { color: var(--gold-bright); }
-    .skin-desc { color: var(--text-dim); font-size: 12px; margin: 0; line-height: 1.5; flex: 1; }
-    .skin-cta { margin-top: 2px; }
+    .skin-card.selected { border-color: var(--accent-el); box-shadow: var(--glass-edge), inset 0 1px 0 var(--el-glow), 0 0 0 1px var(--el-glow), 0 16px 44px var(--el-glow); }
+    .skin-card.locked .skin-art { filter: grayscale(0.7) brightness(0.6); }
+    .skin-art { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding-bottom: 30%; background: radial-gradient(ellipse 70% 46% at 50% 40%, color-mix(in srgb, var(--accent-el) 20%, transparent), transparent 72%), linear-gradient(180deg, var(--bg-3), var(--bg-2)); }
+    .skin-badge { position: absolute; top: 10px; left: 10px; z-index: 3; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); background: var(--glass-bg-strong); -webkit-backdrop-filter: blur(var(--glass-blur)); backdrop-filter: blur(var(--glass-blur)); border: 1px solid var(--line-strong); border-radius: var(--r-full); padding: 3px 9px; }
+    .skin-badge.gold { color: var(--gold-bright); border-color: color-mix(in srgb, var(--gold) 42%, transparent); }
+    .skin-pin { position: absolute; top: 10px; right: 10px; z-index: 3; background: var(--accent-el); color: #0b0820; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: var(--r-full); box-shadow: var(--sh-1); }
+    .skin-plate { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 46px 16px 15px; display: flex; flex-direction: column; gap: 7px;
+      background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--bg-0) 72%, transparent) 40%, var(--bg-0) 100%); }
+    .skin-name { font-size: 16px; font-family: var(--font-display); font-weight: 700; line-height: 1.12; }
+    .skin-desc { color: var(--text-dim); font-size: 12px; margin: 0; line-height: 1.5; }
+    .skin-cta { margin-top: 3px; }
     .skin-cta .btn { width: 100%; }
-    .skin-current { display: block; text-align: center; color: var(--accent-bright); font-weight: 800; font-size: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
-    .skin-req { display: block; text-align: center; padding: 8px 0; }
+    .skin-current { display: block; text-align: center; color: var(--el-bright); font-weight: 800; font-size: 12px; padding: 7px 0 2px; }
+    .skin-req { display: block; text-align: center; padding: 7px 0 2px; }
     .carousel-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 4; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; line-height: 1; color: var(--text); background: var(--glass-bg-strong); -webkit-backdrop-filter: blur(var(--glass-blur)); backdrop-filter: blur(var(--glass-blur)); border: 1px solid var(--line-strong); box-shadow: var(--glass-edge), var(--sh-2); transition: all var(--dur) var(--ease-out); }
     .carousel-arrow:hover { border-color: var(--accent); transform: translateY(-50%) scale(1.06); }
     .carousel-arrow.left { left: -6px; }
@@ -737,16 +804,23 @@ type KaeliTab = 'profile' | 'skins' | 'mastery' | 'equipment' | 'info';
         height: auto; min-height: calc(100dvh - 53px);
       }
       .roster-item:hover { transform: none; }
-      .stage { min-height: 44vh; }
+      /* stacked: feather the bottom edge into the dossier instead of the right */
+      .stage { min-height: 44vh;
+        -webkit-mask-image: linear-gradient(180deg, #000 82%, transparent 100%);
+        mask-image: linear-gradient(180deg, #000 82%, transparent 100%); }
+      .rose { top: 40%; width: min(72%, 380px); }
       .id-name { font-size: clamp(1.8rem, 9vw, 2.6rem); }
       .mastery-tree, .sheet-facts { grid-template-columns: 1fr; }
+      /* stacked: let the equipment bay flow and the page scroll on small screens */
+      .equip-tab { overflow: visible; }
+      .equip-bay { grid-template-columns: 1fr; }
+      .paperdoll, .gear-options { overflow: visible; min-height: 0; }
       .info-layout { grid-template-columns: 1fr; }
       .info-nav { flex-direction: row; overflow-x: auto; padding-bottom: 2px; }
       .info-navitem { flex: 0 0 auto; border-left: 1px solid var(--line); border-bottom: 3px solid transparent; }
       .info-navitem.active { border-left-color: var(--ae); border-bottom-color: var(--accent); }
       .skins-carousel { height: auto; }
-      .skin-card { flex: 0 0 78%; height: auto; }
-      .skin-art { min-height: 200px; }
+      .skin-card { flex: 0 0 78%; height: 380px; }
       .tabs { top: 0; }
     }
   `],
@@ -762,6 +836,10 @@ export class KaelisPage implements OnDestroy {
     );
   });
   readonly selected = signal<WaifuDef | null>(null);
+  /** Single-item list so @for (track id) re-mounts the stage/dossier on switch → enter animation replays. */
+  readonly stageWaifu = computed(() => { const w = this.selected(); return w ? [w] : []; });
+  /** Element color that re-themes the hero surfaces of this screen. */
+  readonly accentEl = computed(() => { const w = this.selected(); return w ? this.elementColor(w.element) : 'var(--accent)'; });
   readonly tab = signal<KaeliTab>('profile');
   readonly infoSection = signal<'class' | 'echoes' | 'gifts'>('class');
   readonly previewStanceId = signal('');

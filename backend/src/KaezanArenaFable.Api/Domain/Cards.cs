@@ -109,13 +109,13 @@ public static class Cards
 
         // Rynna — Static Charge (static_charge/charge).
         new("echo:rynna:perpetual-storm", "Perpetual Storm",
-            "Discharge consumes only half the Charge, and the Charge fills twice as fast.",
+            "Static detonation consumes only half the Charge, and Charge fills twice as fast.",
             "", 0, Rarity: Echo, Tags: ["charge"], Kind: "perpetual_storm", WaifuId: "waifu:rynna"),
         new("echo:rynna:overload", "Overload",
-            "Targets paralyzed by Discharge take continuous shock damage.",
+            "Targets stunned by Static detonation take continuous shock damage.",
             "", 0, Rarity: Echo, Tags: ["charge"], Kind: "overload", WaifuId: "waifu:rynna"),
         new("echo:rynna:thunder-core", "Thunder Core",
-            "Discharge fills the ultimate much faster; using the ultimate refunds the Charge in full.",
+            "Static detonation fills the ultimate much faster; using the ultimate refunds Charge in full.",
             "", 0, Rarity: Echo, Tags: ["charge", "echo"], Kind: "thunder_core", WaifuId: "waifu:rynna"),
 
         // Lunara — Shatter (shatter/frost).

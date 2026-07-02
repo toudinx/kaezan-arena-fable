@@ -25,6 +25,15 @@ export const GAME_MODES: GameModeDef[] = [
     status: 'live',
   },
   {
+    id: 'training',
+    name: 'Training Room',
+    tagline: 'Sandbox · test your kit',
+    description: 'A quiet arena with a passive, high-HP dummy. Try dashes, skills and reactions with no pressure.',
+    icon: '🎯',
+    theme: '#7b6bf2',
+    status: 'live',
+  },
+  {
     id: 'endless',
     name: 'Endless Abyss',
     tagline: 'Endless waves · leaderboard',

@@ -8,9 +8,12 @@ namespace KaezanArenaFable.Api.Engine;
 public sealed class ActiveRun
 {
     public required GameWorld World;
-    public required string ConnectionId;
+    public required string ConnectionId;   // session runs: the fixed key "session:local"
     public bool RewardsApplied;
     public int TicksAfterEnd;
+    public bool IsSession;
+    public string? WatcherConnectionId;    // SignalR client currently spectating (nullable)
+    public RunEndDto? EnrichedEnd;         // reward-enriched end DTO captured for the session journal
 }
 
 public sealed record OrphanedRun(ActiveRun Run, DateTimeOffset DisconnectedAt);
@@ -20,9 +23,12 @@ public sealed record OrphanedRun(ActiveRun Run, DateTimeOffset DisconnectedAt);
 /// pushing snapshots to the owning client.
 /// </summary>
 public sealed class RunManager(
-    IHubContext<GameHub> hub, RewardService rewards, ReplayStore replays, ILogger<RunManager> logger)
+    IHubContext<GameHub> hub, RewardService rewards, ReplayStore replays,
+    ISessionCoordinator sessions, ILogger<RunManager> logger)
     : BackgroundService
 {
+    private const string SessionKey = "session:local";
+
     private readonly ConcurrentDictionary<string, ActiveRun> _runs = new();
     private readonly Dictionary<string, OrphanedRun> _orphans = [];
     private readonly object _orphanLock = new();
@@ -36,8 +42,57 @@ public sealed class RunManager(
         _runs[connectionId] = new ActiveRun { World = world, ConnectionId = connectionId };
     }
 
-    public GameWorld? GetRun(string connectionId) =>
-        _runs.TryGetValue(connectionId, out var run) ? run.World : null;
+    /// <summary>Starts (or replaces) the single idle-session run. Session runs tick with no owning
+    /// connection; a watcher may attach for snapshots.</summary>
+    public void StartSessionRun(GameWorld world)
+    {
+        string? watcher = null;
+        if (_runs.TryRemove(SessionKey, out ActiveRun? previous))
+        {
+            watcher = previous.WatcherConnectionId;
+            FinalizeAbandon(previous);
+        }
+        _runs[SessionKey] = new ActiveRun
+        {
+            World = world, ConnectionId = SessionKey, IsSession = true, WatcherConnectionId = watcher
+        };
+        if (watcher is not null) world.RequestMapRefresh();
+    }
+
+    /// <summary>Attaches a spectator to the session run (returns its world, or null when no session).</summary>
+    public GameWorld? AttachWatcher(string connectionId)
+    {
+        if (!_runs.TryGetValue(SessionKey, out ActiveRun? run)) return null;
+        lock (run)
+        {
+            run.WatcherConnectionId = connectionId;
+            run.World.RequestMapRefresh();
+            return run.World;
+        }
+    }
+
+    public void DetachWatcher(string connectionId)
+    {
+        if (_runs.TryGetValue(SessionKey, out ActiveRun? run))
+            lock (run)
+                if (run.WatcherConnectionId == connectionId) run.WatcherConnectionId = null;
+    }
+
+    public void StopSessionRun()
+    {
+        if (_runs.TryRemove(SessionKey, out ActiveRun? run)) FinalizeAbandon(run);
+    }
+
+    public GameWorld? GetRun(string connectionId)
+    {
+        if (_runs.TryGetValue(connectionId, out ActiveRun? run)) return run.World;
+        if (_runs.TryGetValue(SessionKey, out ActiveRun? session) && session.WatcherConnectionId == connectionId)
+        {
+            sessions.OnManualInput(); // manual interference pauses chaining until resumed
+            return session.World;
+        }
+        return null;
+    }
 
     public bool TryResumeRun(string connectionId, out GameWorld? world)
     {
@@ -86,6 +141,7 @@ public sealed class RunManager(
 
     public void DropRun(string connectionId)
     {
+        DetachWatcher(connectionId); // watcher leaves; the session run keeps ticking
         if (!_runs.TryRemove(connectionId, out var run)) return;
 
         lock (run)
@@ -175,17 +231,37 @@ public sealed class RunManager(
                             run.RewardsApplied = true;
                             replays.SaveFinishedRun(run.World); // FF-01: freeze the replay at the ending tick
                             var enriched = rewards.Apply(run.World, snapshot.Run.Ended);
+                            run.EnrichedEnd = enriched;
                             snapshot = snapshot with { Run = snapshot.Run with { Ended = enriched } };
                         }
 
-                        if (run.RewardsApplied && ++run.TicksAfterEnd > 50)
-                            _runs.TryRemove(connectionId, out _);
+                        if (run.RewardsApplied && ++run.TicksAfterEnd > Domain.GameConfig.SessionRunChainDelayTicks)
+                        {
+                            if (run.IsSession && snapshot.Run.Ended is { } ended)
+                            {
+                                GameWorld? next = sessions.OnRunCompleted(run.World, run.EnrichedEnd ?? ended);
+                                if (next is not null)
+                                {
+                                    run.World = next;
+                                    run.RewardsApplied = false;
+                                    run.TicksAfterEnd = 0;
+                                    run.EnrichedEnd = null;
+                                    if (run.WatcherConnectionId is not null) next.RequestMapRefresh();
+                                }
+                                else _runs.TryRemove(connectionId, out _);
+                            }
+                            else _runs.TryRemove(connectionId, out _);
+                        }
                     }
 
-                    if (map is not null)
-                        await hub.Clients.Client(connectionId).SendAsync("map", map, stoppingToken);
+                    string? target = run.IsSession ? run.WatcherConnectionId : connectionId;
+                    if (target is not null)
+                    {
+                        if (map is not null)
+                            await hub.Clients.Client(target).SendAsync("map", map, stoppingToken);
 
-                    await hub.Clients.Client(connectionId).SendAsync("snapshot", snapshot, stoppingToken);
+                        await hub.Clients.Client(target).SendAsync("snapshot", snapshot, stoppingToken);
+                    }
                 }
                 catch (Exception ex)
                 {

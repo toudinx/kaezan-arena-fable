@@ -925,6 +925,11 @@ public static class GameConfig
     public const int FarmRunMaxCount = 5;
     public const int DungeonEnergyPerRun = 60;
     public const int DungeonEnergyCap = 300;
+    /// <summary>Wave 3: ticks the ended run keeps being shown before the orchestrator swaps in the
+    /// next chained run (the "Victory/Defeat" beat the spectator sees between runs).</summary>
+    public const int SessionRunChainDelayTicks = 50;
+    /// <summary>Wave 3: journal entries kept per idle session.</summary>
+    public const int SessionJournalCapacity = 200;
     public const int OfflineProgressMinMinutes = 5;
     public const int OfflineProgressCapMinutes = 8 * 60;
     public const int OfflineProgressGoldPerHour = 180;

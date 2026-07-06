@@ -16,6 +16,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="KaezanArenaFable.Api.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="Data\monsters.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

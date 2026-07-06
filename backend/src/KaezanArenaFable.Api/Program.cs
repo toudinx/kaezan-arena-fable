@@ -20,6 +20,8 @@ builder.Services.AddSingleton<KaeliService>();
 builder.Services.AddSingleton<DailyService>();
 builder.Services.AddSingleton<RewardService>();
 builder.Services.AddSingleton<RunFactory>();
+builder.Services.AddSingleton<SessionOrchestrator>();
+builder.Services.AddSingleton<ISessionCoordinator>(sp => sp.GetRequiredService<SessionOrchestrator>());
 builder.Services.AddSingleton<ReplayStore>();
 builder.Services.AddSingleton<RunManager>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<RunManager>());

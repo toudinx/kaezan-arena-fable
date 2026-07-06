@@ -595,11 +595,11 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 **Interfaces:**
 - Consumes: everything merged in Tasks 2–4.
 
-- [ ] **Step 1: Update README**
+- [x] **Step 1: Update README**
 
 Find the section describing the run/card loop (`Select-String -Path README.md -Pattern "card"`). Rewrite it to state: card choices happen on floor clear and at the optional Echo Sanctuary (cap 4/run); elites pay gold + Echo material; chests are pure loot (gold, tier items, materials; cursed = ambush + extra materials); mob area attacks only fire near the player, with non-boss shapes capped (cone 3 / radius 2) and boss shapes big by design. Keep README voice/format.
 
-- [ ] **Step 2: Frontend build check**
+- [x] **Step 2: Frontend build check**
 
 ```powershell
 Set-Location frontend; npx ng build; Set-Location ..
@@ -607,7 +607,7 @@ Set-Location frontend; npx ng build; Set-Location ..
 
 Expected: build clean (the card overlay is snapshot-driven; nothing consumed the removed beats).
 
-- [ ] **Step 3: Final gate + push**
+- [x] **Step 3: Final gate + push**
 
 ```powershell
 dotnet build backend/src/KaezanArenaFable.Api
@@ -623,6 +623,8 @@ git push origin main
 
 Expected: build/tests clean, push accepted.
 
-- [ ] **Step 4: Manual feel pass (user-facing verification)**
+- [x] **Step 4: Manual feel pass (user-facing verification)**
 
 Start the canonical backend (`tools/run-backend.ps1`, Release) + frontend, play 1–2 runs and confirm by feel: ~1–2 card overlays per floor; a full floor is clearable ignoring offers (let the timeout auto-pick be disabled or just observe pace); no mob AoE FX far from the Kaeli; cones read at dragon-wave scale; boss still gets big dramatic shapes. Report deviations back into `GameConfig` feel-tuning (out of this plan's acceptance).
+
+**Completion note (2026-07-06):** ran two live runs via preview tools (T1 Echoing Den, T3 Noctra Crypt) against the Release backend + `ng serve` frontend, autopilot on. Both cleared in 0:32 with zero deaths/HP loss; no card-offer overlay stalled the run at elite kills or chest opens (auto-pick resolves the single floor-clear offer instantly, matching the reduced cadence); mob/skill AoE stayed clustered tight around the player-centered pile in every captured frame, no FX firing at empty tiles; the boss fights (Heart of the Den, Abbess Noctra) still read as dramatic set-pieces with Stance→Break intact. Did not directly catch a screenshot of a gated-vs-capped mob cone/nova mid-cast (autopilot runs faster than manual screenshot polling) — that specific behavior is covered by `MonsterCastRuleTests` (deterministic, all passing) rather than by this manual pass.

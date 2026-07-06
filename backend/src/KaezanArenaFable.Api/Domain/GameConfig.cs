@@ -13,6 +13,9 @@ public static class GameConfig
     // finished-run replays .data/replays/ retains (oldest are deleted).
     public const int ReplayHashEveryTicks = 100;
     public const int ReplayKeepLast = 40;
+    /// <summary>How many ticks of already-sent events each snapshot re-sends so a
+    /// dropped/coalesced snapshot never loses FX (client dedups by EventDto.Seq).</summary>
+    public const int EventReplayTicks = 1; // raised to 10 together with the client dedup
     // G-01: 250→340 (step 400ms→~294ms/tile) for hunt pacing; keeps margin above MinStepMs.
     public const int PlayerBaseSpeed = 340;
     // G-01: reviewed and kept at 2 — mobs already move at 430–625ms vs player ~294ms, kites well.

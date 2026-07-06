@@ -110,7 +110,7 @@ public sealed record GroundItemDto(int Id, int X, int Y, int ItemId, int Count);
 
 public sealed record EventDto(
     string Kind, int X, int Y, int ToX, int ToY, int Value,
-    string Text, int ActorId, bool Crit);
+    string Text, int ActorId, bool Crit, long Seq = 0);
 
 public sealed record CardOfferDto(
     string Id, string Name, string Description, int CurrentStacks,

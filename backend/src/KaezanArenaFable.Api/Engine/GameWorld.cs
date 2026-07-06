@@ -249,7 +249,7 @@ public sealed partial class GameWorld
     private readonly List<Actor> _monsters = [];
     private readonly List<GroundItem> _groundItems = [];
     private readonly List<Poi> _pois = [];
-    private readonly List<EventDto> _events = [];
+    private readonly EventLog _events = new(GameConfig.EventReplayTicks);
     private readonly Queue<Command> _commands = new();
     private readonly object _commandLock = new();
 
@@ -783,7 +783,7 @@ public sealed partial class GameWorld
     public (SnapshotDto Snapshot, MapDto? Map) Tick()
     {
         TickCount++;
-        _events.Clear();
+        _events.Trim(TickCount);
 
         if (Ended is null)
         {
@@ -5439,7 +5439,7 @@ public sealed partial class GameWorld
 
     private void Emit(string kind, int x, int y, int toX = 0, int toY = 0, int value = 0,
         string text = "", int actorId = 0, bool crit = false) =>
-        _events.Add(new EventDto(kind, x, y, toX, toY, value, text, actorId, crit));
+        _events.Add(TickCount, new EventDto(kind, x, y, toX, toY, value, text, actorId, crit));
 
     // ---- snapshot ----
 
@@ -5641,7 +5641,7 @@ public sealed partial class GameWorld
             ItemsLooted.ToList(),
             CurrentNavTargetDto());
 
-        return new SnapshotDto(TickCount, NowMs, _currentFloor, player, monsters, items, _events.ToList(), run);
+        return new SnapshotDto(TickCount, NowMs, _currentFloor, player, monsters, items, _events.Snapshot(), run);
     }
 
     public void RequestMapRefresh() => MapDirty = true;

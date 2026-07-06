@@ -6,8 +6,6 @@ import { OutfitPreview } from '../../core/outfit-preview';
 import { RarityStars } from '../../core/ui/rarity-stars';
 import { BannerDef, ELEMENT_LABELS, RARITY_COLORS, SkinDef, WaifuDef } from '../../core/types';
 
-interface NavItem { route: string; icon: string; title: string; sub: string; tone: 'gold' | 'iris'; }
-
 @Component({
   selector: 'app-home',
   standalone: true,
@@ -87,25 +85,30 @@ interface NavItem { route: string; icon: string; title: string; sub: string; ton
         </section>
       }
 
-      <!-- vertical navigation rail (right) -->
-      <nav class="rail">
-        @for (it of navItems(); track it.route) {
-          <a class="rail-item glass" [class.gold]="it.tone === 'gold'" [routerLink]="it.route">
-            <span class="ri-icon">{{ it.icon }}</span>
-            <span class="ri-text">
-              <strong>{{ it.title }}</strong>
-              <small>{{ it.sub }}</small>
-            </span>
-          </a>
-        }
+      <!-- contextual home actions (right) -->
+      <nav class="rail home-actions" aria-label="Home actions">
+        <a class="rail-item glass primary-action" routerLink="/hunt">
+          <span class="ri-icon">&#9876;</span>
+          <span class="ri-text">
+            <strong>Start Hunt</strong>
+            <small>{{ dungeonCount() }} dungeons</small>
+          </span>
+        </a>
+        <a class="rail-item glass gold" routerLink="/recruit">
+          <span class="ri-icon">&#10022;</span>
+          <span class="ri-text">
+            <strong>Recruit</strong>
+            <small>Active banner</small>
+          </span>
+        </a>
+        <button class="rail-item glass" type="button" (click)="drawerOpen.set(true)">
+          <span class="ri-icon">&#128220;</span>
+          <span class="ri-text">
+            <strong>Contracts</strong>
+            <small>{{ claimable() }} ready</small>
+          </span>
+        </button>
       </nav>
-
-      <!-- daily contracts: corner drawer outside the showcase -->
-      <button class="dailies-fab glass" (click)="drawerOpen.set(!drawerOpen())"
-              [attr.aria-expanded]="drawerOpen()">
-        <span>📜 Contracts</span>
-        @if (claimable() > 0) { <span class="badge">{{ claimable() }}</span> }
-      </button>
 
       <aside class="drawer glass-strong" [class.open]="drawerOpen()" aria-label="Daily contracts">
         <header class="drawer-hd">
@@ -232,12 +235,19 @@ interface NavItem { route: string; icon: string; title: string; sub: string; ton
     /* ---- rail ---- */
     .rail {
       position: absolute; right: clamp(16px, 2.5vw, 32px); top: 50%; transform: translateY(-50%);
-      display: flex; flex-direction: column; gap: 10px; z-index: 2; width: 248px;
+      display: flex; flex-direction: column; gap: 10px; z-index: 2; width: min(248px, 18vw);
     }
     .rail-item {
       display: flex; align-items: center; gap: 14px; padding: 12px 16px;
       border-radius: var(--r-md); text-decoration: none; color: var(--text);
+      border: 1px solid var(--line);
+      font: inherit; text-align: left; cursor: pointer;
       transition: transform var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+    }
+    .home-actions .rail-item { min-height: 74px; }
+    .home-actions .primary-action {
+      border-color: color-mix(in srgb, var(--accent) 42%, var(--line-strong));
+      box-shadow: var(--glass-edge), 0 14px 36px rgba(123, 107, 242, 0.18);
     }
     .rail-item:hover { transform: translateX(-6px); border-color: var(--accent); box-shadow: var(--glass-edge), var(--sh-accent); }
     .rail-item.gold:hover { border-color: var(--gold); box-shadow: var(--glass-edge), var(--sh-gold); }
@@ -252,14 +262,6 @@ interface NavItem { route: string; icon: string; title: string; sub: string; ton
     .ri-text small { color: var(--text-mute); font-size: var(--fs-sm); }
 
     /* ---- dailies drawer ---- */
-    .dailies-fab {
-      position: absolute; right: clamp(16px, 2.5vw, 32px); bottom: 24px; z-index: 3;
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 10px 16px; border-radius: var(--r-full); color: var(--text);
-      font-weight: 600; font-size: var(--fs-sm); cursor: pointer;
-      transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur) var(--ease-out);
-    }
-    .dailies-fab:hover { transform: translateY(-1px); box-shadow: var(--glass-edge), var(--sh-accent); }
     .badge {
       min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-full);
       background: var(--gold); color: #2a1700; font-weight: 800; font-size: 12px;
@@ -318,7 +320,6 @@ interface NavItem { route: string; icon: string; title: string; sub: string; ton
       .rail-item:hover { transform: none; box-shadow: none; }
       .rail-item .ri-text small { display: none; }
       .ri-icon { width: 28px; height: 28px; font-size: 16px; }
-      .dailies-fab { bottom: 88px; }
     }
   `],
 })
@@ -328,6 +329,7 @@ export class HomePage {
   readonly claimable = computed(
     () => this.dailies().filter((d) => !d.claimed && d.progress >= d.target).length,
   );
+  readonly dungeonCount = computed(() => this.api.catalog()?.tiers.length ?? 0);
   readonly drawerOpen = signal(false);
 
   // Home protagonist = pinned (favorite) Kaeli; otherwise the first owned one.
@@ -370,18 +372,6 @@ export class HomePage {
   readonly activeBanner = computed<BannerDef | null>(() => {
     const banners = this.api.catalog()?.banners ?? [];
     return banners.find((b) => b.featuredWaifuId) ?? banners[0] ?? null;
-  });
-
-  readonly navItems = computed<NavItem[]>(() => {
-    const cat = this.api.catalog();
-    const acc = this.api.account();
-    return [
-      { route: '/hunt', icon: '⚔', title: 'Hunt', sub: `${cat?.tiers.length ?? 0} dungeons`, tone: 'iris' },
-      { route: '/kaelis', icon: '👥', title: 'Kaelis', sub: `${this.owned().length} hunters`, tone: 'iris' },
-      { route: '/recruit', icon: '✦', title: 'Recruit', sub: 'Active banner', tone: 'gold' },
-      { route: '/backpack', icon: '🎒', title: 'Backpack', sub: `${acc?.inventory.length ?? 0} item types`, tone: 'iris' },
-      { route: '/bestiary', icon: '📖', title: 'Bestiary', sub: `${cat?.monsters.length ?? 0} creatures`, tone: 'iris' },
-    ];
   });
 
   readonly busy = signal(false);

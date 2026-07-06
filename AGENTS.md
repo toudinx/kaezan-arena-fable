@@ -38,3 +38,6 @@ Instruções para assistentes de IA trabalhando neste repo.
 
 - Atualize o `README.md` se o comportamento visível mudou.
 - `dotnet build` no backend e `npx ng build` no frontend devem passar sem erros antes de concluir.
+- Se a feature/task funcionou e passou nas verificações exigidas, faça `git commit` e `git push`
+  da branch de trabalho antes de concluir, salvo pedido explícito em contrário. Use stage seletivo:
+  não inclua mudanças alheias ou não relacionadas no commit.

@@ -142,4 +142,21 @@ public class DungeonGeneratorTests
         Assert.True(f.Blocked[(room.Y + room.H - 1) * f.W + room.X], "SW room corner should be rock");
         Assert.True(f.Blocked[(room.Y + room.H - 1) * f.W + room.X + room.W - 1], "SE room corner should be rock");
     }
+
+    [Theory]
+    [InlineData(1L)]
+    [InlineData(7L)]
+    [InlineData(123L)]
+    [InlineData(4242L)]
+    public void arena_has_reachable_benefit_pocket(long seed)
+    {
+        var f = Generate(seed);
+        Assert.True(f.BenefitChests.Count >= 1, "expected at least one side-pocket benefit chest");
+        var live = Flood(f);
+        foreach (var (x, y) in f.BenefitChests)
+        {
+            Assert.False(f.Blocked[y * f.W + x], $"benefit chest at ({x},{y}) sits on rock");
+            Assert.True(live[y * f.W + x], $"benefit chest at ({x},{y}) unreachable from entry");
+        }
+    }
 }

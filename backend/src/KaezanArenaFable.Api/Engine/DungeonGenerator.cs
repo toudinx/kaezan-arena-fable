@@ -99,6 +99,7 @@ public static class DungeonGenerator
             else if (singleArena)
             {
                 ErodeArena(floor, room, rng);
+                CarveSidePockets(floor, room, rng);
                 PlacePillars(floor, room, rng);
             }
             else ErodeRoom(floor, room, rng);
@@ -383,6 +384,76 @@ public static class DungeonGenerator
                 for (var dx = 0; dx < pw; dx++)
                     floor.Blocked[(y + dy) * size + (x + dx)] = true;
             placed++;
+        }
+    }
+
+    /// <summary>
+    /// Side chambers: 1-2 round pockets carved into the rock just past the arena's coastline, each
+    /// joined by a short 2-wide throat and holding a benefit chest (never a mimic — the reward for
+    /// the detour). Anchors are open cells whose 4-neighbour toward the rock is blocked; the pocket
+    /// centre sits PocketDepth tiles into that rock. Carving only ever OPENS cells, so connectivity
+    /// can only grow. Deterministic: fixed attempt loop, all draws from the run rng.
+    /// </summary>
+    private static void CarveSidePockets(DungeonFloor floor, Room room, Rng rng)
+    {
+        var size = floor.W;
+        var target = rng.Range(GameConfig.ArenaPocketsMin, GameConfig.ArenaPocketsMax);
+        Span<(int dx, int dy)> dirs = [(-1, 0), (1, 0), (0, -1), (0, 1)];
+
+        // Collect every coastline anchor in fixed y,x,dir scan order: an open cell whose neighbour
+        // toward the rock is blocked, tagged with that outward direction. Building the full list
+        // (instead of dart-throwing a narrow interior band) is what makes the carve reliable — the
+        // coastline hugs the room border, well outside the arena's forced-open core.
+        var anchors = new List<(int x, int y, int dx, int dy)>();
+        for (var yy = room.Y + 1; yy < room.Y + room.H - 1; yy++)
+            for (var xx = room.X + 1; xx < room.X + room.W - 1; xx++)
+            {
+                if (floor.Blocked[yy * size + xx]) continue;
+                for (var d = 0; d < 4; d++)
+                {
+                    var (dx, dy) = dirs[d];
+                    if (floor.Blocked[(yy + dy) * size + (xx + dx)]) anchors.Add((xx, yy, dx, dy));
+                }
+            }
+        if (anchors.Count == 0) return;
+
+        var carved = 0;
+        for (var attempt = 0; attempt < GameConfig.PocketPlacementAttempts && carved < target; attempt++)
+        {
+            var (ax, ay, dx, dy) = anchors[rng.Next(anchors.Count)];
+
+            // Fit the largest pocket (radius, then depth) that stays inside the room rect with a
+            // 1-tile margin AND whose centre lands in rock — so it reads as a chamber past the
+            // coastline, not a bulge into the arena. Thin rings yield small pockets; corners fit more.
+            int pr = 0, pcx = 0, pcy = 0;
+            for (var r = GameConfig.PocketRadiusMax; r >= GameConfig.PocketRadiusMin && pr == 0; r--)
+                for (var depth = GameConfig.PocketDepth; depth >= r; depth--)
+                {
+                    int cxx = ax + dx * depth, cyy = ay + dy * depth;
+                    if (cxx - r < room.X + 1 || cxx + r > room.X + room.W - 2 ||
+                        cyy - r < room.Y + 1 || cyy + r > room.Y + room.H - 2) continue;
+                    if (!floor.Blocked[cyy * size + cxx]) continue; // centre must currently be rock
+                    pr = r; pcx = cxx; pcy = cyy; break;
+                }
+            if (pr == 0) continue;
+            var used = Math.Abs(pcx - ax) + Math.Abs(pcy - ay); // orthogonal, so one term is zero
+
+            for (var oy = -pr; oy <= pr; oy++)
+                for (var ox = -pr; ox <= pr; ox++)
+                    if (ox * ox + oy * oy <= pr * pr)
+                        floor.Blocked[(pcy + oy) * size + (pcx + ox)] = false;
+
+            // 2-wide throat from the anchor to the pocket centre
+            for (var step = 0; step <= used; step++)
+            {
+                int tx = ax + dx * step, ty = ay + dy * step;
+                floor.Blocked[ty * size + tx] = false;
+                floor.Blocked[(ty + Math.Abs(dx)) * size + (tx + Math.Abs(dy))] = false;
+            }
+
+            floor.Chests.Add((pcx, pcy));
+            floor.BenefitChests.Add((pcx, pcy));
+            carved++;
         }
     }
 

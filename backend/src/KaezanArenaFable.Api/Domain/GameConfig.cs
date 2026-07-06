@@ -518,6 +518,19 @@ public static class GameConfig
     public const double AmphitheaterRimNoiseBand = 0.86;
     /// <summary>Rock probability inside the rim band (reads as broken amphitheatre steps).</summary>
     public const double AmphitheaterRimNoiseProb = 0.35;
+
+    // --- Side pockets (Wave 2): chambers carved into the arena rock, joined by a 2-wide throat.
+    // They deliver the "side chamber" beat without reactivating the legacy multi-room path (the
+    // single-arena combat flow — chest drops on kills, teleport exit — depends on Rooms.Count==1). ---
+    public const int ArenaPocketsMin = 1;
+    public const int ArenaPocketsMax = 2;
+    /// <summary>Max tiles the pocket centre is pushed into the rock from its coastline anchor. The
+    /// carve fits the deepest pocket that stays inside the room margin, so the effective depth shrinks
+    /// on thin rock rings (the arena's forced-open core leaves only a few tiles of coastal rock).</summary>
+    public const int PocketDepth = 4;
+    public const int PocketRadiusMin = 1;
+    public const int PocketRadiusMax = 3;
+    public const int PocketPlacementAttempts = 80;
     // Density: with large, open rooms, the budget goes back to 16 (the area factor fills the arena).
     // Target: ~10-16 mobs per large room = a satisfying pile to orbit and melt with AoE, without becoming a wall.
     public const int SpawnBudgetBase = 16;

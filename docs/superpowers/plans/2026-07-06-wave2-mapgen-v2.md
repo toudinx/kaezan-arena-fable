@@ -566,7 +566,7 @@ Nota: `--golden-check` segue FALHANDO — esperado; rebaseline só na Task 6.
 - Consumes: `DungeonFloor.Chests`/`BenefitChests`; dispatch da Task 2.
 - Produces: `private static void CarveSidePockets(DungeonFloor, Room, Rng)`, chamado no floor 0 (não-boss) depois de `ErodeArena` e ANTES de `PlacePillars`. Constantes `ArenaPocketsMin/Max`, `PocketDepth`, `PocketRadiusMin/Max`, `PocketPlacementAttempts`.
 
-- [ ] **Step 1: Teste que falha**
+- [x] **Step 1: Teste que falha**
 
 ```csharp
     [Theory]
@@ -587,12 +587,12 @@ Nota: `--golden-check` segue FALHANDO — esperado; rebaseline só na Task 6.
     }
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter arena_has_reachable_benefit_pocket`
-Expected: FAIL (`BenefitChests` vazio no floor 0 hoje).
+Expected: FAIL (`BenefitChests` vazio no floor 0 hoje). ✅ 4/4 falharam ("expected at least one side-pocket benefit chest").
 
-- [ ] **Step 3: Constantes**
+- [x] **Step 3: Constantes**
 
 ```csharp
     // --- Side pockets (Wave 2): chambers carved into the arena rock, joined by a 2-wide throat.
@@ -607,7 +607,18 @@ Expected: FAIL (`BenefitChests` vazio no floor 0 hoje).
     public const int PocketPlacementAttempts = 80;
 ```
 
-- [ ] **Step 4: Implementar**
+- [x] **Step 4: Implementar**
+
+> **Desvio consciente (execução 2026-07-06):** a implementação do plano (dart-throw no band
+> `[room.X+4 .. room.X+W-5]` + `PocketDepth` fixo de 4) **não carvava nenhum pocket** — evidência
+> instrumentada: `onRock=0, noAnchor≈78/80`. Motivo geométrico: o *forced-open core* de
+> `ApplyRockToFloor` (raio `min(w,h)/3`=6) enche o interior, então a coastline fica colada na borda
+> da room (fora do band de amostragem) e o anel de rocha tem só ~4 tiles — `PocketDepth=4` estoura a
+> margem da room (`noFit`). Correção: (1) montar a **lista completa de âncoras de coastline** por scan
+> determinístico (ordem y,x,dir) e sortear com o rng — acha âncora sempre que existe; (2) **ajuste
+> adaptativo** que encaixa o maior pocket (raio→profundidade) que cabe na room com centro em rocha,
+> encolhendo em anéis finos. `PocketRadiusMin` 2→1 (anéis finos só comportam pocket pequeno). Verde
+> nos 4 seeds + 38/38 no projeto.
 
 No dispatch (Task 2 Step 4), o branch não-boss vira:
 
@@ -671,12 +682,12 @@ Novo método:
     }
 ```
 
-- [ ] **Step 5: Rodar testes**
+- [x] **Step 5: Rodar testes**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter DungeonGeneratorTests`
-Expected: PASS (todos — pockets só abrem células, então conectividade e pilares seguem válidos).
+Expected: PASS (todos — pockets só abrem células, então conectividade e pilares seguem válidos). ✅ 23/23 (e 38/38 no projeto inteiro).
 
-- [ ] **Step 6: Build + commit**
+- [x] **Step 6: Build + commit**
 
 ```bash
 dotnet build backend/src/KaezanArenaFable.Api

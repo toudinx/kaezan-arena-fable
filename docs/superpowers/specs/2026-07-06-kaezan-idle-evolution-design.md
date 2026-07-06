@@ -110,10 +110,20 @@ assiste e ajusta.
 **Gate de saída:** sessão de 1h+ sem interação rodando estável; reconexão retoma espectador no
 meio da run; replay-check verde (a orquestração fica **fora** do engine — `GameWorld` não muda).
 
-## Onda 4 — Migração de assets (híbrido: packs CC0 + AI) — trilha paralela
+## Onda 4 — Migração de assets (packs CC0 + ComfyUI + Codex imagegen) — trilha paralela
 
 **Objetivo:** sair dos assets CipSoft por categoria, com identidade preservada onde importa.
-Pode rodar em paralelo às ondas 2-3 (toca pipeline/manifests, não engine).
+Pode rodar em paralelo às ondas 2-3 (toca pipeline/manifests, não engine), com uma exceção:
+o item de tiles depende do slot `WallSet` criado na Onda 2 (Task 4 do plano da Onda 2).
+Plano executável: `docs/superpowers/plans/2026-07-06-wave4-asset-migration.md`.
+
+**Atualização 2026-07-06 — terceira fonte validada:** o Codex desta máquina tem o plugin
+**game-studio 0.1.2** (skills `imagegen` — gpt-image-2 built-in, sem API key, transparência via
+chroma-key — e `sprite-pipeline` — strip de animação inteira a partir de 1 frame seed +
+normalização com âncora compartilhada). Divisão de papéis: ComfyUI continua dono da IDENTIDADE
+(bosses, assinaturas — consistência img2img, sem risco de censura, cf. IMG-08); Codex imagegen
+cobre COMMODITY gerada (FX/mísseis sem pack bom, itens, monstros comuns); packs CC0/CC-BY
+cobrem commodity pronta. O primeiro asset da categoria FX é o smoke test vivo da ferramenta.
 
 1. **Style guide de sprite primeiro** (condição do usuário: imagens de referência bem
    definidas). Doc + folha de referência canônica: resolução por tipo de asset, paleta,
@@ -138,9 +148,12 @@ regressão por bioma; nenhuma referência a atlas Tibia no caminho daquela categ
 ## Dependências e sequência
 
 Onda 1 → Onda 2 → Onda 3 (sequenciais: medição antes de mexer no gerador; gerador estável antes
-de sessões infinitas). Onda 4 é trilha paralela desde já, com o item de tiles sincronizado com a
-Onda 2. Cada onda vira um roadmap de prompts executáveis no formato do repo (via skill
-`roadmap-from-plan`) quando chegar a vez dela.
+de sessões infinitas). Onda 4 é trilha paralela desde já (auditoria, style guide e infra de
+packs podem começar hoje), com o item de tiles dependendo da Onda 2 Task 4 (slot `WallSet`).
+Os planos executáveis vivem em `docs/superpowers/plans/2026-07-06-wave{1..4}-*.md`; cada task
+declara **Modelo · Effort** (GPT-5.5 Codex executa o bem-especificado; Opus 4.8 integra o que
+toca engine/golden; Fable 5 só nas 2 tasks de risco cross-cutting — baseline/decisão de render
+da Onda 1 e orquestrador/session runs da Onda 3).
 
 ## Riscos principais
 

@@ -21,9 +21,32 @@
 - IDs estáveis (`waifu:*`, `card:*`, `banner:*`, `monster:*`) nunca renomeados.
 - Frontend nunca simula gameplay; só interpola e renderiza snapshots.
 
+## Modelos & quando usar
+
+> Convenção das Ondas 1-4: cada task declara **Modelo · Effort** no topo. O Fable 5 é caro —
+> só entra onde Opus/Codex não bastam; nunca para executar código que o plano já escreveu.
+
+| Modelo | Papel | Quando usar |
+|---|---|---|
+| **GPT-5.5 (Codex)** | Executor | Task bem-especificada com código dado no plano, 1-3 arquivos, TDD mecânico, UI com template pronto |
+| **Claude Code Opus 4.8** | Integrador | Toca `Engine/`/gerador com gate replay/golden, ou exige adaptar o plano aos nomes/padrões reais dos arquivos |
+| **Claude Fable 5** | Risco cross-cutting | Concorrência + estado compartilhado + interação entre ondas; decisão arquitetural que trava/abre sub-projeto |
+
+| Task | Modelo | Effort |
+|---|---|---|
+| 1 — Release run script | Codex | low |
+| 2 — Backend perf instrumentation | Codex | medium |
+| 3 — EventLog (engine) | Opus 4.8 | medium |
+| 4 — Client event dedup | Codex | medium |
+| 5 — Debug overlay F3 | Codex | medium |
+| 6 — Await atlas preload | Codex | low |
+| 7 — Baseline + decisão de render | **Fable 5** | high |
+
 ---
 
 ### Task 1: Release run script (fix the measurement environment)
+
+- **Modelo:** GPT-5.5 (Codex) · **Effort:** low
 
 O backend costuma rodar como exe **Debug** — toda medição feita assim é inválida. Este task cria o fluxo canônico de build+run em Release e o documenta.
 
@@ -85,6 +108,8 @@ git commit -m "chore: canonical Release build+run script for the backend"
 ---
 
 ### Task 2: Backend perf instrumentation (tick percentiles + run-creation time)
+
+- **Modelo:** GPT-5.5 (Codex) · **Effort:** medium
 
 **Files:**
 - Create: `backend/tests/KaezanArenaFable.Api.Tests/KaezanArenaFable.Api.Tests.csproj` (via `dotnet new xunit`)
@@ -251,6 +276,8 @@ git commit -m "feat(perf): tick percentile logging and run-creation timing"
 
 ### Task 3: EventLog — seq monotônico + janela de reenvio (backend)
 
+- **Modelo:** Claude Code Opus 4.8 · **Effort:** medium — toca `GameWorld` (5,1k linhas) e termina no gate `--replay-check`
+
 Hoje `_events` é limpo a cada tick e viaja uma única vez no snapshot ([GameWorld.cs:786](../../backend/src/KaezanArenaFable.Api/Engine/GameWorld.cs), 5442, 5644); snapshot coalescido no cliente = FX perdido. O `EventLog` carimba cada evento com `Seq` e mantém a janela dos últimos `GameConfig.EventReplayTicks` ticks no snapshot. **Neste task a janela fica em 1 tick** (comportamento idêntico ao atual) — o Task 4 liga a janela real junto com o dedup do cliente, senão o cliente atual re-ingere FX duplicado.
 
 **Files:**
@@ -405,6 +432,8 @@ git commit -m "feat(engine): stamp events with monotonic seq and replay window (
 
 ### Task 4: Client event dedup + ligar a janela de reenvio
 
+- **Modelo:** GPT-5.5 (Codex) · **Effort:** medium
+
 Duas causas de FX perdido no cliente: o `effect()` do Angular coalesce snapshots ([game.ts:885](../../frontend/src/app/pages/game/game.ts)) e mensagens podem se perder. Com o dedup por `seq`, ligar a janela de 10 ticks (1s) do backend fecha as duas.
 
 **Files:**
@@ -539,6 +568,8 @@ git commit -m "feat(fx): client event dedup by seq + enable 10-tick replay windo
 ---
 
 ### Task 5: Client debug overlay (F3)
+
+- **Modelo:** GPT-5.5 (Codex) · **Effort:** medium
 
 **Files:**
 - Create: `frontend/src/app/core/perf-ring.ts`
@@ -715,6 +746,8 @@ git commit -m "feat(perf): F3 debug overlay with frame/draw percentiles and snap
 
 ### Task 6: Await atlas preload before joining (kill first-combat stutter)
 
+- **Modelo:** GPT-5.5 (Codex) · **Effort:** low
+
 Hoje o preload de atlases é fire-and-forget ([game.ts:915](../../frontend/src/app/pages/game/game.ts)): `void this.assets.preload([...])`. Os primeiros combates decodificam PNG no meio do frame — stutter garantido. O join passa a esperar o preload, com estado de loading explícito.
 
 **Files:**
@@ -756,6 +789,8 @@ git commit -m "fix(perf): await atlas preload before joining a run"
 ---
 
 ### Task 7: Perf baseline + decision gate (Canvas vs PixiJS)
+
+- **Modelo:** Claude Fable 5 · **Effort:** high — interpretar o profiling e decidir se abre o sub-projeto de render contamina todo o trabalho seguinte; é uma das 2 tasks Fable das Ondas 1-3
 
 Task de medição e decisão — produz o documento que fecha a Onda 1 e decide o próximo passo de render. Sem código novo.
 
@@ -806,5 +841,5 @@ Silhueta orgânica multi-lóbulo antes da erosão (`DungeonGenerator.cs`, `Erode
 ### Onda 3 — Orquestração idle (runs encadeadas infinitas)
 Session Plan server-side no `RunManager` (estratégia: tier, rotação de Kaeli, regras de parada, orçamento de energia; substitui o seletor client-side de Tentativas); Run Journal (resumo por run + agregados de sessão); UI espectador por default (feed de journal, próxima ação visível; intervenção manual pausa a orquestração); economia idle (energia regenerativa, caps offline revisados — constantes em `GameConfig`, tuning via BalanceSim). **Restrição-chave:** orquestração fica FORA do engine — `GameWorld` não muda. **Gate:** sessão 1h+ sem interação; reconexão retoma espectador; replay-check verde. Depende da Onda 2.
 
-### Onda 4 — Migração de assets (híbrido packs CC0 + AI) — trilha paralela
-Style guide de sprite (doc + folha de referência canônica: resolução, paleta, proporção, câmera, outline/luz) ANTES de qualquer asset; auditoria de inventário (script que lista o que do Tibia está em uso, por categoria); commodity via packs CC0/CC-BY entrando por manifests autorais com prioridade sobre o atlas Tibia e fallback automático; identidade via AI (ComfyUI + `pack_kaeli_outfits.py`) para bosses/monstros-assinatura/relíquias. Ordem: FX/mísseis → tiles dos 5 biomas (sincronizado com Onda 2) → monstros comuns → itens. Licenças só CC0/CC-BY com `CREDITS.md`. **Gate por categoria:** 100% servida por manifest autoral + screenshot de regressão por bioma. Pode começar em paralelo à Onda 2 (não toca engine).
+### Onda 4 — Migração de assets (packs CC0 + ComfyUI + Codex imagegen) — trilha paralela
+Plano completo em `2026-07-06-wave4-asset-migration.md`. Style guide de sprite ANTES de qualquer asset (gate do usuário); auditoria via `tools/AssetAudit`; commodity via packs CC0/CC-BY e via Codex imagegen (plugin game-studio: gpt-image-2 + sprite-pipeline, validado instalado em 2026-07-06); identidade via ComfyUI (`pack_kaeli_outfits.py`) para bosses/assinaturas. Ordem: FX/mísseis → tiles dos 5 biomas (depende da Onda 2 Task 4 — slot `WallSet`) → monstros comuns → itens. Licenças só CC0/CC-BY com `CREDITS.md`. **Gate por categoria:** 100% servida por manifest autoral + screenshot de regressão por bioma. Auditoria, style guide e infra de packs podem começar já, em paralelo às Ondas 2-3.

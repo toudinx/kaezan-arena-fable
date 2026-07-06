@@ -367,7 +367,7 @@ git commit -m "feat(meta): session plan and pure chaining decider"
   - `class RunJournal(int capacity)` com `Add(entry)`, `IReadOnlyList<RunJournalEntry> Entries`, `Aggregate(TimeSpan window, DateTimeOffset nowUtc): SessionAggregates`
   - `record SessionAggregates(int Runs, int Wins, long Gold, long AccountXp, int Kills)`
 
-- [ ] **Step 1: Testes que falham**
+- [x] **Step 1: Testes que falham**
 
 Criar `backend/tests/KaezanArenaFable.Api.Tests/RunJournalTests.cs`:
 
@@ -411,12 +411,12 @@ public class RunJournalTests
 }
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter RunJournalTests`
 Expected: FAIL.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 Criar `backend/src/KaezanArenaFable.Api/Meta/RunJournal.cs`:
 
@@ -467,12 +467,12 @@ public sealed class RunJournal(int capacity = 200)
 }
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter RunJournalTests`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/src/KaezanArenaFable.Api/Meta/RunJournal.cs backend/tests

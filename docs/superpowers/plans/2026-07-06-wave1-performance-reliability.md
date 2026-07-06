@@ -290,7 +290,7 @@ Hoje `_events` é limpo a cada tick e viaja uma única vez no snapshot ([GameWor
 **Interfaces:**
 - Produces: `EventDto.Seq` (`long`, monotônico por run, ordem de emissão); `EventLog` — `EventDto Add(long tick, EventDto ev)`, `void Trim(long tick)`, `List<EventDto> Snapshot()`; `GameConfig.EventReplayTicks` (`int`, = 1 neste task). O Task 4 consome `Seq` no cliente.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `backend/tests/KaezanArenaFable.Api.Tests/EventLogTests.cs`:
 
@@ -347,12 +347,12 @@ public class EventLogTests
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter EventLogTests`
 Expected: FAIL — `EventLog` does not exist / `EventDto` has no `Seq`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Em `GameDtos.cs`, `EventDto` ganha `Seq` com default (mantém call sites e BalanceSim compilando):
 
@@ -410,18 +410,18 @@ Em `GameWorld.cs`:
 - Linha 5442: `_events.Add(new EventDto(kind, x, y, toX, toY, value, text, actorId, crit));` → `_events.Add(TickCount, new EventDto(kind, x, y, toX, toY, value, text, actorId, crit));`
 - Linha 5644: `_events.ToList()` → `_events.Snapshot()`
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests`
 Expected: PASS (todos, incluindo PerfStats do Task 2).
 
-- [ ] **Step 5: Build + engine gate (replay-check)**
+- [x] **Step 5: Build + engine gate (replay-check)**
 
 Run: `dotnet build backend/src/KaezanArenaFable.Api` → sem erros.
 Run: `dotnet run --project tools/BalanceSim -- --replay-check backend/src/KaezanArenaFable.Api/.data/replays`
 Expected: todos os replays existentes verdes (eventos são saída, não estado — hash não muda). Se divergir, PARE: o hash de replay está incluindo eventos e o design precisa ser revisto antes de seguir.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/src/KaezanArenaFable.Api backend/tests

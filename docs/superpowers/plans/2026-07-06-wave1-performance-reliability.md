@@ -765,7 +765,7 @@ Hoje o preload de atlases é fire-and-forget ([game.ts:915](../../frontend/src/a
 - Consumes: `AssetsService.preload(categories: string[]): Promise<unknown>` (já existe).
 - Produces: signal `joining` (o template já tem um branch `@if (!snapshot())` — ele ganha o texto de estado).
 
-- [ ] **Step 1: Await the preload and flag the join state**
+- [x] **Step 1: Await the preload and flag the join state**
 
 Campo novo: `readonly joining = signal(true);`
 
@@ -778,16 +778,21 @@ await this.assets.preload(['outfits', 'objects', 'effects', 'missiles']).catch((
 
 e após o `joinRun` resolver (dentro do `try`, depois do tratamento de `joined.resumed`): `this.joining.set(false);` (também no `catch`, antes de navegar para fora).
 
-- [ ] **Step 2: Loading copy in the template**
+- [x] **Step 2: Loading copy in the template**
 
 No branch existente `@if (!snapshot())` (linha ~364), exibir o estado: `{{ joining() ? 'Preparing the hunt…' : 'Entering the dungeon…' }}` (integrar ao markup que já existe ali — não criar overlay paralelo).
 
-- [ ] **Step 3: Build + manual check**
+- [x] **Step 3: Build + manual check**
 
 Run: `cd frontend && npx ng build` → sem erros. Iniciar uma run com o cache do navegador limpo (DevTools → Disable cache) e o overlay F3 ligado.
 Expected: tela de loading breve antes do join; nos primeiros 10s de combate, `long frames` não cresce em salto no primeiro FX de skill (comparar com o comportamento anterior).
 
-- [ ] **Step 4: Commit**
+Status 2026-07-06: TDD guard added for preload-before-join ordering. Verified on a cold alternate
+dev-server port with backend Release: loading showed `Preparing the hunt...`, the run entered combat,
+F3 reported live numbers (`draw p95` ~1.1-1.3ms, 2 long frames after early combat), event dedup counters
+advanced, and browser console had no errors/warnings.
+
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/src/app/pages/game/game.ts

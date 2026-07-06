@@ -373,7 +373,7 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
       @if (!snapshot()) {
         <div class="overlay loading">
           <span class="spin-rosette" aria-hidden="true"></span>
-          <h2 class="ov-title">Shaping the dungeon…</h2>
+          <h2 class="ov-title">{{ joining() ? 'Preparing the hunt...' : 'Entering the dungeon...' }}</h2>
         </div>
       }
     </div>
@@ -870,6 +870,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   readonly autoRunsRemaining = signal(0);
   readonly autoRepeatCountdown = signal(0);
   readonly showPerf = signal(false);
+  readonly joining = signal(true);
   readonly perfReadout = signal<{
     frameP50: number;
     frameP95: number;
@@ -942,8 +943,8 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     window.addEventListener('resize', resize);
 
     await this.assets.load();
-    // best-effort atlas warmup; the renderer also lazy-loads on demand
-    void this.assets.preload(['outfits', 'objects', 'effects', 'missiles']).catch(() => undefined);
+    // Decode the atlases before joining: lazy-decoding a sheet mid-combat is a guaranteed stutter.
+    await this.assets.preload(['outfits', 'objects', 'effects', 'missiles']).catch(() => undefined);
     this.renderer = new GameRenderer(canvas, this.assets, this.sound);
     (window as unknown as Record<string, unknown>)['__kaezanRenderer'] = this.renderer; // debug/e2e hook
     // G-03: feed skill footprints so the helper telegraph can preview the right shape.
@@ -957,7 +958,9 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
         this.resumeToast.set(true);
         this.resumeToastTimer = window.setTimeout(() => this.resumeToast.set(false), RESUME_TOAST_MS);
       }
+      this.joining.set(false);
     } catch (err) {
+      this.joining.set(false);
       console.error('joinRun failed', err);
       alert((err as Error).message);
       void this.router.navigate(['/hunt']);

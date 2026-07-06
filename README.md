@@ -180,6 +180,8 @@ em `docs/design/gameplay_style_guide.md`.
   enquanto uma tecla de movimento estiver pressionada.
 - O renderer mantém um tick de histórico e suaviza a deriva do relógio do servidor, preservando
   a animação de caminhada durante todo o deslocamento entre tiles mesmo com jitter de snapshots.
+- A tela de run espera o preload/decodificação dos atlases principais antes de entrar no backend,
+  evitando que o primeiro combate pague esse custo no meio do frame.
 - `F3` alterna um overlay de performance da run com percentis de frame/draw, idade do snapshot,
   frames longos e contadores de eventos ingeridos/deduplicados.
 - **Peso de combate (juice).** O impacto é feedback puramente client-side reagindo aos `EventDto`

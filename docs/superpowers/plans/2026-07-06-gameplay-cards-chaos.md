@@ -71,13 +71,15 @@ Elite kills and chests stop opening card offers; they pay out directly. Blessed-
 - Modify: `backend/src/KaezanArenaFable.Api/Domain/GameConfig.cs` (~lines 374, 386–397, 780–796)
 - Modify: `backend/src/KaezanArenaFable.Api/Engine/GameWorld.cs` (~lines 264–270, 3846–3848, 4236–4320, 4410–4420, 5190–5192)
 - Modify: `backend/src/KaezanArenaFable.Api/Engine/GameWorld.Replay.cs` (~line 144)
-- Test: `backend/tests/KaezanArenaFable.Api.Tests/CardCadenceConfigTests.cs` (create)
+- Test: `backend/tests/KaezanArenaFable.Api.Tests/CardCadenceTests.cs` (create)
 
 **Interfaces:**
 - Consumes: existing `GrantGearMaterial(int x, int y)`, `EmitLootFly(int spriteId, string label, int x, int y, bool isGold)`, `CardValue(string stat)`, `_gold`, `Tier.StatMultiplier`.
-- Produces: `OfferCardBeat()` (parameterless — the `blessed` parameter is gone), `GameConfig.EliteRewardGoldMin/Max`, `GameConfig.MaxCardChoicesPerRun == 4`, retuned `GameConfig.CardRarityWeight`.
+- Produces: `OfferCardBeat(CardOfferBeat beat)` gated by `GameConfig.OpensCardOffer`, `GameConfig.MaxCardChoicesPerRun == 4`, retuned `GameConfig.CardRarityWeight`, and elite/chest direct reward beats with no blessed-offer state.
 
-- [ ] **Step 1: Write the failing tests**
+**Completion note (2026-07-06):** implemented in `27eca38 feat: reduce card choice cadence`. The implementation keeps elite gold on the existing loot path (`DropLoot`/`DropKaezanLoot`) and adds direct Echo material, instead of adding new elite-gold constants. Verified with `dotnet test -c Release`, `dotnet build -c Release`, `npx ng build`, and `dotnet run --project tools/BalanceSim -c Release -- --seeds 5 --tier 1 --cards full`.
+
+- [x] **Step 1: Write the failing tests**
 
 Create `backend/tests/KaezanArenaFable.Api.Tests/CardCadenceConfigTests.cs`:
 
@@ -115,7 +117,7 @@ public class CardCadenceConfigTests
 }
 ```
 
-- [ ] **Step 2: Run tests to verify the new expectations fail**
+- [x] **Step 2: Run tests to verify the new expectations fail**
 
 ```powershell
 dotnet test backend/tests/KaezanArenaFable.Api.Tests -c Release --filter CardCadenceConfigTests
@@ -123,7 +125,7 @@ dotnet test backend/tests/KaezanArenaFable.Api.Tests -c Release --filter CardCad
 
 Expected: `EchoIsReachableBySecondChoice` FAILS (current weight at 1/3 = 20) and `RunOffersStayScarce` FAILS (cap is 9). `CommonsNoLongerDominateLateOffers` may already pass (common 22 < rare 52/echo 46) — that is fine, it is a regression guard.
 
-- [ ] **Step 3: Update `GameConfig.cs` — cap, rarity curve, elite reward, drop blessed const**
+- [x] **Step 3: Update `GameConfig.cs` — cap, rarity curve, elite reward, drop blessed const**
 
 At line 374–376, change the cap and its comment:
 
@@ -155,7 +157,7 @@ In the G-09 chest section, DELETE the `BlessedOfferProgress` const and its comme
     public const int EliteRewardGoldMax = 140;
 ```
 
-- [ ] **Step 4: Update `GameWorld.cs` — elite beat becomes a direct payout**
+- [x] **Step 4: Update `GameWorld.cs` — elite beat becomes a direct payout**
 
 At lines 3846–3847 replace:
 
@@ -179,7 +181,7 @@ with:
         }
 ```
 
-- [ ] **Step 5: Update `GameWorld.cs` — chest stops offering cards; remove blessed plumbing**
+- [x] **Step 5: Update `GameWorld.cs` — chest stops offering cards; remove blessed plumbing**
 
 In `TryInteract` (lines 5190–5191) DELETE:
 
@@ -205,7 +207,7 @@ Update the stale comments that describe the old cadence:
 - `GameWorld.cs:3861` chest-drop comment "(ambush + blessed offer)" → "(ambush + extra materials)".
 - `GameWorld.cs:657-658` (`SpawnPois`) same "blessed offer" mention → "extra materials".
 
-- [ ] **Step 6: Sweep for leftovers**
+- [x] **Step 6: Sweep for leftovers**
 
 ```powershell
 Select-String -Path backend\src\KaezanArenaFable.Api\**\*.cs -Pattern "blessed" -SimpleMatch
@@ -214,7 +216,7 @@ Select-String -Path frontend\src\app\**\*.ts -Pattern "blessed" -SimpleMatch
 
 Expected: no hits in backend (or only in strings you just rewrote); if the frontend references a blessed flag on the card offer overlay, delete that branch too (the DTO never carried it — expect zero hits).
 
-- [ ] **Step 7: Build + run tests**
+- [x] **Step 7: Build + run tests**
 
 ```powershell
 dotnet build backend/src/KaezanArenaFable.Api
@@ -223,7 +225,7 @@ dotnet test backend/tests/KaezanArenaFable.Api.Tests -c Release --filter CardCad
 
 Expected: build clean; 3/3 PASS.
 
-- [ ] **Step 8: Smoke the cadence in the simulator**
+- [x] **Step 8: Smoke the cadence in the simulator**
 
 ```powershell
 dotnet run --project tools/BalanceSim -c Release -- --seeds 5 --tier 1 --cards full
@@ -231,7 +233,7 @@ dotnet run --project tools/BalanceSim -c Release -- --seeds 5 --tier 1 --cards f
 
 Expected: canary PASS, runs finish (`win` counts > 0). This proves the offer path still resolves (the sim auto-picks offers) with the new beats.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```powershell
 git add backend/src/KaezanArenaFable.Api/Domain/GameConfig.cs backend/src/KaezanArenaFable.Api/Engine/GameWorld.cs backend/src/KaezanArenaFable.Api/Engine/GameWorld.Replay.cs backend/tests/KaezanArenaFable.Api.Tests/CardCadenceConfigTests.cs

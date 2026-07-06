@@ -51,7 +51,7 @@
 - Consumes: `AccountStore`, `GameData`, `MonsterRegistry`, `KaeliRegistry`, `ItemRegistry`, `ContentStore` (mesmas dependências que o `GameHub` já injeta).
 - Produces: `RunFactory.Create(int tier, string? waifuId, long? seed, GameMode mode): GameWorld` — lança `HubException` nos mesmos casos do código atual ("unknown tier", "Kaeli not recruited", "requires account level N"). O `GameHub.JoinRun` delega; a Task 4 (orquestrador) consome.
 
-- [ ] **Step 1: Criar `RunFactory` (código movido, não reescrito)**
+- [x] **Step 1: Criar `RunFactory` (código movido, não reescrito)**
 
 `backend/src/KaezanArenaFable.Api/Meta/RunFactory.cs`:
 
@@ -127,7 +127,7 @@ public sealed class RunFactory(
 
 (Isto é o corpo de `GameHub.JoinRun` linhas 24-81 movido; a única mudança é retornar o `GameWorld` em vez de chamar `runs.StartRun`.)
 
-- [ ] **Step 2: `GameHub` delega**
+- [x] **Step 2: `GameHub` delega**
 
 `GameHub` passa a injetar `RunFactory factory` (substituindo `GameData data, MonsterRegistry monsters, KaeliRegistry kaelis, ItemRegistry items, AccountStore store, ContentStore content` — que só eram usados pelo JoinRun) e o `JoinRun` vira:
 
@@ -163,16 +163,20 @@ public sealed class GameHub(RunManager runs, RunFactory factory) : Hub
 
 Atenção: se o timing de criação de run da Onda 1 (Task 2) tiver adicionado `ILogger<GameHub>` + Stopwatch no JoinRun, preservar — o cronômetro passa a envolver `factory.Create(...)`.
 
-- [ ] **Step 3: Registrar no DI**
+- [x] **Step 3: Registrar no DI**
 
 Em `Program.cs`, junto aos singletons existentes: `builder.Services.AddSingleton<RunFactory>();`
 
-- [ ] **Step 4: Build + smoke manual**
+- [x] **Step 4: Build + smoke manual**
 
 Run: `dotnet build backend/src/KaezanArenaFable.Api`
 Expected: limpo. Depois `tools/run-backend.ps1` + `npm start`: entrar numa run T1 normalmente (join manual intacto).
 
-- [ ] **Step 5: Commit**
+(Smoke feito via `run-backend.ps1` + chamada direta `JoinRun` pelo hub SignalR com `@microsoft/signalr`
+do `frontend/node_modules` — sem subir o Angular dev server. Resultado: `{"seed":...,"tier":1,
+"tierName":"Echoing Den","waifuId":"waifu:velvet","mode":0,"resumed":false}`, join manual intacto.)
+
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/src/KaezanArenaFable.Api

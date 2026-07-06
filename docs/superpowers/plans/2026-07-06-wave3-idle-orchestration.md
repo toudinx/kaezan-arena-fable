@@ -905,7 +905,7 @@ git commit -m "feat(engine,meta): session orchestrator chains detached session r
 - Produces (backend): `POST /api/v1/session/start` (body `SessionStartRequest`), `POST /api/v1/session/stop`, `POST /api/v1/session/resume`, `GET /api/v1/session` → `SessionStateDto | 204`; hub `WatchSession(): object` (payload igual ao do JoinRun) e `StopWatching()`.
 - Produces (frontend): `SessionPlanRequest`, `SessionStateDto`, `RunJournalEntryDto`, `SessionAggregatesDto` em `types.ts`; `ApiService.startSession/stopSession/resumeSession/getSession`; `GameClientService.watchSession()`.
 
-- [ ] **Step 1: Endpoints**
+- [x] **Step 1: Endpoints**
 
 Em `MetaEndpoints.cs`, adicionar após o bloco do catalog (usar o `api` group existente):
 
@@ -951,7 +951,7 @@ public sealed record SessionStartRequest(
 
 Imports necessários: `using KaezanArenaFable.Api.Engine;` (RunManager).
 
-- [ ] **Step 2: Hub**
+- [x] **Step 2: Hub**
 
 Em `GameHub.cs`:
 
@@ -971,7 +971,7 @@ Em `GameHub.cs`:
     public void StopWatching() => runs.DetachWatcher(Context.ConnectionId);
 ```
 
-- [ ] **Step 3: `types.ts`**
+- [x] **Step 3: `types.ts`**
 
 Adicionar (nomes camelCase — serialização padrão do ASP.NET):
 
@@ -1019,7 +1019,7 @@ export interface SessionStateDto {
 }
 ```
 
-- [ ] **Step 4: `api.service.ts` + `game-client.service.ts`**
+- [x] **Step 4: `api.service.ts` + `game-client.service.ts`**
 
 `api.service.ts` — seguir o padrão dos métodos POST/GET existentes do arquivo (mesmo helper de fetch):
 
@@ -1055,7 +1055,7 @@ export interface SessionStateDto {
 
 (`ensureConnection` = o trecho de setup de conexão que `joinRun` já executa; se `joinRun` inline-a, extrair para um método privado nesta task e fazer os dois usarem.)
 
-- [ ] **Step 5: Builds + smoke**
+- [x] **Step 5: Builds + smoke**
 
 ```bash
 dotnet build backend/src/KaezanArenaFable.Api
@@ -1069,7 +1069,17 @@ Start-Sleep 30; Invoke-RestMethod http://localhost:5210/api/v1/session
 ```
 Expected: primeira chamada retorna `status: running`; a segunda mostra `runNumber` avançando com journal populado (runs T1 duram <60s) — **runs encadeando sem nenhum cliente conectado**. (Se a Kaeli inicial não for `waifu:eloa`, use o id real do starter em `Waifus.StarterWaifuId`.)
 
-- [ ] **Step 6: Commit**
+(Executado: starter real é `waifu:seren`; runs T1 duraram ~110s. Após a 1ª run, `GET /session`
+retornou `runNumber: 1`, journal populado com gold/xp corretos (caminho `EnrichedEnd`) e status
+`running` — encadeando sem cliente conectado. `/session/stop` → `status: stopped`, reason
+"stopped by player". Smoke extra do hub via node + `@microsoft/signalr`: `WatchSession` retornou
+`{watching: true, ...}` e o watcher recebeu 20 snapshots + 1 map em 2s; `StopWatching` ok.
+Adaptações: helper único `request(method, path, body)` no `api.service.ts` ganhou
+`if (res.status === 204) return null as T;` para o `GET /session` resolver `null`;
+`ensureConnection` já existia como `connect()` — `watchSession` o reusa e limpa os signals
+como o `joinRun`.)
+
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/src/KaezanArenaFable.Api frontend/src/app/core

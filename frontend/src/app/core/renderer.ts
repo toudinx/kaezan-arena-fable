@@ -205,7 +205,7 @@ export class GameRenderer {
   private warpUntil = 0;
   private lastFrame = -1;
 
-  private snapArrival = 0;
+  private snapArrival = -1;
   private lastEventSeq = -1;
   private serverClockOffsetMs: number | null = null;
   private readonly motionHistory = new Map<number, MotionSample[]>();
@@ -287,6 +287,11 @@ export class GameRenderer {
     this.eventsIngested += fresh.length;
     this.eventsDeduped += snap.events.length - fresh.length;
     for (const ev of fresh) this.ingest(ev, nowPerf);
+  }
+
+  /** Milliseconds since the last snapshot arrived (staleness readout for the debug overlay). */
+  snapshotAgeMs(now: number): number {
+    return this.snapArrival >= 0 ? Math.max(0, now - this.snapArrival) : 0;
   }
 
   /** The Echo Break already exists in the engine (effect 35 + "QUEBRADO!"); here we elevate it to a

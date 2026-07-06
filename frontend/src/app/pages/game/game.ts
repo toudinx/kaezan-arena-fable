@@ -6,6 +6,7 @@ import { normalizeFarmRunCount, readFarmRunCount } from '../../core/farm-setting
 import { GameClientService, GameMode } from '../../core/game-client.service';
 import { GameRenderer } from '../../core/renderer';
 import { ItemIcon } from '../../core/item-icon';
+import { PerfRing } from '../../core/perf-ring';
 import { SoundService } from '../../core/sound.service';
 import { AutoHelperSettingsDto, SnapshotDto } from '../../core/types';
 
@@ -39,6 +40,14 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
       <div class="arena-veil" aria-hidden="true"></div>
       @if (resumeToast()) {
         <div class="resume-toast">Run resumed</div>
+      }
+      @if (visiblePerfReadout(); as perf) {
+        <div class="perf-overlay">
+          <div>frame p50 {{ perf.frameP50.toFixed(1) }}ms &middot; p95 {{ perf.frameP95.toFixed(1) }}ms</div>
+          <div>draw p95 {{ perf.drawP95.toFixed(1) }}ms &middot; long frames {{ perf.longFrames }}</div>
+          <div>snapshot age {{ perf.snapAgeMs.toFixed(0) }}ms</div>
+          <div>events {{ perf.eventsIngested }} (+{{ perf.eventsDeduped }} deduped)</div>
+        </div>
       }
 
       <!-- top chrome: Kaeli plaque + status chips (left) · system cluster (right) -->
@@ -405,6 +414,12 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
       -webkit-backdrop-filter: blur(var(--glass-blur)); backdrop-filter: blur(var(--glass-blur));
       box-shadow: var(--glass-edge), var(--sh-2);
       color: var(--success); font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+    }
+    .perf-overlay {
+      position: absolute; top: 8px; right: 8px; z-index: 40;
+      font: 11px/1.5 monospace; color: #9fe8a0;
+      background: rgba(0, 0, 0, 0.55); padding: 6px 9px;
+      border-radius: 6px; pointer-events: none;
     }
 
     /* ---- top chrome ---------------------------------------------------- */
@@ -854,9 +869,25 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   readonly plannedRuns = signal(1);
   readonly autoRunsRemaining = signal(0);
   readonly autoRepeatCountdown = signal(0);
+  readonly showPerf = signal(false);
+  readonly perfReadout = signal<{
+    frameP50: number;
+    frameP95: number;
+    drawP95: number;
+    snapAgeMs: number;
+    eventsIngested: number;
+    eventsDeduped: number;
+    longFrames: number;
+  } | null>(null);
+  readonly visiblePerfReadout = computed(() => this.showPerf() ? this.perfReadout() : null);
 
   private renderer: GameRenderer | null = null;
   private raf = 0;
+  private readonly framePerf = new PerfRing(300);
+  private readonly drawPerf = new PerfRing(300);
+  private lastFrameAt = -1;
+  private longFrames = 0;
+  private perfFrameCount = 0;
   private tier = 1;
   private waifuId: string | undefined;
   private mode: GameMode = GameMode.Dungeon;
@@ -943,14 +974,33 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     this.moveHeartbeat = window.setInterval(this.resendMoveDir, MOVE_HEARTBEAT_MS);
 
     const loop = (now: number) => {
+      if (this.lastFrameAt >= 0) {
+        const frameMs = now - this.lastFrameAt;
+        this.framePerf.add(frameMs);
+        if (frameMs > 33) this.longFrames++;
+      }
+      this.lastFrameAt = now;
       // A bad frame must never kill the loop: if draw() throws, the requestAnimationFrame below would not
       // be scheduled again and the canvas would freeze while the backend/helper kept playing.
       // Isolate the frame: log the first failure with its stack, then continue.
       try {
+        const drawStart = performance.now();
         this.renderer?.draw(now);
         if (this.mini?.nativeElement) this.renderer?.drawMinimap(this.mini.nativeElement);
+        this.drawPerf.add(performance.now() - drawStart);
       } catch (err) {
         this.onRenderError(err);
+      }
+      if (this.showPerf() && ++this.perfFrameCount % 30 === 0) {
+        this.perfReadout.set({
+          frameP50: this.framePerf.percentile(50),
+          frameP95: this.framePerf.percentile(95),
+          drawP95: this.drawPerf.percentile(95),
+          snapAgeMs: this.renderer?.snapshotAgeMs(now) ?? 0,
+          eventsIngested: this.renderer?.eventsIngested ?? 0,
+          eventsDeduped: this.renderer?.eventsDeduped ?? 0,
+          longFrames: this.longFrames,
+        });
       }
       this.raf = requestAnimationFrame(loop);
     };
@@ -979,6 +1029,11 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     }
     if (e.repeat) return;
     const k = e.key.toLowerCase();
+    if (k === 'f3') {
+      e.preventDefault();
+      this.showPerf.update((v) => !v);
+      return;
+    }
     if (k === '1' || k === '2' || k === '3') {
       const idx = Number(k) - 1;
       const offer = this.snapshot()?.run?.offer;

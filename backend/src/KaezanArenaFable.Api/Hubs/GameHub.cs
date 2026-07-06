@@ -1,4 +1,3 @@
-using KaezanArenaFable.Api.Content;
 using KaezanArenaFable.Api.Domain;
 using KaezanArenaFable.Api.Engine;
 using KaezanArenaFable.Api.Meta;
@@ -7,24 +6,13 @@ using Microsoft.AspNetCore.SignalR;
 namespace KaezanArenaFable.Api.Hubs;
 
 /// <summary>Realtime game channel: one active run per connection.</summary>
-public sealed class GameHub(
-    RunManager runs,
-    GameData data,
-    MonsterRegistry monsters,
-    KaeliRegistry kaelis,
-    ItemRegistry items,
-    AccountStore store,
-    ContentStore content,
-    ILogger<GameHub> logger) : Hub
+public sealed class GameHub(RunManager runs, RunFactory factory, AccountStore store) : Hub
 {
     // LM-03: `mode` is optional, defaulting to Dungeon — the current client (sending 4 args) enters
     // legacy mode unchanged. Arena (LM-04) will pass GameMode.Arena here.
     public object JoinRun(int tier, string? waifuId = null, long? seed = null, bool resume = false,
         GameMode mode = GameMode.Dungeon)
     {
-        var tierDef = content.Tier(tier)
-                      ?? throw new HubException("unknown tier");
-
         if (resume && runs.TryResumeRun(Context.ConnectionId, out var resumedWorld) && resumedWorld is not null)
         {
             return new
@@ -37,54 +25,13 @@ public sealed class GameHub(
             };
         }
 
-        // The run's Kaeli is explicit: the client sends who enters (pre-run screen). Without waifuId
-        // (compat), falls back to the active one (ActiveWaifuId) and finally to the starter.
-        var (accountLevel, runWaifuId, ascension, bestiary, equipment, affinityXp, masteryNodes, skinId, helperProfile) =
-            store.Read(s =>
-            {
-                var target = waifuId is { Length: > 0 } && s.OwnedWaifus.Contains(waifuId)
-                    ? waifuId
-                    : s.OwnedWaifus.Contains(s.ActiveWaifuId) ? s.ActiveWaifuId : Waifus.StarterWaifuId;
-                if (waifuId is { Length: > 0 } && !s.OwnedWaifus.Contains(waifuId))
-                    throw new HubException("Kaeli not recruited");
-                s.Equipment.TryGetValue(AccountState.EquipKey(target, tierDef.Tier), out var loadout);
-                return (
-                    s.AccountLevel,
-                    target,
-                    s.Ascension.GetValueOrDefault(target),
-                    new Dictionary<string, long>(s.BestiaryKills),
-                    loadout?.ToDictionary() ?? [],
-                    s.AffinityXp.GetValueOrDefault(target),
-                    s.Mastery.TryGetValue(target, out var mastery) ? mastery.Nodes.ToList() : [],
-                    s.SelectedSkins.GetValueOrDefault(target),
-                    s.HelperProfiles.GetValueOrDefault(target, ""));
-            });
-
-        if (accountLevel < tierDef.RequiredAccountLevel)
-            throw new HubException($"requires account level {tierDef.RequiredAccountLevel}");
-
-        var waifu = kaelis.Find(runWaifuId) ?? kaelis.ById[Waifus.StarterWaifuId];
-        var runSeed = seed ?? Random.Shared.NextInt64(1, long.MaxValue);
-
-        var skin = skinId is not null
-            ? waifu.Skins.FirstOrDefault(s => s.Id == skinId) ?? waifu.DefaultSkin
-            : waifu.DefaultSkin;
-        var kaeliLoadout = new KaeliLoadout(
-            KaeliService.AffinityLevelFor(affinityXp),
-            Mastery.Aggregate(waifu.Id, masteryNodes),
-            skin);
-
-        var equipmentStats = EquipmentStatAggregator.Aggregate(equipment, items.All);
-        // LM-08: biome resolved from ContentStore (editable in admin); falls back to canonical defaults.
-        var biome = content.Biome(tierDef.Tier) ?? Biomes.ForTier(tierDef.Tier);
-        var creationStart = System.Diagnostics.Stopwatch.GetTimestamp();
-        var world = new GameWorld(
-            runSeed, tierDef, waifu, ascension, data, monsters, bestiary, equipmentStats, kaeliLoadout, items,
-            helperProfile, content.RoleTunings, mode, biome);
-        logger.LogInformation("run created in {Ms:F0}ms (tier {Tier}, seed {Seed})",
-            System.Diagnostics.Stopwatch.GetElapsedTime(creationStart).TotalMilliseconds, tierDef.Tier, runSeed);
+        var world = factory.Create(tier, waifuId, seed, mode);
         runs.StartRun(Context.ConnectionId, world);
-        return new { seed = runSeed, tier = tierDef.Tier, tierName = tierDef.Name, waifuId = waifu.Id, mode, resumed = false };
+        return new
+        {
+            seed = world.Seed, tier = world.Tier.Tier, tierName = world.Tier.Name,
+            waifuId = world.Waifu.Id, mode, resumed = false
+        };
     }
 
     public void Move(int dx, int dy) =>

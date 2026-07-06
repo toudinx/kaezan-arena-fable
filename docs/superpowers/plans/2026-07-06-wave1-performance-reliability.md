@@ -583,7 +583,7 @@ git commit -m "feat(fx): client event dedup by seq + enable 10-tick replay windo
 - Consumes: `eventsIngested` / `eventsDeduped` do Task 4.
 - Produces: `PerfRing` — `add(ms: number)`, `percentile(p: number): number`; `GameRenderer.snapshotAgeMs(now: number): number`. O Task 7 lê o overlay para o baseline.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `frontend/src/app/core/perf-ring.spec.ts`:
 
@@ -612,12 +612,12 @@ describe('PerfRing', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd frontend && npx vitest run src/app/core/perf-ring.spec.ts`
 Expected: FAIL — `./perf-ring` not found.
 
-- [ ] **Step 3: Implement PerfRing**
+- [x] **Step 3: Implement PerfRing**
 
 `frontend/src/app/core/perf-ring.ts`:
 
@@ -647,12 +647,12 @@ export class PerfRing {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd frontend && npx vitest run src/app/core/perf-ring.spec.ts`
 Expected: PASS (3 tests).
 
-- [ ] **Step 5: Expose snapshot age on the renderer**
+- [x] **Step 5: Expose snapshot age on the renderer**
 
 Em `renderer.ts` (a classe já guarda `snapArrival` em `setSnapshot`):
 
@@ -665,7 +665,7 @@ snapshotAgeMs(now: number): number {
 
 (Se `snapArrival` inicializar como `undefined`/outro sentinela, alinhar o guard ao valor inicial real do campo.)
 
-- [ ] **Step 6: Measure + overlay in game.ts**
+- [x] **Step 6: Measure + overlay in game.ts**
 
 Campos novos no componente:
 
@@ -732,12 +732,12 @@ No template (irmão dos overlays existentes; strings em inglês):
 
 CSS (junto dos estilos do HUD): `.perf-overlay { position: absolute; top: 8px; right: 8px; z-index: 40; font: 11px/1.5 monospace; color: #9fe8a0; background: rgba(0,0,0,.55); padding: 6px 9px; border-radius: 6px; pointer-events: none; }`
 
-- [ ] **Step 7: Build + manual check**
+- [x] **Step 7: Build + manual check**
 
 Run: `cd frontend && npx ng build` → sem erros. Rodar o jogo, apertar F3 numa run.
 Expected: overlay aparece com números vivos; F3 de novo esconde.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add frontend/src/app/core/perf-ring.ts frontend/src/app/core/perf-ring.spec.ts frontend/src/app/core/renderer.ts frontend/src/app/pages/game/game.ts

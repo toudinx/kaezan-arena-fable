@@ -555,7 +555,7 @@ Em `GameConfig.cs`: `EventReplayTicks = 1` → `EventReplayTicks = 10` (1s de ja
 Run: `dotnet build backend/src/KaezanArenaFable.Api` e `cd frontend && npx ng build`
 Expected: ambos sem erros.
 
-- [ ] **Step 8: Manual FX verification (partial)**
+- [x] **Step 8: Manual FX verification**
 
 Com backend (script do Task 1) + `npm start`: jogar uma run T1 e confirmar (a) FX de skill aparecem consistentemente, (b) nenhum FX duplicado (dano dobrado na tela, som repetido). Depois: mudar de aba por ~10s no meio do combate, voltar, e confirmar que os FX continuam saindo normalmente.
 Expected: FX íntegros nos dois cenários.
@@ -565,6 +565,12 @@ run entered combat, HUD/kills/gold advanced, boss state appeared, and browser co
 errors/warnings from event ingestion. The tab-background part remains pending because the in-app
 browser recycled the tab reference during the attempted background-tab automation, so it did not
 produce trustworthy evidence for `document.hidden`/return-to-run behavior.
+
+Update 2026-07-06 (Task 7): closed via rAF-suspension emulation (12s/45s/53s mid-T5-combat —
+what a hidden tab does to the render loop; the client has no visibility listeners). Events kept
+ingesting during suspension, all replay-window resends were deduped (zero duplicate FX), snapshot
+age recovered to <10ms on return, +1 long frame for the resume jump. Numbers in
+`docs/balance/perf_baseline_2026-07.md` (scenario 4).
 
 - [x] **Step 9: Commit**
 
@@ -813,7 +819,7 @@ Task de medição e decisão — produz o documento que fecha a Onda 1 e decide 
 **Interfaces:**
 - Consumes: overlay F3 (Task 5), logs `tick perf`/`run created` (Task 2), backend Release (Task 1), FX confiável (Tasks 3-4).
 
-- [ ] **Step 1: Run the measurement session**
+- [x] **Step 1: Run the measurement session**
 
 Backend via `tools/run-backend.ps1` (Release), frontend `npm start`, overlay F3 ligado. Cenários, anotando frame p50/p95, draw p95, long frames, snapshot age, tick perf (log) e run-created ms:
 1. Run T1 completa (horda floor 1 + boss floor 2).
@@ -821,19 +827,19 @@ Backend via `tools/run-backend.ps1` (Release), frontend `npm start`, overlay F3 
 3. Primeiros 10s pós-join (validar Task 6).
 4. Tab em background por 60s no meio do combate → voltar (validar Tasks 3-4: `deduped` cresceu, FX íntegros, snapshot age recuperou).
 
-- [ ] **Step 2: Write the baseline doc**
+- [x] **Step 2: Write the baseline doc**
 
 `docs/balance/perf_baseline_2026-07.md` com: tabela de números por cenário; veredito por sintoma original (stutter / hitch de geração / FX perdidos — resolvido ou não, com número); e a **decisão de render** pela régua:
 - `draw p95 > 12ms` em cenário típico → abrir sub-projeto de render (brainstorm próprio: otimização Canvas dirigida — camada estática em offscreen, cull — vs migração PixiJS), com os números anexados.
 - `draw p95 ≤ 12ms` e frame p95 ≤ 16ms → renderer atual basta; registrar e encerrar.
 - `tick perf p95 > 30ms` ou `run created > 300ms` → abrir investigação de engine correspondente antes de qualquer trabalho de render.
 
-- [ ] **Step 3: Wave 1 exit gate**
+- [x] **Step 3: Wave 1 exit gate**
 
 Run: `dotnet build backend/src/KaezanArenaFable.Api`, `dotnet test backend/tests/KaezanArenaFable.Api.Tests`, `cd frontend && npx ng build && npx vitest run`, e `dotnet run --project tools/BalanceSim -- --replay-check backend/src/KaezanArenaFable.Api/.data/replays`.
 Expected: tudo verde. Critérios do spec: p95 de frame < 16ms na horda típica (senão a decisão do Step 2 já encaminhou o sub-projeto); zero FX perdido no teste de tab em background.
 
-- [ ] **Step 4: Update README + commit**
+- [x] **Step 4: Update README + commit**
 
 Atualizar `README.md` (seção "Fluidez e segurança da run"): 1 parágrafo sobre FX com seq/janela de reenvio e overlay F3.
 
@@ -841,6 +847,12 @@ Atualizar `README.md` (seção "Fluidez e segurança da run"): 1 parágrafo sobr
 git add docs/balance/perf_baseline_2026-07.md README.md
 git commit -m "docs(perf): wave 1 baseline and render decision"
 ```
+
+**Done 2026-07-06:** baseline measured on Release backend (T1/T5/post-join/background scenarios) —
+draw p95 peak 2.7ms (ruler 12ms), frame p95 ≤12.6ms (ruler 16ms), tick p95 ≤0.49ms steady-state,
+run created 1–13ms. **Decision: current Canvas 2D renderer suffices; no render sub-project, no
+engine investigation.** Exit gate green (backend build+tests, ng build+test, replay-check 18/18).
+Found & spun off: `drawShockwaves` negative-radius IndexSizeError (unclamped `t` on first frame).
 
 ---
 

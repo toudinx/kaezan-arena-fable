@@ -182,6 +182,12 @@ em `docs/design/gameplay_style_guide.md`.
   a animação de caminhada durante todo o deslocamento entre tiles mesmo com jitter de snapshots.
 - A tela de run espera o preload/decodificação dos atlases principais antes de entrar no backend,
   evitando que o primeiro combate pague esse custo no meio do frame.
+- **Entrega de FX imune a snapshot perdido/coalescido.** Cada evento de combate carrega um `seq`
+  monotônico e os snapshots reenviam uma janela dos últimos `GameConfig.EventReplayTicks` (10)
+  ticks de eventos já emitidos; o cliente deduplica por `seq` no `GameRenderer.setSnapshot`, então
+  perder um snapshot (aba em background, coalescência do `effect()` do Angular) não perde nem
+  duplica FX. Baseline medido e decisão de render (Canvas 2D atual basta) em
+  `docs/balance/perf_baseline_2026-07.md`.
 - `F3` alterna um overlay de performance da run com percentis de frame/draw, idade do snapshot,
   frames longos e contadores de eventos ingeridos/deduplicados.
 - **Peso de combate (juice).** O impacto é feedback puramente client-side reagindo aos `EventDto`

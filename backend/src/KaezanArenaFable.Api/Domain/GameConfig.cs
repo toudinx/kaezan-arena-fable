@@ -241,25 +241,32 @@ public static class GameConfig
     /// choices moved to floor-clear/sanctuary cadence. <c>Damage</c> remains the survival lever for
     /// deaths ~0 (mage/archer) — boss never &lt; 8 cycles, no one-shot from boss/elite. Each number is
     /// justified by the sweeps in docs/balance.
+    /// Cards-rework redo (2026-07-06, 30-seed sweeps): 1:boss 2900→2700, 3:elite 950→860,
+    /// 3:boss 6500→5900, 5:boss 46000→50000 pull the cards-full boss/elite cells that sat outside
+    /// the ±1 band back onto target; the remaining cells are kept at the slow edge of the band on
+    /// purpose — that headroom is what lets the card-less baseline clear ~1.1× slower. The full↔none
+    /// gap is bounded to ~1.1× by offer-card power (rare/echo carry no stat value, and card-less
+    /// still gets the level-up common drip), so the spec's 1.25–1.35× card-less target is not
+    /// reachable without buffing card DPS — see docs/balance/cards_rework_after_*.csv.
     /// </summary>
     public static readonly IReadOnlyDictionary<string, MonsterStatLine> MonsterStatLines =
         new Dictionary<string, MonsterStatLine>
         {
             ["1:common"] = new(260, 4, 2, 80, 15),
             ["1:elite"] = new(560, 6, 4, 84, 38),
-            ["1:boss"] = new(2900, 9, 6, 82, 120),
+            ["1:boss"] = new(2700, 9, 6, 82, 120),
             ["2:common"] = new(320, 4, 6, 85, 45),
             ["2:elite"] = new(760, 6, 9, 90, 110),
             ["2:boss"] = new(3500, 10, 13, 88, 350),
             ["3:common"] = new(650, 6, 12, 90, 120),
-            ["3:elite"] = new(950, 10, 18, 95, 300),
-            ["3:boss"] = new(6500, 15, 24, 94, 850),
+            ["3:elite"] = new(860, 10, 18, 95, 300),
+            ["3:boss"] = new(5900, 15, 24, 94, 850),
             ["4:common"] = new(1300, 26, 22, 100, 320),
             ["4:elite"] = new(3100, 40, 32, 105, 800),
             ["4:boss"] = new(17700, 52, 42, 102, 1900),
             ["5:common"] = new(3100, 30, 36, 110, 850),
             ["5:elite"] = new(6500, 45, 52, 116, 2100),
-            ["5:boss"] = new(46000, 85, 66, 112, 4800),
+            ["5:boss"] = new(50000, 85, 66, 112, 4800),
         };
 
     public static readonly MonsterStatPreset[] MonsterStatPresets =

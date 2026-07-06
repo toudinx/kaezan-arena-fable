@@ -1105,7 +1105,7 @@ git commit -m "feat(render): wall-adjacent inner shadow, tile variation, larger 
 - Consumes: `DungeonFloor` completo (Entry, Chests, Sanctuaries, LadderDown, Blocked).
 - Produces: `DungeonValidator.Validate(DungeonFloor floor)` — lança `InvalidOperationException` com contexto se o floor for injogável. Chamado como última linha de `DungeonGenerator.Generate` (antes do `return floor;`, depois de `PaintTiles`).
 
-- [ ] **Step 1: Testes que falham**
+- [x] **Step 1: Testes que falham**
 
 Criar `backend/tests/KaezanArenaFable.Api.Tests/DungeonValidatorTests.cs`:
 
@@ -1153,12 +1153,13 @@ public class DungeonValidatorTests
 }
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter DungeonValidatorTests`
 Expected: FAIL — `DungeonValidator` não existe.
+✅ Confirmado vermelho: CS0103 (`DungeonValidator` não existe no contexto).
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 Criar `backend/src/KaezanArenaFable.Api/Engine/DungeonValidator.cs`:
 
@@ -1234,12 +1235,23 @@ public static class DungeonValidator
 
 Em `DungeonGenerator.Generate`, antes do `return floor;` final: `DungeonValidator.Validate(floor);` (também em `GenerateTrainingRoom`, antes do seu `return floor;`).
 
-- [ ] **Step 4: Rodar TODOS os testes**
+> **Bug real capturado pelo validador (execução 2026-07-06):** o sweep de 2.000 floors falhou na
+> primeira rodada — `tier=1 seed=130 chest=(6,6) unreachable ... blocked=True`. Diagnóstico
+> (repro instrumentado dumpando o grid + BFS): o baú **não estava desconectado, estava SOBRE rocha**.
+> Causa-raiz: `CarveSidePockets` adiciona o baú de benefício no centro do pocket, e `PlacePillars`
+> roda DEPOIS e podia **estampar um pilar exatamente em cima da célula do baú** (não conhecia posições
+> de baú), enterrando-o. Correção: `PlacePillars` agora monta um `HashSet` das células de baú e pula
+> qualquer footprint que caia sobre um baú (o draw do rng acontece antes do `continue`, então o
+> determinismo é preservado; o golden é rebaselinado neste Step 5 de qualquer forma). Sem isso o
+> validador estava certíssimo — era uma run soft-lockada de verdade. Depois do fix: sweep 2.000/2.000
+> válido.
+
+- [x] **Step 4: Rodar TODOS os testes**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests`
-Expected: PASS (o sweep de 2.000 floors incluído).
+Expected: PASS (o sweep de 2.000 floors incluído). ✅ 45/45 (após o fix do pilar-sobre-baú acima).
 
-- [ ] **Step 5: Rebaseline do golden (explícito, consciente)**
+- [x] **Step 5: Rebaseline do golden (explícito, consciente)**
 
 ```bash
 dotnet run --project tools/BalanceSim -- --golden
@@ -1247,8 +1259,17 @@ git diff docs/balance/golden_dungeon.txt   # revisar: TODOS os 70 hashes devem t
 dotnet run --project tools/BalanceSim -- --golden-check
 ```
 Expected no check: `golden mode: GREEN`.
+✅ `git diff --numstat` = `70 70` (todos os 70 hashes trocados, como esperado para o gerador novo);
+`--golden-check` = **GREEN — 70 floors identical to baseline**.
 
-- [ ] **Step 6: Replays FF-01 — limpar e regravar**
+- [ ] **Step 6: Replays FF-01 — limpar e regravar** — ⏸ PENDENTE (interativo)
+
+> **Não executado autonomamente (2026-07-06):** regravar replays exige subir o backend + frontend e
+> **jogar 2-3 runs até o fim** pelo cliente (o `ReplayStore` só congela replay quando a run termina;
+> o BalanceSim é headless e não grava replay). Os 28 replays antigos em `.data/replays/` estão
+> inválidos por construção (gerador novo) — **NÃO os apaguei** para não deixar o usuário sem material
+> até ele regravar. Passo do usuário quando puder: `Remove-Item .data/replays/*`, jogar 2-3 runs (T1/T3)
+> até o fim, então `dotnet run --project tools/BalanceSim -- --replay-check backend/src/KaezanArenaFable.Api/.data/replays`.
 
 Replays salvos foram gravados com o gerador antigo: re-simulá-los com o gerador novo diverge por construção. Limpar e regravar:
 
@@ -1263,24 +1284,34 @@ dotnet run --project tools/BalanceSim -- --replay-check backend/src/KaezanArenaF
 ```
 Expected: verde (todas as runs re-simulam bit-perfect).
 
-- [ ] **Step 7: Sweep do BalanceSim + screenshots por bioma**
+- [~] **Step 7: Sweep do BalanceSim + screenshots por bioma** — sweep ✅; screenshots ⏸ (interativo)
 
 ```bash
 dotnet run --project tools/BalanceSim
 ```
 Expected: sweep completa sem run inacabável/timeout.
+✅ Sweep completou sem run inacabável/timeout (durações finitas, mortes contabilizadas; os "OUT" são
+alvos de *balance-spread* MG-07 pré-existentes, não falha de mapgen). Com o validador ativo dentro de
+`Generate`, o próprio sweep gerou milhares de floors sem lançar — confirmação extra de validade.
 
 Screenshots lado-a-lado por bioma (T1–T5): uma run de cada tier via preview, capturar com `preview_screenshot`, salvar em `docs/balance/mapgen_v2_screenshots/` — o material de revisão do gate.
+> ⏸ **Screenshots PENDENTES (interativo):** precisam do stack completo rodando + chegar ao combate
+> (o screenshot congela em combate — ver memória `gameplay-hud-verification`). Melhor fazer junto do
+> Step 6 (regravar replays) numa sessão com o app no ar.
 
-- [ ] **Step 8: README + commit final**
+- [~] **Step 8: README + commit final** — README ✅; commit do código ✅ (ver abaixo)
 
 Atualizar `README.md` (seção de geração de mapas, se existir; senão 2 linhas na seção do engine) descrevendo: macro-forma por lóbulos, pilares, pockets, anfiteatro, validador.
+✅ README atualizado (§ Caçada): lóbulos, pilares, pockets, anfiteatro, tile-shade client-side e o
+validador ruidoso; trocada a menção morta a `ArenaFillProb` pelos tunáveis novos de `GameConfig`.
 
 ```bash
 dotnet build backend/src/KaezanArenaFable.Api
 git add -A
 git commit -m "feat(mapgen): loud floor validator; rebaseline golden and replays for mapgen v2"
 ```
+✅ Commitado (código + golden + README + plano); mensagem ajustada para refletir o escopo real
+(validador + rebaseline do golden + fix do pilar-sobre-baú; replays regravar ficou pro usuário).
 
 ---
 

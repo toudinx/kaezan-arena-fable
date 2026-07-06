@@ -287,10 +287,18 @@ em `docs/design/gameplay_style_guide.md`.
    guard por `Mode == Training` no engine; nunca afeta runs reais).
 2. **Caçada** — 5 tiers de dungeon (gate por nível de conta). Cada run: 2 andares procedurais e
    um **boss Kaezan** no fundo. **Arena única organica** (ajuste de feeling): cada andar é UMA caverna
-   aberta (`RoomsFloorN=1`) recortada por autômato celular (`ErodeArena` — ruído no miolo inteiro, não um
-   quadrado: pedrais/pilares irregulares + núcleo central garantido). O floor-1 é a arena da horda; o
-   floor-2 (menor) é a do boss. Tunáveis em `GameConfig.Floor1Size`/`ArenaFillProb`/`SpawnBudgetBase`;
-   voltar pro layout multi-sala é só subir `RoomsFloorN`. **Loot e saída dinâmicos** (nada de baú fixo
+   aberta (`RoomsFloorN=1`). **Mapgen v2 (Onda 2)** dá forma orgânica em vez de "quadradão eroído":
+   `ErodeArena` semeia a massa aberta com **2-4 lóbulos elípticos** unidos (o autômato celular esculpe a
+   costa em baías/gargantas), `PlacePillars` espalha **pilares de cover** livres (ilhas de rocha que a IA
+   orbita, sem nunca quebrar conectividade nem enterrar baú), `CarveSidePockets` escava **câmaras laterais
+   (pockets)** na rocha ligadas por garganta 2-wide com **baú de benefício**, e o boss ganha um
+   **anfiteatro** elíptico (`CarveAmphitheater`). Profundidade visual (sombra interna nas paredes +
+   variação de tile) é 100% client-side (`tile-shade.ts`), então não toca determinismo. Um **validador
+   ruidoso** (`DungeonValidator`) roda no fim de `Generate` e **aborta a run com mensagem clara** se algum
+   floor sair injogável (entry bloqueado, floor desconectado, baú/santuário/escada inacessível). O floor-1
+   é a arena da horda; o floor-2 (menor) é a do boss. Tunáveis em `GameConfig` (`Floor1Size`, `ArenaLobes*`,
+   `Pillar*`, `ArenaPockets*`/`Pocket*`, `SpawnBudgetBase`); voltar pro layout multi-sala é só subir
+   `RoomsFloorN`. **Loot e saída dinâmicos** (nada de baú fixo
    espalhado): no andar da horda o **baú CAI no corpo a cada `ChestDropEveryKills` mortes** (surge no meio
    da luta, a Kaeli desvia pra pegar enquanto lura; nunca é mímico, no máximo amaldiçoado), e a saída só
    abre como **TELEPORTE no corpo do último mob ao limpar a sala**. A arena do boss **não tem baú** (a

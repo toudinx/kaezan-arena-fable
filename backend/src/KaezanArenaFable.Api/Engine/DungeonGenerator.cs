@@ -117,6 +117,7 @@ public static class DungeonGenerator
         if (GameConfig.EnableBoxNiches) CarveBoxNiches(floor, rng);
 
         PaintTiles(floor, rng, biome);
+        DungeonValidator.Validate(floor);
         return floor;
     }
 
@@ -152,6 +153,7 @@ public static class DungeonGenerator
 
         floor.Entry = (room.CenterX, room.Y + room.H - 2); // player stands near the bottom, dummy at center
         PaintTiles(floor, rng, biome);
+        DungeonValidator.Validate(floor);
         return floor;
     }
 
@@ -359,12 +361,16 @@ public static class DungeonGenerator
     /// Free-standing pillar clusters: cover for the orbit-and-AoE autopilot. Each pillar is a 1x1 or
     /// 2x2 rock stamp committed only where its full surrounding ring is open, so a pillar can never
     /// split the arena (an obstacle fully surrounded by open floor preserves 4-way connectivity).
-    /// Deterministic: fixed attempt loop, all draws from the run rng.
+    /// Pillars also never stamp onto an existing chest cell (the side-pocket benefit chests carved
+    /// just before this pass), which would bury the chest under rock. Deterministic: fixed attempt
+    /// loop, all draws from the run rng.
     /// </summary>
     private static void PlacePillars(DungeonFloor floor, Room room, Rng rng)
     {
         var size = floor.W;
         int ccx = room.CenterX, ccy = room.CenterY;
+        var chestCells = new HashSet<int>();
+        foreach (var (cxx, cyy) in floor.Chests) chestCells.Add(cyy * size + cxx);
         var target = (int)Math.Round(room.W * room.H * GameConfig.PillarDensity);
         var placed = 0;
         var maxAttempts = target * GameConfig.PillarPlacementAttemptsFactor;
@@ -380,6 +386,12 @@ public static class DungeonGenerator
                 for (var dx = -1; dx <= pw && clear; dx++)
                     if (floor.Blocked[(y + dy) * size + (x + dx)]) clear = false;
             if (!clear) continue;
+            // never bury a chest cell under a pillar footprint (pocket benefit chests exist by now)
+            var onChest = false;
+            for (var dy = 0; dy < pw && !onChest; dy++)
+                for (var dx = 0; dx < pw && !onChest; dx++)
+                    if (chestCells.Contains((y + dy) * size + (x + dx))) onChest = true;
+            if (onChest) continue;
             for (var dy = 0; dy < pw; dy++)
                 for (var dx = 0; dx < pw; dx++)
                     floor.Blocked[(y + dy) * size + (x + dx)] = true;

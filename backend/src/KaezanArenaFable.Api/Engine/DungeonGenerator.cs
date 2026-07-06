@@ -95,7 +95,12 @@ public static class DungeonGenerator
                 for (var xx = room.X; xx < room.X + room.W; xx++)
                     floor.Blocked[yy * size + xx] = false;
             // single arena: cave erosion across the whole interior so the room reads irregular, not square.
-            if (singleArena) ErodeArena(floor, room, rng);
+            if (singleArena && isBossFloor) CarveAmphitheater(floor, room, rng);
+            else if (singleArena)
+            {
+                ErodeArena(floor, room, rng);
+                PlacePillars(floor, room, rng);
+            }
             else ErodeRoom(floor, room, rng);
         }
 
@@ -347,6 +352,81 @@ public static class DungeonGenerator
         for (var ly = 0; ly < h; ly++)
             for (var lx = 0; lx < w; lx++)
                 floor.Blocked[(room.Y + ly) * size + (room.X + lx)] = !reached[ly * w + lx];
+    }
+
+    /// <summary>
+    /// Free-standing pillar clusters: cover for the orbit-and-AoE autopilot. Each pillar is a 1x1 or
+    /// 2x2 rock stamp committed only where its full surrounding ring is open, so a pillar can never
+    /// split the arena (an obstacle fully surrounded by open floor preserves 4-way connectivity).
+    /// Deterministic: fixed attempt loop, all draws from the run rng.
+    /// </summary>
+    private static void PlacePillars(DungeonFloor floor, Room room, Rng rng)
+    {
+        var size = floor.W;
+        int ccx = room.CenterX, ccy = room.CenterY;
+        var target = (int)Math.Round(room.W * room.H * GameConfig.PillarDensity);
+        var placed = 0;
+        var maxAttempts = target * GameConfig.PillarPlacementAttemptsFactor;
+        for (var attempt = 0; attempt < maxAttempts && placed < target; attempt++)
+        {
+            var pw = rng.Chance(GameConfig.PillarLargeChance) ? 2 : 1;
+            var x = rng.Range(room.X + 2, room.X + room.W - 2 - pw);
+            var y = rng.Range(room.Y + 2, room.Y + room.H - 2 - pw);
+            // keep the battle stage + Echo altar clear
+            if (Math.Max(Math.Abs(x - ccx), Math.Abs(y - ccy)) <= GameConfig.PillarCoreExclusion + pw) continue;
+            var clear = true;
+            for (var dy = -1; dy <= pw && clear; dy++)
+                for (var dx = -1; dx <= pw && clear; dx++)
+                    if (floor.Blocked[(y + dy) * size + (x + dx)]) clear = false;
+            if (!clear) continue;
+            for (var dy = 0; dy < pw; dy++)
+                for (var dx = 0; dx < pw; dx++)
+                    floor.Blocked[(y + dy) * size + (x + dx)] = true;
+            placed++;
+        }
+    }
+
+    /// <summary>
+    /// Boss hall as an amphitheatre: an ellipse filling the room with a noisy stepped rim, two
+    /// symmetric pillar arcs framing the stage, and a guaranteed-open south apron (the entry side).
+    /// Reuses the CA+flood tail so the rim reads organic. Deterministic (run rng, fixed scan order).
+    /// </summary>
+    private static void CarveAmphitheater(DungeonFloor floor, Room room, Rng rng)
+    {
+        int w = room.W, h = room.H;
+        double cx = w / 2.0, cy = h / 2.0;
+        double rx = w * 0.5 - 1.5, ry = h * 0.5 - 1.5;
+
+        var rock = new bool[w * h];
+        for (var ly = 0; ly < h; ly++)
+            for (var lx = 0; lx < w; lx++)
+            {
+                var dx = (lx + 0.5 - cx) / rx;
+                var dy = (ly + 0.5 - cy) / ry;
+                var d = dx * dx + dy * dy;
+                rock[ly * w + lx] = d > 1.0
+                    || (d > GameConfig.AmphitheaterRimNoiseBand && rng.Chance(GameConfig.AmphitheaterRimNoiseProb));
+            }
+
+        // two symmetric pillar arcs framing the boss stage (E/W of the centre)
+        Span<int> signs = [-1, 1];
+        foreach (var sign in signs)
+            for (var k = -2; k <= 2; k++)
+            {
+                var px = (int)(cx + sign * rx * 0.55);
+                var py = (int)(cy + k * ry * 0.30);
+                if (px >= 0 && px < w && py >= 0 && py < h) rock[py * w + px] = true;
+            }
+
+        // south entry apron: a 3-wide guaranteed-open lane from the rim to the centre
+        for (var ly = (int)cy; ly < h - 1; ly++)
+            for (var dx = -1; dx <= 1; dx++)
+            {
+                var lx = (int)cx + dx;
+                if (lx >= 0 && lx < w) rock[ly * w + lx] = false;
+            }
+
+        ApplyRockToFloor(floor, room, rock);
     }
 
     /// <summary>Nearest walkable cell to (x,y) within a room (spiral by Chebyshev ring). POIs anchored at

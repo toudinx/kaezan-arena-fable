@@ -102,4 +102,44 @@ public class DungeonGeneratorTests
         var frac = open / (double)(f.W * f.H);
         Assert.InRange(frac, 0.25, 0.75);
     }
+
+    [Theory]
+    [InlineData(1L)]
+    [InlineData(7L)]
+    [InlineData(123L)]
+    public void arena_has_freestanding_pillars(long seed)
+    {
+        // a free-standing pillar = a rock cell whose full 8-ring is open floor
+        var f = Generate(seed);
+        var pillars = 0;
+        for (var y = 2; y < f.H - 2; y++)
+            for (var x = 2; x < f.W - 2; x++)
+            {
+                if (!f.Blocked[y * f.W + x]) continue;
+                var ringOpen = true;
+                for (var dy = -1; dy <= 1 && ringOpen; dy++)
+                    for (var dx = -1; dx <= 1 && ringOpen; dx++)
+                        if ((dx != 0 || dy != 0) && f.Blocked[(y + dy) * f.W + x + dx]) ringOpen = false;
+                if (ringOpen) pillars++;
+            }
+        Assert.True(pillars >= 1, "expected at least one free-standing 1x1 pillar (2x2 pillars have no fully-open ring per cell)");
+    }
+
+    [Theory]
+    [InlineData(1L)]
+    [InlineData(42L)]
+    [InlineData(99999L)]
+    public void boss_floor_is_connected_and_elliptical(long seed)
+    {
+        var f = Generate(seed, boss: true);
+        var live = Flood(f);
+        for (var i = 0; i < f.Blocked.Length; i++)
+            if (!f.Blocked[i]) Assert.True(live[i], "boss arena has unreachable open cells");
+        // corners of the ROOM rect must be rock (ellipse, not square)
+        var room = f.Rooms[0];
+        Assert.True(f.Blocked[room.Y * f.W + room.X], "NW room corner should be rock");
+        Assert.True(f.Blocked[room.Y * f.W + room.X + room.W - 1], "NE room corner should be rock");
+        Assert.True(f.Blocked[(room.Y + room.H - 1) * f.W + room.X], "SW room corner should be rock");
+        Assert.True(f.Blocked[(room.Y + room.H - 1) * f.W + room.X + room.W - 1], "SE room corner should be rock");
+    }
 }

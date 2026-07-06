@@ -358,7 +358,7 @@ Nota: `--golden-check` agora FALHA — esperado; rebaseline só na Task 6.
 - Consumes: `ApplyRockToFloor(floor, room, rock)` da Task 1; `Rng`; `GameConfig`.
 - Produces: `private static void PlacePillars(DungeonFloor, Room, Rng)`; `private static void CarveAmphitheater(DungeonFloor, Room, Rng)`. Constantes `PillarDensity`, `PillarLargeChance`, `PillarPlacementAttemptsFactor`, `PillarCoreExclusion`, `AmphitheaterRimNoiseBand`, `AmphitheaterRimNoiseProb`.
 
-- [ ] **Step 1: Testes que falham**
+- [x] **Step 1: Testes que falham**
 
 Adicionar em `DungeonGeneratorTests.cs`:
 
@@ -404,12 +404,17 @@ Adicionar em `DungeonGeneratorTests.cs`:
     }
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter DungeonGeneratorTests`
 Expected: os 2 novos FALHAM.
 
-- [ ] **Step 3: Constantes**
+> **Nota (execução 2026-07-06):** só `arena_has_freestanding_pillars` falhou (3 casos). O
+> `boss_floor_is_connected_and_elliptical` já passava no gerador por lóbulos da Task 1 (o
+> `ErodeArena` antigo do boss floor já produzia uma forma conectada com cantos de rocha). Falha
+> vermelha confirmada onde importava (pilares); segui.
+
+- [x] **Step 3: Constantes**
 
 Adicionar ao bloco da arena em `GameConfig.cs`:
 
@@ -431,7 +436,7 @@ Adicionar ao bloco da arena em `GameConfig.cs`:
     public const double AmphitheaterRimNoiseProb = 0.35;
 ```
 
-- [ ] **Step 4: Implementar**
+- [x] **Step 4: Implementar**
 
 Em `DungeonGenerator.cs`. Primeiro o dispatch — no método `Generate`, o loop de carve (linhas ~92-100) vira:
 
@@ -531,18 +536,20 @@ Novos métodos (depois de `ApplyRockToFloor`):
     }
 ```
 
-- [ ] **Step 5: Rodar testes**
+- [x] **Step 5: Rodar testes**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter DungeonGeneratorTests`
-Expected: PASS (todos, incluindo os da Task 1 — pilares não podem quebrar conectividade).
+Expected: PASS (todos, incluindo os da Task 1 — pilares não podem quebrar conectividade). ✅ 19/19 (e 34/34 no projeto inteiro).
 
-- [ ] **Step 6: Build + commit**
+- [x] **Step 6: Build + commit**
 
 ```bash
 dotnet build backend/src/KaezanArenaFable.Api
 git add -A backend/src/KaezanArenaFable.Api backend/tests
 git commit -m "feat(mapgen): cover pillars and boss amphitheatre"
 ```
+
+Nota: `--golden-check` segue FALHANDO — esperado; rebaseline só na Task 6.
 
 ---
 

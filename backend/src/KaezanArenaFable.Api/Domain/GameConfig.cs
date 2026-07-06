@@ -502,6 +502,22 @@ public static class GameConfig
     /// <summary>Rock probability in the lobe rim band (between core and rim) — the noisy coastline
     /// the CA smooths into bays and headlands.</summary>
     public const double ArenaEdgeNoiseProb = 0.45;
+
+    // --- Cover pillars (Wave 2): free-standing rock clumps the autopilot orbits around. ---
+    /// <summary>Pillar count target as a fraction of the room area (0.010 = ~1 pillar / 100 cells).</summary>
+    public const double PillarDensity = 0.010;
+    /// <summary>Chance a pillar is a 2x2 clump instead of 1x1.</summary>
+    public const double PillarLargeChance = 0.35;
+    /// <summary>Placement attempts per target pillar before giving up (crowded arenas place fewer).</summary>
+    public const int PillarPlacementAttemptsFactor = 8;
+    /// <summary>Chebyshev radius around the room centre kept pillar-free (the battle stage + altar).</summary>
+    public const int PillarCoreExclusion = 4;
+
+    // --- Boss amphitheatre (Wave 2): elliptical hall with a stepped rim and pillar arcs. ---
+    /// <summary>Normalized ellipse distance where the stepped-rim noise band begins.</summary>
+    public const double AmphitheaterRimNoiseBand = 0.86;
+    /// <summary>Rock probability inside the rim band (reads as broken amphitheatre steps).</summary>
+    public const double AmphitheaterRimNoiseProb = 0.35;
     // Density: with large, open rooms, the budget goes back to 16 (the area factor fills the arena).
     // Target: ~10-16 mobs per large room = a satisfying pile to orbit and melt with AoE, without becoming a wall.
     public const int SpawnBudgetBase = 16;

@@ -487,10 +487,21 @@ public static class GameConfig
     // would go "straight to them", which felt odd), a chest DROPS on the corpse every N kills — spawns mid-fight
     // and the Kaeli detours to grab it while luring. Never a mimic (always a benefit; can be cursed = ambush).
     public const int ChestDropEveryKills = 6;
-    /// <summary>Single organic arena: the entire room is seeded with noise and smoothed by CA (irregular
-    /// cave, not a square). 0.42 leaves the center mostly open with rock clusters/pillars at the edges;
-    /// a central core is forced open + flood-fill ensures the stage is connected.</summary>
-    public const double ArenaFillProb = 0.42;
+    // --- Arena macro-shape (Wave 2): 2-4 overlapping elliptical lobes seed the open mass; the CA
+    // then sculpts the coastline. Chokepoints/bays become a consequence of the shape, not noise. ---
+    /// <summary>Minimum number of elliptical lobes unioned into the arena's open mass.</summary>
+    public const int ArenaLobesMin = 2;
+    /// <summary>Maximum number of elliptical lobes.</summary>
+    public const int ArenaLobesMax = 4;
+    /// <summary>Lobe semi-axis as a fraction of the room dimension — lower bound.</summary>
+    public const double ArenaLobeRadiusMinFrac = 0.28;
+    /// <summary>Lobe semi-axis as a fraction of the room dimension — upper bound.</summary>
+    public const double ArenaLobeRadiusMaxFrac = 0.42;
+    /// <summary>Normalized ellipse distance below which a cell is guaranteed open (lobe interior).</summary>
+    public const double ArenaLobeCore = 0.55;
+    /// <summary>Rock probability in the lobe rim band (between core and rim) — the noisy coastline
+    /// the CA smooths into bays and headlands.</summary>
+    public const double ArenaEdgeNoiseProb = 0.45;
     // Density: with large, open rooms, the budget goes back to 16 (the area factor fills the arena).
     // Target: ~10-16 mobs per large room = a satisfying pile to orbit and melt with AoE, without becoming a wall.
     public const int SpawnBudgetBase = 16;

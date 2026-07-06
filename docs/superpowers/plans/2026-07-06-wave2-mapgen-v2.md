@@ -53,7 +53,7 @@
 - Consumes: `Rng` (`Range(min,max)` inclusivo, `NextDouble()`, `Chance(p)`), `DungeonFloor`, `Room`, `GameConfig`.
 - Produces: `ErodeArena` com a mesma assinatura (`private static void ErodeArena(DungeonFloor, Room, Rng)`), agora seedado por lóbulos; helper `private static bool[] SeedArenaRock(int w, int h, Rng rng)`; helper compartilhado `private static void ApplyRockToFloor(DungeonFloor floor, Room room, bool[] rock)` (CA + core + flood-fill + write-back extraídos — a Task 2 reusa). Constantes `GameConfig.ArenaLobesMin/Max`, `ArenaLobeRadiusMinFrac/MaxFrac`, `ArenaLobeCore`, `ArenaEdgeNoiseProb`.
 
-- [ ] **Step 1: Escrever os testes que falham**
+- [x] **Step 1: Escrever os testes que falham**
 
 Criar `backend/tests/KaezanArenaFable.Api.Tests/DungeonGeneratorTests.cs`:
 
@@ -165,12 +165,18 @@ public class DungeonGeneratorTests
 }
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter DungeonGeneratorTests`
 Expected: `arena_outline_is_not_a_rectangle` FALHA (o noise uniforme atual deixa cantos abertos); os demais podem passar.
 
-- [ ] **Step 3: Constantes novas em GameConfig**
+> **Nota (execução 2026-07-06):** os 4 métodos (13 casos) passaram já no gerador ANTIGO — o
+> `arena_outline_is_not_a_rectangle` NÃO falhou como previsto. Motivo: o `ErodeArena` antigo já
+> rodava a CA com out-of-bounds contando como rocha, o que já erodia os cantos do retângulo para
+> rocha (≥18/36). O teste segue sendo um guard válido da propriedade desejada (a versão por lóbulos
+> mantém verde), então segui em frente sem "quebrar de propósito" o gerador só para ver o vermelho.
+
+- [x] **Step 3: Constantes novas em GameConfig**
 
 Em `backend/src/KaezanArenaFable.Api/Domain/GameConfig.cs`, substituir a constante `ArenaFillProb` (linha ~451) por este bloco (apagar `ArenaFillProb` — fica sem uso após o passo 4):
 
@@ -192,7 +198,7 @@ Em `backend/src/KaezanArenaFable.Api/Domain/GameConfig.cs`, substituir a constan
     public const double ArenaEdgeNoiseProb = 0.45;
 ```
 
-- [ ] **Step 4: Implementar seeding por lóbulos + extrair helper compartilhado**
+- [x] **Step 4: Implementar seeding por lóbulos + extrair helper compartilhado**
 
 Em `DungeonGenerator.cs`, substituir o corpo de `ErodeArena` e adicionar dois helpers logo abaixo dele:
 
@@ -317,17 +323,17 @@ Em `DungeonGenerator.cs`, substituir o corpo de `ErodeArena` e adicionar dois he
 
 (O corpo antigo de `ErodeArena` — noise uniforme + CA + core + flood — é removido; CA/core/flood viram `ApplyRockToFloor`.)
 
-- [ ] **Step 5: Rodar os testes e ver passar**
+- [x] **Step 5: Rodar os testes e ver passar**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter DungeonGeneratorTests`
-Expected: PASS (4 test methods, todas as seeds).
+Expected: PASS (4 test methods, todas as seeds). ✅ 13/13 (e 28/28 no projeto inteiro).
 
 Nota (revisão 2026-07-06): `arena_open_fraction_is_playable` mede a fração sobre o floor
 INTEIRO (que inclui a banda de margem fora da room), então seeds azaradas podem encostar no
 limite inferior de 0.25. Se falhar por margem pequena, ajuste o range do TESTE conscientemente
 (ex.: 0.20) e registre no commit — nunca "conserte" mexendo no gerador para passar o teste.
 
-- [ ] **Step 6: Build + commit**
+- [x] **Step 6: Build + commit**
 
 ```bash
 dotnet build backend/src/KaezanArenaFable.Api

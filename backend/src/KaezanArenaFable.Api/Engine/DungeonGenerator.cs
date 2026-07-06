@@ -233,20 +233,63 @@ public static class DungeonGenerator
     }
 
     /// <summary>
-    /// Single organic arena (feedback 2026-06-29): instead of eroding only the edge (which leaves the
-    /// interior square), seed the WHOLE RECTANGLE with noise and smooth it with the same 4-5 CA rule.
-    /// The result is an irregular cave with rock masses/pillars. A central core is forced open
-    /// (guaranteed battle stage), and flood-fill from the center keeps only the connected component.
-    /// Deterministic (run Rng, double-buffered CA).
+    /// Wave 2 macro-shape: instead of uniform per-cell noise (which reads as an eroded rectangle),
+    /// the arena's open mass is the union of 2-4 deterministically-placed elliptical lobes. Lobe
+    /// interiors are guaranteed open; the rim band gets noise the CA sculpts into a coastline, so
+    /// chokepoints and bays are a consequence of the shape. Deterministic: lobes drawn first, then
+    /// one Chance per rim cell in fixed y,x scan order.
     /// </summary>
     private static void ErodeArena(DungeonFloor floor, Room room, Rng rng)
     {
-        int w = room.W, h = room.H;
+        var rock = SeedArenaRock(room.W, room.H, rng);
+        ApplyRockToFloor(floor, room, rock);
+    }
+
+    private static bool[] SeedArenaRock(int w, int h, Rng rng)
+    {
         var rock = new bool[w * h];
+        Array.Fill(rock, true);
+
+        var lobes = rng.Range(GameConfig.ArenaLobesMin, GameConfig.ArenaLobesMax);
+        var ellipses = new (double cx, double cy, double rx, double ry)[lobes];
+        for (var l = 0; l < lobes; l++)
+        {
+            // centres confined to the middle band so the lobes always overlap into one mass
+            var cx = w * (0.30 + 0.40 * rng.NextDouble());
+            var cy = h * (0.30 + 0.40 * rng.NextDouble());
+            var span = GameConfig.ArenaLobeRadiusMaxFrac - GameConfig.ArenaLobeRadiusMinFrac;
+            var rx = w * (GameConfig.ArenaLobeRadiusMinFrac + span * rng.NextDouble());
+            var ry = h * (GameConfig.ArenaLobeRadiusMinFrac + span * rng.NextDouble());
+            ellipses[l] = (cx, cy, rx, ry);
+        }
+
         for (var ly = 0; ly < h; ly++)
             for (var lx = 0; lx < w; lx++)
-                rock[ly * w + lx] = rng.Chance(GameConfig.ArenaFillProb);
+            {
+                // normalized squared ellipse distance to the NEAREST lobe: <core open, <1 noisy rim
+                var d = double.MaxValue;
+                foreach (var (cx, cy, rx, ry) in ellipses)
+                {
+                    var dx = (lx + 0.5 - cx) / rx;
+                    var dy = (ly + 0.5 - cy) / ry;
+                    d = Math.Min(d, dx * dx + dy * dy);
+                }
+                var i = ly * w + lx;
+                if (d <= GameConfig.ArenaLobeCore) rock[i] = false;
+                else if (d <= 1.0) rock[i] = rng.Chance(GameConfig.ArenaEdgeNoiseProb);
+            }
+        return rock;
+    }
 
+    /// <summary>
+    /// Shared tail of the arena carvers: CA smoothing (4-5 rule, double-buffered), forced-open
+    /// central core, flood-fill from the centre keeping only the connected component, then
+    /// write-back into <see cref="DungeonFloor.Blocked"/>. Extracted from the original ErodeArena
+    /// so the boss amphitheatre (Wave 2 Task 2) reuses it verbatim.
+    /// </summary>
+    private static void ApplyRockToFloor(DungeonFloor floor, Room room, bool[] rock)
+    {
+        int w = room.W, h = room.H;
         var next = new bool[w * h];
         for (var it = 0; it < GameConfig.OrganicCaIterations; it++)
         {

@@ -501,7 +501,7 @@ git commit -m "feat(meta): session run journal with windowed aggregates"
   - `GameConfig.SessionRunChainDelayTicks`, `GameConfig.SessionJournalCapacity`
   - `record SessionStateDto(string Status, int RunNumber, int CurrentTier, string CurrentWaifuId, string? StopReason, SessionAggregates Last2h, List<RunJournalEntry> Journal)` (em `SessionOrchestrator.cs`; `Status` ∈ `"running" | "paused" | "stopped"`)
 
-- [ ] **Step 1: Testes do orquestrador (a parte testável sem SignalR)**
+- [x] **Step 1: Testes do orquestrador (a parte testável sem SignalR)**
 
 O orquestrador é testável com um `RunFactory` real? Não — registries pesados. Testar a máquina de estados isolando a criação de mundo: o orquestrador recebe `Func<int, string, GameWorld?> createWorld` no construtor de teste? Não — mantemos produção simples: o orquestrador expõe a transição de estado pura via método interno `internal (SessionStats stats, SessionDecision decision) Advance(SessionStats stats, SessionPlan plan, bool victory, int energy, int energyPerRun)` e os testes cobrem ele. Criar `backend/tests/KaezanArenaFable.Api.Tests/SessionOrchestratorTests.cs`:
 
@@ -550,12 +550,18 @@ public class SessionOrchestratorTests
 }
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter SessionOrchestratorTests`
 Expected: FAIL.
 
-- [ ] **Step 3: Implementar o orquestrador**
+(Executado: FAIL por tipo inexistente, como esperado. Ajustes na execução: (a) o assert
+`Assert.Equal(2, next.WinsAtCurrentTier)` do 1º teste contradizia o 2º teste e a própria
+implementação do plano — tier-up zera o contador — corrigido para `Assert.Equal(0, ...)`;
+(b) `Advance` é `internal`, então foi adicionado `<InternalsVisibleTo Include="KaezanArenaFable.Api.Tests" />`
+no csproj da API.)
+
+- [x] **Step 3: Implementar o orquestrador**
 
 Constantes em `GameConfig.cs` (junto ao bloco farm/energia, ~linha 845):
 
@@ -736,7 +742,7 @@ public sealed class SessionOrchestrator(RunFactory factory, AccountStore store, 
 
 (Se `GameMode` não estiver acessível sem qualificação, usar `KaezanArenaFable.Api.Engine.GameMode.Dungeon`.)
 
-- [ ] **Step 4: Session runs no `RunManager`**
+- [x] **Step 4: Session runs no `RunManager`**
 
 Em `RunManager.cs`:
 
@@ -866,12 +872,15 @@ builder.Services.AddSingleton<ISessionCoordinator>(sp => sp.GetRequiredService<S
 
 (antes do registro do `RunManager`/hosted service, que agora depende de `ISessionCoordinator`).
 
-- [ ] **Step 5: Rodar testes + build**
+- [x] **Step 5: Rodar testes + build**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests` e `dotnet build backend/src/KaezanArenaFable.Api`
 Expected: PASS / limpo.
 
-- [ ] **Step 6: Verificar invariante e commitar**
+(57/57 testes verdes; build com 0 avisos — o stub `EnergyAvailable()` lê via `store.Read(_ => cap)`
+para evitar CS9113 no parâmetro `store`, mantendo o shape que a Task 7 substitui.)
+
+- [x] **Step 6: Verificar invariante e commitar**
 
 ```bash
 git diff --stat | grep -i gameworld   # deve retornar vazio

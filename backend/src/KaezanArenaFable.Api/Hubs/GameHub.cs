@@ -14,7 +14,8 @@ public sealed class GameHub(
     KaeliRegistry kaelis,
     ItemRegistry items,
     AccountStore store,
-    ContentStore content) : Hub
+    ContentStore content,
+    ILogger<GameHub> logger) : Hub
 {
     // LM-03: `mode` is optional, defaulting to Dungeon — the current client (sending 4 args) enters
     // legacy mode unchanged. Arena (LM-04) will pass GameMode.Arena here.
@@ -76,9 +77,12 @@ public sealed class GameHub(
         var equipmentStats = EquipmentStatAggregator.Aggregate(equipment, items.All);
         // LM-08: biome resolved from ContentStore (editable in admin); falls back to canonical defaults.
         var biome = content.Biome(tierDef.Tier) ?? Biomes.ForTier(tierDef.Tier);
+        var creationStart = System.Diagnostics.Stopwatch.GetTimestamp();
         var world = new GameWorld(
             runSeed, tierDef, waifu, ascension, data, monsters, bestiary, equipmentStats, kaeliLoadout, items,
             helperProfile, content.RoleTunings, mode, biome);
+        logger.LogInformation("run created in {Ms:F0}ms (tier {Tier}, seed {Seed})",
+            System.Diagnostics.Stopwatch.GetElapsedTime(creationStart).TotalMilliseconds, tierDef.Tier, runSeed);
         runs.StartRun(Context.ConnectionId, world);
         return new { seed = runSeed, tier = tierDef.Tier, tierName = tierDef.Name, waifuId = waifu.Id, mode, resumed = false };
     }

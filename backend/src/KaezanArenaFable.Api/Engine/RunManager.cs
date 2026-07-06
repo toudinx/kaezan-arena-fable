@@ -26,6 +26,8 @@ public sealed class RunManager(
     private readonly ConcurrentDictionary<string, ActiveRun> _runs = new();
     private readonly Dictionary<string, OrphanedRun> _orphans = [];
     private readonly object _orphanLock = new();
+    private readonly PerfStats _tickPerf = new();
+    private long _perfLogCounter;
 
     public void StartRun(string connectionId, GameWorld world)
     {
@@ -148,6 +150,11 @@ public sealed class RunManager(
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
             ExpireOrphans();
+            if (++_perfLogCounter % 300 == 0 && _tickPerf.Count > 0)
+                logger.LogInformation(
+                    "tick perf: p50={P50:F2}ms p95={P95:F2}ms max={Max:F2}ms ({Count} samples)",
+                    _tickPerf.Percentile(50), _tickPerf.Percentile(95), _tickPerf.Max(), _tickPerf.Count);
+
             foreach (var (connectionId, run) in _runs)
             {
                 try
@@ -159,7 +166,9 @@ public sealed class RunManager(
                         if (!_runs.TryGetValue(connectionId, out var current) || !ReferenceEquals(current, run))
                             continue;
 
+                        var startedAt = System.Diagnostics.Stopwatch.GetTimestamp();
                         (snapshot, map) = run.World.Tick();
+                        _tickPerf.Add(System.Diagnostics.Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
 
                         if (snapshot.Run.Ended is not null && !run.RewardsApplied)
                         {

@@ -200,7 +200,7 @@ git commit -m "refactor(meta): extract RunFactory from GameHub.JoinRun"
   - `abstract record SessionDecision` com `record StartNextRun(int Tier, string WaifuId) : SessionDecision` e `record StopSession(string Reason) : SessionDecision`
   - `SessionDecider.Decide(SessionPlan, SessionStats, int energyAvailable, int energyPerRun): SessionDecision`
 
-- [ ] **Step 1: Testes que falham**
+- [x] **Step 1: Testes que falham**
 
 Criar `backend/tests/KaezanArenaFable.Api.Tests/SessionDeciderTests.cs`:
 
@@ -279,12 +279,12 @@ public class SessionDeciderTests
 }
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter SessionDeciderTests`
 Expected: FAIL (tipos não existem).
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 Criar `backend/src/KaezanArenaFable.Api/Meta/SessionPlan.cs`:
 
@@ -338,12 +338,12 @@ public static class SessionDecider
 }
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter SessionDeciderTests`
 Expected: PASS (7 testes).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/src/KaezanArenaFable.Api/Meta/SessionPlan.cs backend/tests

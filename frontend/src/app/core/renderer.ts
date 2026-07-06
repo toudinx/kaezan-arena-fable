@@ -1,4 +1,5 @@
 import { AssetsService } from './assets.service';
+import { takeNewEvents } from './event-seq';
 import { BiomeDto, EventDto, MapDto, MonsterDto, PlayerDto, SnapshotDto, TICK_MS } from './types';
 
 const TILE = 32;
@@ -205,6 +206,7 @@ export class GameRenderer {
   private lastFrame = -1;
 
   private snapArrival = 0;
+  private lastEventSeq = -1;
   private serverClockOffsetMs: number | null = null;
   private readonly motionHistory = new Map<number, MotionSample[]>();
   // Per-actor stride accumulator: counts completed tile-steps so the walk animation can be driven
@@ -214,6 +216,8 @@ export class GameRenderer {
   private map: MapDto | null = null;
 
   hoverTile: { x: number; y: number } | null = null;
+  eventsIngested = 0;
+  eventsDeduped = 0;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -277,7 +281,12 @@ export class GameRenderer {
     this.snapArrival = nowPerf;
     // G-03: rising edge of the (engine-authoritative) Echo Break → fire the run-climax FX.
     if (snap.run.bossStaggered && !previous?.run.bossStaggered) this.triggerEchoBreak(snap, nowPerf);
-    for (const ev of snap.events) this.ingest(ev, nowPerf);
+    if (previous && snap.tick < previous.tick) this.lastEventSeq = -1;
+    const { fresh, lastSeq } = takeNewEvents(snap.events, this.lastEventSeq);
+    this.lastEventSeq = lastSeq;
+    this.eventsIngested += fresh.length;
+    this.eventsDeduped += snap.events.length - fresh.length;
+    for (const ev of fresh) this.ingest(ev, nowPerf);
   }
 
   /** The Echo Break already exists in the engine (effect 35 + "QUEBRADO!"); here we elevate it to a

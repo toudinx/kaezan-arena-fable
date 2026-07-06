@@ -726,6 +726,7 @@ export interface EventDto {
   text: string;
   actorId: number;
   crit: boolean;
+  seq: number;
 }
 
 export type CardRarity = 'common' | 'rare' | 'echo';

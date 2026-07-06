@@ -124,6 +124,23 @@ public static class GameConfig
     // The goal is NOT for the player to die (auto-heal at 50% + potion handles it), but for health to
     // visibly swing during the pile/box for tension. Tunable by feel.
     public const double MonsterDamageTuning = 0.40;
+    // Ordered chaos (2026-07-06): mob AoE discipline. The shape does not need to contain the
+    // player, but must land close enough to read as a real threat; no telegraph by design.
+    public const int MonsterAoeProximityMargin = 2;
+    public const int MonsterConeReachCap = 3;
+    public const int MonsterAoeRadiusCap = 2;
+    public const int BossConeReachCap = 5;
+    public const int BossAoeRadiusCap = 4;
+
+    public static int MonsterConeReach(bool isBoss, int length) =>
+        Math.Min(length, isBoss ? BossConeReachCap : MonsterConeReachCap);
+
+    public static int MonsterAoeRadius(bool isBoss, int radius) =>
+        Math.Min(radius, isBoss ? BossAoeRadiusCap : MonsterAoeRadiusCap);
+
+    public static bool SelfCenteredAoeInRange(int dist, int radius) =>
+        dist <= radius + MonsterAoeProximityMargin;
+
     public const int ConditionMaxTicks = 10;
     public const int ConditionDefaultTickMs = 2000;
     public const double ConditionResistCap = 0.85;
@@ -284,12 +301,14 @@ public static class GameConfig
         new("artillery", "Artillery", "Slow area attacks with high impact.", 6, 95,
         [
             new("spell", 6, 2, 0, 0, true, 2700, 78, 0.78, 1.22, true, 0),
-            new("spell", 6, 3, 0, 0, true, 4400, 35, 0.95, 1.38, true, 0),
+            // 2026-07-06: authored profile aligned with the non-boss AoE radius cap.
+            new("spell", 6, 2, 0, 0, true, 4400, 35, 0.95, 1.38, true, 0),
         ]),
         new("breather", "Breather", "Combines bite and elemental cone.", 2, 85,
         [
             new("melee", 1, 0, 0, 0, false, 1750, 92, 0.60, 0.96, false, 0),
-            new("spell", 0, 0, 4, 2, false, 3100, 62, 0.72, 1.18, true, 0),
+            // 2026-07-06: authored profile aligned with the non-boss cone reach cap.
+            new("spell", 0, 0, 3, 2, false, 3100, 62, 0.72, 1.18, true, 0),
         ]),
         new("controller", "Controller", "Moderate damage with occasional elemental condition.", 4, 88,
         [

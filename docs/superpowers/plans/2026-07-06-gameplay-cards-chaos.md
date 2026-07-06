@@ -263,7 +263,9 @@ Every mob area cast must land near the player; non-boss shapes are capped at dra
 - Consumes: `Actor.IsBossActor`, `ConeTiles(int x, int y, int dx, int dy, int reach)`, `CircleTiles(int x, int y, int radius)`, `Chebyshev`, `(int dx, int dy) DirDelta(Dir facing, Actor? target)`, `Dir FacingFrom(int dx, int dy, Dir? previous = null)`.
 - Produces: `GameConfig.MonsterConeReach(bool isBoss, int length)`, `GameConfig.MonsterAoeRadius(bool isBoss, int radius)`, `GameConfig.SelfCenteredAoeInRange(int dist, int radius)`, consts `MonsterAoeProximityMargin=2`, `MonsterConeReachCap=3`, `MonsterAoeRadiusCap=2`, `BossConeReachCap=5`, `BossAoeRadiusCap=4`; private `GameWorld.ConeLandsNearPlayer`.
 
-- [ ] **Step 1: Write the failing tests**
+**Completion note (2026-07-06):** implemented ordered chaos caps/gates in `GameConfig` + `GameWorld`, retuned artillery/breather profiles to the non-boss caps, and added `MonsterCastRuleTests`. Verified with red/green `MonsterCastRuleTests`, `dotnet build backend/src/KaezanArenaFable.Api -c Release`, `dotnet test backend/tests/KaezanArenaFable.Api.Tests -c Release`, `dotnet run --project tools/BalanceSim -c Release -- --golden-check`, fresh replay generation, and `--replay-check` (35/35 bit-perfect).
+
+- [x] **Step 1: Write the failing tests**
 
 Create `backend/tests/KaezanArenaFable.Api.Tests/MonsterCastRuleTests.cs`:
 
@@ -318,7 +320,7 @@ public class MonsterCastRuleTests
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```powershell
 dotnet test backend/tests/KaezanArenaFable.Api.Tests -c Release --filter MonsterCastRuleTests
@@ -326,7 +328,7 @@ dotnet test backend/tests/KaezanArenaFable.Api.Tests -c Release --filter Monster
 
 Expected: compile error (`MonsterConeReach` not defined) — that counts as the failing state.
 
-- [ ] **Step 3: Add cast rules to `GameConfig.cs`**
+- [x] **Step 3: Add cast rules to `GameConfig.cs`**
 
 Right after `MonsterDamageTuning` (~line 117), add:
 
@@ -357,11 +359,11 @@ Right after `MonsterDamageTuning` (~line 117), add:
         dist <= radius + MonsterAoeProximityMargin;
 ```
 
-- [ ] **Step 4: Retune the two oversized behavior profiles**
+- [x] **Step 4: Retune the two oversized behavior profiles**
 
 In `MonsterBehaviorProfiles`: artillery's second pattern `new("spell", 6, 3, 0, 0, true, 4400, 35, 0.95, 1.38, true, 0)` → radius **2**; breather's cone `new("spell", 0, 0, 4, 2, false, 3100, 62, 0.72, 1.18, true, 0)` → length **3**. Add one line to each profile's comment noting the 2026-07-06 cap alignment.
 
-- [ ] **Step 5: Gate the casts in `GameWorld.cs`**
+- [x] **Step 5: Gate the casts in `GameWorld.cs`**
 
 Replace the ranged branch of `TryMonsterAttacks` (the `else` block at lines 4748–4790) with:
 
@@ -444,7 +446,7 @@ Add the private helper next to `CanAttackPlayer`:
     }
 ```
 
-- [ ] **Step 6: Align `CanAttackPlayer` so gated mobs keep closing distance**
+- [x] **Step 6: Align `CanAttackPlayer` so gated mobs keep closing distance**
 
 A mob whose only shot is a gated self-nova must not plant at range 7 doing nothing (`StaticAttackChance` stop). Replace the body of `CanAttackPlayer` (lines 4687–4701) with:
 
@@ -474,7 +476,7 @@ A mob whose only shot is a gated self-nova must not plant at range 7 doing nothi
     }
 ```
 
-- [ ] **Step 7: Build + run tests**
+- [x] **Step 7: Build + run tests**
 
 ```powershell
 dotnet build backend/src/KaezanArenaFable.Api
@@ -483,7 +485,7 @@ dotnet test backend/tests/KaezanArenaFable.Api.Tests -c Release
 
 Expected: build clean; all tests PASS (including Task 2's).
 
-- [ ] **Step 8: Determinism + generator golden + fresh replay battery**
+- [x] **Step 8: Determinism + generator golden + fresh replay battery**
 
 ```powershell
 dotnet run --project tools/BalanceSim -c Release -- --golden-check
@@ -493,7 +495,7 @@ dotnet run --project tools/BalanceSim -c Release -- --replay-check $env:TEMP\kae
 
 Expected: golden-check PASS (the dungeon generator is untouched); the sweep canary PASS; replay-check PASS on the freshly recorded battery. Replays recorded before this task are invalid by design (Rng order + replay serialization changed) — do NOT run `--replay-check` against old `.data/replays` files; they cycle out on their own (`ReplayKeepLast`).
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```powershell
 git add backend/src/KaezanArenaFable.Api/Domain/GameConfig.cs backend/src/KaezanArenaFable.Api/Engine/GameWorld.cs backend/tests/KaezanArenaFable.Api.Tests/MonsterCastRuleTests.cs

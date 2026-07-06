@@ -4675,7 +4675,7 @@ public sealed partial class GameWorld
 
     private bool CanAttackPlayer(Actor monster, int dist, bool hasLos)
     {
-        foreach (var attack in monster.Species!.Attacks)
+        foreach (MonsterAttack attack in monster.Species!.Attacks)
         {
             if (attack.Kind == "melee")
             {
@@ -4683,9 +4683,28 @@ public sealed partial class GameWorld
                 continue;
             }
 
-            var range = attack.Range > 0 ? attack.Range : (attack.Radius > 0 || attack.Length > 0 ? 7 : 1);
+            int range = attack.Range > 0 ? attack.Range : (attack.Radius > 0 || attack.Length > 0 ? 7 : 1);
+            if (attack.Length > 0)
+            {
+                range = Math.Min(range, GameConfig.MonsterConeReach(monster.IsBossActor, attack.Length)
+                    + GameConfig.MonsterAoeProximityMargin);
+            }
+            else if (attack.Radius > 0 && !attack.Target)
+            {
+                range = Math.Min(range, GameConfig.MonsterAoeRadius(monster.IsBossActor, attack.Radius)
+                    + GameConfig.MonsterAoeProximityMargin);
+            }
+
             if (dist <= range && hasLos) return true;
         }
+        return false;
+    }
+
+    private bool ConeLandsNearPlayer(Actor monster, int dx, int dy, int reach)
+    {
+        foreach ((int tx, int ty) in ConeTiles(monster.X, monster.Y, dx, dy, reach))
+            if (Chebyshev(tx, ty, Player.X, Player.Y) <= GameConfig.MonsterAoeProximityMargin)
+                return true;
         return false;
     }
 
@@ -4736,35 +4755,51 @@ public sealed partial class GameWorld
             }
             else
             {
-                var range = attack.Range > 0 ? attack.Range : (attack.Radius > 0 || attack.Length > 0 ? 7 : 1);
+                int range = attack.Range > 0 ? attack.Range : (attack.Radius > 0 || attack.Length > 0 ? 7 : 1);
                 if (dist > range) continue;
                 if (!HasLineOfSight(monster.X, monster.Y, Player.X, Player.Y)) continue;
+
+                int coneReach = attack.Length > 0
+                    ? GameConfig.MonsterConeReach(monster.IsBossActor, attack.Length)
+                    : 0;
+                int aoeRadius = attack.Radius > 0
+                    ? GameConfig.MonsterAoeRadius(monster.IsBossActor, attack.Radius)
+                    : 0;
+                Dir facing = FacingFrom(Player.X - monster.X, Player.Y - monster.Y);
+                if (attack.Length > 0)
+                {
+                    (int gdx, int gdy) = DirDelta(facing, Player);
+                    if (!ConeLandsNearPlayer(monster, gdx, gdy, coneReach)) continue;
+                }
+                else if (aoeRadius > 0 && !attack.Target
+                         && !GameConfig.SelfCenteredAoeInRange(dist, aoeRadius)) continue;
+
                 monster.AttackReadyAtMs[i] = NowMs + attack.Interval;
                 if (!_rng.Chance(Math.Min(attack.Chance, 100) / 100.0)) continue;
 
-                monster.Facing = FacingFrom(Player.X - monster.X, Player.Y - monster.Y);
+                monster.Facing = facing;
 
                 if (attack.ShootEffect > 0)
                     Emit("projectile", monster.X, monster.Y, Player.X, Player.Y, attack.ShootEffect);
 
                 if (attack.Length > 0)
                 {
-                    // wave (e.g. dragon fire): cone toward player
-                    var (dx, dy) = DirDelta(monster.Facing, Player);
-                    var hitPlayer = false;
-                    foreach (var (tx, ty) in ConeTiles(monster.X, monster.Y, dx, dy, Math.Min(attack.Length, 5)))
+                    // Wave (e.g. dragon fire): cone toward player, capped at dragon-wave reach.
+                    (int dx, int dy) = DirDelta(monster.Facing, Player);
+                    bool hitPlayer = false;
+                    foreach ((int tx, int ty) in ConeTiles(monster.X, monster.Y, dx, dy, coneReach))
                     {
                         if (attack.AreaEffect > 0) Emit("effect", tx, ty, 0, 0, attack.AreaEffect);
                         if (tx == Player.X && ty == Player.Y) hitPlayer = true;
                     }
                     if (hitPlayer) HitPlayerWithAttack(monster, attack);
                 }
-                else if (attack.Radius > 0)
+                else if (aoeRadius > 0)
                 {
-                    var cx = attack.Target ? Player.X : monster.X;
-                    var cy = attack.Target ? Player.Y : monster.Y;
-                    var hitPlayer = false;
-                    foreach (var (tx, ty) in CircleTiles(cx, cy, attack.Radius))
+                    int cx = attack.Target ? Player.X : monster.X;
+                    int cy = attack.Target ? Player.Y : monster.Y;
+                    bool hitPlayer = false;
+                    foreach ((int tx, int ty) in CircleTiles(cx, cy, aoeRadius))
                     {
                         if (attack.AreaEffect > 0) Emit("effect", tx, ty, 0, 0, attack.AreaEffect);
                         if (tx == Player.X && ty == Player.Y) hitPlayer = true;

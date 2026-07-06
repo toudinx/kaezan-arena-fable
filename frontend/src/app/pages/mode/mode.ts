@@ -157,8 +157,9 @@ import { MonsterCatalogEntry } from '../../core/types';
       position: relative;
       isolation: isolate;
       overflow: hidden;
-      min-height: calc(100dvh - 53px);
-      padding: clamp(20px, 3vw, 34px) clamp(18px, 4vw, 64px) clamp(28px, 5vw, 56px);
+      height: calc(100dvh - var(--shell-h, 56px));
+      min-height: 680px;
+      padding: clamp(18px, 2.5vw, 30px) clamp(18px, 4vw, 64px);
       background: var(--bg-0);
     }
     .biome-bg {
@@ -194,7 +195,8 @@ import { MonsterCatalogEntry } from '../../core/types';
     .back:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; border-radius: var(--r-sm); }
 
     .layout {
-      min-height: calc(100dvh - 125px);
+      height: calc(100% - 44px);
+      min-height: 0;
       display: grid;
       grid-template-columns: minmax(210px, 260px) minmax(280px, 1fr) minmax(320px, 440px);
       gap: clamp(22px, 3.6vw, 58px);

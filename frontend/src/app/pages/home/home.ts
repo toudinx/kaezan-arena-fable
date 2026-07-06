@@ -150,7 +150,8 @@ interface NavItem { route: string; icon: string; title: string; sub: string; ton
     :host { display: block; }
     .hub {
       position: relative;
-      min-height: calc(100dvh - 53px);
+      height: calc(100dvh - var(--shell-h, 56px));
+      min-height: 620px;
       overflow: hidden;
       isolation: isolate;
     }
@@ -295,7 +296,11 @@ interface NavItem { route: string; icon: string; title: string; sub: string; ton
 
     /* ---- responsive ---- */
     @media (max-width: 900px) {
-      .hub { min-height: calc(100dvh - 53px); padding-bottom: 80px; }
+      .hub {
+        height: calc(100dvh - var(--shell-h, 56px));
+        min-height: 620px;
+        padding-bottom: 80px;
+      }
       .identity { left: 20px; right: 20px; bottom: 84px; max-width: none; }
       .identity.empty { top: 40%; bottom: auto; }
       .name { font-size: clamp(2.2rem, 11vw, 3rem); }

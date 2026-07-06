@@ -63,11 +63,17 @@ import { CurrencyPill } from '../core/ui/currency-pill';
     <main><router-outlet /></main>
   `,
   styles: [`
+    :host {
+      --shell-h: 56px;
+      display: block;
+    }
+
     .topbar {
+      --shell-h: 56px;
       display: flex;
       align-items: center;
       gap: clamp(14px, 2vw, 28px);
-      min-height: 56px;
+      min-height: var(--shell-h);
       padding: 8px clamp(14px, 2.5vw, 28px);
       position: sticky;
       top: 0;
@@ -282,7 +288,7 @@ import { CurrencyPill } from '../core/ui/currency-pill';
     }
 
     main {
-      min-height: calc(100vh - 56px);
+      min-height: calc(100dvh - var(--shell-h, 56px));
     }
 
     @media (max-width: 980px) {

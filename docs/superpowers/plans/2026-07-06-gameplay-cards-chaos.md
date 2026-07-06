@@ -11,6 +11,7 @@
 ## Global Constraints
 
 - All code + comments in **English**; player-visible strings in English (CLAUDE.md language policy).
+- **Never use `var`** in new or modified C# code — declare explicit types (user preference 2026-07-06; overrides the surrounding codebase style; do not rewrite untouched lines just for this).
 - **Determinism:** inside the tick use only the run `Rng` (`_rng`); no `Random`/`DateTime.Now`/unstable iteration.
 - **Every simulation constant lives in `Domain/GameConfig.cs`** — never hardcode gameplay values elsewhere.
 - Stable IDs (`card:*`, `echo:*`, species names) are never renamed.
@@ -22,6 +23,8 @@
 ---
 
 ### Task 1: Baseline sweeps (BEFORE any change)
+
+**Model · Effort:** Sonnet · low — mechanical command runs; only care point is copying the pivots faithfully.
 
 Capture the current balance state so every number changed later is justified against it (MG-08 methodology).
 
@@ -60,6 +63,8 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 
 ### Task 2: Card cadence — offers only on floor clear + Echo Sanctuary
 
+**Model · Effort:** Sonnet · medium — multi-site but fully specified edits; the blessed-plumbing removal table lists every touch point.
+
 Elite kills and chests stop opening card offers; they pay out directly. Blessed-offer plumbing is removed. Cap drops 9→4 and the rarity curve is retuned so the Kaeli's echo is reachable by the 2nd choice.
 
 **Files:**
@@ -88,14 +93,14 @@ public class CardCadenceConfigTests
     {
         // With MaxCardChoicesPerRun = 4, the 2nd choice sits at progress 1/3. The echo weight
         // there must be meaningful so the run-defining pick can appear early (pre-rework: ~20).
-        var echo = GameConfig.CardRarityWeight(Cards.Echo, 1.0 / 3);
+        double echo = GameConfig.CardRarityWeight(Cards.Echo, 1.0 / 3);
         Assert.True(echo >= 25, $"echo weight at 2nd choice = {echo}");
     }
 
     [Fact]
     public void CommonsNoLongerDominateLateOffers()
     {
-        var common = GameConfig.CardRarityWeight(Cards.Common, 1.0);
+        double common = GameConfig.CardRarityWeight(Cards.Common, 1.0);
         Assert.True(common < GameConfig.CardRarityWeight(Cards.Rare, 1.0));
         Assert.True(common < GameConfig.CardRarityWeight(Cards.Echo, 1.0));
     }
@@ -166,7 +171,7 @@ with:
         // instead of opening a card offer — choices live on floor clear and the Echo Sanctuary.
         if (monster.IsElite && !monster.IsSummon)
         {
-            var eliteGold = (long)(_rng.Range(GameConfig.EliteRewardGoldMin, GameConfig.EliteRewardGoldMax)
+            long eliteGold = (long)(_rng.Range(GameConfig.EliteRewardGoldMin, GameConfig.EliteRewardGoldMax)
                 * Tier.StatMultiplier * (1 + CardValue("goldPercent")));
             _gold += eliteGold;
             EmitLootFly(GameConfig.GoldCoinItemId, $"+{eliteGold} gold", monster.X, monster.Y, isGold: true);
@@ -243,6 +248,8 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 
 ### Task 3: Ordered chaos — intent gate + shape caps for mob AoE
 
+**Model · Effort:** Opus · medium — deterministic tick code; exact replacement blocks are given, but Rng-order and replay implications demand care.
+
 Every mob area cast must land near the player; non-boss shapes are capped at dragon-fire-wave scale. No telegraphs (kept by design). Includes replay battery regeneration (Rng consumption order changes).
 
 **Files:**
@@ -251,7 +258,7 @@ Every mob area cast must land near the player; non-boss shapes are capped at dra
 - Test: `backend/tests/KaezanArenaFable.Api.Tests/MonsterCastRuleTests.cs` (create)
 
 **Interfaces:**
-- Consumes: `Actor.IsBossActor`, `ConeTiles(int x, int y, int dx, int dy, int reach)`, `CircleTiles(int x, int y, int radius)`, `Chebyshev`, `DirDelta(Facing, Actor)`, `FacingFrom(int dx, int dy)`.
+- Consumes: `Actor.IsBossActor`, `ConeTiles(int x, int y, int dx, int dy, int reach)`, `CircleTiles(int x, int y, int radius)`, `Chebyshev`, `(int dx, int dy) DirDelta(Dir facing, Actor? target)`, `Dir FacingFrom(int dx, int dy, Dir? previous = null)`.
 - Produces: `GameConfig.MonsterConeReach(bool isBoss, int length)`, `GameConfig.MonsterAoeRadius(bool isBoss, int radius)`, `GameConfig.SelfCenteredAoeInRange(int dist, int radius)`, consts `MonsterAoeProximityMargin=2`, `MonsterConeReachCap=3`, `MonsterAoeRadiusCap=2`, `BossConeReachCap=5`, `BossAoeRadiusCap=4`; private `GameWorld.ConeLandsNearPlayer`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -297,8 +304,8 @@ public class MonsterCastRuleTests
     [Fact]
     public void RetunedProfilesRespectTheCaps()
     {
-        foreach (var profile in GameConfig.MonsterBehaviorProfiles)
-        foreach (var atk in profile.Attacks)
+        foreach (MonsterBehaviorProfile profile in GameConfig.MonsterBehaviorProfiles)
+        foreach (MonsterAttackPattern atk in profile.Attacks)
         {
             Assert.True(atk.Length <= GameConfig.MonsterConeReachCap,
                 $"{profile.Id}: cone length {atk.Length} > cap");
@@ -359,21 +366,21 @@ Replace the ranged branch of `TryMonsterAttacks` (the `else` block at lines 4748
 ```csharp
             else
             {
-                var range = attack.Range > 0 ? attack.Range : (attack.Radius > 0 || attack.Length > 0 ? 7 : 1);
+                int range = attack.Range > 0 ? attack.Range : (attack.Radius > 0 || attack.Length > 0 ? 7 : 1);
                 if (dist > range) continue;
                 if (!HasLineOfSight(monster.X, monster.Y, Player.X, Player.Y)) continue;
 
                 // Ordered chaos (2026-07-06): shape caps by rank + intent gate, checked BEFORE
                 // arming the cooldown — a gated mob simply hasn't attempted the cast yet and can
                 // fire the moment the player is close enough. No more AoE bursting at nothing.
-                var coneReach = attack.Length > 0
+                int coneReach = attack.Length > 0
                     ? GameConfig.MonsterConeReach(monster.IsBossActor, attack.Length) : 0;
-                var aoeRadius = attack.Radius > 0
+                int aoeRadius = attack.Radius > 0
                     ? GameConfig.MonsterAoeRadius(monster.IsBossActor, attack.Radius) : 0;
-                var facing = FacingFrom(Player.X - monster.X, Player.Y - monster.Y);
+                Dir facing = FacingFrom(Player.X - monster.X, Player.Y - monster.Y);
                 if (attack.Length > 0)
                 {
-                    var (gdx, gdy) = DirDelta(facing, Player);
+                    (int gdx, int gdy) = DirDelta(facing, Player);
                     if (!ConeLandsNearPlayer(monster, gdx, gdy, coneReach)) continue;
                 }
                 else if (aoeRadius > 0 && !attack.Target
@@ -390,9 +397,9 @@ Replace the ranged branch of `TryMonsterAttacks` (the `else` block at lines 4748
                 if (attack.Length > 0)
                 {
                     // wave (e.g. dragon fire): cone toward player, capped at dragon-wave reach
-                    var (dx, dy) = DirDelta(monster.Facing, Player);
-                    var hitPlayer = false;
-                    foreach (var (tx, ty) in ConeTiles(monster.X, monster.Y, dx, dy, coneReach))
+                    (int dx, int dy) = DirDelta(monster.Facing, Player);
+                    bool hitPlayer = false;
+                    foreach ((int tx, int ty) in ConeTiles(monster.X, monster.Y, dx, dy, coneReach))
                     {
                         if (attack.AreaEffect > 0) Emit("effect", tx, ty, 0, 0, attack.AreaEffect);
                         if (tx == Player.X && ty == Player.Y) hitPlayer = true;
@@ -401,10 +408,10 @@ Replace the ranged branch of `TryMonsterAttacks` (the `else` block at lines 4748
                 }
                 else if (aoeRadius > 0)
                 {
-                    var cx = attack.Target ? Player.X : monster.X;
-                    var cy = attack.Target ? Player.Y : monster.Y;
-                    var hitPlayer = false;
-                    foreach (var (tx, ty) in CircleTiles(cx, cy, aoeRadius))
+                    int cx = attack.Target ? Player.X : monster.X;
+                    int cy = attack.Target ? Player.Y : monster.Y;
+                    bool hitPlayer = false;
+                    foreach ((int tx, int ty) in CircleTiles(cx, cy, aoeRadius))
                     {
                         if (attack.AreaEffect > 0) Emit("effect", tx, ty, 0, 0, attack.AreaEffect);
                         if (tx == Player.X && ty == Player.Y) hitPlayer = true;
@@ -428,7 +435,7 @@ Add the private helper next to `CanAttackPlayer`:
     /// cone or within MonsterAoeProximityMargin tiles of its nearest tile.</summary>
     private bool ConeLandsNearPlayer(Actor monster, int dx, int dy, int reach)
     {
-        foreach (var (tx, ty) in ConeTiles(monster.X, monster.Y, dx, dy, reach))
+        foreach ((int tx, int ty) in ConeTiles(monster.X, monster.Y, dx, dy, reach))
             if (Chebyshev(tx, ty, Player.X, Player.Y) <= GameConfig.MonsterAoeProximityMargin)
                 return true;
         return false;
@@ -442,7 +449,7 @@ A mob whose only shot is a gated self-nova must not plant at range 7 doing nothi
 ```csharp
     private bool CanAttackPlayer(Actor monster, int dist, bool hasLos)
     {
-        foreach (var attack in monster.Species!.Attacks)
+        foreach (MonsterAttack attack in monster.Species!.Attacks)
         {
             if (attack.Kind == "melee")
             {
@@ -450,7 +457,7 @@ A mob whose only shot is a gated self-nova must not plant at range 7 doing nothi
                 continue;
             }
 
-            var range = attack.Range > 0 ? attack.Range : (attack.Radius > 0 || attack.Length > 0 ? 7 : 1);
+            int range = attack.Range > 0 ? attack.Range : (attack.Radius > 0 || attack.Length > 0 ? 7 : 1);
             // Ordered chaos: a gated shape does not justify planting — only count shapes that
             // could legitimately fire from this distance (cap + proximity margin).
             if (attack.Length > 0)
@@ -502,6 +509,8 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 ---
 
 ### Task 4: Balance calibration — card-less baseline carries the clear
+
+**Model · Effort:** Fable (or Opus) · high — iterative judgment loop reading sweep pivots and choosing levers; the numbers cannot be pre-written.
 
 Recalibrate so `--cards none` clears floors ~25–35% slower than target and `--cards full` (now ~3 picks) sits on the MG-08 targets. Iterative loop with explicit acceptance; every changed number justified by the sweeps.
 
@@ -570,6 +579,8 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 ---
 
 ### Task 5: Docs, frontend build, push
+
+**Model · Effort:** Sonnet · low — README prose + build gates + push.
 
 **Files:**
 - Modify: `README.md` (run-loop / cards section — describe the new cadence and payout beats)

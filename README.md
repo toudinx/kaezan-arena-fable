@@ -35,7 +35,11 @@ na página Kaelis.
 ## Como rodar
 
 ```powershell
-# 1. Backend (porta 5210)
+# 1. Backend (porta 5210) — sempre em Release; medição em Debug é inválida
+powershell -File tools/run-backend.ps1        # build + run
+powershell -File tools/run-backend.ps1 -NoBuild   # só restart
+
+# alternativa de debug
 cd backend/src/KaezanArenaFable.Api
 dotnet run --urls http://localhost:5210
 

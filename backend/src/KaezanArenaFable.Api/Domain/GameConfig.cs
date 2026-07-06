@@ -236,29 +236,30 @@ public static class GameConfig
     /// these values and never receive the legacy BossHpScale multiplier; <see cref="MonsterDamageTuning"/>
     /// is inert for them (they have <c>StatMult=1</c>), so the real mob damage lever is the
     /// <c>Damage</c> column here.
-    /// MG-08 (simulator calibration, tools/BalanceSim): the <c>Health</c> column was rescaled to
-    /// hit TTK targets in action cycles (common ~3 · elite ~6 · boss ~12) with same-tier gear,
-    /// and <c>Damage</c> was lowered for deaths ~0 (mage/archer) — boss never &lt; 8 cycles, no one-shot
-    /// from boss/elite. Each number justified by the sweep (docs/balance/mg08_before.csv→mg08_after.csv).
+    /// MG-08 / cards rework (simulator calibration, tools/BalanceSim): the <c>Health</c> column was
+    /// rescaled to hit TTK targets in action cycles (common ~3 · elite ~6 · boss ~12) after card
+    /// choices moved to floor-clear/sanctuary cadence. <c>Damage</c> remains the survival lever for
+    /// deaths ~0 (mage/archer) — boss never &lt; 8 cycles, no one-shot from boss/elite. Each number is
+    /// justified by the sweeps in docs/balance.
     /// </summary>
     public static readonly IReadOnlyDictionary<string, MonsterStatLine> MonsterStatLines =
         new Dictionary<string, MonsterStatLine>
         {
-            ["1:common"] = new(580, 5, 2, 80, 15),
-            ["1:elite"] = new(650, 8, 4, 84, 38),
-            ["1:boss"] = new(8200, 12, 6, 82, 120),
-            ["2:common"] = new(840, 9, 6, 85, 45),
-            ["2:elite"] = new(1100, 14, 9, 90, 110),
-            ["2:boss"] = new(9700, 22, 13, 88, 350),
-            ["3:common"] = new(1200, 15, 12, 90, 120),
-            ["3:elite"] = new(1300, 25, 18, 95, 300),
-            ["3:boss"] = new(19800, 35, 24, 94, 850),
-            ["4:common"] = new(2050, 26, 22, 100, 320),
-            ["4:elite"] = new(2600, 40, 32, 105, 800),
-            ["4:boss"] = new(33600, 52, 42, 102, 1900),
-            ["5:common"] = new(3800, 30, 36, 110, 850),
-            ["5:elite"] = new(6000, 45, 52, 116, 2100),
-            ["5:boss"] = new(68000, 85, 66, 112, 4800),
+            ["1:common"] = new(260, 4, 2, 80, 15),
+            ["1:elite"] = new(560, 6, 4, 84, 38),
+            ["1:boss"] = new(2900, 9, 6, 82, 120),
+            ["2:common"] = new(320, 4, 6, 85, 45),
+            ["2:elite"] = new(760, 6, 9, 90, 110),
+            ["2:boss"] = new(3500, 10, 13, 88, 350),
+            ["3:common"] = new(650, 6, 12, 90, 120),
+            ["3:elite"] = new(950, 10, 18, 95, 300),
+            ["3:boss"] = new(6500, 15, 24, 94, 850),
+            ["4:common"] = new(1300, 26, 22, 100, 320),
+            ["4:elite"] = new(3100, 40, 32, 105, 800),
+            ["4:boss"] = new(17700, 52, 42, 102, 1900),
+            ["5:common"] = new(3100, 30, 36, 110, 850),
+            ["5:elite"] = new(6500, 45, 52, 116, 2100),
+            ["5:boss"] = new(46000, 85, 66, 112, 4800),
         };
 
     public static readonly MonsterStatPreset[] MonsterStatPresets =

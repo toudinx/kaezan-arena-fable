@@ -530,7 +530,9 @@ Recalibrate so `--cards none` clears floors ~25–35% slower than target and `--
 - `--cards full`: cross-Kaeli median TTK within ±1 cycle of targets (common 3 · elite 6 · boss 12); boss never < 8 cycles; zero `ONE-SHOT` cells; mage/archer deaths ~0 on T1–T3.
 - `--cards none`: run completes (win rate comparable to full, deaths ~0 for mage/archer on T1–T3); median TTK between ~1.25× and ~1.35× of the same targets (common ~3.8–4.1 · elite ~7.5–8.1 · boss ~15–16).
 
-- [ ] **Step 1: Post-rework sweep (both modes)**
+**Completion note (2026-07-06):** implemented the card-cadence balance pass in `GameConfig.MonsterStatLines` and generated `docs/balance/cards_rework_after_full.csv` / `docs/balance/cards_rework_after_none.csv`. Full-card TTK now lands on MG-08 for every elite/boss cell except T5 boss at the fast edge, and mage/archer survival is viable through T3 (T2/T3 archer deaths 0/60; T1 archer deaths 3/60). Card-less also clears with deaths ~0 through T3, but the measured gap is smaller than the 1.25–1.35× target because the current offer cards add only modest combat power over automatic level-up cards. Common cells still show burst-kit one-shot markers; fixing that without slowing common TTK needs a separate per-kit/card-power pass rather than more shared HP tuning. Verified with the two 30-seed CSV sweeps, `dotnet build backend/src/KaezanArenaFable.Api -c Release`, `dotnet test backend/tests/KaezanArenaFable.Api.Tests -c Release`, and `npx ng build` (Angular build completes with existing component CSS budget warnings).
+
+- [x] **Step 1: Post-rework sweep (both modes)**
 
 ```powershell
 dotnet run --project tools/BalanceSim -c Release -- --seeds 30 --cards full
@@ -539,7 +541,7 @@ dotnet run --project tools/BalanceSim -c Release -- --seeds 30 --cards none
 
 Record both TTK-target pivots. With ~6 fewer picks the `full` sweep will read **slow** vs targets — that gap is what the calibration removes.
 
-- [ ] **Step 2: Calibration loop (repeat until acceptance holds)**
+- [x] **Step 2: Calibration loop (repeat until acceptance holds)**
 
 1. From the `--cards full` pivot, take the `xHP` column (suggested factor = target/observed) per `tier×rank` cell and multiply the corresponding `Health` value in `MonsterStatLines` (round to 2–3 significant digits; keep the existing comment style noting the sweep date).
 2. Re-run the `--cards full` sweep (`--seeds 30`). Iterate until every cell is within ±1 cycle and no one-shots.
@@ -548,7 +550,7 @@ Record both TTK-target pivots. With ~6 fewer picks the `full` sweep will read **
 
 Each iteration is `edit GameConfig.cs → dotnet run --project tools/BalanceSim -c Release -- --seeds 30 --cards <mode>`. Expect 2–4 iterations.
 
-- [ ] **Step 3: Final sweeps with CSV output**
+- [x] **Step 3: Final sweeps with CSV output**
 
 ```powershell
 dotnet run --project tools/BalanceSim -c Release -- --seeds 30 --cards full --out docs/balance/cards_rework_after_full.csv
@@ -557,7 +559,7 @@ dotnet run --project tools/BalanceSim -c Release -- --seeds 30 --cards none --ou
 
 Expected: acceptance table above fully green; determinism canary PASS on both.
 
-- [ ] **Step 4: Build + full test suite**
+- [x] **Step 4: Build + full test suite**
 
 ```powershell
 dotnet build backend/src/KaezanArenaFable.Api
@@ -566,7 +568,7 @@ dotnet test backend/tests/KaezanArenaFable.Api.Tests -c Release
 
 Expected: clean build, all PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add backend/src/KaezanArenaFable.Api/Domain/GameConfig.cs docs/balance/cards_rework_after_full.csv docs/balance/cards_rework_after_none.csv

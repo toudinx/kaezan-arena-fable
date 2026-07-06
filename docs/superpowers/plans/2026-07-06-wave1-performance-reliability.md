@@ -123,7 +123,7 @@ git commit -m "chore: canonical Release build+run script for the backend"
 **Interfaces:**
 - Produces: `PerfStats` — `void Add(double ms)`, `double Percentile(double p)`, `double Max()`, `int Count`. Logs `tick perf: p50=... p95=... max=...` (a cada ~30s) e `run created in ...ms` — o Task 7 lê esses logs para o baseline.
 
-- [ ] **Step 1: Create the test project**
+- [x] **Step 1: Create the test project**
 
 ```bash
 cd backend
@@ -131,7 +131,7 @@ dotnet new xunit -o tests/KaezanArenaFable.Api.Tests
 dotnet add tests/KaezanArenaFable.Api.Tests reference src/KaezanArenaFable.Api/KaezanArenaFable.Api.csproj
 ```
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 `backend/tests/KaezanArenaFable.Api.Tests/PerfStatsTests.cs`:
 
@@ -173,12 +173,12 @@ public class PerfStatsTests
 }
 ```
 
-- [ ] **Step 3: Run tests to verify they fail**
+- [x] **Step 3: Run tests to verify they fail**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests`
 Expected: FAIL — `PerfStats` does not exist.
 
-- [ ] **Step 4: Implement PerfStats**
+- [x] **Step 4: Implement PerfStats**
 
 `backend/src/KaezanArenaFable.Api/Engine/PerfStats.cs`:
 
@@ -216,12 +216,12 @@ public sealed class PerfStats(int capacity = 600)
 }
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests`
 Expected: PASS (3 tests).
 
-- [ ] **Step 6: Wire into RunManager**
+- [x] **Step 6: Wire into RunManager**
 
 Em `RunManager` (campos da classe):
 
@@ -247,7 +247,7 @@ if (++_perfLogCounter % 300 == 0 && _tickPerf.Count > 0)
         _tickPerf.Percentile(50), _tickPerf.Percentile(95), _tickPerf.Max(), _tickPerf.Count);
 ```
 
-- [ ] **Step 7: Time run creation in GameHub**
+- [x] **Step 7: Time run creation in GameHub**
 
 Adicionar `ILogger<GameHub> logger` ao primary constructor do `GameHub` e envolver a criação (linhas 79-82):
 
@@ -261,13 +261,13 @@ logger.LogInformation("run created in {Ms:F0}ms (tier {Tier}, seed {Seed})",
 runs.StartRun(Context.ConnectionId, world);
 ```
 
-- [ ] **Step 8: Build + verify logs appear**
+- [x] **Step 8: Build + verify logs appear**
 
 Run: `dotnet build backend/src/KaezanArenaFable.Api` → sem erros.
 Run: `powershell -File tools/run-backend.ps1`, iniciar uma run T1 pelo frontend, aguardar ~30s.
 Expected: log `run created in ...ms` na entrada e `tick perf: ...` periódico.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add backend/tests backend/src/KaezanArenaFable.Api/Engine/PerfStats.cs backend/src/KaezanArenaFable.Api/Engine/RunManager.cs backend/src/KaezanArenaFable.Api/Hubs/GameHub.cs

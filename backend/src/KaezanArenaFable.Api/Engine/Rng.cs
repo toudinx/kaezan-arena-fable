@@ -5,6 +5,10 @@ public sealed class Rng
 {
     private ulong _s0, _s1;
 
+    /// <summary>FF-01: internal xorshift128+ state, exposed read-only so the replay state hash can
+    /// prove the RNG stream position matches. Never mutate from outside.</summary>
+    public (ulong S0, ulong S1) State => (_s0, _s1);
+
     public Rng(ulong seed)
     {
         // splitmix64 to spread the seed

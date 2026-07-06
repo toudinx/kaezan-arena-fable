@@ -209,7 +209,8 @@ public sealed record Command(CommandKind Kind, int A, int B, string? S);
 /// Deterministic for a given seed + command timeline.
 /// </summary>
 /// Persistence belongs to Meta and is only invoked at run boundaries; never add DB/EF access here.
-public sealed class GameWorld
+/// FF-01: replay recording + canonical state hash live in GameWorld.Replay.cs (partial).
+public sealed partial class GameWorld
 {
     public readonly long Seed;
     public readonly GameMode Mode;
@@ -429,6 +430,7 @@ public sealed class GameWorld
             _autoHelperAutoHeal = GameConfig.RynnaHelperAutoHealDefault;
             _autoHelperHealPct = GameConfig.RynnaHelperHealPctDefault;
         }
+        _initialHelperProfile = helperProfile; // FF-01: frozen ctor input for replay re-simulation
         if (!string.IsNullOrWhiteSpace(helperProfile)) ApplyHelperProfile(helperProfile);
 
         // LM-08: biome comes from ContentStore (editable in admin); fallback to canonical defaults for
@@ -715,6 +717,7 @@ public sealed class GameWorld
     private void Apply(Command cmd)
     {
         if (Ended is not null) return;
+        RecordReplayCommand(cmd); // FF-01: log every command the sim actually consumes, at this tick
         switch (cmd.Kind)
         {
             case CommandKind.SetMoveDir:
@@ -823,6 +826,8 @@ public sealed class GameWorld
                 }
             }
         }
+
+        RecordReplayTickHash(); // FF-01: periodic canonical hash for divergence bisection
 
         MapDto? map = null;
         if (MapDirty)

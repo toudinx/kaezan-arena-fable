@@ -15,6 +15,10 @@ namespace BalanceSim;
 ///
 /// Flags: --out &lt;csv&gt;  --seeds &lt;N=50&gt;  --content-root &lt;dir&gt;  --cards full|none
 ///        --max-ticks &lt;N=12000&gt;  --kaeli &lt;id&gt;  --tier &lt;n&gt;  --seed-start &lt;n=1&gt;
+///
+/// FF-01 replay verification: --replay-check &lt;file-or-dir&gt; re-simulates recorded replays and
+/// compares canonical state hashes (see ReplayCheck); --save-replays &lt;dir&gt; dumps a replay of
+/// every finished sweep run, to build a regression battery without the browser.
 /// </summary>
 internal static class Program
 {
@@ -28,6 +32,7 @@ internal static class Program
         int? tierFilter = null;
         bool golden = false, goldenCheck = false;
         string? goldenOut = null;
+        string? replayCheck = null, replaySaveDir = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -44,6 +49,8 @@ internal static class Program
                 case "--max-ticks": maxTicks = int.Parse(args[++i], CultureInfo.InvariantCulture); break;
                 case "--kaeli": kaeliFilter = args[++i]; break;
                 case "--tier": tierFilter = int.Parse(args[++i], CultureInfo.InvariantCulture); break;
+                case "--replay-check": replayCheck = args[++i]; break;
+                case "--save-replays": replaySaveDir = args[++i]; break;
                 default:
                     Console.Error.WriteLine($"unknown flag: {args[i]}");
                     return 1;
@@ -54,6 +61,10 @@ internal static class Program
         // + biome — so it runs before loading the environment and exits.
         if (golden)
             return Golden.Run(goldenCheck, goldenOut);
+
+        // FF-01: replay verification mode — re-simulates recorded runs and compares state hashes.
+        if (replayCheck is not null)
+            return ReplayCheck.Run(replayCheck, contentRoot);
 
         var root = SimHostEnvironment.ResolveContentRoot(contentRoot);
         Console.WriteLine($"content-root: {root}");
@@ -100,9 +111,14 @@ internal static class Program
         for (var s = 0; s < seeds; s++)
         {
             var seed = seedStart + s;
-            var result = Simulator.Run(Build(waifu, tier, seed), waifu.Name, tier.Tier, seed, cards, maxTicks);
+            var world = Build(waifu, tier, seed);
+            var result = Simulator.Run(world, waifu.Name, tier.Tier, seed, cards, maxTicks);
             allKills.AddRange(result.Kills);
             allRuns.Add(result.Summary);
+            // FF-01: dump a replay of every finished run (regression battery for --replay-check).
+            if (replaySaveDir is not null && world.Ended is not null)
+                ReplayIo.Save(world.BuildReplay(), Path.Combine(replaySaveDir,
+                    $"{waifu.Id.Replace(':', '-')}_t{tier.Tier}_seed{seed}{ReplayIo.Extension}"));
             done++;
             if (done % 25 == 0 || done == total)
                 Console.Write($"\r  {done}/{total} runs ({sw.Elapsed.TotalSeconds:F0}s)   ");

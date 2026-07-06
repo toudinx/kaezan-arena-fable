@@ -19,7 +19,8 @@ public sealed record OrphanedRun(ActiveRun Run, DateTimeOffset DisconnectedAt);
 /// Owns all active runs (one per SignalR connection) and ticks them at GameConfig.TickMs,
 /// pushing snapshots to the owning client.
 /// </summary>
-public sealed class RunManager(IHubContext<GameHub> hub, RewardService rewards, ILogger<RunManager> logger)
+public sealed class RunManager(
+    IHubContext<GameHub> hub, RewardService rewards, ReplayStore replays, ILogger<RunManager> logger)
     : BackgroundService
 {
     private readonly ConcurrentDictionary<string, ActiveRun> _runs = new();
@@ -117,6 +118,7 @@ public sealed class RunManager(IHubContext<GameHub> hub, RewardService rewards, 
             if (run.World.Ended is not null && !run.RewardsApplied)
             {
                 run.RewardsApplied = true;
+                replays.SaveFinishedRun(run.World); // FF-01: freeze the replay at the ending tick
                 rewards.Apply(run.World, run.World.Ended);
             }
         }
@@ -162,6 +164,7 @@ public sealed class RunManager(IHubContext<GameHub> hub, RewardService rewards, 
                         if (snapshot.Run.Ended is not null && !run.RewardsApplied)
                         {
                             run.RewardsApplied = true;
+                            replays.SaveFinishedRun(run.World); // FF-01: freeze the replay at the ending tick
                             var enriched = rewards.Apply(run.World, snapshot.Run.Ended);
                             snapshot = snapshot with { Run = snapshot.Run with { Ended = enriched } };
                         }

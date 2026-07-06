@@ -158,15 +158,21 @@ apontando para outro database (inclusive `otservbr-global`) é recusada antes da
 | Painel Helper | Controla alvo automático, preferência de alvo, skills, ultimate e modo de movimento; abre o **editor de táticas** (gambit) |
 | 1 / 2 / 3 / 4 | Slots 1-4 do kit da classe |
 | R | Ultimate da classe (gauge) |
-| 5 | Poção de cura (2 cargas por run; cura escala com o tier; cooldown curto) |
+| T | Poção de cura (2 cargas por run; cura escala com o tier; cooldown curto) |
 | B | Abre/fecha a mochila da caçada (loot acumulado na run) |
 | Tab | Alterna a postura elemental (quando a classe possui duas) |
 | ESC | Sair da run (abandono = metade do ouro) |
 
 O loot agora é **coletado automaticamente no abate**: moedas e itens explodem do monstro e voam
 em arco até a Kaeli (com som de "cha-ching"), sem precisar pisar sobre eles. Equipamentos vão
-direto pra mochila da caçada; comida/poções dropadas curam na hora. O slot 5 é uma poção própria
+direto pra mochila da caçada; comida/poções dropadas curam na hora. O slot T é uma poção própria
 da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
+
+O HUD da run segue a linguagem **"Reliquary Combat"** (extensão do design system Cathedral Ink +
+Aurum): plaque de vidro tingido pelo elemento da stance, action bar em **arcos de catedral** com o
+**ultimate como rosácea** (anel dourado = gauge), cartouche de boss pendurado no topo, minimap
+"espelho de obsidiana" e vinheta de penumbra emoldurando a arena. Decisões e regras de propagação
+em `docs/design/gameplay_style_guide.md`.
 
 ## Fluidez e segurança da run
 
@@ -182,7 +188,7 @@ da run (independente do loot), com 2 cargas que escalam de cura conforme o tier.
 - Monstros desviam de bloqueios e aglomerações, perdem aggro após distância/LOS prolongados e
   respeitam `staticAttackChance` para sustentar posições de ataque.
 - **Painel HELPER — controle de autoplay (estilo on/off de gacha).** Fica ancorado no **canto
-  inferior esquerdo** e é **minimizável** (começa recolhido; o botão 🤖 no HUD abre/fecha, e um "–"
+  inferior esquerdo** e é **minimizável** (começa recolhido; o pill **Auto** no topo do HUD abre/fecha, e um "–"
   no cabeçalho recolhe), em seções claras (UI em inglês), com um *readout* em linguagem natural no
   topo ("Exploring & looting · hitting the nearest foe · auto-healing.") pra você "ler" a config num relance:
   - **Combat:** on/off de **Target**, **Skills**, **Ultimate**; e prioridade de alvo **Nearest** ou
@@ -414,6 +420,8 @@ frontend/src/app/
 tools/
   AssetExtractor/     C#: things/1500 do otclient → PNG atlases + manifest.json
   convert-monsters/   Node+wasmoon: monster .lua do canary → monsters.json
+  BalanceSim/         C#: simulador headless (sweep de balance, golden do gerador,
+                      --replay-check de replays bit-perfect)
 docs/GDD.md           design e mapeamento kaezan-arena × Tibia
 docs/DESIGN_NOTES.md  base de conhecimento de design (ideias do Tibia/Canary + Kaezan World)
 docs/ROADMAP.md       fila de tasks pequenas/bem-especificadas (track Codex)
@@ -519,6 +527,12 @@ modo recomendado ao atualizar apenas a biblioteca visual do editor de monstros.
 - **Backend é autoritativo.** O frontend nunca simula gameplay; só renderiza snapshots.
 - **Determinismo**: mesma seed + mesmos comandos = mesma run (Rng xorshift próprio; nada de
   `Random` compartilhado no engine). Gacha usa `Random` não-determinístico de propósito.
+  **Provado fim-a-fim (FF-01):** toda run terminada grava um replay (`seed + command log +
+  hashes de estado SHA-256`) em `backend/src/KaezanArenaFable.Api/.data/replays/` (retenção
+  `GameConfig.ReplayKeepLast`); `dotnet run --project tools/BalanceSim -- --replay-check
+  <arquivo-ou-pasta>` re-simula e compara os hashes (checkpoints a cada 100 ticks bissectam o
+  primeiro tick divergente). `--save-replays <dir>` no sweep gera uma bateria headless. Esse
+  check é o **gate obrigatório de qualquer refactor do engine** (FF-02+).
 - **Todas as constantes de simulação/meta em `GameConfig.cs`.**
 - IDs estáveis: waifus `waifu:*`, cards `card:*`, banners `banner:*`. Não renomear.
 - Assets do Tibia são **propriedade da CipSoft** — uso apenas em projeto privado/educacional.

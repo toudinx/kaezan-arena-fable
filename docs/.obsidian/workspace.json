@@ -27,16 +27,30 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "roadmap/not started/roadmap_kaelis_kit_reformulation.md",
+                "file": "roadmap/not started/roadmap_fable5_frontier.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "roadmap_kaelis_kit_reformulation"
+              "title": "roadmap_fable5_frontier"
+            }
+          },
+          {
+            "id": "3a945d7670dab3c1",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "superpowers/plans/2026-07-06-wave1-performance-reliability.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "2026-07-06-wave1-performance-reliability"
             }
           }
         ],
-        "currentTab": 1
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -198,44 +212,43 @@
       "bases:Criar nova base": false
     }
   },
-  "active": "f6868d5fdd6836e0",
+  "active": "3a945d7670dab3c1",
   "lastOpenFiles": [
-    "roadmap/not started/roadmap_kaelis_kit_reformulation.md.tmp.42888.b66d29e0fc6d",
-    "roadmap/not started/roadmap_kaelis_kit_reformulation.md.tmp.42888.9886b5eb0f66",
-    "roadmap/not started/roadmap_kaelis_kit_reformulation.md.tmp.17280.f9ec85d0dfd4",
-    "roadmap/not started/roadmap_kaelis_kit_reformulation.md.tmp.17280.63adb01a8b53",
+    "superpowers/plans/2026-07-06-wave4-asset-migration.md",
+    "superpowers/plans/2026-07-06-wave1-performance-reliability.md.tmp.20568.957fa235d364",
+    "superpowers/specs/2026-07-06-kaezan-idle-evolution-design.md.tmp.20568.0c5e3b313f2f",
+    "superpowers/specs/2026-07-06-kaezan-idle-evolution-design.md.tmp.20568.5c3980e37d1d",
+    "superpowers/plans/2026-07-06-wave3-idle-orchestration.md",
+    "superpowers/plans/2026-07-06-wave4-asset-migration.md.tmp.20568.9637a6cbbfc4",
+    "superpowers/plans/2026-07-06-wave2-mapgen-v2.md",
+    "superpowers/plans/2026-07-06-wave1-performance-reliability.md",
+    "superpowers/plans/2026-07-06-wave3-idle-orchestration.md.tmp.20568.bd31ac07b31c",
+    "superpowers/plans/2026-07-06-wave3-idle-orchestration.md.tmp.20568.5c8e9b5101c1",
+    "superpowers/plans/2026-07-06-wave3-idle-orchestration.md.tmp.20568.7261e4c5bdaf",
+    "superpowers/plans/2026-07-06-wave3-idle-orchestration.md.tmp.20568.ca8f1fcf6504",
+    "superpowers/plans/2026-07-06-wave3-idle-orchestration.md.tmp.20568.682b08928c40",
+    "superpowers/plans/2026-07-06-wave3-idle-orchestration.md.tmp.20568.85ad9ea9ae6b",
+    "KNOWLEDGE_wall_mountain_family.md",
+    "superpowers/specs/2026-07-06-kaezan-idle-evolution-design.md",
+    "DESIGN_NOTES.md",
+    "Sem título.md",
+    "roadmap/not started/roadmap_fable5_frontier.md",
+    "roadmap/not started/roadmap_kaelis_kit_reformulation.md",
+    "design/gameplay_style_guide.md",
     "KNOWLEDGE_wan_idle_bust.md",
     "roadmap_i18n_english_migration.md",
     "KNOWLEDGE_gen_premium_gap.md",
-    "KNOWLEDGE_wall_mountain_family.md",
     "design/kaelis_kits_summary.md",
-    "roadmap/not started/roadmap_kaelis_kit_reformulation.md.tmp.47352.11f6e21a2bf1",
-    "roadmap/not started/roadmap_kaelis_kit_reformulation.md.tmp.47352.639852fc3702",
-    "roadmap/not started/roadmap_kaelis_kit_reformulation.md",
-    "design/kaelis_kit_reformulation.md.tmp.54896.b89ffcdfb472",
-    "design/kaelis_kit_reformulation.md.tmp.54896.9659dbd7c929",
     "design/kaelis_kit_reformulation.md",
     "design/kaelis_combat_archetypes_research.md",
-    "DESIGN_NOTES.md",
     "roadmap/ongoing/roadmap_dash_training.md",
-    "design/kaelis_combat_archetypes_research.md.tmp.24432.251bb3e64d5c",
-    "design/kaelis_combat_archetypes_research.md.tmp.24432.7fe3f6e8dc00",
     "roadmap/ongoing/roadmap_dungeons.md",
     "WORKFLOW_imagem_e_cutscenes.md",
     "roadmap/not started/roadmap_skins.md",
     "roadmap/not started/roadmap_comfyui_geracao.md",
     "roadmap/not started/roadmap_producao_visual.md",
     "roadmap/not started/roadmap_hunts.md",
-    "roadmap/not started/roadmap_hunts.md.tmp.13684.e31a1d45135d",
     "prompts/prompts por imagem.md",
-    "prompts/skins/humanas/rin.md",
-    "prompts/skins/verao/seren.md",
-    "prompts/skins/verao/lunara.md",
-    "prompts/skins/verao/rynna.md",
-    "prompts/skins/verao/eloa.md",
-    "prompts/skins/celestiais-caidas/rin.md",
-    "prompts/skins/verao/gaia.md",
-    "prompts/skins/celestiais-caidas/rynna.md",
     "prompts/hunt-redesign/hunt-menu-anchor.png",
     "prompts/hunt-redesign/hunt-dungeon-anchor.png",
     "prompts/hunt-redesign/prerun-anchor.png"

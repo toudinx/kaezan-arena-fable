@@ -8,6 +8,11 @@ public static class GameConfig
 {
     // ---- simulation ----
     public const int TickMs = 100;
+    // FF-01 (bit-perfect replay): cadence of intermediate state hashes recorded during a run
+    // (every N ticks) so --replay-check can bisect the first divergent tick, and how many
+    // finished-run replays .data/replays/ retains (oldest are deleted).
+    public const int ReplayHashEveryTicks = 100;
+    public const int ReplayKeepLast = 40;
     // G-01: 250→340 (step 400ms→~294ms/tile) for hunt pacing; keeps margin above MinStepMs.
     public const int PlayerBaseSpeed = 340;
     // G-01: reviewed and kept at 2 — mobs already move at 430–625ms vs player ~294ms, kites well.

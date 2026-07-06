@@ -14,13 +14,25 @@ const RENDER_DELAY_MS = TICK_MS;
 const CLOCK_SMOOTHING = 0.2;
 const MAX_CLOCK_CORRECTION_MS = 25;
 
-/** Tibia-style damage number colors by damage/condition type (player hits only). */
+/**
+ * Damage/condition tint per type — mirrors the --el-* element tokens in styles.css
+ * (Reliquary Combat, docs/design/gameplay_style_guide.md). Canvas can't read CSS vars
+ * cheaply per frame, so the hex values are duplicated here; keep them in sync.
+ */
 const DAMAGE_TYPE_COLORS: Record<string, string> = {
-  poison: '#6ee76e', earth: '#6ee76e', fire: '#ff8c3c', energy: '#c47dff',
-  ice: '#7df0ff', freeze: '#7df0ff', holy: '#ffe87d', dazzle: '#ffe87d',
-  death: '#9b7dff', curse: '#9b7dff', lifedrain: '#ff5d8c', drown: '#5d9bff',
-  bleed: '#ff5d5d', physical: '#ff5d5d',
+  poison: '#8cbf4d', earth: '#8cbf4d', fire: '#ff6a3d', energy: '#2fe0c4',
+  ice: '#6fd6ff', freeze: '#6fd6ff', holy: '#ffe39c', dazzle: '#ffe39c',
+  death: '#a662ff', curse: '#a662ff', lifedrain: '#ff5470', drown: '#5d9bff',
+  bleed: '#ff5470', physical: '#ff5470',
 };
+
+// ---- Reliquary Combat text style (same stacks the HUD uses; Google Fonts loads both) ----
+const FONT_UI = "'Sora', 'Segoe UI', system-ui, sans-serif";
+const FONT_DISPLAY = "'Fraunces', 'Iowan Old Style', Georgia, serif";
+const INK = 'rgba(7, 7, 13, 0.85)';       // outline/backing ink (--bg-0 family)
+const GOLD_BRIGHT = '#ffd27a';            // --gold-bright: crits, gold, break window
+const SUCCESS = '#46d6a0';                // --success: heals, level up
+const IVORY = '#f4eedb';                  // dealt-damage default (same ivory as the HP bar)
 
 const LOOT_FLY_MS = 460;
 const LOOT_ARC_TILES = 0.9;
@@ -331,38 +343,41 @@ export class GameRenderer {
         if (ev.crit || intensity >= SHAKE_MIN_INTENSITY || playerVictim) {
           this.triggerShake(now, intensity * (ev.crit ? 1.15 : 1) + (playerVictim ? 0.2 : 0));
         }
+        // Tint by damage type when the event provides one; crits stay gold (juice), and
+        // dealt physical stays ivory so the red family keeps meaning "you are being hurt".
+        const dealtTint = ev.text === 'physical' || ev.text === 'bleed' ? undefined : DAMAGE_TYPE_COLORS[ev.text];
         this.texts.push({
           x: ev.x, y: ev.y, text: String(ev.value),
           color: playerVictim
-            ? DAMAGE_TYPE_COLORS[ev.text] ?? '#ff5d5d'
-            : ev.crit ? '#ffd35d' : '#ffffff',
+            ? DAMAGE_TYPE_COLORS[ev.text] ?? '#ff5470'
+            : ev.crit ? GOLD_BRIGHT : dealtTint ?? IVORY,
           start: now, kind: 'dmg', crit: ev.crit, mag: intensity,
           vx: ((this.textJitter++ % 3) - 1) * 0.16,
         });
         break;
       }
       case 'heal':
-        this.texts.push({ x: ev.x, y: ev.y, text: `+${ev.value}`, color: '#6ee76e', start: now, kind: 'heal' });
+        this.texts.push({ x: ev.x, y: ev.y, text: `+${ev.value}`, color: SUCCESS, start: now, kind: 'heal' });
         break;
       case 'text':
         // Engine `text` events are proc/callouts (QUEBRADO!, JULGADO, IMUNE, STANCE…): make them pop.
         this.texts.push({ x: ev.x, y: ev.y, text: ev.text, color: procColor(ev.text), start: now, kind: 'proc' });
         break;
       case 'gold':
-        this.texts.push({ x: ev.x, y: ev.y, text: `+${ev.value} gold`, color: '#ffd35d', start: now, kind: 'info' });
+        this.texts.push({ x: ev.x, y: ev.y, text: `+${ev.value} gold`, color: GOLD_BRIGHT, start: now, kind: 'info' });
         break;
       case 'pickup':
-        this.texts.push({ x: ev.x, y: ev.y, text: ev.text, color: '#9dff9d', start: now, kind: 'info' });
+        this.texts.push({ x: ev.x, y: ev.y, text: ev.text, color: '#9be9c8', start: now, kind: 'info' });
         break;
       case 'loot':
         // value = flying sprite, text = arrival label, crit = gold (gold color)
         this.loot.push({
           fromX: ev.x, fromY: ev.y, id: ev.value, text: ev.text,
-          color: ev.crit ? '#ffd35d' : '#9dff9d', start: now,
+          color: ev.crit ? GOLD_BRIGHT : '#9be9c8', start: now,
         });
         break;
       case 'levelup':
-        this.texts.push({ x: ev.x, y: ev.y, text: `LEVEL ${ev.value}!`, color: '#7dff7d', start: now, kind: 'proc' });
+        this.texts.push({ x: ev.x, y: ev.y, text: `LEVEL ${ev.value}!`, color: SUCCESS, start: now, kind: 'proc' });
         break;
       case 'voice':
         this.bubbles.push({ x: ev.x, y: ev.y, text: ev.text, start: now });
@@ -776,16 +791,21 @@ export class GameRenderer {
         if (dist <= 1) {
           const cx = sx(poi.x) + TS / 2;
           const cy = sy(poi.y) - 2;
-          ctx.fillStyle = 'rgba(10,12,20,0.88)';
-          ctx.fillRect(cx - 7, cy - 12, 14, 12);
-          ctx.strokeStyle = 'rgba(255,211,93,0.9)';
+          ctx.save();
+          ctx.fillStyle = 'rgba(7, 7, 13, 0.85)';
+          ctx.beginPath();
+          ctx.roundRect(cx - 7, cy - 12, 14, 12, 3);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 210, 122, 0.9)';
           ctx.lineWidth = 1;
-          ctx.strokeRect(cx - 7, cy - 12, 14, 12);
-          ctx.fillStyle = '#fef3c7';
-          ctx.font = 'bold 9px monospace';
+          ctx.stroke();
+          ctx.fillStyle = GOLD_BRIGHT;
+          // key hints are serif numerals/letters, like the skill-bar keys
+          ctx.font = `600 9px ${FONT_DISPLAY}`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText('F', cx, cy - 6);
+          ctx.restore();
         }
       }
     }
@@ -909,25 +929,40 @@ export class GameRenderer {
     });
     if (this.loot.length === 0) this.lootChain = 0;
 
-    // 8. health bars + names (tibia style)
+    // 8. health bars + nameplates (Reliquary Combat: Sora on a dark backing pill, token colors —
+    // not the old raw green/red Tibia text; HP fill keeps the traffic-light read, retinted to tokens)
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
     for (const c of creatures) {
       const m = c.ref as MonsterDto;
       const isPlayer = (c.ref as PlayerDto).skills !== undefined;
       const px = c.pos.x * TS - cam.x;
       const py = c.pos.y * TS - cam.y;
       const frac = Math.max(c.ref.hp / c.ref.maxHp, 0);
-      const color = frac > 0.6 ? '#00c000' : frac > 0.3 ? '#c0c000' : '#c00000';
-      ctx.fillStyle = '#000';
-      ctx.fillRect(px + TS / 2 - 14, py - 8, 28, 4);
-      ctx.fillStyle = color;
-      ctx.fillRect(px + TS / 2 - 13, py - 7, 26 * frac, 2);
+      const color = frac > 0.6 ? SUCCESS : frac > 0.3 ? '#e8a93c' : '#ff5470';
+      ctx.fillStyle = 'rgba(7, 7, 13, 0.72)';
+      ctx.beginPath();
+      ctx.roundRect(px + TS / 2 - 14, py - 8, 28, 4, 2);
+      ctx.fill();
+      if (frac > 0) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.roundRect(px + TS / 2 - 13, py - 7, 26 * frac, 2, 1);
+        ctx.fill();
+      }
       if (!isPlayer) {
-        ctx.font = 'bold 11px Verdana, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = m.isBoss ? '#ff8c4d' : color;
+        // boss names echo the cartouche (Fraunces italic, crimson); mobs read quiet in Sora
+        ctx.font = m.isBoss ? `italic 600 11px ${FONT_DISPLAY}` : `600 10px ${FONT_UI}`;
+        ctx.letterSpacing = '0.4px';
+        const nameW = ctx.measureText(m.species).width;
+        ctx.fillStyle = 'rgba(7, 7, 13, 0.55)';
+        ctx.beginPath();
+        ctx.roundRect(px + TS / 2 - nameW / 2 - 5, py - 21, nameW + 10, 12, 6);
+        ctx.fill();
+        ctx.fillStyle = m.isBoss ? '#ff8a9d' : '#ece9f5';
         ctx.fillText(m.species, px + TS / 2, py - 12);
         if (m.stunned) {
-          ctx.fillStyle = '#ffd35d';
+          ctx.fillStyle = GOLD_BRIGHT;
           ctx.fillText('✶', px + TS / 2, py - 24);
         }
         if (m.elementMark) {
@@ -956,6 +991,7 @@ export class GameRenderer {
           ctx.fillStyle = badgeCol;
           ctx.fillText(badge, px + TS / 2, py - 34);
         }
+        ctx.letterSpacing = '0px';
       }
     }
 
@@ -986,13 +1022,15 @@ export class GameRenderer {
       ctx.globalAlpha = clamp(alpha, 0, 1);
       ctx.translate(drawX, drawY);
       ctx.scale(popIn, popIn);
-      ctx.font = `bold ${size}px Verdana, sans-serif`;
+      // crits are "numbers of consequence" → display serif, like the HUD's hero numerals
+      ctx.font = t.crit ? `900 ${size}px ${FONT_DISPLAY}` : `700 ${size}px ${FONT_UI}`;
+      ctx.letterSpacing = t.kind === 'proc' ? '1px' : '0px';
       if (t.crit || t.kind === 'proc') {
         ctx.shadowColor = t.color;
         ctx.shadowBlur = t.crit ? 10 : 6;
       }
       ctx.lineWidth = Math.max(2.2, size * 0.2);
-      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.strokeStyle = INK;
       ctx.strokeText(t.text, 0, 0);
       ctx.shadowBlur = 0;
       ctx.fillStyle = t.color;
@@ -1004,11 +1042,15 @@ export class GameRenderer {
     // 10. speech bubbles
     const bubbleLife = 2600;
     this.bubbles = this.bubbles.filter((b) => nowPerf - b.start < bubbleLife);
-    ctx.font = 'bold 12px Verdana, sans-serif';
+    ctx.font = `600 12px ${FONT_UI}`;
+    ctx.lineJoin = 'round';
     for (const b of this.bubbles) {
       const bx = b.x * TS - cam.x + TS / 2;
       const by = b.y * TS - cam.y - 26;
-      ctx.fillStyle = '#ffff66';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = INK;
+      ctx.strokeText(b.text, bx, by);
+      ctx.fillStyle = GOLD_BRIGHT;
       ctx.fillText(b.text, bx, by);
     }
 
@@ -1222,15 +1264,16 @@ export class GameRenderer {
     ctx.beginPath(); ctx.arc(cx, cy, TS * 0.62, 0, Math.PI * 2); ctx.stroke();
     ctx.restore();
     ctx.save();
-    ctx.font = 'bold 12px Verdana, sans-serif';
+    ctx.font = `700 11px ${FONT_UI}`;
+    ctx.letterSpacing = '1.5px';
     ctx.textAlign = 'center';
     ctx.lineJoin = 'round';
     ctx.globalAlpha = 0.7 + 0.3 * pulse;
     ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-    ctx.strokeText('⚡ JANELA DE DANO', cx, cy - TS * 0.9);
+    ctx.strokeStyle = INK;
+    ctx.strokeText('DAMAGE WINDOW', cx, cy - TS * 0.9);
     ctx.fillStyle = '#ffe07a';
-    ctx.fillText('⚡ JANELA DE DANO', cx, cy - TS * 0.9);
+    ctx.fillText('DAMAGE WINDOW', cx, cy - TS * 0.9);
     ctx.restore();
   }
 
@@ -1420,16 +1463,18 @@ export class GameRenderer {
     ctx.restore();
     const pop = age < 160 ? Math.max(easeOutBack(age / 160), 0.1) : 1;
     const alpha = t < 0.7 ? 1 : Math.max(0, 1 - (t - 0.7) / 0.3);
-    const label = `⚡ ECHO BREAK${this.echoBreakCount > 1 ? ' ×' + this.echoBreakCount : ''}`;
+    const label = `ECHO BREAK${this.echoBreakCount > 1 ? ' ×' + this.echoBreakCount : ''}`;
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(w / 2, h * 0.32);
     ctx.scale(pop, pop);
     ctx.textAlign = 'center';
-    ctx.font = 'bold 46px Verdana, sans-serif';
+    // the climax banner speaks in the display serif, like VICTORY on the end screen
+    ctx.font = `900 46px ${FONT_DISPLAY}`;
+    ctx.letterSpacing = '2px';
     ctx.lineJoin = 'round';
     ctx.lineWidth = 6;
-    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+    ctx.strokeStyle = INK;
     ctx.shadowColor = '#ffd35d';
     ctx.shadowBlur = 24;
     ctx.strokeText(label, 0, 0);

@@ -1,5 +1,14 @@
 namespace KaezanArenaFable.Api.Domain;
 
+public enum CardOfferBeat
+{
+    EliteKill,
+    Chest,
+    CursedChest,
+    FloorClear,
+    EchoSanctuary
+}
+
 /// <summary>
 /// All simulation/meta constants live here (kaezan-arena ArenaConfig convention).
 /// Never hardcode a gameplay value anywhere else.
@@ -369,19 +378,22 @@ public static class GameConfig
 
     // ---- G-06: cadence (fixed beats) ----
     // Level-up gives a small automatic bonus (dopamine drip, no screen opened); heavy choices
-    // land on anticipatable beats: defeating an elite, clearing a floor, and the Echo Sanctuary room.
-    // The cap below keeps ~6-9 choices per run, with rarity scaling with progress.
-    /// <summary>Card choice cap per run (target ~6-9). Beat throttle.</summary>
-    public const int MaxCardChoicesPerRun = 9;
+    // land only on anticipatable strategic beats: clearing a floor and the Echo Sanctuary room.
+    // The cap below keeps the expected cadence around 3 picks, with one spare for edge cases.
+    /// <summary>Card choice cap per run (target ~3). Beat throttle.</summary>
+    public const int MaxCardChoicesPerRun = 4;
     /// <summary>Echo Sanctuary rooms per floor (guaranteed beat, shown on minimap).</summary>
     public const int SanctuariesPerFloor = 1;
     /// <summary>Clearing a floor (going down the stairs) also grants a choice beat.</summary>
     public const bool OfferChoiceOnFloorClear = true;
+    public static bool OpensCardOffer(CardOfferBeat beat) =>
+        beat is CardOfferBeat.FloorClear or CardOfferBeat.EchoSanctuary;
 
     /// <summary>
     /// Offer sampling weight by rarity, scaled by run progress in [0,1]
-    /// (fraction of choices already granted). Early run favors common/rare (builds the engine); late run
-    /// favors rare/echo (defines the run). Deterministic: only interpolates fixed weights.
+    /// (fraction of choices already granted). Sparse beats front-load rare/echo enough for the
+    /// build-defining card to appear early, while common remains the baseline drip. Deterministic:
+    /// only interpolates fixed weights.
     /// </summary>
     public static double CardRarityWeight(string rarity, double progress)
     {
@@ -389,10 +401,10 @@ public static class GameConfig
         static double Lerp(double a, double b, double t) => a + (b - a) * t;
         return rarity switch
         {
-            Cards.Common => Lerp(100, 22, progress),
-            Cards.Rare => Lerp(34, 52, progress),
-            Cards.Echo => Lerp(7, 46, progress),
-            _ => Lerp(100, 22, progress),
+            Cards.Common => Lerp(70, 22, progress),
+            Cards.Rare => Lerp(48, 58, progress),
+            Cards.Echo => Lerp(26, 46, progress),
+            _ => Lerp(70, 22, progress),
         };
     }
 
@@ -765,10 +777,10 @@ public static class GameConfig
     public const double KaezanBossRelicDropChance = 0.30;
     public const int KaezanChestItemDrops = 2;
 
-    // ---- G-09: chest = Echo altar / run shop + cursed + mimics + gear material ----
+    // ---- G-09: chest = loot/risk beat + cursed + mimics + gear material ----
     /// <summary>Chance of a chest actually being a mimic (corrupted elite). Surprise — hidden from the client.</summary>
     public const double ChestMimicChance = 0.12;
-    /// <summary>Chance of a non-mimic chest being cursed: strong Echo + ambush/curse. Telegraphed.</summary>
+    /// <summary>Chance of a non-mimic chest being cursed: ambush/curse plus extra material. Telegraphed.</summary>
     public const double ChestCursedChance = 0.22;
     /// <summary>Mimic HP = elite HP × this factor (corrupted Echo chest = mini-climax).</summary>
     public const double MimicHpScale = 2.0;
@@ -779,9 +791,6 @@ public static class GameConfig
     public const double CursedChestSlowFactor = 0.6;
     /// <summary>Gold cost of a reroll when the free ones run out (the run altar "shop").</summary>
     public const int CardRerollGoldCost = 150;
-    /// <summary>Blessed offer (cursed chest): weighted like the end of the run (favors rare/echo).</summary>
-    public const double BlessedOfferProgress = 1.0;
-
     /// <summary>Echo Material: synthetic ids (1 per tier) that flow through the account inventory to
     /// the equipment screen. Outside the item catalog (not equippable, not sellable).</summary>
     public const int GearMaterialItemIdBase = 950000;

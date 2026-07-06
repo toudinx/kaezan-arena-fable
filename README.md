@@ -308,20 +308,21 @@ em `docs/design/gameplay_style_guide.md`.
    das salas** (nunca em corredor) e ficam na camada de decoração, então nunca bloqueiam o caminho.
 3. Durante a run (cadência G-06): **level-up dá um status pequeno automático** (sorteia uma carta
    comum e aplica na hora, sem abrir tela). As **escolhas pesadas** (1 de 3, max 3 stacks) ficam
-   reservadas a **beats antecipáveis** — derrotar um **elite**, limpar um **andar** e a sala
-   **Santuário de Eco** (altar sinalizado no minimapa em roxo). Alvo de **~6-9 escolhas por run**,
-   com a **raridade escalando** ao longo da run (começo favorece comum/raro, fim favorece raro/eco).
-   Cada oferta ainda permite reroll limitado e banir cartas pelo resto da run. Monstros e baús
-   entregam ouro e equipamentos Kaezan do tier atual; drops priorizam a classe ativa e alternam com
-   acessórios genéricos; bosses também têm chance de relíquia do próprio tier.
-   **Baús = altar de Eco / loja da run (G-09).** Abrir um baú **comum** abre uma oferta de carta (o
-   mesmo overlay de beat, com reroll/banir) além do ouro/itens — os baús viram beats e ajudam a
-   cadência. A **loja** é o **reroll pago**: esgotados os rerolls grátis, rerolar custa ouro. Há
-   **baús amaldiçoados** (telegrafados em magenta no mundo e no minimapa: emboscam e amaldiçoam o
-   jogador com lentidão, mas a oferta vem **abençoada** — ponderada como o fim da run — e garantem
-   material) e **mímicos** (disfarçados de baú comum: um elite reforçado salta do baú). Alguns baús
-   dropam **Material de Eco** por tier (`Estilhaço de Eco`), que cresce a conta e aparece na faixa
-   **Materiais de Eco** da aba Equipamento da Kaeli (forja/craft fica para depois).
+   reservadas a **beats antecipáveis** — limpar um **andar** e a sala **Santuário de Eco** (altar
+   sinalizado no minimapa em roxo). Alvo de **~3 escolhas por run**, com uma margem de cap em 4, e
+   com a **raridade mais carregada para raro/eco desde cedo** para a decisão estratégica aparecer
+   até a segunda escolha. Cada oferta ainda permite reroll limitado e banir cartas pelo resto da run.
+   Monstros e baús entregam ouro e equipamentos Kaezan do tier atual; drops priorizam a classe ativa
+   e alternam com acessórios genéricos; elites também dão Material de Eco direto, e bosses também têm
+   chance de relíquia do próprio tier.
+   **Baús = loot / risco de run (G-09).** Abrir um baú entrega ouro/itens e pode dropar Material de
+   Eco, mas não abre oferta de carta. Há **baús amaldiçoados** (telegrafados em magenta no mundo e no
+   minimapa: emboscam e amaldiçoam o jogador com lentidão, além de garantirem materiais extras) e
+   **mímicos** (disfarçados de baú comum: um elite reforçado salta do baú). Alguns baús dropam
+   **Material de Eco** por tier (`Estilhaço de Eco`), que cresce a conta e aparece na faixa
+   **Materiais de Eco** da aba Equipamento da Kaeli (forja/craft fica para depois). A **loja** continua
+   sendo o **reroll pago** dentro da própria oferta de carta: esgotados os rerolls grátis, rerolar
+   custa ouro.
 4. **Recrutar** — banners com pity para Kaelis jogáveis. Quando um roll não acerta uma Kaeli, ele
    entrega **1 item Kaezan aleatório**; quando acerta uma Kaeli repetida, o dupe vira Echo
    Shards → **Ascensão** (+8% stats por nível; os addons do outfit são definidos por skin no Outfit

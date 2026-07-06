@@ -27,7 +27,7 @@ public sealed class Actor
     public long SappedUntilMs;
     public long TauntedUntilMs;  // taunted (melee): drops kiting and marches into melee
     public bool IsBossActor;
-    public bool IsElite;        // G-06: common-room elite: defeating it grants a choice beat
+    public bool IsElite;        // Elite/miniboss marker: direct reward beat, no card overlay
     public bool IsMimic;        // G-09: corrupted Echo chest: drops gear material on death
     public bool IsTrainingDummy; // Training Room: passive, huge-HP/regen target (no attack, no loot, respawns)
     public double StatMult = 1.0;
@@ -265,7 +265,6 @@ public sealed partial class GameWorld
     private long _cardOfferStartedTick;
     private int _queuedOffers;
     private int _choicesOffered; // G-06: card choices already granted by beats (cap + progress)
-    private bool _offerBlessed;  // G-09: blessed offer (cursed chest): weights rare/echo higher
     private int _cardRerollsRemaining = GameConfig.CardRerollsPerRun;
     public Dictionary<string, int> KillsBySpecies { get; } = [];
     public List<RewardItemDto> ItemsLooted { get; } = [];
@@ -653,9 +652,9 @@ public sealed partial class GameWorld
             foreach (var (cx, cy) in _floors[f].Chests)
             {
                 // G-09: each chest rolls a deterministic variant: mimic (hidden) or cursed
-                // (telegraphed), otherwise a normal altar. Deterministic via run _rng (always 2 rolls, fixed order).
+                // (telegraphed), otherwise a normal loot chest. Deterministic via run _rng (always 2 rolls, fixed order).
                 // Benefit chests (strategic arena chests) are NEVER mimics: they give rewards, at most
-                // cursed (ambush + blessed offer). Mimics (pure trap) stay for the others only.
+                // cursed (ambush + extra material). Mimics (pure trap) stay for the others only.
                 var mimicRoll = _rng.Chance(GameConfig.ChestMimicChance);
                 var cursedRoll = _rng.Chance(GameConfig.ChestCursedChance);
                 var noMimic = _floors[f].BenefitChests.Contains((cx, cy));
@@ -3843,8 +3842,8 @@ public sealed partial class GameWorld
         if (monster.IsMimic)
             for (var i = 0; i < GameConfig.CursedChestMaterialDrops; i++) GrantGearMaterial(monster.X, monster.Y);
 
-        // G-06: defeating a common-room elite is a beat: grants a heavy card choice.
-        if (monster.IsElite && !monster.IsSummon) OfferCardBeat();
+        // 2026-07 card cadence: elites are a direct dopamine beat, not a card overlay.
+        if (monster.IsElite && !monster.IsSummon && !monster.IsMimic) GrantGearMaterial(monster.X, monster.Y);
 
         // Horde-floor dynamic loot (2026-06-29 feedback, 8th pass): the chest DROPS on the corpse every N
         // deaths (the Kaeli detours to claim it while luring), and the exit appears only as a TELEPORT on the
@@ -3858,7 +3857,7 @@ public sealed partial class GameWorld
             {
                 _killsSinceChest = 0;
                 var (dcx, dcy) = OpenTileNear(_currentFloor, monster.X, monster.Y);
-                // dropped chest is never a mimic (always a benefit); it may be cursed (ambush + blessed offer).
+                // dropped chest is never a mimic (always a benefit); it may be cursed (ambush + extra material).
                 var variant = _rng.Chance(GameConfig.ChestCursedChance) ? "cursed" : "";
                 AddRuntimePoi("chest", variant, dcx, dcy);
                 Emit("effect", dcx, dcy, 0, 0, 29); // fireworks: chest appeared
@@ -4235,31 +4234,30 @@ public sealed partial class GameWorld
             Emit("levelup", Player.X, Player.Y, 0, 0, _runLevel);
             Emit("effect", Player.X, Player.Y, 0, 0, 182); // magic powder
             // G-06: level-up = small automatic stat (no screen). Heavy choices come from
-            // beats (elite/floor/sanctuary), not every level.
+            // strategic beats (floor/sanctuary), not every level.
             GrantAutoStatus();
         }
     }
 
     /// <summary>
     /// G-06: run progress in [0,1] measured by the fraction of choices already granted: used to
-    /// scale offer rarity (early builds the engine, late defines it). Deterministic.
+    /// scale offer rarity (sparse beats front-load rare/echo, then keep scaling). Deterministic.
     /// </summary>
     private double RunChoiceProgress => GameConfig.MaxCardChoicesPerRun <= 1
         ? 1.0
         : Math.Clamp((_choicesOffered - 1) / (double)(GameConfig.MaxCardChoicesPerRun - 1), 0, 1);
 
     /// <summary>
-    /// G-06: grants a heavy card choice on a fixed beat (defeated elite, cleared floor, sanctuary room).
-    /// Sanctuary). Respects the choices-per-run cap and reuses the queue when an offer is already open.
+    /// G-06: grants a heavy card choice on a strategic beat. Respects the choices-per-run cap and
+    /// reuses the queue when an offer is already open.
     /// </summary>
-    private void OfferCardBeat(bool blessed = false)
+    private void OfferCardBeat(CardOfferBeat beat)
     {
+        if (!GameConfig.OpensCardOffer(beat)) return;
         if (Ended is not null || _choicesOffered >= GameConfig.MaxCardChoicesPerRun) return;
         if (AvailableCardPool(null).Count == 0) return;
         _choicesOffered++;
-        // G-09: blessed offer (cursed chest) only applies to the offer opened now; queued offers
-        // use normal weighting (keeps cap/cadence without stacking blessings).
-        if (_pendingOffer is null) OfferCards(blessed);
+        if (_pendingOffer is null) OfferCards();
         else _queuedOffers++;
     }
 
@@ -4292,22 +4290,15 @@ public sealed partial class GameWorld
         }
     }
 
-    private void OfferCards(bool blessed = false)
+    private void OfferCards()
     {
         // G-04: rarity-aware pool. Echo filters by active Kaeli; each rarity has its stack cap.
         // stacks. Sampling is rarity-weighted (without replacement), deterministic via run _rng.
-        // G-09: blessed (cursed chest) weights like the end of the run: favors rare/echo.
-        _offerBlessed = blessed;
         var offer = BuildCardOffer();
-        if (offer.Count == 0) { _offerBlessed = false; return; }
+        if (offer.Count == 0) return;
         _pendingOffer = offer;
         _cardOfferStartedTick = TickCount;
     }
-
-    /// <summary>G-09: current offer weighting progress: blessed jumps to the end of the curve.</summary>
-    private double OfferProgress => _offerBlessed
-        ? Math.Max(RunChoiceProgress, GameConfig.BlessedOfferProgress)
-        : RunChoiceProgress;
 
     /// <summary>Builds an offer using the card pool available for the run.</summary>
     private List<CardOfferDto> BuildCardOffer(IReadOnlySet<string>? temporaryExcluded = null)
@@ -4359,9 +4350,8 @@ public sealed partial class GameWorld
     /// <summary>Samples a card from the pool with rarity weight. Stable pool order + _rng -> deterministic.</summary>
     private CardDef WeightedPickByRarity(List<CardDef> pool)
     {
-        // G-06: weights scaled by run progress (rare/echo gain weight near the end).
-        // G-09: blessed offers (cursed chest) use the jumped progress from OfferProgress.
-        var progress = OfferProgress;
+        // G-06: weights scaled by run progress (sparse beats front-load rare/echo, then keep scaling).
+        var progress = RunChoiceProgress;
         var total = 0.0;
         foreach (var c in pool) total += GameConfig.CardRarityWeight(c.Rarity, progress);
         var roll = _rng.NextDouble() * total;
@@ -4414,7 +4404,6 @@ public sealed partial class GameWorld
             _queuedOffers--;
             OfferCards();
         }
-        else _offerBlessed = false;
     }
 
     private void RerollCards()
@@ -5160,11 +5149,11 @@ public sealed partial class GameWorld
             poi.Used = true;
             Emit("effect", x, y, 0, 0, 49); // holy/energy burst
             Emit("text", x, y, 0, 0, 0, "ECHO SANCTUARY");
-            OfferCardBeat();
+            OfferCardBeat(CardOfferBeat.EchoSanctuary);
             return;
         }
 
-        // G-09: chest = Echo altar / run shop. Variants: mimic (fight), cursed (greed), and normal.
+        // G-09: chest = loot beat. Variants: mimic (fight), cursed (greed), and normal.
         poi.Used = true;
         _chestsOpened++;
 
@@ -5187,8 +5176,7 @@ public sealed partial class GameWorld
         else if (_rng.Chance(GameConfig.ChestMaterialDropChance))
             GrantGearMaterial(x, y);
 
-        // altar: opens a card offer (overlay reuses reroll/ban/shop). Cursed = blessed offer.
-        OfferCardBeat(blessed: cursed);
+        // Chests are loot-only; card choices are reserved for floor clear and Echo Sanctuary.
     }
 
     /// <summary>G-09: raw chest loot (gold + equippable tier items), flying to the player.</summary>
@@ -5284,7 +5272,7 @@ public sealed partial class GameWorld
         Emit("effect", entry.X, entry.Y, 0, 0, 11);
 
         // G-06: clearing a floor is a beat: grants a choice (predictable progression milestone).
-        if (GameConfig.OfferChoiceOnFloorClear) OfferCardBeat();
+        if (GameConfig.OfferChoiceOnFloorClear) OfferCardBeat(CardOfferBeat.FloorClear);
     }
 
     // ---- run end ----

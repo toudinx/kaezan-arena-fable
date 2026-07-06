@@ -141,7 +141,7 @@ public sealed partial class GameWorld
                 foreach (var o in _pendingOffer) { w.Write(o.Id); w.Write(o.CurrentStacks); }
             }
             w.Write(_cardOfferStartedTick); w.Write(_queuedOffers); w.Write(_choicesOffered);
-            w.Write(_offerBlessed); w.Write(_cardRerollsRemaining);
+            w.Write(_cardRerollsRemaining);
             w.Write(KillsBySpecies.Count);
             foreach (var (species, count) in KillsBySpecies) { w.Write(species); w.Write(count); }
             w.Write(ItemsLooted.Count);

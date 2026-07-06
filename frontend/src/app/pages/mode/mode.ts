@@ -112,22 +112,14 @@ import { MonsterCatalogEntry } from '../../core/types';
                   </div>
                 </div>
 
-                <div class="idle-session">
-                  <div class="farm-head"><span>Idle Session</span></div>
-                  <label>Stop after losses in a row
-                    <input type="number" min="0" max="20" [value]="sessionStopLosses()"
-                           (input)="sessionStopLosses.set(+$any($event.target).value)" />
-                  </label>
-                  <label>Max runs (0 = endless)
-                    <input type="number" min="0" max="999" [value]="sessionMaxRuns()"
-                           (input)="sessionMaxRuns.set(+$any($event.target).value)" />
-                  </label>
-                  <label>Tier up after wins (0 = never)
-                    <input type="number" min="0" max="20" [value]="sessionTierUp()"
-                           (input)="sessionTierUp.set(+$any($event.target).value)" />
-                  </label>
-                  <button class="pill-btn ghost" [disabled]="sessionStarting() || locked(t.requiredAccountLevel)"
-                          (click)="startIdleSession(t.tier)">Start idle session</button>
+                <div class="auto-row">
+                  <div>
+                    <span>Auto Expedition</span>
+                    <small>Advanced queue rules are tucked away.</small>
+                  </div>
+                  <button class="text-chip" type="button" (click)="autoSettingsOpen.set(true)">
+                    Queue Settings
+                  </button>
                 </div>
 
                 <div class="actions">
@@ -140,6 +132,42 @@ import { MonsterCatalogEntry } from '../../core/types';
               </aside>
             }
           </div>
+
+          @if (autoSettingsOpen()) {
+            <div class="queue-scrim" (click)="autoSettingsOpen.set(false)" aria-hidden="true"></div>
+            <aside class="queue-drawer glass-strong" aria-label="Auto expedition queue settings">
+              <header>
+                <div>
+                  <span class="eyebrow">Auto Expedition</span>
+                  <h2>Queue Settings</h2>
+                </div>
+                <button class="drawer-close" type="button" aria-label="Close queue settings"
+                        (click)="autoSettingsOpen.set(false)">x</button>
+              </header>
+              <p class="queue-copy">
+                Attempts handles normal repeat runs. Use these rules only when you want the backend to chain
+                runs while this tab watches.
+              </p>
+              <label>Stop after losses in a row
+                <input type="number" min="0" max="20" [value]="sessionStopLosses()"
+                       (input)="sessionStopLosses.set(+$any($event.target).value)" />
+              </label>
+              <label>Max runs (0 = endless)
+                <input type="number" min="0" max="999" [value]="sessionMaxRuns()"
+                       (input)="sessionMaxRuns.set(+$any($event.target).value)" />
+              </label>
+              <label>Tier up after wins (0 = never)
+                <input type="number" min="0" max="20" [value]="sessionTierUp()"
+                       (input)="sessionTierUp.set(+$any($event.target).value)" />
+              </label>
+              @if (selectedTier(); as queueTier) {
+                <button class="pill-btn ghost" [disabled]="sessionStarting() || locked(queueTier.requiredAccountLevel)"
+                        (click)="startIdleSession(queueTier.tier)">
+                  Start Auto Expedition
+                </button>
+              }
+            </aside>
+          }
         } @else {
           <div class="soon">
             <span class="soon-icon">{{ m.icon }}</span>
@@ -198,9 +226,9 @@ import { MonsterCatalogEntry } from '../../core/types';
       height: calc(100% - 44px);
       min-height: 0;
       display: grid;
-      grid-template-columns: minmax(210px, 260px) minmax(280px, 1fr) minmax(320px, 440px);
-      gap: clamp(22px, 3.6vw, 58px);
-      align-items: center;
+      grid-template-columns: minmax(210px, 270px) minmax(420px, 1fr) minmax(320px, 390px);
+      gap: clamp(18px, 3vw, 48px);
+      align-items: stretch;
     }
     .rail { display: flex; flex-direction: column; gap: 12px; }
     .tier.locked { opacity: 0.48; }
@@ -233,10 +261,10 @@ import { MonsterCatalogEntry } from '../../core/types';
 
     .stage {
       position: relative;
-      min-height: min(58vh, 520px);
+      min-height: 0;
       display: grid;
       place-items: end center;
-      padding-bottom: clamp(12px, 5vh, 60px);
+      padding-bottom: clamp(18px, 6vh, 70px);
     }
     .stage::after {
       content: '';
@@ -264,6 +292,7 @@ import { MonsterCatalogEntry } from '../../core/types';
       z-index: 1;
       image-rendering: pixelated;
       filter: drop-shadow(0 24px 32px rgba(0,0,0,0.76));
+      transform: scale(1.08);
     }
     .boss-glyph {
       position: relative;
@@ -277,7 +306,7 @@ import { MonsterCatalogEntry } from '../../core/types';
     .intel {
       display: flex;
       flex-direction: column;
-      gap: var(--sp-5);
+      gap: clamp(12px, 1.8vh, 18px);
       align-self: stretch;
       justify-content: center;
       min-width: 0;
@@ -320,13 +349,22 @@ import { MonsterCatalogEntry } from '../../core/types';
       text-transform: uppercase;
     }
     .mob-lines span.elite { color: var(--rarity-4); margin-top: 4px; }
-    .mob-lines p { margin: 0; color: var(--text-dim); font-size: 0.92rem; line-height: 1.55; }
+    .mob-lines p {
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      margin: 0;
+      color: var(--text-dim);
+      font-size: 0.92rem;
+      line-height: 1.55;
+    }
     .rewards { display: flex; flex-direction: column; gap: 10px; }
     .farm-plan {
       display: flex;
       flex-direction: column;
       gap: 10px;
-      padding: 12px 14px;
+      padding: 10px 12px;
       border: 1px solid color-mix(in srgb, var(--bc) 26%, var(--line));
       border-radius: var(--r-sm);
       background: rgba(12, 12, 20, 0.48);
@@ -377,45 +415,96 @@ import { MonsterCatalogEntry } from '../../core/types';
     .farm-step:disabled { opacity: 0.4; }
     .farm-cost { justify-content: space-between; }
     .farm-cost b { color: color-mix(in srgb, var(--bc) 76%, white); font-size: 0.9rem; }
-    /* Wave 3: idle-session config panel — mirrors the .farm-plan glass card. */
-    .idle-session {
+    .auto-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
+      background: rgba(12, 12, 20, 0.34);
+    }
+    .auto-row span {
+      display: block;
+      color: var(--text);
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .auto-row small { color: var(--text-mute); font-size: 0.75rem; }
+    .text-chip {
+      border: 1px solid color-mix(in srgb, var(--bc) 34%, var(--line-strong));
+      border-radius: var(--r-full);
+      background: color-mix(in srgb, var(--bc) 10%, rgba(255,255,255,0.04));
+      color: color-mix(in srgb, var(--bc) 78%, white);
+      font-size: 0.72rem;
+      font-weight: 900;
+      padding: 7px 11px;
+      white-space: nowrap;
+    }
+    .queue-scrim {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      background: rgba(7, 7, 13, 0.58);
+    }
+    .queue-drawer {
+      position: absolute;
+      inset: 0 0 0 auto;
+      z-index: 9;
+      width: min(420px, 94vw);
+      padding: var(--sp-5);
+      border-radius: 0;
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      padding: 12px 14px;
-      border: 1px solid color-mix(in srgb, var(--bc) 26%, var(--line));
-      border-radius: var(--r-sm);
-      background: rgba(12, 12, 20, 0.48);
-      box-shadow: var(--glass-edge);
+      gap: 14px;
     }
-    .idle-session label {
+    .queue-drawer header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+    .drawer-close {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--r-full);
+      background: rgba(255,255,255,0.05);
+      color: var(--text-dim);
+      font-weight: 900;
+    }
+    .queue-copy { margin: 0; color: var(--text-dim); }
+    .queue-drawer label {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
       color: var(--text-dim);
-      font-size: 12px;
+      font-size: 0.82rem;
     }
-    .idle-session input {
-      width: 68px;
-      padding: 4px 8px;
+    .queue-drawer input {
+      width: 76px;
+      padding: 6px 9px;
       border: 1px solid color-mix(in srgb, var(--bc) 34%, var(--line-strong));
       border-radius: var(--r-sm);
       background: rgba(255, 255, 255, 0.05);
       color: var(--text);
-      font-size: 0.9rem;
       text-align: right;
     }
-    .idle-session input:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 1px; }
-    .idle-session .pill-btn { margin-top: 4px; }
+    .queue-drawer input:focus-visible,
+    .text-chip:focus-visible,
+    .drawer-close:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
     .actions {
       display: flex;
-      justify-content: flex-end;
+      justify-content: stretch;
       flex-wrap: wrap;
       gap: var(--sp-3);
-      margin-top: auto;
-      padding-top: var(--sp-2);
+      margin-top: 0;
+      padding-top: 0;
     }
+    .actions .pill-btn { width: 100%; }
     .lock-msg { color: var(--text-dim); font-weight: 700; }
     .soon { text-align: center; padding: var(--sp-7) var(--sp-5); }
     .soon-icon { font-size: 48px; }
@@ -476,6 +565,7 @@ export class ModeSelectPage {
   readonly sessionStopLosses = signal(3);
   readonly sessionTierUp = signal(0);
   readonly sessionStarting = signal(false);
+  readonly autoSettingsOpen = signal(false);
 
   constructor(
     private readonly api: ApiService,

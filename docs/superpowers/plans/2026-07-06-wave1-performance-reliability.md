@@ -57,7 +57,7 @@ O backend costuma rodar como exe **Debug** — toda medição feita assim é inv
 **Interfaces:**
 - Produces: script `tools/run-backend.ps1` (parâmetro `-NoBuild`); todo task seguinte que precise do backend vivo usa este script.
 
-- [ ] **Step 1: Write the script**
+- [x] **Step 1: Write the script**
 
 ```powershell
 # tools/run-backend.ps1 - stop, build (Release) and run the API on :5210.
@@ -80,13 +80,13 @@ $env:ASPNETCORE_URLS = 'http://localhost:5210'
 
 Nota: **não** setar `ASPNETCORE_ENVIRONMENT=Production` — o ambiente continua Development (seed de conta local, erros detalhados); só a compilação muda para Release.
 
-- [ ] **Step 2: Verify it works**
+- [x] **Step 2: Verify it works**
 
 Run: `powershell -File tools/run-backend.ps1` (deixe rodando) e, em outro shell:
 `curl.exe -s -o NUL -w "%{http_code}" http://localhost:5210/api/v1/catalog`
 Expected: `200` (ou outro endpoint existente de `MetaEndpoints` retornando 2xx). Pare o processo depois.
 
-- [ ] **Step 3: Document in README**
+- [x] **Step 3: Document in README**
 
 Na seção "Como rodar" do `README.md`, substituir o passo do backend por:
 
@@ -98,12 +98,14 @@ powershell -File tools/run-backend.ps1 -NoBuild   # só restart
 
 (mantendo o `dotnet run` documentado como alternativa de debug).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tools/run-backend.ps1 README.md
 git commit -m "chore: canonical Release build+run script for the backend"
 ```
+
+**Done:** Release backend script documented, verified against `/api/v1/catalog` (`200`), committed, and pushed to `origin/main`.
 
 ---
 

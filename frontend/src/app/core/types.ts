@@ -123,6 +123,7 @@ export interface FarmConfig {
   maxRuns: number;
   energyPerRun: number;
   energyCap: number;
+  energyRegenPerMinute: number;
 }
 
 export interface AffinityProgress {

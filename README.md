@@ -247,7 +247,9 @@ em `docs/design/gameplay_style_guide.md`.
 - A tela de dungeon tem seletor de **Tentativas** (1-5). A primeira run acontece normalmente; se o
   lote tiver mais tentativas, o cliente reinicia o mesmo tier sozinho apos cada encerramento ate o
   lote acabar. A UI ja mostra a conta de energia planejada (60 por run / 300 total) para encaixar no
-  futuro sistema de resina. Ao voltar ao jogo depois de ficar offline, a conta recebe ouro e XP
+  sistema de resina. Sessoes idle encadeadas pelo servidor gastam essa energia ao iniciar cada run,
+  regenerando 3 por minuto ate o cap; runs manuais nunca sao bloqueadas por energia. Ao voltar ao
+  jogo depois de ficar offline, a conta recebe ouro e XP
   limitados por tempo desde a ultima sessao, com taxa/cap em `GameConfig`.
 
 ## Postura de boss e reações elementais (F-E)

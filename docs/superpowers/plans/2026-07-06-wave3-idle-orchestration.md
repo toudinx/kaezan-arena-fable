@@ -1269,7 +1269,7 @@ git commit -m "feat(ui): idle session config and spectator panel with run journa
 - Produces: `EnergyLedger.Current(AccountState, DateTimeOffset): int`; `EnergyLedger.TrySpend(AccountState, int amount, DateTimeOffset): bool`; `AccountState.Energy` (int, default = cap) e `AccountState.EnergyUpdatedUtc` (string ISO-8601, `""` = nunca); `GameConfig.EnergyRegenPerMinute`.
 - **Decisão de design:** energia limita apenas o ENCADEAMENTO da sessão idle (regra de parada); runs manuais nunca são bloqueadas (idle-friendly: sem punição por jogar). Documentar no README.
 
-- [ ] **Step 1: Testes que falham**
+- [x] **Step 1: Testes que falham**
 
 Criar `backend/tests/KaezanArenaFable.Api.Tests/EnergyLedgerTests.cs`:
 
@@ -1319,12 +1319,12 @@ public class EnergyLedgerTests
 }
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter EnergyLedgerTests`
 Expected: FAIL.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `GameConfig.cs`, junto a `DungeonEnergyPerRun` (~linha 847):
 
@@ -1385,7 +1385,7 @@ public static class EnergyLedger
 }
 ```
 
-- [ ] **Step 4: Ligar no orquestrador**
+- [x] **Step 4: Ligar no orquestrador**
 
 Em `SessionOrchestrator.cs`, substituir o stub `EnergyAvailable`:
 
@@ -1407,17 +1407,26 @@ E em `CreateWorld`, antes do `factory.Create`, debitar (best-effort — a sessã
 
 No catalog (`MetaEndpoints.cs`, bloco `farm`), adicionar: `energyRegenPerMinute = GameConfig.EnergyRegenPerMinute,`.
 
-- [ ] **Step 5: Rodar tudo**
+- [x] **Step 5: Rodar tudo**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests` e `dotnet build backend/src/KaezanArenaFable.Api`
 Expected: PASS / limpo. (AccountState novo campo: o JSON repo desserializa contas antigas com default = cap — sem migração; se o repositório MySQL mapear colunas explícitas para AccountState, adicionar a migration EF `dotnet ef migrations add SessionEnergy` a partir de `backend/src/KaezanArenaFable.Api` — verificar `Meta/Persistence/AccountEntities.cs`: se a conta é persistida como blob JSON, nada a fazer.)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/src/KaezanArenaFable.Api backend/tests
 git commit -m "feat(meta): regenerating energy bank paces idle session chaining"
 ```
+
+(Executado: `EnergyLedgerTests` falhou primeiro por tipos/campos/constante ausentes e passou depois
+em Release. Implementado `EnergyLedger`, campos de energia no `AccountState`, clone/persistencia
+JSON/MySQL com migration `SessionEnergy`, catalog farm com `energyRegenPerMinute`, tipo frontend e
+debito no `SessionOrchestrator.CreateWorld`. Verificacoes: `dotnet test backend/tests/KaezanArenaFable.Api.Tests -c Release`
+61/61, `dotnet build backend/src/KaezanArenaFable.Api -c Release`, `npx ng build` e
+`npm test -- --watch=false`; `git diff --stat` de `GameWorld.cs`/`GameWorld.Replay.cs` vazio.
+Debug estava bloqueado por um backend ja em execucao segurando `KaezanArenaFable.Api.exe`, entao os
+checks .NET foram feitos em Release, que e o modo recomendado pelo README.)
 
 ---
 

@@ -35,6 +35,9 @@ public sealed class AccountState
     public long Gold { get; set; }
     public long Kaeros { get; set; }
     public string LastSeenUtc { get; set; } = "";
+    /// <summary>Idle-session energy bank. Manual runs never spend energy.</summary>
+    public int Energy { get; set; } = Domain.GameConfig.DungeonEnergyCap;
+    public string EnergyUpdatedUtc { get; set; } = "";
 
     public List<string> OwnedWaifus { get; set; } = [];
     public Dictionary<string, int> Shards { get; set; } = [];

@@ -46,6 +46,8 @@ public sealed class AccountStore
         Gold = source.Gold,
         Kaeros = source.Kaeros,
         LastSeenUtc = source.LastSeenUtc,
+        Energy = source.Energy,
+        EnergyUpdatedUtc = source.EnergyUpdatedUtc,
         OwnedWaifus = [.. source.OwnedWaifus],
         Shards = source.Shards.ToDictionary(),
         Ascension = source.Ascension.ToDictionary(),

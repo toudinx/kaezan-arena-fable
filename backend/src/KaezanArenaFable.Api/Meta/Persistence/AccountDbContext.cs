@@ -40,6 +40,10 @@ public sealed class AccountDbContext(DbContextOptions<AccountDbContext> options)
             entity.Property(row => row.Kaeros).HasColumnName("kaeros");
             entity.Property(row => row.LastSeenUtc).HasColumnName("last_seen_utc").HasMaxLength(40)
                 .HasDefaultValue("");
+            entity.Property(row => row.Energy).HasColumnName("energy")
+                .HasDefaultValue(Domain.GameConfig.DungeonEnergyCap);
+            entity.Property(row => row.EnergyUpdatedUtc).HasColumnName("energy_updated_utc").HasMaxLength(40)
+                .HasDefaultValue("");
             entity.Property(row => row.ActiveWaifuId).HasColumnName("active_waifu_id").HasMaxLength(64);
             entity.Property(row => row.DailyDate).HasColumnName("daily_date").HasMaxLength(10);
             entity.Property(row => row.GiftsDate).HasColumnName("gifts_date").HasMaxLength(10)

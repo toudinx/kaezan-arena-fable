@@ -154,9 +154,9 @@ public sealed class SessionOrchestrator(RunFactory factory, AccountStore store, 
     private GameWorld CreateWorld(StartNextRun start)
     {
         _currentWaifuId = start.WaifuId;
+        store.Mutate(s => EnergyLedger.TrySpend(s, GameConfig.DungeonEnergyPerRun, DateTimeOffset.UtcNow));
         return factory.Create(start.Tier, start.WaifuId, seed: null, GameMode.Dungeon);
     }
 
-    // Energy is wired for real in Task 7; until then sessions see "always full".
-    private int EnergyAvailable() => store.Read(_ => GameConfig.DungeonEnergyCap);
+    private int EnergyAvailable() => store.Read(s => EnergyLedger.Current(s, DateTimeOffset.UtcNow));
 }

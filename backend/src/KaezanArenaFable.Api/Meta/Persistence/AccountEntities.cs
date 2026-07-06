@@ -8,6 +8,8 @@ public sealed class AccountRow
     public long Gold { get; set; }
     public long Kaeros { get; set; }
     public string LastSeenUtc { get; set; } = "";
+    public int Energy { get; set; }
+    public string EnergyUpdatedUtc { get; set; } = "";
     public string ActiveWaifuId { get; set; } = "";
     public string DailyDate { get; set; } = "";
     public string GiftsDate { get; set; } = "";

@@ -56,7 +56,8 @@ public static class MetaEndpoints
                 minRuns = GameConfig.FarmRunMinCount,
                 maxRuns = GameConfig.FarmRunMaxCount,
                 energyPerRun = GameConfig.DungeonEnergyPerRun,
-                energyCap = GameConfig.DungeonEnergyCap
+                energyCap = GameConfig.DungeonEnergyCap,
+                energyRegenPerMinute = GameConfig.EnergyRegenPerMinute
             },
             items = itemRegistry.All.Values.Select(i => new
             {

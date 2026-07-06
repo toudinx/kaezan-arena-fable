@@ -885,7 +885,7 @@ public static class DungeonGenerator
         var size = floor.W;
 
         // Pass 1: ground + walls. A blocked cell that borders walkable area is an edge wall (oriented
-        // sprite via ClassifyWall); a fully-enclosed blocked cell is bedrock: opaque rock + the solid
+        // sprite via WallAutotile); a fully-enclosed blocked cell is bedrock: opaque rock + the solid
         // corner piece, so the map's negative reads as a massif instead of a hard-edged black void.
         for (var y = 0; y < size; y++)
         {
@@ -908,7 +908,7 @@ public static class DungeonGenerator
                 if (touchesFloor)
                 {
                     floor.Ground[i] = rng.Pick(biome.Ground); // shows through alpha (stone) walls
-                    floor.Wall[i] = ClassifyWall(floor, x, y, biome);
+                    floor.Wall[i] = WallAutotile.Resolve(WallAutotile.Mask(floor, x, y), biome);
                 }
                 else
                 {
@@ -962,42 +962,6 @@ public static class DungeonGenerator
                 }
             }
         }
-    }
-
-    /// <summary>
-    /// Picks the wall piece from the 8-neighbourhood of open floor. Floor on the N/S axis only means an
-    /// E-W wall (WallH); on the E/W axis only an N-S wall (WallV). Both axes open is either a straight
-    /// pass-through / T- / cross-junction (WallPole) or, when it's a single perpendicular pair, a concave
-    /// L-corner: there the solid corner piece fills the cell flush where a pole would leave a "tooth".
-    /// A cell open only on a diagonal is an outer (convex) corner: the solid corner again. With bedrock
-    /// fill the truly-enclosed cells never reach here, so every classified cell is a real edge wall.
-    /// </summary>
-    private static ushort ClassifyWall(DungeonFloor floor, int x, int y, BiomeDef biome)
-    {
-        var size = floor.W;
-        bool Open(int dx, int dy)
-        {
-            var nx = x + dx;
-            var ny = y + dy;
-            return floor.InBounds(nx, ny) && !floor.Blocked[ny * size + nx];
-        }
-        var openN = Open(0, -1);
-        var openS = Open(0, 1);
-        var openE = Open(1, 0);
-        var openW = Open(-1, 0);
-        var vertAxis = openN || openS;   // floor above/below -> wall runs horizontally
-        var horizAxis = openE || openW;  // floor left/right  -> wall runs vertically
-
-        if (vertAxis && horizAxis)
-        {
-            // straight corridor through or a 3-/4-way junction -> pole; a lone perpendicular pair (an L)
-            // is a concave corner -> solid corner so no nub/tooth protrudes into the opening.
-            var straight = (openN && openS) || (openE && openW);
-            return straight ? biome.WallPole : biome.WallCorner;
-        }
-        if (vertAxis) return biome.WallH;
-        if (horizAxis) return biome.WallV;
-        return biome.WallCorner; // only a diagonal neighbour is open -> outer corner
     }
 
     /// <summary>Cells that should never receive decor/accent so their POI sprite stays clear.</summary>

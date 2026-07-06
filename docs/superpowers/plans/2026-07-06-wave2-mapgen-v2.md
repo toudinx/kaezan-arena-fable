@@ -711,7 +711,7 @@ git commit -m "feat(mapgen): side pockets with benefit chests carved into the ar
 - Consumes: `DungeonFloor`, `BiomeDef` (WallH/WallV/WallPole/WallCorner).
 - Produces: `WallAutotile.Mask(DungeonFloor floor, int x, int y): int` (máscara blob canônica, bits 0..7 = N,NE,E,SE,S,SW,W,NW de chão ABERTO; diagonal só conta com as duas arestas adjacentes abertas — 47 classes canônicas); `WallAutotile.Resolve(int mask, BiomeDef biome): ushort`; `BiomeDef` ganha `WallTileSet? WallSet = null` (a Onda 4 preenche com tilesets autorais). **Esta task NÃO muda nenhum hash do golden** — o fallback reproduz `ClassifyWall` bit a bit.
 
-- [ ] **Step 1: Testes que falham**
+- [x] **Step 1: Testes que falham**
 
 Criar `backend/tests/KaezanArenaFable.Api.Tests/WallAutotileTests.cs`:
 
@@ -800,12 +800,13 @@ public class WallAutotileTests
 }
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter WallAutotileTests`
 Expected: FAIL — `WallAutotile`/`WallTileSet` não existem (erro de compilação do projeto de testes).
+✅ Confirmado vermelho: erros CS0103 (`WallAutotile`) e CS0117/CS0246 (`WallSet`/`WallTileSet`).
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `Biomes.cs` — adicionar param opcional ao record (último, com default, para não quebrar os construtores existentes) e o record novo no fim do arquivo:
 
@@ -894,20 +895,23 @@ public static class WallAutotile
 
 Em `DungeonGenerator.PaintTiles` (linha ~717), trocar `floor.Wall[i] = ClassifyWall(floor, x, y, biome);` por `floor.Wall[i] = WallAutotile.Resolve(WallAutotile.Mask(floor, x, y), biome);` e **remover o método `ClassifyWall` inteiro** (linhas ~781-807).
 
-- [ ] **Step 4: Rodar testes + confirmar golden intocado por esta task**
+- [x] **Step 4: Rodar testes + confirmar golden intocado por esta task**
 
 Run: `dotnet test backend/tests/KaezanArenaFable.Api.Tests`
-Expected: PASS.
+Expected: PASS. ✅ 42/42 (38 anteriores + 4 novos WallAutotileTests).
 
 Confirmação extra (o diff do golden desta task deve ser vazio): rode `dotnet run --project tools/BalanceSim -- --golden --golden-out C:\Users\toudi\AppData\Local\Temp\golden_task4.txt` antes e depois do Step 3 e compare com `git diff --no-index` (ou `fc`) — os dois arquivos devem ser idênticos.
+✅ Verificado: gerei o golden com a mudança aplicada, dei `git stash` pra voltar ao fim da Task 3,
+gerei de novo, e `diff` deu VAZIO (70 floors, 7 seeds × 5 tiers × 2 floors) — a task não muda hash.
 
-- [ ] **Step 5: Build + commit**
+- [x] **Step 5: Build + commit**
 
 ```bash
 dotnet build backend/src/KaezanArenaFable.Api
 git add -A backend/src/KaezanArenaFable.Api backend/tests
 git commit -m "refactor(mapgen): blob autotile infrastructure with behavior-preserving fallback"
 ```
+✅ `dotnet build` limpo (0 warnings, 0 errors).
 
 ---
 

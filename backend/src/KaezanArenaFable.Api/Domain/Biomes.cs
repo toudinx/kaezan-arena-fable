@@ -26,7 +26,12 @@ public sealed record BiomeDef(
     ushort WallH, ushort WallV, ushort WallPole, ushort WallCorner,
     ushort[] Decor, double DecorChance,
     ushort[] Accent, double AccentChance,
-    BiomeAtmosphere Atmosphere);
+    BiomeAtmosphere Atmosphere,
+    WallTileSet? WallSet = null);
+
+/// <summary>Authored 47-case blob wall set (Wave 4 tilesets), keyed by canonical blob mask.
+/// Missing slots fall back to the biome's 4-piece family via <see cref="Engine.WallAutotile"/>.</summary>
+public sealed record WallTileSet(Dictionary<int, ushort> Tiles);
 
 /// <summary>
 /// G-07: cosmetic atmosphere of a stratum, sent verbatim to the renderer (no engine coupling).

@@ -1,5 +1,6 @@
 import { AssetsService } from './assets.service';
 import { takeNewEvents } from './event-seq';
+import { computeTileShade, type TileShade } from './tile-shade';
 import { BiomeDto, EventDto, MapDto, MonsterDto, PlayerDto, SnapshotDto, TICK_MS } from './types';
 
 const TILE = 32;
@@ -214,6 +215,7 @@ export class GameRenderer {
   private readonly walkClocks = new Map<number, { lastStepStart: number; strides: number }>();
   private snapshot: SnapshotDto | null = null;
   private map: MapDto | null = null;
+  private shade: TileShade | null = null;
 
   hoverTile: { x: number; y: number } | null = null;
   eventsIngested = 0;
@@ -233,6 +235,7 @@ export class GameRenderer {
 
   setMap(map: MapDto): void {
     this.map = map;
+    this.shade = computeTileShade(map.w, map.h, map.blocked);
     this.buildAtmoParticles(map);
     this.effects = [];
     this.projectiles = [];
@@ -697,6 +700,39 @@ export class GameRenderer {
       ?? this.snapshot.monsters.find((m) => Math.abs(m.x - tx) <= 1 && Math.abs(m.y - ty) <= 1) ?? null;
   }
 
+  /** Cosmetic depth: darken floor cells hugging a wall (inner shadow) + subtle per-cell variation. */
+  private drawTileShade(
+    ctx: CanvasRenderingContext2D, map: MapDto,
+    x0: number, y0: number, x1: number, y1: number,
+    sx: (x: number) => number, sy: (y: number) => number,
+  ): void {
+    const shade = this.shade;
+    if (!shade) return;
+    const step = sx(1) - sx(0); // on-screen tile size, whatever SCALE is in effect
+    const t = Math.round(step * 0.22);
+    ctx.save();
+    // same visible-range bounds as the ground pass above
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const i = y * map.w + x;
+        if (map.blocked[i]) continue;
+        const v = shade.variation[i];
+        if (v) {
+          ctx.fillStyle = `rgba(0,0,0,${(v * 0.025).toFixed(3)})`;
+          ctx.fillRect(sx(x), sy(y), step, step);
+        }
+        const m = shade.edges[i];
+        if (!m) continue;
+        ctx.fillStyle = 'rgba(0,0,0,0.18)';
+        if (m & 1) ctx.fillRect(sx(x), sy(y), step, t);
+        if (m & 2) ctx.fillRect(sx(x) + step - t, sy(y), t, step);
+        if (m & 4) ctx.fillRect(sx(x), sy(y) + step - t, step, t);
+        if (m & 8) ctx.fillRect(sx(x), sy(y), t, step);
+      }
+    }
+    ctx.restore();
+  }
+
   private camera(nowPerf: number): { x: number; y: number } {
     const serverNow = this.serverNow(nowPerf);
     const pos = this.actorRenderState(this.snapshot!.player, serverNow);
@@ -762,6 +798,9 @@ export class GameRenderer {
         if (decor) this.assets.drawObject(ctx, decor, sx(x), sy(y), SCALE, x, y, nowPerf);
       }
     }
+
+    // 1.5 cosmetic depth pass (client-only, pure function of the grid — never touches determinism)
+    this.drawTileShade(ctx, map, x0, y0, x1, y1, sx, sy);
 
     // 2. corpses (fade after a while)
     const corpseAlive = 28000;

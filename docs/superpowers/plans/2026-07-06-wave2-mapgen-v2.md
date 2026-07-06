@@ -929,7 +929,7 @@ git commit -m "refactor(mapgen): blob autotile infrastructure with behavior-pres
 - Consumes: `MapDto` do cliente (`map.w`, `map.h`, `map.blocked`, `map.ground`, `map.decor` — ver `types.ts`).
 - Produces: `computeTileShade(w: number, h: number, blocked: ArrayLike<boolean>): TileShade` com `edges: Uint8Array` (bits 1=N,2=E,4=S,8=W — lados que encostam em parede) e `variation: Uint8Array` (bucket 0..3 por célula, hash estável de x,y). Renderer ganha campo `private shade: TileShade | null` e método `private drawTileShade(...)`.
 
-- [ ] **Step 1: Teste Vitest que falha**
+- [x] **Step 1: Teste Vitest que falha**
 
 Criar `frontend/src/app/core/tile-shade.spec.ts`:
 
@@ -966,12 +966,14 @@ describe('computeTileShade', () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `cd frontend && npm test -- --run tile-shade`
 Expected: FAIL (módulo não existe).
+✅ Confirmado vermelho: `ng test` (Angular 21 usa `@angular/build:unit-test`; o flag `--run` não
+existe nesse builder — rode `npx ng test`) falhou com `TS2307: Cannot find module './tile-shade'`.
 
-- [ ] **Step 3: Implementar `tile-shade.ts`**
+- [x] **Step 3: Implementar `tile-shade.ts`**
 
 ```typescript
 /**
@@ -1008,12 +1010,18 @@ export function computeTileShade(w: number, h: number, blocked: ArrayLike<boolea
 }
 ```
 
-- [ ] **Step 4: Rodar teste e ver passar**
+- [x] **Step 4: Rodar teste e ver passar**
 
 Run: `cd frontend && npm test -- --run tile-shade`
-Expected: PASS (3 testes).
+Expected: PASS (3 testes). ✅ 12/12 no projeto inteiro (3 novos de tile-shade + 9 pré-existentes).
 
-- [ ] **Step 5: Ligar no renderer**
+- [x] **Step 5: Ligar no renderer**
+
+> **Desvio consciente (execução 2026-07-06):** o tipo real do campo é `MapDto` (não `MapView`), e o
+> pass de ground CULA por viewport (`x0/y0/x1/y1` derivados da câmera). Então `drawTileShade` recebe
+> esses bounds e itera `x0..x1, y0..y1` em vez do mapa inteiro — batendo com o culling do ground pass,
+> como o próprio Step pede. Chamada inserida como "pass 1.5", logo após o loop de ground+decor e antes
+> dos corpses.
 
 Em `renderer.ts`:
 1. Import: `import { computeTileShade, type TileShade } from './tile-shade';`
@@ -1063,7 +1071,16 @@ Em `renderer.ts`:
 
 Com backend rodando (`tools/run-backend.ps1`) e `npm start`: entrar numa run T1, abrir o overlay F3 (Onda 1) e comparar `draw p95` com o baseline da Onda 1 — o pass de shading deve custar < 1 ms no p95. Screenshot de antes/depois para o gate da onda.
 
-- [ ] **Step 7: Builds + commit**
+> **Não executado nesta sessão (2026-07-06):** o pass de shading só roda dentro de uma run ativa
+> (precisa backend + frontend + chegar ao combate). A lógica de `computeTileShade` está 100% coberta
+> pelos 3 testes Vitest (verdes) e o wiring do renderer compila limpo no `npx ng build`, mas a
+> medição de `draw p95` no overlay F3 e os screenshots antes/depois ficaram PENDENTES — melhor
+> fazê-los junto com o pass de screenshots por bioma da Task 6 (Step 7), que já sobe o stack completo.
+
+- [x] **Step 7: Builds + commit**
+
+✅ `npx ng build` limpo (só warnings de CSS budget pré-existentes, alheios a esta task) e
+`dotnet build backend/src/KaezanArenaFable.Api` limpo (0 warnings, 0 errors).
 
 ```bash
 cd frontend && npx ng build && cd ..

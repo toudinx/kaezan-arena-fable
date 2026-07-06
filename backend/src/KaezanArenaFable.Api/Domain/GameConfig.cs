@@ -588,13 +588,13 @@ public static class GameConfig
 
     // ---- LM-07: generation quality (clustered decor instead of dotted) ----
     /// <summary>Chebyshev radius of ambient prop clusters (decor) within a room.</summary>
-    public const int DecorClusterRadius = 1;
+    public const int DecorClusterRadius = 2;
     /// <summary>Radius of accent puddles (e.g. lava) — larger than decor so they read as environment.</summary>
     public const int AccentClusterRadius = 2;
     /// <summary>Chance falloff per ring from the cluster center (0 = solid, 1 = center only).</summary>
     public const double ClusterFalloff = 0.45;
     /// <summary>Scales the number of clusters per room (area × biome chance × this). Keeps decor sparse.</summary>
-    public const double DecorDensityScale = 0.5;
+    public const double DecorDensityScale = 0.7;
 
     // ---- G-07: room types (graph + risk/reward fork) ----
     /// <summary>Elite room (risk detour) forces elites up to this cap; the rest of the budget becomes common.</summary>

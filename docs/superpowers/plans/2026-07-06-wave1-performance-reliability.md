@@ -449,7 +449,7 @@ Duas causas de FX perdido no cliente: o `effect()` do Angular coalesce snapshots
 - Consumes: `EventDto.Seq` do Task 3 (`seq: number` no JSON camelCase do SignalR).
 - Produces: `takeNewEvents(events: EventDto[], lastSeq: number): { fresh: EventDto[]; lastSeq: number }`; contadores públicos no `GameRenderer`: `eventsIngested: number`, `eventsDeduped: number` (Task 5 lê).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `frontend/src/app/core/event-seq.spec.ts`:
 
@@ -482,12 +482,12 @@ describe('takeNewEvents', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd frontend && npx vitest run src/app/core/event-seq.spec.ts`
 Expected: FAIL — `./event-seq` not found.
 
-- [ ] **Step 3: Implement helper + types**
+- [x] **Step 3: Implement helper + types**
 
 Em `types.ts`, adicionar ao `EventDto`: `seq: number;`
 
@@ -517,12 +517,12 @@ export function takeNewEvents(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd frontend && npx vitest run src/app/core/event-seq.spec.ts`
 Expected: PASS (3 tests).
 
-- [ ] **Step 5: Wire into the renderer**
+- [x] **Step 5: Wire into the renderer**
 
 Em `renderer.ts`, campos novos na classe `GameRenderer`:
 
@@ -546,21 +546,27 @@ for (const ev of fresh) this.ingest(ev, nowPerf);
 
 (com `import { takeNewEvents } from './event-seq';` no topo). **Não** resetar `lastEventSeq` no `setMap` — troca de andar mantém a run e o seq.
 
-- [ ] **Step 6: Turn the replay window on (backend)**
+- [x] **Step 6: Turn the replay window on (backend)**
 
 Em `GameConfig.cs`: `EventReplayTicks = 1` → `EventReplayTicks = 10` (1s de janela) e remover o sufixo do comentário "raised to 10 together with the client dedup".
 
-- [ ] **Step 7: Build both sides**
+- [x] **Step 7: Build both sides**
 
 Run: `dotnet build backend/src/KaezanArenaFable.Api` e `cd frontend && npx ng build`
 Expected: ambos sem erros.
 
-- [ ] **Step 8: Manual FX verification**
+- [ ] **Step 8: Manual FX verification (partial)**
 
 Com backend (script do Task 1) + `npm start`: jogar uma run T1 e confirmar (a) FX de skill aparecem consistentemente, (b) nenhum FX duplicado (dano dobrado na tela, som repetido). Depois: mudar de aba por ~10s no meio do combate, voltar, e confirmar que os FX continuam saindo normalmente.
 Expected: FX íntegros nos dois cenários.
 
-- [ ] **Step 9: Commit**
+Status 2026-07-06: foreground T1 smoke verified with backend Release + `npm start`:
+run entered combat, HUD/kills/gold advanced, boss state appeared, and browser console had no
+errors/warnings from event ingestion. The tab-background part remains pending because the in-app
+browser recycled the tab reference during the attempted background-tab automation, so it did not
+produce trustworthy evidence for `document.hidden`/return-to-run behavior.
+
+- [x] **Step 9: Commit**
 
 ```bash
 git add frontend/src/app/core backend/src/KaezanArenaFable.Api/Domain/GameConfig.cs

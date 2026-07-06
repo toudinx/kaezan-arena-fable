@@ -11,6 +11,8 @@ import {
   MonsterDefinition,
   PullResponse,
   RoleTuningRow,
+  SessionPlanRequest,
+  SessionStateDto,
 } from './types';
 
 /** REST client for meta systems (account, gacha, dailies, inventory). */
@@ -25,6 +27,7 @@ export class ApiService {
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
       body: body ? JSON.stringify(body) : undefined,
     });
+    if (res.status === 204) return null as T;
     const json = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error((json as { error?: string }).error ?? `HTTP ${res.status}`);
     return json as T;
@@ -238,5 +241,23 @@ export class ApiService {
   async unequipItem(waifuId: string, slot: string, tier: number): Promise<void> {
     await this.request('POST', '/equipment/unequip', { waifuId, slot, tier });
     await this.refreshAccount();
+  }
+
+  // ---- idle session (Wave 3): server-side run chaining ----
+  startSession(plan: SessionPlanRequest): Promise<SessionStateDto> {
+    return this.request<SessionStateDto>('POST', '/session/start', plan);
+  }
+
+  stopSession(): Promise<SessionStateDto> {
+    return this.request<SessionStateDto>('POST', '/session/stop', {});
+  }
+
+  resumeSession(): Promise<SessionStateDto> {
+    return this.request<SessionStateDto>('POST', '/session/resume', {});
+  }
+
+  /** Resolves null when no session has been started yet (HTTP 204). */
+  getSession(): Promise<SessionStateDto | null> {
+    return this.request<SessionStateDto | null>('GET', '/session');
   }
 }

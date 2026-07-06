@@ -1,5 +1,6 @@
 using KaezanArenaFable.Api.Content;
 using KaezanArenaFable.Api.Domain;
+using KaezanArenaFable.Api.Engine;
 using KaezanArenaFable.Api.Meta;
 
 namespace KaezanArenaFable.Api.Api;
@@ -122,6 +123,36 @@ public static class MetaEndpoints
                 loot = m.Loot.Select(l => new { l.ItemId, l.Name, l.Chance })
             })
         }));
+
+        // ---- idle session (Wave 3): server-side run chaining ----
+        api.MapPost("/session/start", (SessionStartRequest req, SessionOrchestrator sessions, RunManager runs) =>
+        {
+            SessionPlan plan = new(
+                req.Tier,
+                req.WaifuRotation is { Count: > 0 } ? req.WaifuRotation : throw new BadHttpRequestException("empty rotation"),
+                req.MaxRuns, req.StopAfterConsecutiveLosses, req.TierUpWins,
+                Math.Max(req.Tier, req.MaxTier), req.StopWhenOutOfEnergy);
+            GameWorld world = sessions.StartSession(plan);
+            runs.StartSessionRun(world);
+            return Results.Ok(sessions.Snapshot());
+        });
+
+        api.MapPost("/session/stop", (SessionOrchestrator sessions, RunManager runs) =>
+        {
+            sessions.Stop("stopped by player");
+            runs.StopSessionRun();
+            return Results.Ok(sessions.Snapshot());
+        });
+
+        api.MapPost("/session/resume", (SessionOrchestrator sessions, RunManager runs) =>
+        {
+            GameWorld? world = sessions.Resume();
+            if (world is not null) runs.StartSessionRun(world);
+            return Results.Ok(sessions.Snapshot());
+        });
+
+        api.MapGet("/session", (SessionOrchestrator sessions) =>
+            sessions.Snapshot() is { } s ? Results.Ok(s) : Results.NoContent());
 
         // ---- account ----
         api.MapGet("/account", (AccountStore store, DailyService dailies, RewardService rewards) =>
@@ -766,4 +797,7 @@ public static class MetaEndpoints
     public sealed record ItemGrantRequest(int Count = 1);
     public sealed record GrantKaerosRequest(int Amount = 1600);
     public sealed record BannersRequest(List<string> WaifuIds);
+    public sealed record SessionStartRequest(
+        int Tier, List<string> WaifuRotation, int MaxRuns, int StopAfterConsecutiveLosses,
+        int TierUpWins, int MaxTier, bool StopWhenOutOfEnergy);
 }

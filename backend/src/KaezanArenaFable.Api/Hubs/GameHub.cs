@@ -34,6 +34,20 @@ public sealed class GameHub(RunManager runs, RunFactory factory, AccountStore st
         };
     }
 
+    /// <summary>Attaches this connection as the spectator of the running idle session.</summary>
+    public object WatchSession()
+    {
+        GameWorld world = runs.AttachWatcher(Context.ConnectionId)
+                          ?? throw new HubException("no active session");
+        return new
+        {
+            seed = world.Seed, tier = world.Tier.Tier, tierName = world.Tier.Name,
+            waifuId = world.Waifu.Id, resumed = false, watching = true
+        };
+    }
+
+    public void StopWatching() => runs.DetachWatcher(Context.ConnectionId);
+
     public void Move(int dx, int dy) =>
         runs.GetRun(Context.ConnectionId)?.Enqueue(new Command(CommandKind.SetMoveDir, dx, dy, null));
 

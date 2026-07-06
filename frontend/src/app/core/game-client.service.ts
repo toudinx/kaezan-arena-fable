@@ -18,6 +18,15 @@ export interface JoinRunResult {
   resumed: boolean;
 }
 
+export interface WatchSessionResult {
+  seed: number;
+  tier: number;
+  tierName: string;
+  waifuId: string;
+  resumed: boolean;
+  watching: boolean;
+}
+
 /** SignalR channel for the live dungeon run. */
 @Injectable({ providedIn: 'root' })
 export class GameClientService {
@@ -54,6 +63,18 @@ export class GameClientService {
     // The hub requires exact arity (SignalR does not support a missing optional argument), so always
     // send the mode. Default Dungeon keeps the legacy flow identical; Arena (LM-04/05) passes GameMode.Arena.
     return this.connection!.invoke<JoinRunResult>('JoinRun', tier, waifuId ?? null, seed ?? null, resume, mode);
+  }
+
+  /** Attaches as spectator of the running idle session (snapshots/map reuse the same handlers). */
+  async watchSession(): Promise<WatchSessionResult> {
+    this.snapshot.set(null);
+    this.map.set(null);
+    await this.connect();
+    return this.connection!.invoke<WatchSessionResult>('WatchSession');
+  }
+
+  stopWatching(): void {
+    void this.connection?.invoke('StopWatching').catch(() => undefined);
   }
 
   async leave(abandon = false): Promise<void> {

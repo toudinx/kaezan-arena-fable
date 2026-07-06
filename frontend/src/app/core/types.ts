@@ -814,6 +814,50 @@ export interface SnapshotDto {
   run: RunStateDto;
 }
 
+// ---- idle session (Wave 3): server-side run chaining ----
+
+export interface SessionPlanRequest {
+  tier: number;
+  waifuRotation: string[];
+  maxRuns: number;
+  stopAfterConsecutiveLosses: number;
+  tierUpWins: number;
+  maxTier: number;
+  stopWhenOutOfEnergy: boolean;
+}
+
+export interface RunJournalEntryDto {
+  runNumber: number;
+  seed: number;
+  tier: number;
+  waifuId: string;
+  victory: boolean;
+  reason: string;
+  durationMs: number;
+  gold: number;
+  accountXp: number;
+  kills: number;
+  endedAtUtc: string;
+}
+
+export interface SessionAggregatesDto {
+  runs: number;
+  wins: number;
+  gold: number;
+  accountXp: number;
+  kills: number;
+}
+
+export interface SessionStateDto {
+  status: 'running' | 'paused' | 'stopped';
+  runNumber: number;
+  currentTier: number;
+  currentWaifuId: string;
+  stopReason: string | null;
+  last2h: SessionAggregatesDto;
+  journal: RunJournalEntryDto[];
+}
+
 export const TICK_MS = 100;
 
 export const RARITY_COLORS: Record<number, string> = {

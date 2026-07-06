@@ -235,6 +235,10 @@ em `docs/design/gameplay_style_guide.md`.
 - **Kits Kaezan autorais:** monstros seedados combinam power tier, função (`common|elite|boss`),
   comportamento curado e elemento ofensivo. Condições, slows, cura própria e ataques em área vêm dos
   perfis data-driven do engine; sprites/corpses ainda podem reaproveitar a biblioteca Canary.
+  **Chaos ordenado (2026-07-06):** todo cast de área/cone de mob só dispara se realmente ameaçar o
+  jogador (gate de proximidade por Chebyshev, sem telegraph — a direção continua sendo a única pista) e
+  respeita um cap de tamanho por rank: comuns/elites em cone 3 / raio 2 (escala da fire wave do dragão
+  do Tibia), bosses em cone 5 / raio 4 — a UE gigante fica reservada como assinatura de boss.
 - O catálogo seedado tem 50 monstros Kaezan nos cinco tiers, com 6 comuns, 3 elites e 1 boss por
   dungeon. Loot de equipamentos vem de tabelas curadas por tier/classe, não das loot tables Tibia.
 - Ofertas de card pausam o relógio da simulação; dá para rerolar a oferta ou banir cartas pelo

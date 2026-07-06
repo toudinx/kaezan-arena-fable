@@ -1100,7 +1100,7 @@ git commit -m "feat(api,hub): idle session endpoints and spectator attach"
 - Consumes: `ApiService.startSession/getSession/stopSession/resumeSession`, `GameClientService.watchSession/stopWatching`, `SessionStateDto`.
 - Produces: rota `game` com query param `session=1` entra como espectador; painel de sessão com journal + status + botões Resume/Stop.
 
-- [ ] **Step 1: Painel de config na página mode**
+- [x] **Step 1: Painel de config na página mode**
 
 Em `mode.ts`, adicionar ao card do tier (abaixo do `.farm-plan`) o bloco de sessão. Sinais no componente:
 
@@ -1159,7 +1159,11 @@ Método (rotação = Kaeli ativa; multi-select de rotação fica para iteração
 
 (Ajustar aos nomes reais: leitor de conta do `ApiService` (`account()` signal ou equivalente) e o `Router` já injetado na página — conferir no arquivo e seguir o padrão local; estilos `.idle-session` copiam o visual do `.farm-plan`.)
 
-- [ ] **Step 2: Espectador na página game**
+(Implementado: `account()` é signal no `ApiService`; a rota real do game é `/game/:tier` — `/play/:tier`
+é o prerun de escolha de Kaeli — então `startIdleSession` navega para `['/game', tier]` com
+`queryParams: { session: 1 }`, pulando o prerun. Estilos `.idle-session` espelham o `.farm-plan`.)
+
+- [x] **Step 2: Espectador na página game**
 
 Em `game.ts`:
 
@@ -1225,11 +1229,22 @@ Em `game.ts`:
 
 5. No modo sessão: suprimir `maybeScheduleAutoRepeat` (o encadeamento agora é do servidor) — guard no topo: `if (this.sessionMode) return;`. O overlay de fim de run continua aparecendo durante o beat entre runs (o `SessionRunChainDelayTicks` do servidor) e some sozinho quando o snapshot da run nova chega — comportamento desejado.
 
-- [ ] **Step 3: Build + verificação no preview**
+- [x] **Step 3: Build + verificação no preview**
 
 `npx ng build` limpo. Com backend + frontend rodando: iniciar sessão idle T1 pela página mode → assistir 2-3 runs encadearem sem input; apertar uma tecla de movimento → painel mostra `paused`; Resume → encadeia de novo; fechar a aba no meio de uma run, reabrir `/game?session=1` → espectador retoma a run em andamento.
 
-- [ ] **Step 4: Commit**
+(Executado: `npx ng build` limpo (só os warnings de CSS-budget pré-existentes de game/kaelis/admin/
+recruit — não são erros). Verificação no preview (backend Release em :5210 + `ng serve`): o painel
+`.idle-session` renderiza no mode com os 3 inputs + botão. Ao iniciar, o backend encadeou runs 1→5
+sozinho — só abri o espectador na run 3, provando o chaining detached. O painel `.session-panel`
+mostrou header "Idle session — run 5 · T4", status `running`, agregados "4 runs · 4 wins · +18891
+gold · +678 xp" e 4 entradas de journal (ex. "#4 T4 — W · 45s · +4465g"). Uma tecla de movimento
+pausou (`paused` + nota "Paused by manual input."); "Resume chaining" voltou a `running`; "Stop
+session" → backend `stopped` (reason "stopped by player") e navegou de volta ao `/hunt`. O `session=1`
+entra pelo `watchSession` e faz poll do `GET /session` a cada 5s; o `maybeScheduleAutoRepeat` é
+suprimido no modo sessão.)
+
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/src/app/pages

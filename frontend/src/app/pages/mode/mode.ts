@@ -112,6 +112,24 @@ import { MonsterCatalogEntry } from '../../core/types';
                   </div>
                 </div>
 
+                <div class="idle-session">
+                  <div class="farm-head"><span>Idle Session</span></div>
+                  <label>Stop after losses in a row
+                    <input type="number" min="0" max="20" [value]="sessionStopLosses()"
+                           (input)="sessionStopLosses.set(+$any($event.target).value)" />
+                  </label>
+                  <label>Max runs (0 = endless)
+                    <input type="number" min="0" max="999" [value]="sessionMaxRuns()"
+                           (input)="sessionMaxRuns.set(+$any($event.target).value)" />
+                  </label>
+                  <label>Tier up after wins (0 = never)
+                    <input type="number" min="0" max="20" [value]="sessionTierUp()"
+                           (input)="sessionTierUp.set(+$any($event.target).value)" />
+                  </label>
+                  <button class="pill-btn ghost" [disabled]="sessionStarting() || locked(t.requiredAccountLevel)"
+                          (click)="startIdleSession(t.tier)">Start idle session</button>
+                </div>
+
                 <div class="actions">
                   @if (locked(t.requiredAccountLevel)) {
                     <span class="lock-msg">Unlocks at account level {{ t.requiredAccountLevel }}</span>
@@ -357,6 +375,37 @@ import { MonsterCatalogEntry } from '../../core/types';
     .farm-step:disabled { opacity: 0.4; }
     .farm-cost { justify-content: space-between; }
     .farm-cost b { color: color-mix(in srgb, var(--bc) 76%, white); font-size: 0.9rem; }
+    /* Wave 3: idle-session config panel — mirrors the .farm-plan glass card. */
+    .idle-session {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 14px;
+      border: 1px solid color-mix(in srgb, var(--bc) 26%, var(--line));
+      border-radius: var(--r-sm);
+      background: rgba(12, 12, 20, 0.48);
+      box-shadow: var(--glass-edge);
+    }
+    .idle-session label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text-dim);
+      font-size: 12px;
+    }
+    .idle-session input {
+      width: 68px;
+      padding: 4px 8px;
+      border: 1px solid color-mix(in srgb, var(--bc) 34%, var(--line-strong));
+      border-radius: var(--r-sm);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      font-size: 0.9rem;
+      text-align: right;
+    }
+    .idle-session input:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 1px; }
+    .idle-session .pill-btn { margin-top: 4px; }
     .actions {
       display: flex;
       justify-content: flex-end;
@@ -419,6 +468,13 @@ export class ModeSelectPage {
   readonly bossName = computed(() => this.monsterName(this.selectedTier()?.boss ?? ''));
   readonly runCount = signal(readFarmRunCount());
 
+  // Wave 3: idle-session config. 0 = disabled (endless / never tier up). Rotation is the active
+  // Kaeli for now; a multi-select rotation is a future iteration (YAGNI).
+  readonly sessionMaxRuns = signal(0);
+  readonly sessionStopLosses = signal(3);
+  readonly sessionTierUp = signal(0);
+  readonly sessionStarting = signal(false);
+
   constructor(
     private readonly api: ApiService,
     private readonly route: ActivatedRoute,
@@ -448,5 +504,26 @@ export class ModeSelectPage {
   }
   adjustRunCount(delta: number): void { this.setRunCount(this.runCount() + delta); }
   start(tier: number): void { void this.router.navigate(['/play', tier], { queryParams: { runs: this.runCount() } }); }
+
+  /** Wave 3: hand the plan to the backend, which chains runs on its own, then enter as spectator. */
+  async startIdleSession(tier: number): Promise<void> {
+    this.sessionStarting.set(true);
+    try {
+      const waifuId = this.api.account()?.activeWaifuId;
+      if (!waifuId) return;
+      await this.api.startSession({
+        tier,
+        waifuRotation: [waifuId],
+        maxRuns: this.sessionMaxRuns(),
+        stopAfterConsecutiveLosses: this.sessionStopLosses(),
+        tierUpWins: this.sessionTierUp(),
+        maxTier: 5,
+        stopWhenOutOfEnergy: false,
+      });
+      void this.router.navigate(['/game', tier], { queryParams: { session: 1 } });
+    } finally {
+      this.sessionStarting.set(false);
+    }
+  }
   back(): void { void this.router.navigate(['/hunt']); }
 }

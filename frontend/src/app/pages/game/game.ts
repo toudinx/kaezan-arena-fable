@@ -8,7 +8,7 @@ import { GameRenderer } from '../../core/renderer';
 import { ItemIcon } from '../../core/item-icon';
 import { PerfRing } from '../../core/perf-ring';
 import { SoundService } from '../../core/sound.service';
-import { AutoHelperSettingsDto, SnapshotDto } from '../../core/types';
+import { AutoHelperSettingsDto, SessionStateDto, SnapshotDto } from '../../core/types';
 
 // G-01: aligned below the player step (~294ms at PlayerBaseSpeed=340) for reliable resends.
 const MOVE_HEARTBEAT_MS = 200;
@@ -110,6 +110,35 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
                   [title]="sound.muted() ? 'Sound off (M)' : 'Sound on (M)'">{{ sound.muted() ? 'Muted' : 'Sound' }}</button>
         </div>
       </div>
+
+      <!-- Wave 3: idle-session spectator panel (only present in ?session=1 mode) -->
+      @if (sessionState(); as s) {
+        <aside class="session-panel">
+          <header>
+            <b>Idle session — run {{ s.runNumber + 1 }} · T{{ s.currentTier }}</b>
+            <span class="status" [class.paused]="s.status === 'paused'"
+                  [class.stopped]="s.status === 'stopped'">{{ s.status }}</span>
+          </header>
+          <p class="agg">Last 2h: {{ s.last2h.runs }} runs · {{ s.last2h.wins }} wins ·
+            +{{ s.last2h.gold }} gold · +{{ s.last2h.accountXp }} xp</p>
+          @if (s.status === 'paused') {
+            <p class="note">Paused by manual input.</p>
+            <button class="btn" (click)="resumeSession()">Resume chaining</button>
+          }
+          @if (s.status === 'stopped') {
+            <p class="note">Stopped: {{ s.stopReason }}</p>
+          }
+          <button class="btn secondary" (click)="stopSession()">Stop session</button>
+          <ul class="journal">
+            @for (e of s.journal; track e.runNumber) {
+              <li [class.loss]="!e.victory">
+                #{{ e.runNumber }} T{{ e.tier }} — {{ e.victory ? 'W' : 'L' }} ·
+                {{ (e.durationMs / 1000).toFixed(0) }}s · +{{ e.gold }}g
+              </li>
+            }
+          </ul>
+        </aside>
+      }
 
       <!-- boss cartouche: pennant hanging from the top edge -->
       @if (snapshot(); as s) {
@@ -628,6 +657,41 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
       box-shadow: 0 0 0 4px rgba(7, 7, 13, 0.35), var(--sh-2); opacity: 0.92;
     }
 
+    /* ---- Wave 3: idle-session spectator panel --------------------------- */
+    .session-panel {
+      position: absolute; right: 16px; top: 224px; z-index: 15;
+      width: 268px; max-height: 52vh; overflow-y: auto; pointer-events: auto;
+      display: flex; flex-direction: column; gap: 9px; padding: 12px 13px;
+      border: 1px solid var(--line); border-radius: var(--r-md);
+      background: var(--glass-bg-strong);
+      -webkit-backdrop-filter: blur(var(--glass-blur)); backdrop-filter: blur(var(--glass-blur));
+      box-shadow: var(--glass-edge), var(--sh-2); color: var(--text);
+    }
+    .session-panel header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .session-panel header b { font-family: var(--font-display); font-weight: 600; font-size: 12.5px; color: var(--text); }
+    .session-panel .status {
+      flex: 0 0 auto; padding: 2px 9px; border-radius: var(--r-full);
+      font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      background: color-mix(in srgb, var(--success) 16%, transparent);
+      border: 1px solid color-mix(in srgb, var(--success) 45%, transparent); color: var(--success);
+    }
+    .session-panel .status.paused {
+      background: color-mix(in srgb, var(--gold) 16%, transparent);
+      border-color: color-mix(in srgb, var(--gold) 45%, transparent); color: var(--gold-bright);
+    }
+    .session-panel .status.stopped {
+      background: color-mix(in srgb, var(--danger) 14%, transparent);
+      border-color: color-mix(in srgb, var(--danger) 42%, transparent); color: color-mix(in srgb, var(--danger) 65%, white);
+    }
+    .session-panel .agg { margin: 0; font-size: 11px; line-height: 1.45; color: var(--text-dim); }
+    .session-panel .note { margin: 0; font-size: 11px; color: var(--text-mute); }
+    .session-panel .journal { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+    .session-panel .journal li {
+      font-size: 10.5px; color: var(--text-dim); padding: 3px 6px; border-radius: var(--r-sm);
+      background: rgba(255, 255, 255, 0.03); border-left: 2px solid color-mix(in srgb, var(--success) 55%, transparent);
+    }
+    .session-panel .journal li.loss { border-left-color: color-mix(in srgb, var(--danger) 55%, transparent); color: var(--text-mute); }
+
     /* ---- training sandbox ------------------------------------------------ */
     .train-toggle {
       position: absolute; bottom: 118px; left: 50%; transform: translateX(-50%); z-index: 16;
@@ -863,6 +927,8 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   readonly showHelper = signal(false);
   /** Training Room only: reveals the free-cast switch (skills/ult ignore cooldown & gauge). */
   readonly isTraining = signal(false);
+  /** Wave 3: spectator mode (?session=1) — the backend chains runs; this tab only watches. */
+  readonly sessionState = signal<SessionStateDto | null>(null);
 
   // G-10: feedback for the HELPER panel "Save as default" button.
   readonly helperSaved = signal(false);
@@ -900,6 +966,8 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   private autoRepeatCountdownTimer = 0;
   private autoRepeatEndKey = '';
   private ladderTriggered = false;
+  private sessionMode = false;
+  private sessionPollTimer = 0;
 
   constructor(
     private readonly client: GameClientService,
@@ -928,6 +996,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     this.waifuId = this.route.snapshot.queryParamMap.get('waifu') ?? undefined;
     this.mode = this.route.snapshot.queryParamMap.get('mode') === 'training' ? GameMode.Training : GameMode.Dungeon;
     this.isTraining.set(this.mode === GameMode.Training);
+    this.sessionMode = this.route.snapshot.queryParamMap.get('session') === '1';
     const runs = normalizeFarmRunCount(Number(this.route.snapshot.queryParamMap.get('runs') ?? readFarmRunCount()));
     this.plannedRuns.set(runs);
     this.autoRunsRemaining.set(Math.max(0, runs - 1));
@@ -953,15 +1022,21 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     if (map) this.renderer.setMap(map);
 
     try {
-      const joined = await this.client.joinRun(this.tier, this.waifuId, undefined, true, this.mode);
-      if (joined.resumed) {
-        this.resumeToast.set(true);
-        this.resumeToastTimer = window.setTimeout(() => this.resumeToast.set(false), RESUME_TOAST_MS);
+      if (this.sessionMode) {
+        // Spectator: the run is already ticking server-side — attach and poll session state.
+        await this.client.watchSession();
+        this.startSessionPolling();
+      } else {
+        const joined = await this.client.joinRun(this.tier, this.waifuId, undefined, true, this.mode);
+        if (joined.resumed) {
+          this.resumeToast.set(true);
+          this.resumeToastTimer = window.setTimeout(() => this.resumeToast.set(false), RESUME_TOAST_MS);
+        }
       }
       this.joining.set(false);
     } catch (err) {
       this.joining.set(false);
-      console.error('joinRun failed', err);
+      console.error(this.sessionMode ? 'watchSession failed' : 'joinRun failed', err);
       alert((err as Error).message);
       void this.router.navigate(['/hunt']);
       return;
@@ -1271,6 +1346,8 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private maybeScheduleAutoRepeat(snap: SnapshotDto): void {
+    // In session mode the backend chains runs; the client must not auto-repeat locally.
+    if (this.sessionMode) return;
     const end = snap.run.ended;
     if (!end || this.autoRunsRemaining() <= 0) return;
     const key = `${snap.run.seed}:${end.durationMs}:${end.victory ? 1 : 0}`;
@@ -1408,14 +1485,33 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     void this.router.navigate(['/hunt']);
   }
 
+  // ---- Wave 3: idle-session spectator ----
+
+  private startSessionPolling(): void {
+    const poll = async () => this.sessionState.set(await this.api.getSession());
+    void poll();
+    this.sessionPollTimer = window.setInterval(() => void poll(), 5000);
+  }
+
+  async resumeSession(): Promise<void> {
+    this.sessionState.set(await this.api.resumeSession());
+  }
+
+  async stopSession(): Promise<void> {
+    this.sessionState.set(await this.api.stopSession());
+    void this.leave(); // back to Hunt, same as the existing button
+  }
+
   ngOnDestroy(): void {
     cancelAnimationFrame(this.raf);
     window.clearInterval(this.moveHeartbeat);
     window.clearTimeout(this.resumeToastTimer);
+    window.clearInterval(this.sessionPollTimer);
     this.clearAutoRepeatSchedule();
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
+    if (this.sessionMode) this.client.stopWatching(); // detach spectator; session keeps chaining
     void this.client.leave();
   }
 }

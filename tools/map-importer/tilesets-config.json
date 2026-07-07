@@ -1,0 +1,10 @@
+{
+  "_notes": [
+    "Curated RME ground-brush names that become tilesets.json families (verified against the RME checkout, 2026-07-07).",
+    "grounds by tier intent: cave+dirt+earth floor (t1 cave/earth), grass+dirt (t2), mossy floor+rocky ground (t3 mossy stone), dark dirt+rock soil+rocky ground (t4-5 dark stone).",
+    "mountains: 'mountain' = classic grey rock (inner faces e/s/dse only - Tibia perspective; full 12-edge outer foot), 'mossy wall mountain' = full 12-edge inner+outer (t3), 'crystal wall' = inner s/e/cse/dse (t4-5 arcane).",
+    "rejected mountains: 'earth mountain', 'grotto', 'basalt', 'purple crystal mountain' have no inner border set, so no rock faces for the wall autotiler."
+  ],
+  "grounds": ["cave", "dark dirt", "dirt", "earth floor", "grass", "mossy floor", "rock soil", "rocky ground"],
+  "mountains": ["crystal wall", "mossy wall mountain", "mountain"]
+}

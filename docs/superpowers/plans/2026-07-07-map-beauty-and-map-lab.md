@@ -152,7 +152,9 @@ git commit -m "feat(tools): RME materials XML parser (borders + ground brushes)"
 
 ---
 
-### Task 2: Tradutor RME → tilesets (`lib/tilesets.mjs`)
+### [x] Task 2: Tradutor RME → tilesets (`lib/tilesets.mjs`)
+
+Resumo: tradutor implementado com fill por prioridade de face (corner → S/E/N/W, perspectiva do Tibia) + fallback Hamming; 11 famílias, 11 border sets, 3 wall sets 47-slot com só 8 slots sintéticos.
 
 **Model · Effort:** Fable 5 · high
 
@@ -182,7 +184,7 @@ git commit -m "feat(tools): RME materials XML parser (borders + ground brushes)"
 
 Convenções: `borderSets` usa os 12 edge names do RME, chave `"A->B"` = border da família A desenhado quando o vizinho é B (`"A->none"` = vizinho é qualquer terreno sem par específico; `"A->OPEN"` = outer border de montanha sobre chão aberto). `wallSets` usa o **mask blob canônico** (mesma numeração do `WallAutotile`: bit 0=N,1=NE,2=E,3=SE,4=S,5=SW,6=W,7=NW de vizinho ABERTO) → item id; slot `"0"` (fechado) = tile de corpo da montanha.
 
-- [ ] **Step 1: `tilesets-config.json`** — a curadoria de quais brushes viram famílias (nomes = os do RME):
+- [x] **Step 1: `tilesets-config.json`** — a curadoria de quais brushes viram famílias (nomes = os do RME):
 
 ```json
 {
@@ -193,7 +195,7 @@ Convenções: `borderSets` usa os 12 edge names do RME, chave `"A->B"` = border 
 
 (Ajustar os nomes exatos conferindo `brushes.get(...)` — os biomas atuais precisam de: chão de caverna/terra t1, grama+terra t2, pedra com musgo t3, pedra escura t4–5, e 2–3 montanhas. Listar os brushes disponíveis com um `node -e` sobre `loadGroundBrushes` e escolher os equivalentes; anotar a escolha em comentário no próprio JSON via chave `"_notes"`.)
 
-- [ ] **Step 2: Teste que falha (`test/tilesets.test.mjs`)**
+- [x] **Step 2: Teste que falha (`test/tilesets.test.mjs`)**
 
 ```js
 import { test } from "node:test";
@@ -218,7 +220,7 @@ test("buildTilesets emits families, border sets and 47-slot wall sets", () => {
 
 Rodar → FAIL.
 
-- [ ] **Step 3: Implementar a tradução.** Núcleo de `lib/tilesets.mjs`:
+- [x] **Step 3: Implementar a tradução.** Núcleo de `lib/tilesets.mjs`:
 
 1. **Famílias:** cada brush listado no `tilesets-config.json` vira `families[name] = { kind, items, zOrder }` (`kind: "mountain"` para os de montanha).
 2. **Border sets de chão:** para cada ground brush A, para cada `<border>` dele: `align === "outer"` sem `to` → `"A->none"`; com `to: "B"` → `"A->B"`. (Ignorar `align === "inner"` de grounds nesta fatia — o RME usa inner para transições invertidas; o painter v1 só consome outer + `->none`.) Copiar os 12 edges do border set referenciado.
@@ -251,8 +253,8 @@ export function canonical(mask) {
 export const CANONICAL_MASKS = [...new Set(Array.from({ length: 256 }, (_, m) => canonical(m)))].sort((a, b) => a - b);
 ```
 
-- [ ] **Step 4: Testes passam:** `node --test test/tilesets.test.mjs` → PASS.
-- [ ] **Step 5: Commit**
+- [x] **Step 4: Testes passam:** `node --test test/tilesets.test.mjs` → PASS.
+- [x] **Step 5: Commit**
 
 ```powershell
 git add tools/map-importer/lib/tilesets.mjs tools/map-importer/tilesets-config.json tools/map-importer/test/tilesets.test.mjs

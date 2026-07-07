@@ -780,7 +780,7 @@ git commit -m "feat(engine): stamp authored prefabs into procedural floors (deli
 - Consumes: `Room.SpawnTheme` (Task 8), `DungeonTier` (`GameConfig.cs:1349`).
 - Produces: `public static class SpawnSelection { public static string CommonSpecies(Rng rng, Room room, DungeonTier tier); }`
 
-- [ ] **Step 1: Teste que falha**
+- [x] **Step 1: Teste que falha**
 
 ```csharp
 using KaezanArenaFable.Api.Domain;
@@ -815,7 +815,7 @@ public class SpawnSelectionTests
 
 Rodar `dotnet test --filter SpawnSelection` → FAIL.
 
-- [ ] **Step 2: Implementar `SpawnSelection.cs`**
+- [x] **Step 2: Implementar `SpawnSelection.cs`**
 
 ```csharp
 using KaezanArenaFable.Api.Domain;
@@ -832,11 +832,11 @@ public static class SpawnSelection
 }
 ```
 
-- [ ] **Step 3: Wiring no `GameWorld.cs`**
+- [x] **Step 3: Wiring no `GameWorld.cs`**
 
 Nos call sites de spawn comum onde a `room` está disponível (linhas ~499, ~520, ~541 — `_rng.Pick(Tier.CommonMobs)`), trocar por `SpawnSelection.CommonSpecies(_rng, room, Tier)`. Elites, miniboss e boss continuam no pool do tier (spec: só a composição comum é temática nesta fatia).
 
-- [ ] **Step 4: Testes + build + commit**
+- [x] **Step 4: Testes + build + commit**
 
 ```powershell
 dotnet test backend/tests/KaezanArenaFable.Api.Tests

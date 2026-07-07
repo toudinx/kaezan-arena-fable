@@ -498,7 +498,7 @@ public sealed partial class GameWorld
                 var elite = forceElite
                     ? budget >= 5 && elitesSpawned < GameConfig.EliteRoomMaxElites
                     : budget >= 5 && _rng.Chance(0.25);
-                var name = elite ? _rng.Pick(Tier.EliteMobs) : _rng.Pick(Tier.CommonMobs);
+                string name = elite ? _rng.Pick(Tier.EliteMobs) : SpawnSelection.CommonSpecies(_rng, room, Tier);
                 // G-06: only common-room elites become beats (boss guards/ambushes do not count).
                 // G-08B: common cost comes from the profile (swarm = 1 doubles count, numeric pressure).
                 var cost = elite ? 5 : SpawnCostFor(name);
@@ -519,7 +519,7 @@ public sealed partial class GameWorld
         if (mini is not null)
             mini.MaxHp = mini.Hp = (int)(mini.Hp * GameConfig.MiniBossHpScale);
         for (var i = 0; i < GameConfig.MiniBossEscort; i++)
-            SpawnMonster(floorIndex, _rng.Pick(Tier.CommonMobs), room, isElite: false);
+            SpawnMonster(floorIndex, SpawnSelection.CommonSpecies(_rng, room, Tier), room, isElite: false);
     }
 
     private void SpawnBossRoom(int floorIndex, Room room)
@@ -540,7 +540,7 @@ public sealed partial class GameWorld
         for (var i = 0; i < 2 + Tier.Tier / 2; i++)
             SpawnMonster(floorIndex, _rng.Pick(Tier.EliteMobs), room, isElite: true);
         for (var i = 0; i < 2 + Tier.Tier / 2; i++)
-            SpawnMonster(floorIndex, _rng.Pick(Tier.CommonMobs), room);
+            SpawnMonster(floorIndex, SpawnSelection.CommonSpecies(_rng, room, Tier), room);
     }
 
     /// <summary>Nearest open and unoccupied tile to (x,y) on the floor (Chebyshev ring), used to anchor a spawn.</summary>
@@ -5258,7 +5258,7 @@ public sealed partial class GameWorld
         var room = Floor.Rooms.FirstOrDefault(r => r.Contains(x, y)) ?? Floor.Rooms[0];
         for (var i = 0; i < count; i++)
         {
-            var mob = SpawnMonster(_currentFloor, _rng.Pick(Tier.CommonMobs), room);
+            Actor? mob = SpawnMonster(_currentFloor, SpawnSelection.CommonSpecies(_rng, room, Tier), room);
             if (mob is not null)
             {
                 AcquirePlayer(mob);

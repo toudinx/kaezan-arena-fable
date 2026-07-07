@@ -788,12 +788,16 @@ export class GameRenderer {
       ctx.fillRect(sx(0), sy(0), map.w * TS, map.h * TS);
     }
 
-    // 1. ground + decor
+    // 1. ground + borders + decor
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
         const i = y * map.w + x;
         const ground = map.ground[i];
         if (ground) this.assets.drawObject(ctx, ground, sx(x), sy(y), SCALE, x, y, nowPerf);
+        const borderA = map.borderA[i];
+        if (borderA) this.assets.drawObject(ctx, borderA, sx(x), sy(y), SCALE, x, y, nowPerf);
+        const borderB = map.borderB[i];
+        if (borderB) this.assets.drawObject(ctx, borderB, sx(x), sy(y), SCALE, x, y, nowPerf);
         const decor = map.decor[i];
         if (decor) this.assets.drawObject(ctx, decor, sx(x), sy(y), SCALE, x, y, nowPerf);
       }

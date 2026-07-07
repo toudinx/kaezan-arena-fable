@@ -534,15 +534,17 @@ Esperado: 0 divergências.
 
 ---
 
-### Task 10: Renderer — camadas de border + types
+### [x] Task 10: Renderer — camadas de border + types
+
+Resumo: frontend passou a tipar `borderA`/`borderB` no `MapDto` e o renderer desenha ground → borderA → borderB → decor antes das paredes.
 
 **Model · Effort:** GPT-5.5 (Codex) · low
 
 **Files:**
 - Modify: `frontend/src/app/core/types.ts` (MapDto), `frontend/src/app/core/renderer.ts`
 
-- [ ] **Step 1:** `types.ts`: `MapDto` ganha `borderA: number[]; borderB: number[];` (espelhar casing dos campos existentes do JSON — conferir como `ground` chega hoje).
-- [ ] **Step 2:** `renderer.ts` (~linha 795): desenhar na ordem ground → borderA → borderB → decor (walls continuam na passada própria ~915):
+- [x] **Step 1:** `types.ts`: `MapDto` ganha `borderA: number[]; borderB: number[];` (espelhar casing dos campos existentes do JSON — conferir como `ground` chega hoje).
+- [x] **Step 2:** `renderer.ts` (~linha 795): desenhar na ordem ground → borderA → borderB → decor (walls continuam na passada própria ~915):
 
 ```ts
 const ground = map.ground[i];
@@ -555,8 +557,8 @@ const decor = map.decor[i];
 if (decor) this.assets.drawObject(ctx, decor, sx(x), sy(y), SCALE, x, y, nowPerf);
 ```
 
-- [ ] **Step 3:** `npx ng build` limpo. Verificação visual: backend Release (`tools/run-backend.ps1`) + frontend, run tier 2 — chão em manchas com borders, paredes contínuas. Screenshot fora de combate (freeze de rAF em combate — ver memória de verificação de HUD).
-- [ ] **Step 4: Commit** (`feat(frontend): render ground border layers`)
+- [x] **Step 3:** `npx ng build` limpo. Verificação visual: backend Release (`tools/run-backend.ps1`) + frontend, run tier 2 — chão em manchas com borders, paredes contínuas. Screenshot fora de combate (freeze de rAF em combate — ver memória de verificação de HUD).
+- [x] **Step 4: Commit** (`feat(frontend): render ground border layers`)
 
 ---
 

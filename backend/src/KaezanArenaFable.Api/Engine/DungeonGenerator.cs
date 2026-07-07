@@ -25,6 +25,10 @@ public sealed class DungeonFloor
     public required ushort[] Ground;
     public required ushort[] Wall;     // 0 = none
     public required ushort[] Decor;    // 0 = none
+    // Map beauty Task 8: ground border pieces drawn between ground and decor (0 = none).
+    // Up to 2 seam pieces per cell, resolved by BorderAutotile from the RME border sets.
+    public required ushort[] BorderA;
+    public required ushort[] BorderB;
     public required bool[] Blocked;
     public required List<Room> Rooms;
     public (int X, int Y) Entry;
@@ -63,6 +67,8 @@ public static class DungeonGenerator
             Ground = new ushort[size * size],
             Wall = new ushort[size * size],
             Decor = new ushort[size * size],
+            BorderA = new ushort[size * size],
+            BorderB = new ushort[size * size],
             Blocked = new bool[size * size],
             Rooms = []
         };
@@ -216,6 +222,8 @@ public static class DungeonGenerator
             Ground = new ushort[size * size],
             Wall = new ushort[size * size],
             Decor = new ushort[size * size],
+            BorderA = new ushort[size * size],
+            BorderB = new ushort[size * size],
             Blocked = new bool[size * size],
             Rooms = []
         };
@@ -306,6 +314,10 @@ public static class DungeonGenerator
             {
                 int fi = (room.Y + ly) * size + (room.X + lx);
                 int pi = ly * p.W + lx;
+                // authored crops carry their own borders as decor: clear the painter's border
+                // layer across the whole prefab rect (open and blocked cells alike)
+                floor.BorderA[fi] = 0;
+                floor.BorderB[fi] = 0;
                 if (!p.Blocked[pi])
                 {
                     floor.Ground[fi] = p.Ground[pi];
@@ -1091,7 +1103,7 @@ public static class DungeonGenerator
 
     private static void PaintTiles(DungeonFloor floor, Rng rng, BiomeDef biome)
     {
-        PaintGround(floor, rng, biome);
+        int[]? familyOf = PaintGround(floor, rng, biome);
 
         // Pass 2: ambient decor/accent, clustered inside rooms only (corridors stay clean). Accent (e.g.
         // lava) pools first so it reads as terrain, then ambient props; both on the non-blocking Decor
@@ -1102,6 +1114,11 @@ public static class DungeonGenerator
             PaintClusters(floor, room, rng, biome.Accent, biome.AccentChance, GameConfig.AccentClusterRadius, reserved);
             PaintClusters(floor, room, rng, biome.Decor, biome.DecorChance, GameConfig.DecorClusterRadius, reserved);
         }
+
+        // Pass 3 (map beauty Task 8): the 2-slot border layer over the family patches. Pure
+        // resolution — zero rng draws — so the legacy path stays byte-identical by construction.
+        if (familyOf is not null && biome.GroundFamilies is { Length: > 0 } familyNames)
+            BorderAutotile.Paint(floor, familyOf, familyNames, biome.WallFamily);
     }
 
     /// <summary>

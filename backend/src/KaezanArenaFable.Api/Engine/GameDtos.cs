@@ -4,7 +4,8 @@ namespace KaezanArenaFable.Api.Engine;
 
 public sealed record MapDto(
     int Floor, int W, int H,
-    ushort[] Ground, ushort[] Wall, ushort[] Decor, bool[] Blocked,
+    // BorderA/BorderB: map beauty Task 8 ground border layer, drawn between ground and decor.
+    ushort[] Ground, ushort[] Wall, ushort[] Decor, ushort[] BorderA, ushort[] BorderB, bool[] Blocked,
     int EntryX, int EntryY, int? LadderX, int? LadderY,
     List<PoiDto> Pois,
     // G-07: room graph + biome. Rooms exposes each room type (combat/elite/treasure/echo/
@@ -21,7 +22,7 @@ public sealed record MapDto(
         DungeonFloor floor, BiomeAtmosphere atmo, int floorIndex, IReadOnlyList<PoiDto> pois) =>
         new(
             floorIndex, floor.W, floor.H,
-            floor.Ground, floor.Wall, floor.Decor, floor.Blocked,
+            floor.Ground, floor.Wall, floor.Decor, floor.BorderA, floor.BorderB, floor.Blocked,
             floor.Entry.X, floor.Entry.Y,
             floor.LadderDown?.X, floor.LadderDown?.Y,
             pois.ToList(),

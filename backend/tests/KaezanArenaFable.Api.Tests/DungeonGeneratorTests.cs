@@ -216,6 +216,28 @@ public class DungeonGeneratorTests
         Assert.Fail("no seed in 1..49 placed a prefab — placement is broken");
     }
 
+    [Fact]
+    public void prefab_rect_clears_border_layers()
+    {
+        // Task 8 Step 3: authored crops carry their own borders as decor, so the painter's
+        // border layer must be zeroed across the whole prefab rect (open AND blocked cells).
+        for (long seed = 1; seed < 50; seed++)
+        {
+            Rng rng = new Rng((ulong)seed);
+            DungeonFloor f = DungeonGenerator.Generate(rng, 0, false, Biomes.ForTier(1), [TestPrefab()]);
+            Room? room = f.Rooms.FirstOrDefault(r => r.PrefabId != "");
+            if (room is null) continue;
+            for (int y = room.Y; y < room.Y + room.H; y++)
+                for (int x = room.X; x < room.X + room.W; x++)
+                {
+                    Assert.Equal((ushort)0, f.BorderA[y * f.W + x]);
+                    Assert.Equal((ushort)0, f.BorderB[y * f.W + x]);
+                }
+            return;
+        }
+        Assert.Fail("no seed in 1..49 placed a prefab — placement is broken");
+    }
+
     [Theory]
     [InlineData(1L)]
     [InlineData(7L)]
@@ -330,5 +352,156 @@ public class DungeonGroundPatchTests
         LoadFakeRegistry();
         DungeonFloor floor = Generate(42L, LegacyBiome());
         Assert.Equal("F9B15983DB89884A4EB3D290B3468E40B082EEAB8C30D5B33BF8C7D5029536CA", FloorHash(floor));
+    }
+}
+
+/// <summary>Map beauty Task 8: 2-slot ground border layer resolved from RME border sets.</summary>
+[Collection("Tileset registry")]
+public class DungeonBorderTests
+{
+    // "high" (z-order 200) borders over "low" (100); "rock" is the blocked wall family whose
+    // "->OPEN" set is the rock foot drawn on adjacent open ground. Edge items are distinct so
+    // each assert pins the exact edge piece that was resolved.
+    private const string FakeTilesets = """
+    {
+      "families": {
+        "low":  { "kind": "ground", "items": [1001], "zOrder": 100 },
+        "high": { "kind": "ground", "items": [2001], "zOrder": 200 },
+        "rock": { "kind": "mountain", "items": [3001], "zOrder": 9000 }
+      },
+      "borderSets": {
+        "high->low": { "n": 11, "e": 12, "s": 13, "w": 14, "cnw": 15, "cne": 16, "cse": 17, "csw": 18, "dnw": 19, "dne": 20, "dse": 21, "dsw": 22 },
+        "rock->OPEN": { "n": 31, "e": 32, "s": 33, "w": 34, "cnw": 35, "cne": 36, "cse": 37, "csw": 38, "dnw": 39, "dne": 40, "dse": 41, "dsw": 42 }
+      }
+    }
+    """;
+
+    private static void LoadFakeRegistry()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+        string path = Path.Combine(dir, "tilesets.json");
+        File.WriteAllText(path, FakeTilesets);
+        TilesetRegistry.LoadFrom(path);
+    }
+
+    private const int Size = 5;
+    private const int Center = 2 * Size + 2;
+
+    /// <summary>5x5 fully-open floor with every cell defaulted to family 0 ("low").</summary>
+    private static (DungeonFloor Floor, int[] FamilyOf) OpenFloor()
+    {
+        DungeonFloor floor = new DungeonFloor
+        {
+            Index = 0, W = Size, H = Size,
+            Ground = new ushort[Size * Size], Wall = new ushort[Size * Size],
+            Decor = new ushort[Size * Size],
+            BorderA = new ushort[Size * Size], BorderB = new ushort[Size * Size],
+            Blocked = new bool[Size * Size], Rooms = []
+        };
+        int[] familyOf = new int[Size * Size];
+        return (floor, familyOf);
+    }
+
+    [Fact]
+    public void single_higher_neighbour_emits_its_edge_piece()
+    {
+        LoadFakeRegistry();
+        (DungeonFloor floor, int[] familyOf) = OpenFloor();
+        familyOf[1 * Size + 2] = 1; // "high" north of the centre cell
+        BorderAutotile.Paint(floor, familyOf, ["low", "high"], "");
+        Assert.Equal((ushort)11, floor.BorderA[Center]); // edge "n"
+        Assert.Equal((ushort)0, floor.BorderB[Center]);
+    }
+
+    [Fact]
+    public void two_adjacent_edges_collapse_into_the_concave_corner()
+    {
+        LoadFakeRegistry();
+        (DungeonFloor floor, int[] familyOf) = OpenFloor();
+        familyOf[1 * Size + 2] = 1; // N
+        familyOf[2 * Size + 1] = 1; // W
+        BorderAutotile.Paint(floor, familyOf, ["low", "high"], "");
+        Assert.Equal((ushort)15, floor.BorderA[Center]); // "cnw" swallows both edges
+        Assert.Equal((ushort)0, floor.BorderB[Center]);
+    }
+
+    [Fact]
+    public void edge_plus_lone_diagonal_fill_both_slots()
+    {
+        LoadFakeRegistry();
+        (DungeonFloor floor, int[] familyOf) = OpenFloor();
+        familyOf[1 * Size + 2] = 1; // N
+        familyOf[3 * Size + 3] = 1; // SE diagonal
+        BorderAutotile.Paint(floor, familyOf, ["low", "high"], "");
+        Assert.Equal((ushort)11, floor.BorderA[Center]); // edge "n"
+        Assert.Equal((ushort)21, floor.BorderB[Center]); // lone diagonal "dse"
+    }
+
+    [Fact]
+    public void interior_cell_gets_no_border()
+    {
+        LoadFakeRegistry();
+        (DungeonFloor floor, int[] familyOf) = OpenFloor();
+        BorderAutotile.Paint(floor, familyOf, ["low", "high"], "");
+        Assert.Equal((ushort)0, floor.BorderA[Center]);
+        Assert.Equal((ushort)0, floor.BorderB[Center]);
+    }
+
+    [Fact]
+    public void blocked_neighbour_counts_as_the_wall_family_open_set()
+    {
+        LoadFakeRegistry();
+        (DungeonFloor floor, int[] familyOf) = OpenFloor();
+        floor.Blocked[1 * Size + 2] = true; // rock north of the centre
+        familyOf[1 * Size + 2] = -1;
+        BorderAutotile.Paint(floor, familyOf, ["low", "high"], "rock");
+        Assert.Equal((ushort)31, floor.BorderA[Center]); // "rock->OPEN" edge "n"
+        Assert.Equal((ushort)0, floor.BorderB[Center]);
+    }
+
+    [Fact]
+    public void families_stack_by_descending_z_order()
+    {
+        LoadFakeRegistry();
+        (DungeonFloor floor, int[] familyOf) = OpenFloor();
+        familyOf[1 * Size + 2] = 1;         // "high" to the N
+        floor.Blocked[3 * Size + 2] = true; // "rock" to the S (z-order 9000 wins slot A)
+        familyOf[3 * Size + 2] = -1;
+        BorderAutotile.Paint(floor, familyOf, ["low", "high"], "rock");
+        Assert.Equal((ushort)33, floor.BorderA[Center]); // rock "s" first
+        Assert.Equal((ushort)11, floor.BorderB[Center]); // then high "n"
+    }
+
+    private static BiomeDef BorderBiome() =>
+        Biomes.Cave with { WallSet = null, WallFamily = "rock", GroundFamilies = ["low", "high"] };
+
+    private static DungeonFloor Generate(long seed, BiomeDef biome)
+    {
+        Rng rng = new Rng((ulong)seed);
+        return DungeonGenerator.Generate(rng, 0, isBossFloor: false, biome);
+    }
+
+    [Theory]
+    [InlineData(1L)]
+    [InlineData(42L)]
+    public void border_layers_are_deterministic(long seed)
+    {
+        LoadFakeRegistry();
+        DungeonFloor a = Generate(seed, BorderBiome());
+        DungeonFloor b = Generate(seed, BorderBiome());
+        Assert.Equal(a.BorderA, b.BorderA);
+        Assert.Equal(a.BorderB, b.BorderB);
+        Assert.Contains(a.BorderA, id => id != 0); // seams and rock feet must actually paint
+    }
+
+    [Fact]
+    public void legacy_biome_leaves_border_layers_empty()
+    {
+        LoadFakeRegistry();
+        DungeonFloor floor = Generate(42L,
+            Biomes.Cave with { WallSet = null, WallFamily = "", GroundFamilies = null });
+        Assert.All(floor.BorderA, id => Assert.Equal((ushort)0, id));
+        Assert.All(floor.BorderB, id => Assert.Equal((ushort)0, id));
     }
 }

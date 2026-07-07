@@ -452,7 +452,11 @@ public const double GroundPrimaryFamilyBias = 0.55; // chance a patch uses famil
 
 ---
 
-### Task 8: Camada de border (2 slots) + passada de borders
+### [x] Task 8: Camada de border (2 slots) + passada de borders
+
+Resumo: `BorderAutotile` (novo, espelha o WallAutotile) resolve os 2 slots por célula a partir do
+`familyOf` da Task 7 — família vizinha de zOrder maior borda por cima, bloqueado conta como wall
+family via `->OPEN`; passada 100% rng-free, prefab rect zerado no StampVisuals, MapDto expõe os arrays.
 
 **Model · Effort:** Fable 5 · high
 
@@ -463,8 +467,8 @@ public const double GroundPrimaryFamilyBias = 0.55; // chance a patch uses famil
 **Interfaces:**
 - Produces: `DungeonFloor` ganha `public required ushort[] BorderA; public required ushort[] BorderB;` (0 = none). `MapDto` ganha `ushort[] BorderA, ushort[] BorderB` (após `Decor`). Task 10 (renderer) e Task 11 (preview) consomem.
 
-- [ ] **Step 1: Testes que falham:** com 2 famílias fake com border set `"a->b"` completo (12 edges): (a) célula de família A com vizinho N de família B → `BorderA` = item do edge `"n"`; (b) A com vizinhos N e W de B → edge `"cnw"` (canto côncavo, 1 item só); (c) A com vizinho N de B e diagonal SE de B → 2 slots preenchidos (`"n"` + `"dse"`); (d) célula interna (vizinhança toda A) → 0/0; (e) determinismo (mesmo seed → mesmos arrays); (f) mapa legado (sem famílias) → arrays zerados.
-- [ ] **Step 2: Implementar a resolução de edges.** Nova passada no fim do `PaintTiles` (depois de decor), usando o `familyOf` da Task 7. Para cada célula aberta de família A (fora de sala boss e fora de rect de prefab): para cada família B ≠ A presente na vizinhança-8 **com zOrder maior que A** (o terreno "de cima" borda sobre o de baixo — regra RME) e com `Borders(B, A) ?? Borders(B, "none")` não-nulo... **atenção à direção**: no RME o brush B de zOrder maior desenha o SEU border (outer) sobre o tile do A. Ou seja: célula de A recebe pieces do set de B, com edges relativos a ONDE está o B:
+- [x] **Step 1: Testes que falham:** com 2 famílias fake com border set `"a->b"` completo (12 edges): (a) célula de família A com vizinho N de família B → `BorderA` = item do edge `"n"`; (b) A com vizinhos N e W de B → edge `"cnw"` (canto côncavo, 1 item só); (c) A com vizinho N de B e diagonal SE de B → 2 slots preenchidos (`"n"` + `"dse"`); (d) célula interna (vizinhança toda A) → 0/0; (e) determinismo (mesmo seed → mesmos arrays); (f) mapa legado (sem famílias) → arrays zerados.
+- [x] **Step 2: Implementar a resolução de edges.** Nova passada no fim do `PaintTiles` (depois de decor), usando o `familyOf` da Task 7. Para cada célula aberta de família A (fora de sala boss e fora de rect de prefab): para cada família B ≠ A presente na vizinhança-8 **com zOrder maior que A** (o terreno "de cima" borda sobre o de baixo — regra RME) e com `Borders(B, A) ?? Borders(B, "none")` não-nulo... **atenção à direção**: no RME o brush B de zOrder maior desenha o SEU border (outer) sobre o tile do A. Ou seja: célula de A recebe pieces do set de B, com edges relativos a ONDE está o B:
 
 ```csharp
 // pieces resolved for ONE neighbouring family B around an open cell (bit i set = B at that neighbour)
@@ -487,9 +491,9 @@ private static void ResolveBorderPieces(int maskOfB, BorderSet set, List<ushort>
 
 (`Add` ignora edge ausente no set.) Famílias B iteradas em ordem de zOrder desc, depois nome ordinal (determinismo); os 2 primeiros pieces vencem (`BorderA`, `BorderB`). Células bloqueadas de montanha adjacentes contam como família da montanha (o `"mountain->OPEN"` da Task 2 entra por aqui — é o pé-de-rocha). Nenhum draw de rng nesta passada (resolução pura).
 
-- [ ] **Step 3: `StampVisuals` zera borders** no rect do prefab (aberto e bloqueado): `floor.BorderA[fi] = 0; floor.BorderB[fi] = 0;` — crops autorais carregam as próprias bordas como decor.
-- [ ] **Step 4: `MapDto.FromFloor`** inclui os 2 arrays. `GenerateTrainingRoom` e `Generate` inicializam os arrays (required).
-- [ ] **Step 5: Testes passam + build + commit** (`feat(engine): 2-slot ground border layer from RME border sets`)
+- [x] **Step 3: `StampVisuals` zera borders** no rect do prefab (aberto e bloqueado): `floor.BorderA[fi] = 0; floor.BorderB[fi] = 0;` — crops autorais carregam as próprias bordas como decor.
+- [x] **Step 4: `MapDto.FromFloor`** inclui os 2 arrays. `GenerateTrainingRoom` e `Generate` inicializam os arrays (required).
+- [x] **Step 5: Testes passam + build + commit** (`feat(engine): 2-slot ground border layer from RME border sets`)
 
 ---
 

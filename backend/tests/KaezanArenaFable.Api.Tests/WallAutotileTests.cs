@@ -13,6 +13,7 @@ public class WallAutotileTests
         {
             Index = 0, W = w, H = h,
             Ground = new ushort[w * h], Wall = new ushort[w * h], Decor = new ushort[w * h],
+            BorderA = new ushort[w * h], BorderB = new ushort[w * h],
             Blocked = new bool[w * h], Rooms = []
         };
         for (var y = 0; y < h; y++)

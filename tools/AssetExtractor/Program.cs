@@ -76,7 +76,8 @@ internal static class Program
 
         if (dumpFlagsPath is not null)
         {
-            DumpFlags(appearances.Object, dumpFlagsPath);
+            SheetCache flagSheets = new SheetCache(thingsDir, catalog);
+            DumpFlags(appearances.Object, dumpFlagsPath, flagSheets);
             return 0;
         }
 
@@ -732,17 +733,20 @@ internal static class Program
         return flags;
     }
 
-    private static void DumpFlags(IEnumerable<Appearance> objects, string outPath)
+    private static void DumpFlags(IEnumerable<Appearance> objects, string outPath, SheetCache sheets)
     {
         JsonObject root = new JsonObject();
         foreach (Appearance app in objects.OrderBy(a => a.Id))
         {
+            (int Width, int Height) size = TileSize(app, sheets);
             JsonObject entry = new JsonObject
             {
                 ["ground"] = app.Flags?.Bank is not null,
                 ["unpass"] = app.Flags?.Unpass == true,
                 ["top"] = app.Flags?.Top == true,
-                ["clip"] = app.Flags?.Clip == true
+                ["clip"] = app.Flags?.Clip == true,
+                ["w"] = size.Width,
+                ["h"] = size.Height
             };
             root[app.Id.ToString()] = entry;
         }
@@ -753,6 +757,23 @@ internal static class Program
 
         File.WriteAllText(outPath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = false }));
         Console.WriteLine($"appearance flags dumped: {root.Count} → {outPath}");
+    }
+
+    private static (int Width, int Height) TileSize(Appearance app, SheetCache sheets)
+    {
+        int maxWidth = 32;
+        int maxHeight = 32;
+        foreach (FrameGroup frameGroup in app.FrameGroup)
+        {
+            foreach (uint spriteId in frameGroup.SpriteInfo.SpriteId)
+            {
+                (Image<Rgba32> _, int width, int height, int _, int _) = sheets.Locate((int)spriteId);
+                maxWidth = Math.Max(maxWidth, width);
+                maxHeight = Math.Max(maxHeight, height);
+            }
+        }
+
+        return (Math.Max(1, (maxWidth + 31) / 32), Math.Max(1, (maxHeight + 31) / 32));
     }
 
     private sealed class StaticItemSource

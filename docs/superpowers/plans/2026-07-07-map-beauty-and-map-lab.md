@@ -307,7 +307,9 @@ git commit -m "feat(tools): tileset converter CLI gated by real-map prediction t
 
 ---
 
-### Task 4: Extração de sprites + `tilesets.json` commitado + width/height no flags
+### [x] Task 4: Extração de sprites + `tilesets.json` commitado + width/height no flags
+
+Resumo: `--dump-flags` agora emite `w`/`h`, os sprites faltantes do tileset RME foram extraídos por grupos semânticos e `Content/tilesets.json` foi gerado com 11 famílias, 11 border sets e wallsets 47-slot.
 
 **Model · Effort:** Sonnet 5 · low
 
@@ -315,7 +317,7 @@ git commit -m "feat(tools): tileset converter CLI gated by real-map prediction t
 - Modify: `tools/AssetExtractor/Program.cs` (dump de flags ganha `w`/`h`), `tools/AssetExtractor/content-config.json`
 - Create (gerado): `backend/src/KaezanArenaFable.Api/Content/tilesets.json`, sprites novos em `frontend/src/assets/`
 
-- [ ] **Step 1: width/height no `--dump-flags`.** No `DumpFlags` (Program.cs, adicionado na fatia authored maps), acrescentar ao entry de cada appearance as dimensões do sprite em tiles (o extractor já conhece o tamanho ao renderizar — reusar a mesma fonte, ex.: `SpriteInfo` do frame group; conferir o nome real no código):
+- [x] **Step 1: width/height no `--dump-flags`.** No `DumpFlags` (Program.cs, adicionado na fatia authored maps), acrescentar ao entry de cada appearance as dimensões do sprite em tiles (o extractor já conhece o tamanho ao renderizar — reusar a mesma fonte, ex.: `SpriteInfo` do frame group; conferir o nome real no código):
 
 ```csharp
 entry["w"] = spriteTilesWide;  // 1 for 32px, 2 for 64px
@@ -324,9 +326,9 @@ entry["h"] = spriteTilesHigh;
 
 Re-rodar: `dotnet run --project tools/AssetExtractor -- --dump-flags tools/map-importer/data/appearance-flags.json`
 
-- [ ] **Step 2: Grupos semantic novos.** Copiar os ids do gap report da Task 3 para `content-config.json` em grupos `"wallset.<familia>"` e `"border.<par>"` (padrão dos grupos existentes). Re-rodar o extractor (fluxo do README raiz) e conferir os ids no manifest do frontend.
-- [ ] **Step 3: `node convert-tilesets.mjs`** (sem `--report-only`) → escreve o `tilesets.json`. Conferir o arquivo (famílias esperadas, wall sets com 47 chaves).
-- [ ] **Step 4: Commit**
+- [x] **Step 2: Grupos semantic novos.** Copiar os ids do gap report da Task 3 para `content-config.json` em grupos `"wallset.<familia>"` e `"border.<par>"` (padrão dos grupos existentes). Re-rodar o extractor (fluxo do README raiz) e conferir os ids no manifest do frontend.
+- [x] **Step 3: `node convert-tilesets.mjs`** (sem `--report-only`) → escreve o `tilesets.json`. Conferir o arquivo (famílias esperadas, wall sets com 47 chaves).
+- [x] **Step 4: Commit**
 
 ```powershell
 git add tools/AssetExtractor/Program.cs tools/AssetExtractor/content-config.json tools/map-importer/data/appearance-flags.json backend/src/KaezanArenaFable.Api/Content/tilesets.json frontend/src/assets

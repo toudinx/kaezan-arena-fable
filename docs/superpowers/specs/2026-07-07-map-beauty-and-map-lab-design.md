@@ -86,11 +86,14 @@ RME materials XML (externo)     otservbr.otbm (externo, validação)
 
 ```json
 {
-  "wallSets":   { "mountain-gray": { "0": 1116, "1": 883, "...": 0 } },
-  "borderSets": { "grass->dirt":   { "1": 4644, "4": 4645, "...": 0 } },
-  "families":   { "grass": [4526, 4527], "mountain-gray": [883] }
+  "families":   { "grass": { "kind": "ground", "items": [4515, 4516], "zOrder": 3200 } },
+  "borderSets": { "grass->none": { "n": 4445, "e": 4446, "cnw": 4449, "dnw": 4453 } },
+  "wallSets":   { "mountain": { "0": 1128, "16": 874, "20": 879 } }
 }
 ```
+
+(`borderSets` mantém os 12 edge names do RME — mais legível/testável; `wallSets` usa o mask
+blob canônico do `WallAutotile`. Refinado durante o writing-plans.)
 
 - **Validação (node --test):** border sets com as 12 posições traduzidas; wall sets com ≥40/47
   casos por família usada; **teste de predição**: re-resolver células de trechos conhecidos do

@@ -63,7 +63,7 @@ public sealed class RunFactory(
 
         var equipmentStats = EquipmentStatAggregator.Aggregate(equipment, items.All);
         // LM-08: biome resolved from ContentStore (editable in admin); falls back to canonical defaults.
-        var biome = content.Biome(tierDef.Tier) ?? Biomes.ForTier(tierDef.Tier);
+        BiomeDef biome = Biomes.Resolve(content.Biome(tierDef.Tier) ?? Biomes.ForTier(tierDef.Tier));
         var creationStart = System.Diagnostics.Stopwatch.GetTimestamp();
         var world = new GameWorld(
             runSeed, tierDef, waifu, ascension, data, monsters, bestiary, equipmentStats, kaeliLoadout, items,

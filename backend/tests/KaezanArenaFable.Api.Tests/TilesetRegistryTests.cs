@@ -3,6 +3,7 @@ using KaezanArenaFable.Api.Domain;
 
 namespace KaezanArenaFable.Api.Tests;
 
+[Collection("Tileset registry")]
 public class TilesetRegistryTests
 {
     private static string WriteTilesets(string json)

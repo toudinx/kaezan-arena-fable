@@ -1,3 +1,5 @@
+using KaezanArenaFable.Api.Content;
+
 namespace KaezanArenaFable.Api.Domain;
 
 /// <summary>
@@ -21,13 +23,17 @@ namespace KaezanArenaFable.Api.Domain;
 /// <param name="AccentChance">Density of accent pools per room (clustered).</param>
 /// <param name="Atmosphere">G-07: per-stratum color-grade/light/fog/particle palette. Purely cosmetic
 /// data the frontend renders as a post-process; the engine never reads it.</param>
+/// <param name="WallFamily">RME tilesets.json wall family. Empty keeps the legacy 4-piece fallback.</param>
+/// <param name="GroundFamilies">RME tilesets.json ground families. Null or empty keeps the legacy ground palette.</param>
 public sealed record BiomeDef(
     ushort[] Ground, ushort[] BossGround, ushort Bedrock,
     ushort WallH, ushort WallV, ushort WallPole, ushort WallCorner,
     ushort[] Decor, double DecorChance,
     ushort[] Accent, double AccentChance,
     BiomeAtmosphere Atmosphere,
-    WallTileSet? WallSet = null);
+    WallTileSet? WallSet = null,
+    string WallFamily = "",
+    string[]? GroundFamilies = null);
 
 /// <summary>Authored 47-case blob wall set (Wave 4 tilesets), keyed by canonical blob mask.
 /// Missing slots fall back to the biome's 4-piece family via <see cref="Engine.WallAutotile"/>.</summary>
@@ -98,27 +104,61 @@ public static class Biomes
     /// <summary>Tier 1 — Echoing Den: brown dirt cavern with boulders.</summary>
     public static readonly BiomeDef Cave = new(
         CaveGround, StoneGround, DirtBedrock, DirtH, DirtV, DirtPole, DirtCorner,
-        CaveRocks, 0.025, [], 0, CaveAtmo);
+        CaveRocks, 0.025, [], 0, CaveAtmo,
+        WallFamily: "mountain",
+        GroundFamilies: ["cave", "dirt"]);
 
     /// <summary>Tier 2 — Uruk Fort: grassy orc camp ringed by stone ruins.</summary>
     public static readonly BiomeDef Fort = new(
         GrassGround, StoneGround, StoneBedrock, StoneH, StoneV, StonePole, StoneCorner,
-        CaveRocks, 0.02, [], 0, FortAtmo);
+        CaveRocks, 0.02, [], 0, FortAtmo,
+        WallFamily: "mountain",
+        GroundFamilies: ["grass", "dirt"]);
 
     /// <summary>Tier 3 — Shadowed Crypt: mossy stone crypt strewn with bones.</summary>
     public static readonly BiomeDef Crypt = new(
         MossStone, StoneGround, StoneBedrock, StoneH, StoneV, StonePole, StoneCorner,
-        Bones, 0.03, [], 0, CryptAtmo);
+        Bones, 0.03, [], 0, CryptAtmo,
+        WallFamily: "mossy wall mountain",
+        GroundFamilies: ["mossy floor", "rocky ground"]);
 
     /// <summary>Tier 4 — Scaled Lair: dark stone lair with decorative lava pools.</summary>
     public static readonly BiomeDef Lair = new(
         DarkStone, StoneGround, StoneBedrock, StoneH, StoneV, StonePole, StoneCorner,
-        CaveRocks, 0.02, Lava, 0.05, LairAtmo);
+        CaveRocks, 0.02, Lava, 0.05, LairAtmo,
+        WallFamily: "crystal wall",
+        GroundFamilies: ["dark dirt", "rocky ground"]);
 
     /// <summary>Tier 5 — Echoing Abyss: stone abyss flooded with lava and bone.</summary>
     public static readonly BiomeDef Abyss = new(
         DarkStone, StoneGround, StoneBedrock, StoneH, StoneV, StonePole, StoneCorner,
-        Bones, 0.02, Lava, 0.055, AbyssAtmo);
+        Bones, 0.02, Lava, 0.055, AbyssAtmo,
+        WallFamily: "crystal wall",
+        GroundFamilies: ["dark dirt", "rock soil"]);
+
+    // Map Beauty v2 named-family pairings from Content/tilesets.json:
+    // T1 mountain + cave/dirt, T2 mountain + grass/dirt, T3 mossy wall mountain + mossy floor/rocky ground,
+    // T4 crystal wall + dark dirt/rocky ground, T5 crystal wall + dark dirt/rock soil.
+    public static BiomeDef Resolve(BiomeDef def)
+    {
+        if (string.IsNullOrWhiteSpace(def.WallFamily))
+        {
+            return def;
+        }
+
+        if (!TilesetRegistry.HasFamily(def.WallFamily))
+        {
+            throw new InvalidDataException($"unknown biome wall family '{def.WallFamily}'");
+        }
+
+        WallTileSet? wallSet = TilesetRegistry.WallSet(def.WallFamily);
+        if (wallSet is null)
+        {
+            throw new InvalidDataException($"biome wall family '{def.WallFamily}' has no wall set");
+        }
+
+        return def with { WallSet = wallSet };
+    }
 
     public static BiomeDef ForTier(int tier) => tier switch
     {

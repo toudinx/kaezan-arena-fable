@@ -387,7 +387,9 @@ E no `.csproj`, garantir copy: `<Content Include="Content\tilesets.json" CopyToO
 
 ---
 
-### Task 6: `BiomeDef` v2 — famílias nomeadas + reseed do ContentStore
+### [x] Task 6: `BiomeDef` v2 — famílias nomeadas + reseed do ContentStore
+
+Resumo: `BiomeDef` ganhou `WallFamily`/`GroundFamilies`, defaults apontam para famílias reais do `tilesets.json`, `RunFactory` resolve wall sets no início da run e biomas antigos em disco forçam reseed.
 
 **Model · Effort:** Sonnet 5 · medium
 
@@ -412,11 +414,11 @@ public sealed record BiomeDef(
 
 E um resolver estático: `Biomes.Resolve(BiomeDef def)` → devolve o `def` com `WallSet` preenchido de `TilesetRegistry.WallSet(def.WallFamily)` quando `WallFamily != ""` (chamado pelo `RunFactory` e pelo preview — nunca no tick).
 
-- [ ] **Step 1: Testes que falham:** (a) `Resolve` com `WallFamily` válida preenche `WallSet`; (b) `WallFamily` inexistente → `InvalidDataException`; (c) `Resolve` com `WallFamily == ""` devolve o def intacto (legado byte-idêntico).
-- [ ] **Step 2: Implementar** os campos + `Resolve`. Atualizar os 5 defaults do `Biomes` com as famílias mineradas (ex.: Cave → `WallFamily: "mountain"`, `GroundFamilies: ["cave", "earth"]`; escolher pelo `tilesets.json` real — anotar os pares escolhidos em comentário). `Ground` legado permanece preenchido (fallback e compat de serialização).
-- [ ] **Step 3: Reseed do ContentStore.** Em `ShouldSeedBiomes`, adicionar: `|| biomes.Any(b => string.IsNullOrEmpty(b.Def.WallFamily))` — um `biomes.json` antigo em disco força reseed dos defaults novos (edições antigas de admin são perdidas: aceitável, documentado no commit).
-- [ ] **Step 4: `RunFactory.cs:66`** passa a resolver: `BiomeDef biome = Biomes.Resolve(content.Biome(tierDef.Tier) ?? Biomes.ForTier(tierDef.Tier));`
-- [ ] **Step 5: Testes + build + commit** (`feat(engine): BiomeDef v2 with named tile families`)
+- [x] **Step 1: Testes que falham:** (a) `Resolve` com `WallFamily` válida preenche `WallSet`; (b) `WallFamily` inexistente → `InvalidDataException`; (c) `Resolve` com `WallFamily == ""` devolve o def intacto (legado byte-idêntico).
+- [x] **Step 2: Implementar** os campos + `Resolve`. Atualizar os 5 defaults do `Biomes` com as famílias mineradas (ex.: Cave → `WallFamily: "mountain"`, `GroundFamilies: ["cave", "earth"]`; escolher pelo `tilesets.json` real — anotar os pares escolhidos em comentário). `Ground` legado permanece preenchido (fallback e compat de serialização).
+- [x] **Step 3: Reseed do ContentStore.** Em `ShouldSeedBiomes`, adicionar: `|| biomes.Any(b => string.IsNullOrEmpty(b.Def.WallFamily))` — um `biomes.json` antigo em disco força reseed dos defaults novos (edições antigas de admin são perdidas: aceitável, documentado no commit).
+- [x] **Step 4: `RunFactory.cs:66`** passa a resolver: `BiomeDef biome = Biomes.Resolve(content.Biome(tierDef.Tier) ?? Biomes.ForTier(tierDef.Tier));`
+- [x] **Step 5: Testes + build + commit** (`feat(engine): BiomeDef v2 with named tile families`)
 
 ---
 

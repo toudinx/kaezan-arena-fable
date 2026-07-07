@@ -112,7 +112,8 @@ public sealed class ContentStore
     /// <summary>Re-seed when the file does not contain exactly the 5 strata (1–5) — defaults are canonical.</summary>
     private static bool ShouldSeedBiomes(IReadOnlyList<BiomeRow> biomes) =>
         biomes.Count != KaezanContentSeed.Biomes.Count
-        || biomes.Select(b => b.Tier).OrderBy(t => t).SequenceEqual([1, 2, 3, 4, 5]) == false;
+        || biomes.Select(b => b.Tier).OrderBy(t => t).SequenceEqual([1, 2, 3, 4, 5]) == false
+        || biomes.Any(b => string.IsNullOrEmpty(b.Def.WallFamily));
 
     private List<MonsterDefinition> LoadMonsters()
     {

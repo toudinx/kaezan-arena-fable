@@ -74,6 +74,10 @@ internal static class Program
         var monsters = new MonsterRegistry(data, content);
         var items = new ItemRegistry(data, content);
         var kaelis = new KaeliRegistry(content);
+        // Task 9: mirror the backend Program — the generator needs the named tile families
+        // (tilesets.json) and the authored prefabs, or dungeon generation throws / diverges.
+        TilesetRegistry.LoadFrom(Path.Combine(root, "Content", "tilesets.json"));
+        PrefabRegistry.LoadFrom(Path.Combine(root, "Content", "prefabs"), monsters.Has);
 
         var tiers = content.Tiers.OrderBy(t => t.Tier).ToList();
         if (tierFilter is { } tf) tiers = tiers.Where(t => t.Tier == tf).ToList();
@@ -85,11 +89,14 @@ internal static class Program
         // Recommended gear by tier; expensive to assemble, cached once per tier.
         var gearByTier = tiers.ToDictionary(t => t.Tier, t => RecommendedGear.ForTier(t.Tier));
 
+        // Task 9: biome resolved as RunFactory does (ContentStore row or canonical default, with
+        // the wall set attached), so sweep-recorded replays match what live runs generate.
         GameWorld Build(WaifuDef waifu, DungeonTier tier, long seed) => new(
             seed, tier, waifu, ascension: 0, data, monsters,
             bestiaryKills: new Dictionary<string, long>(),
             equipmentStats: gearByTier[tier.Tier],
-            loadout: null, items: items, helperProfile: null);
+            loadout: null, items: items, helperProfile: null,
+            biome: Biomes.Resolve(content.Biome(tier.Tier) ?? Biomes.ForTier(tier.Tier)));
 
         // ---- determinism canary: same seed 2x -> identical kill ticks ----
         Console.WriteLine();

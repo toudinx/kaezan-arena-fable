@@ -37,6 +37,7 @@ WebApplication app = builder.Build();
 
 MonsterRegistry monsterRegistry = app.Services.GetRequiredService<MonsterRegistry>();
 TilesetRegistry.LoadFrom(Path.Combine(AppContext.BaseDirectory, "Content", "tilesets.json"));
+Biomes.ValidateDefaults();
 PrefabRegistry.LoadFrom(
     Path.Combine(AppContext.BaseDirectory, "Content", "prefabs"),
     monsterRegistry.Has);

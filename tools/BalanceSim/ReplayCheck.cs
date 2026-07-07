@@ -24,6 +24,10 @@ internal static class ReplayCheck
         var monsters = new MonsterRegistry(data, content);
         var items = new ItemRegistry(data, content);
         var kaelis = new KaeliRegistry(content);
+        // Task 9: mirror the backend Program — re-simulation must generate floors with the same
+        // named tile families (tilesets.json) and authored prefabs the recording run used.
+        TilesetRegistry.LoadFrom(Path.Combine(root, "Content", "tilesets.json"));
+        PrefabRegistry.LoadFrom(Path.Combine(root, "Content", "prefabs"), monsters.Has);
 
         var files = Directory.Exists(target)
             ? Directory.GetFiles(target, "*" + ReplayIo.Extension).Order(StringComparer.Ordinal).ToArray()

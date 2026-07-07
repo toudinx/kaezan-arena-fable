@@ -84,3 +84,19 @@ if (missingSprites.length > 0) {
 const outPath = isAbsolute(config.tilesetsOut) ? config.tilesetsOut : resolve(process.cwd(), config.tilesetsOut);
 writeFileSync(outPath, JSON.stringify(output, null, 2) + "\n");
 console.log(`\nwrote ${outPath}`);
+
+// Task 9 (map beauty): multi-tile appearance extract for the backend decor guard. Any id whose
+// sprite spans more than 1x1 tiles gets clipped by the per-cell renderer, so biome Decor/Accent
+// palettes must reject them (Biomes.ValidateDefaults). Only the oversized ids are shipped — the
+// full flags dump is 3MB and lives outside the backend.
+const flagsPath = isAbsolute(config.flags) ? config.flags : resolve(process.cwd(), config.flags);
+const flags = JSON.parse(readFileSync(flagsPath, "utf8"));
+const multiTile = Object.entries(flags)
+  .filter(([, f]) => f.w > 1 || f.h > 1)
+  .map(([id]) => Number(id))
+  .sort((a, b) => a - b);
+const lines = [];
+for (let i = 0; i < multiTile.length; i += 20) lines.push("    " + multiTile.slice(i, i + 20).join(", "));
+const sizesPath = isAbsolute(config.sizesOut) ? config.sizesOut : resolve(process.cwd(), config.sizesOut);
+writeFileSync(sizesPath, `{\n  "multiTile": [\n${lines.join(",\n")}\n  ]\n}\n`);
+console.log(`wrote ${sizesPath} (${multiTile.length} multi-tile ids)`);

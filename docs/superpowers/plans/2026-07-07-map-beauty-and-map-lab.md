@@ -497,7 +497,14 @@ private static void ResolveBorderPieces(int maskOfB, BorderSet set, List<ushort>
 
 ---
 
-### Task 9: Wall sets ligados + guarda de decor multi-tile + REBASELINE
+### [x] Task 9: Wall sets ligados + guarda de decor multi-tile + REBASELINE
+
+Resumo: guarda de decor 1×1 via `Content/appearance-sizes.json` (extrato do conversor) +
+`Biomes.ValidateDefaults()` no startup — pegou os ossos 2×2 (1047/1048/958 → 3114/3115 do brush
+"bones" do RME); Golden espelha o RunFactory (registry + `Biomes.Resolve`) e hasheia
+`BorderA`/`BorderB`; sweep e replay-check do BalanceSim ganharam o mesmo wiring (sem ele a
+geração lançava com famílias nomeadas). Rebaseline deliberado: 70/70 floors novos GREEN,
+bateria regravada com 1732 replays — replay-check 1732/1732 bit-perfect.
 
 **Model · Effort:** Fable 5 · medium
 
@@ -505,10 +512,10 @@ private static void ResolveBorderPieces(int maskOfB, BorderSet set, List<ushort>
 - Modify: `backend/src/KaezanArenaFable.Api/Content/TilesetRegistry.cs` (guarda de decor), `backend/src/KaezanArenaFable.Api/Domain/Biomes.cs` (se ajuste de família), `tools/BalanceSim/Golden.cs`, `docs/balance/golden_dungeon.txt`
 - Test: `backend/tests/KaezanArenaFable.Api.Tests/TilesetRegistryTests.cs`
 
-- [ ] **Step 1: Guarda de decor >1×1.** O `appearance-flags.json` agora tem `w`/`h` (Task 4). Copiá-lo (ou um extrato `Content/appearance-sizes.json` gerado pelo conversor) para o backend e, no `TilesetRegistry.LoadFrom` + num check estático `Biomes.ValidateDefaults()` chamado no `Program.cs`: toda palette de `Decor`/`Accent` dos defaults com id de `w>1||h>1` → `InvalidDataException` listando os ids. Corrigir as palettes dos defaults removendo os ids grandes (as pedras 64px atuais de `CaveRocks` — conferir os tamanhos reais no flags e substituir por variantes 1×1 da mesma família se existirem).
-- [ ] **Step 2: Golden.** `Golden.Compute` já carrega prefabs; adicionar `TilesetRegistry.LoadFrom(<repo>/backend/src/KaezanArenaFable.Api/Content/tilesets.json)` e resolver o biome com `Biomes.Resolve(Biomes.ForTier(tier))` (espelha o RunFactory). Incluir `BorderA`/`BorderB` na string hasheada do floor.
-- [ ] **Step 3: Testes + build completos:** `dotnet test backend/tests/KaezanArenaFable.Api.Tests` → tudo PASS.
-- [ ] **Step 4: REBASELINE deliberado (o único da fatia):**
+- [x] **Step 1: Guarda de decor >1×1.** O `appearance-flags.json` agora tem `w`/`h` (Task 4). Copiá-lo (ou um extrato `Content/appearance-sizes.json` gerado pelo conversor) para o backend e, no `TilesetRegistry.LoadFrom` + num check estático `Biomes.ValidateDefaults()` chamado no `Program.cs`: toda palette de `Decor`/`Accent` dos defaults com id de `w>1||h>1` → `InvalidDataException` listando os ids. Corrigir as palettes dos defaults removendo os ids grandes (as pedras 64px atuais de `CaveRocks` — conferir os tamanhos reais no flags e substituir por variantes 1×1 da mesma família se existirem).
+- [x] **Step 2: Golden.** `Golden.Compute` já carrega prefabs; adicionar `TilesetRegistry.LoadFrom(<repo>/backend/src/KaezanArenaFable.Api/Content/tilesets.json)` e resolver o biome com `Biomes.Resolve(Biomes.ForTier(tier))` (espelha o RunFactory). Incluir `BorderA`/`BorderB` na string hasheada do floor.
+- [x] **Step 3: Testes + build completos:** `dotnet test backend/tests/KaezanArenaFable.Api.Tests` → tudo PASS.
+- [x] **Step 4: REBASELINE deliberado (o único da fatia):**
 
 ```powershell
 dotnet run --project tools/BalanceSim -- --golden
@@ -523,7 +530,7 @@ dotnet run --project tools/BalanceSim -- --replay-check backend/src/KaezanArenaF
 
 Esperado: 0 divergências.
 
-- [ ] **Step 5: Commit** (`feat(engine): wire mined wall sets + ban multi-tile decor (deliberate golden rebaseline)` — inclui `golden_dungeon.txt` e replays novos)
+- [x] **Step 5: Commit** (`feat(engine): wire mined wall sets + ban multi-tile decor (deliberate golden rebaseline)` — inclui `golden_dungeon.txt` e replays novos)
 
 ---
 

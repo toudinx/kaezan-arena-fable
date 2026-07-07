@@ -59,7 +59,7 @@ public sealed record BiomeAtmosphere(
 /// <item>wall.stone 1112–1116 are 64px alpha pieces: 1112 vertical body, 1113 horizontal body,
 /// 1114 rubble pole, 1116 a solid corner (the 1116/1118/1120/1122 ids share one mask, so we
 /// use 1116 — it fills the corner 100%, so corners read solid even if not perfectly oriented).</item>
-/// <item>1047/1048/958 are bone props (crypt); 727–730 are lava tiles (lair/abyss accent);
+/// <item>3114/3115 are 1x1 bone props (crypt/abyss); 727–730 are lava tiles (lair/abyss accent);
 /// 499–504 are cracked/mossy stone floors (crypt); 307–315 grass (orc fort).</item>
 /// </list>
 /// </summary>
@@ -72,7 +72,9 @@ public static class Biomes
     private static readonly ushort[] GrassGround = [307, 308, 309, 310, 311, 312, 313, 314, 315];
 
     private static readonly ushort[] CaveRocks = [1772, 1773, 1774, 1775];
-    private static readonly ushort[] Bones = [1047, 1048, 958];
+    // Task 9: 1x1 bone props (RME "bones" doodad brush). The old 1047/1048/958 props are 2x2 and
+    // get clipped by the per-cell renderer — banned by ValidateDefaults.
+    private static readonly ushort[] Bones = [3114, 3115];
     private static readonly ushort[] Lava = [727, 728, 729, 730];
 
     // dirt walls (opaque) — pole/corner reuse a body tile since the family has no clean corner.
@@ -158,6 +160,41 @@ public static class Biomes
         }
 
         return def with { WallSet = wallSet };
+    }
+
+    /// <summary>
+    /// Task 9 startup guard: every default Decor/Accent id must be a 1x1 sprite. The per-cell
+    /// renderer draws decor at one cell, so a 2x2 prop (e.g. the old bone piles) gets clipped at
+    /// tile boundaries. Called from Program.cs right after <see cref="TilesetRegistry.LoadFrom"/>.
+    /// </summary>
+    public static void ValidateDefaults()
+    {
+        List<string> offenders = new List<string>();
+        foreach (BiomeRow row in AllDefaults())
+        {
+            foreach (ushort id in row.Def.Decor)
+            {
+                if (TilesetRegistry.IsMultiTile(id))
+                {
+                    offenders.Add($"tier {row.Tier} Decor id {id}");
+                }
+            }
+
+            foreach (ushort id in row.Def.Accent)
+            {
+                if (TilesetRegistry.IsMultiTile(id))
+                {
+                    offenders.Add($"tier {row.Tier} Accent id {id}");
+                }
+            }
+        }
+
+        if (offenders.Count > 0)
+        {
+            throw new InvalidDataException(
+                "biome default Decor/Accent palettes must use 1x1 sprites (multi-tile props are clipped by the renderer): "
+                + string.Join(", ", offenders));
+        }
     }
 
     public static BiomeDef ForTier(int tier) => tier switch

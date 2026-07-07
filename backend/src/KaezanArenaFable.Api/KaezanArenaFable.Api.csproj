@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <Content Update="Content\tilesets.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="Content\appearance-sizes.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Update="Content\prefabs\**\*.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Data\monsters.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

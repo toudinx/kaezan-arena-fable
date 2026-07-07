@@ -6,5 +6,6 @@
   "monstersJson": "../../backend/src/KaezanArenaFable.Api/Data/monsters.json",
   "manifest": "../../frontend/public/assets/tibia/manifest.json",
   "prefabsOut": "../../backend/src/KaezanArenaFable.Api/Content/prefabs",
-  "tilesetsOut": "../../backend/src/KaezanArenaFable.Api/Content/tilesets.json"
+  "tilesetsOut": "../../backend/src/KaezanArenaFable.Api/Content/tilesets.json",
+  "sizesOut": "../../backend/src/KaezanArenaFable.Api/Content/appearance-sizes.json"
 }

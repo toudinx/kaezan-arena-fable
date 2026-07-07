@@ -11,7 +11,7 @@ namespace BalanceSim;
 /// LM-01 — determinism safety net for the generator. For a FIXED list of seeds and tiers, it
 /// regenerates floors via <see cref="DungeonGenerator.Generate"/> and computes a stable SHA-256 hash
 /// per floor over everything that describes the layout: <c>Ground</c>, <c>Wall</c>, <c>Decor</c>,
-/// <c>Blocked</c>, the <c>Room{X,Y,W,H,Role}</c> sequence, <c>Entry</c>, <c>LadderDown</c>,
+/// <c>BorderA</c>/<c>BorderB</c>, <c>Blocked</c>, the <c>Room{X,Y,W,H,Role}</c> sequence, <c>Entry</c>, <c>LadderDown</c>,
 /// <c>Chests</c>, and <c>Sanctuaries</c>. It mirrors exactly what <see cref="GameWorld"/> does at run
 /// start (same seed -> <c>new Rng((ulong)seed)</c>, same biome, normal floor 0 + boss floor 1), so
 /// any future generator/RNG change that alters the map is caught here.
@@ -86,11 +86,14 @@ internal static class Golden
         PrefabRegistry.LoadFrom(
             Path.Combine(RepoRoot(), "backend", "src", "KaezanArenaFable.Api", "Content", "prefabs"),
             _ => true);
+        // Task 9: mirror RunFactory — the named tile families and wall sets come from tilesets.json.
+        TilesetRegistry.LoadFrom(
+            Path.Combine(RepoRoot(), "backend", "src", "KaezanArenaFable.Api", "Content", "tilesets.json"));
 
         var result = new SortedDictionary<string, string>(StringComparer.Ordinal);
         foreach (var tier in Tiers)
         {
-            var biome = Biomes.ForTier(tier);
+            BiomeDef biome = Biomes.Resolve(Biomes.ForTier(tier));
             var prefabs = PrefabRegistry.ForTier(tier);
             foreach (var seed in Seeds)
             {
@@ -125,6 +128,9 @@ internal static class Golden
             foreach (var v in f.Ground) w.Write(v);
             foreach (var v in f.Wall) w.Write(v);
             foreach (var v in f.Decor) w.Write(v);
+            // Task 9: the 2-slot ground border layer is part of the painted layout.
+            foreach (ushort v in f.BorderA) w.Write(v);
+            foreach (ushort v in f.BorderB) w.Write(v);
             foreach (var b in f.Blocked) w.Write(b);
 
             w.Write(f.Rooms.Count);
@@ -156,7 +162,7 @@ internal static class Golden
         var sb = new StringBuilder();
         sb.AppendLine("# golden_dungeon.txt — generator determinism baseline (LM-01).");
         sb.AppendLine("#");
-        sb.AppendLine("# Each line: tier<TAB>seed<TAB>floor<TAB>sha256. The hash covers Ground/Wall/Decor/Blocked,");
+        sb.AppendLine("# Each line: tier<TAB>seed<TAB>floor<TAB>sha256. The hash covers Ground/Wall/Decor/BorderA/BorderB/Blocked,");
         sb.AppendLine("# the Room{X,Y,W,H,Role}, Entry, LadderDown, Chests, and Sanctuaries sequence for each floor");
         sb.AppendLine("# (floor 0 = normal, floor 1 = boss), generated as GameWorld does at run start.");
         sb.AppendLine("#");

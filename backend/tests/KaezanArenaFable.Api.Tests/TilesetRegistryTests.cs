@@ -68,6 +68,55 @@ public class TilesetRegistryTests
     }
 
     [Fact]
+    public void multi_tile_ids_load_from_sibling_sizes_file()
+    {
+        string tilesetsPath = WriteTilesets(Valid);
+        string sizesPath = Path.Combine(Path.GetDirectoryName(tilesetsPath)!, "appearance-sizes.json");
+        File.WriteAllText(sizesPath, """{ "multiTile": [958, 1047] }""");
+
+        TilesetRegistry.LoadFrom(tilesetsPath);
+
+        Assert.True(TilesetRegistry.IsMultiTile(958));
+        Assert.True(TilesetRegistry.IsMultiTile(1047));
+        Assert.False(TilesetRegistry.IsMultiTile(351));
+    }
+
+    [Fact]
+    public void validate_defaults_rejects_multi_tile_decor()
+    {
+        string tilesetsPath = WriteTilesets(Valid);
+        string sizesPath = Path.Combine(Path.GetDirectoryName(tilesetsPath)!, "appearance-sizes.json");
+        // 1772 is in the Cave default Decor palette — flagging it as multi-tile must fail fast.
+        File.WriteAllText(sizesPath, """{ "multiTile": [1772] }""");
+        TilesetRegistry.LoadFrom(tilesetsPath);
+
+        InvalidDataException ex = Assert.Throws<InvalidDataException>(Biomes.ValidateDefaults);
+        Assert.Contains("1772", ex.Message);
+    }
+
+    [Fact]
+    public void validate_defaults_passes_with_single_tile_palettes()
+    {
+        string tilesetsPath = WriteTilesets(Valid);
+        string sizesPath = Path.Combine(Path.GetDirectoryName(tilesetsPath)!, "appearance-sizes.json");
+        // A multi-tile id no default palette uses — the guard must stay quiet.
+        File.WriteAllText(sizesPath, """{ "multiTile": [1047] }""");
+        TilesetRegistry.LoadFrom(tilesetsPath);
+
+        Biomes.ValidateDefaults();
+    }
+
+    [Fact]
+    public void validate_defaults_passes_with_the_shipped_content()
+    {
+        // The committed tilesets.json + appearance-sizes.json and the canonical biome defaults
+        // must stay compatible — this is the startup path of Program.cs.
+        TilesetRegistry.LoadFrom(Path.Combine(AppContext.BaseDirectory, "Content", "tilesets.json"));
+
+        Biomes.ValidateDefaults();
+    }
+
+    [Fact]
     public void wall_set_with_non_canonical_mask_fails_fast()
     {
         string broken = Valid.Replace("\"4\": 4815", "\"2\": 4815");

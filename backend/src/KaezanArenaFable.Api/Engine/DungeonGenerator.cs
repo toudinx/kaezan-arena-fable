@@ -1091,11 +1091,46 @@ public static class DungeonGenerator
 
     private static void PaintTiles(DungeonFloor floor, Rng rng, BiomeDef biome)
     {
+        PaintGround(floor, rng, biome);
+
+        // Pass 2: ambient decor/accent, clustered inside rooms only (corridors stay clean). Accent (e.g.
+        // lava) pools first so it reads as terrain, then ambient props; both on the non-blocking Decor
+        // layer, skipping POI tiles so chests/altars/ladder stay legible.
+        var reserved = ReservedCells(floor);
+        foreach (var room in floor.Rooms)
+        {
+            PaintClusters(floor, room, rng, biome.Accent, biome.AccentChance, GameConfig.AccentClusterRadius, reserved);
+            PaintClusters(floor, room, rng, biome.Decor, biome.DecorChance, GameConfig.DecorClusterRadius, reserved);
+        }
+    }
+
+    /// <summary>
+    /// Pass 1: ground + walls. A blocked cell that borders walkable area is an edge wall (oriented
+    /// sprite via WallAutotile); a fully-enclosed blocked cell is bedrock: opaque rock + the solid
+    /// corner piece, so the map's negative reads as a massif instead of a hard-edged black void.
+    /// With named <see cref="BiomeDef.GroundFamilies"/> the open floor is painted in coherent
+    /// jittered-Voronoi patches instead of per-cell noise. Returns the per-cell family index
+    /// (-1 = blocked or boss hall; null = legacy palette) for the border pass to consume.
+    /// The legacy path must not consume any extra rng draw (replay/golden compatibility).
+    /// </summary>
+    private static int[]? PaintGround(DungeonFloor floor, Rng rng, BiomeDef biome)
+    {
         var size = floor.W;
 
-        // Pass 1: ground + walls. A blocked cell that borders walkable area is an edge wall (oriented
-        // sprite via WallAutotile); a fully-enclosed blocked cell is bedrock: opaque rock + the solid
-        // corner piece, so the map's negative reads as a massif instead of a hard-edged black void.
+        ushort[][]? familyItems = null;
+        int[]? familyOf = null;
+        if (biome.GroundFamilies is { Length: > 0 } familyNames)
+        {
+            familyItems = new ushort[familyNames.Length][];
+            for (int f = 0; f < familyNames.Length; f++)
+            {
+                if (!TilesetRegistry.HasFamily(familyNames[f]))
+                    throw new InvalidDataException($"unknown biome ground family '{familyNames[f]}'");
+                familyItems[f] = TilesetRegistry.Family(familyNames[f]).Items;
+            }
+            familyOf = AssignGroundPatches(floor, rng, familyNames.Length);
+        }
+
         for (var y = 0; y < size; y++)
         {
             for (var x = 0; x < size; x++)
@@ -1104,7 +1139,18 @@ public static class DungeonGenerator
                 if (!floor.Blocked[i])
                 {
                     var bossRoom = floor.Rooms.Any(r => r.Role == "boss" && r.Contains(x, y));
-                    floor.Ground[i] = bossRoom ? rng.Pick(biome.BossGround) : rng.Pick(biome.Ground);
+                    if (bossRoom)
+                    {
+                        // Boss hall keeps its distinct material and stays outside the patch layer.
+                        floor.Ground[i] = rng.Pick(biome.BossGround);
+                        if (familyOf is not null) familyOf[i] = -1;
+                    }
+                    else
+                    {
+                        floor.Ground[i] = familyItems is not null && familyOf is not null
+                            ? rng.Pick(familyItems[familyOf[i]])
+                            : rng.Pick(biome.Ground);
+                    }
                     continue;
                 }
 
@@ -1128,15 +1174,62 @@ public static class DungeonGenerator
             }
         }
 
-        // Pass 2: ambient decor/accent, clustered inside rooms only (corridors stay clean). Accent (e.g.
-        // lava) pools first so it reads as terrain, then ambient props; both on the non-blocking Decor
-        // layer, skipping POI tiles so chests/altars/ladder stay legible.
-        var reserved = ReservedCells(floor);
-        foreach (var room in floor.Rooms)
+        return familyOf;
+    }
+
+    /// <summary>
+    /// Jittered-Voronoi patch layer: one centre per <see cref="GameConfig.GroundPatchCellSize"/> grid
+    /// cell (jittered inside it), each centre biased towards the primary family; every open map cell
+    /// takes the family of its nearest centre (squared euclidean, ties to the lowest grid index).
+    /// Deterministic: centres are drawn in fixed y,x grid order; the nearest-centre scan is rng-free.
+    /// </summary>
+    private static int[] AssignGroundPatches(DungeonFloor floor, Rng rng, int familyCount)
+    {
+        int size = floor.W;
+        int cell = GameConfig.GroundPatchCellSize;
+        int grid = (size + cell - 1) / cell;
+        (int X, int Y, int Family)[] centers = new (int X, int Y, int Family)[grid * grid];
+        for (int gy = 0; gy < grid; gy++)
         {
-            PaintClusters(floor, room, rng, biome.Accent, biome.AccentChance, GameConfig.AccentClusterRadius, reserved);
-            PaintClusters(floor, room, rng, biome.Decor, biome.DecorChance, GameConfig.DecorClusterRadius, reserved);
+            for (int gx = 0; gx < grid; gx++)
+            {
+                int cx = rng.Range(gx * cell, Math.Min(gx * cell + cell - 1, size - 1));
+                int cy = rng.Range(gy * cell, Math.Min(gy * cell + cell - 1, size - 1));
+                int family = familyCount == 1
+                    ? 0
+                    : rng.Chance(GameConfig.GroundPrimaryFamilyBias) ? 0 : 1 + rng.Next(familyCount - 1);
+                centers[gy * grid + gx] = (cx, cy, family);
+            }
         }
+
+        int[] familyOf = new int[size * size];
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                int i = y * size + x;
+                if (floor.Blocked[i])
+                {
+                    familyOf[i] = -1;
+                    continue;
+                }
+
+                int best = int.MaxValue;
+                int bestFamily = 0;
+                foreach ((int cx, int cy, int family) in centers)
+                {
+                    int d = (cx - x) * (cx - x) + (cy - y) * (cy - y);
+                    if (d < best)
+                    {
+                        best = d;
+                        bestFamily = family;
+                    }
+                }
+                familyOf[i] = bestFamily;
+            }
+        }
+
+        return familyOf;
     }
 
     /// <summary>

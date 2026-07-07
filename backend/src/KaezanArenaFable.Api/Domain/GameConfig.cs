@@ -600,6 +600,12 @@ public static class GameConfig
     /// <summary>Scales the number of clusters per room (area × biome chance × this). Keeps decor sparse.</summary>
     public const double DecorDensityScale = 0.7;
 
+    // ---- Map beauty (2026-07-07): coherent ground patches (jittered-Voronoi family regions) ----
+    /// <summary>Voronoi grid cell in tiles: one jittered patch centre per grid cell.</summary>
+    public const int GroundPatchCellSize = 6;
+    /// <summary>Chance a patch uses GroundFamilies[0]; the rest split uniformly across the other families.</summary>
+    public const double GroundPrimaryFamilyBias = 0.55;
+
     // ---- G-07: room types (graph + risk/reward fork) ----
     /// <summary>Elite room (risk detour) forces elites up to this cap; the rest of the budget becomes common.</summary>
     public const int EliteRoomMaxElites = 2;

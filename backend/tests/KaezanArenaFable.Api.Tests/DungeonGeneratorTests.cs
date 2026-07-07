@@ -4,8 +4,16 @@ using KaezanArenaFable.Api.Engine;
 
 namespace KaezanArenaFable.Api.Tests;
 
+[Collection("Tileset registry")]
 public class DungeonGeneratorTests
 {
+    public DungeonGeneratorTests()
+    {
+        // Default biomes carry GroundFamilies, so generation reads the real tileset registry;
+        // reload it per test because other classes in this collection load fakes.
+        TilesetRegistry.LoadFrom(Path.Combine(AppContext.BaseDirectory, "Content", "tilesets.json"));
+    }
+
     private static DungeonFloor Generate(long seed, bool boss = false)
     {
         var rng = new Rng((ulong)seed);
@@ -223,5 +231,104 @@ public class DungeonGeneratorTests
             Assert.False(f.Blocked[y * f.W + x], $"benefit chest at ({x},{y}) sits on rock");
             Assert.True(live[y * f.W + x], $"benefit chest at ({x},{y}) unreachable from entry");
         }
+    }
+}
+
+/// <summary>Map beauty Task 7: coherent ground patches (jittered-Voronoi family regions).</summary>
+[Collection("Tileset registry")]
+public class DungeonGroundPatchTests
+{
+    private const string FakeTilesets = """
+    {
+      "families": {
+        "a": { "kind": "ground", "items": [1001, 1002], "zOrder": 100 },
+        "b": { "kind": "ground", "items": [2001, 2002, 2003], "zOrder": 200 }
+      }
+    }
+    """;
+
+    private static void LoadFakeRegistry()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+        string path = Path.Combine(dir, "tilesets.json");
+        File.WriteAllText(path, FakeTilesets);
+        TilesetRegistry.LoadFrom(path);
+    }
+
+    private static BiomeDef PatchBiome() =>
+        Biomes.Cave with { WallSet = null, WallFamily = "", GroundFamilies = ["a", "b"] };
+
+    private static BiomeDef LegacyBiome() =>
+        Biomes.Cave with { WallSet = null, WallFamily = "", GroundFamilies = null };
+
+    private static DungeonFloor Generate(long seed, BiomeDef biome)
+    {
+        Rng rng = new Rng((ulong)seed);
+        return DungeonGenerator.Generate(rng, 0, isBossFloor: false, biome);
+    }
+
+    private static string FloorHash(DungeonFloor floor)
+    {
+        string payload = string.Join(",", floor.Ground)
+            + "|" + string.Join(",", floor.Wall)
+            + "|" + string.Join(",", floor.Decor)
+            + "|" + string.Join(",", floor.Blocked.Select(b => b ? 1 : 0))
+            + $"|{floor.Entry.X},{floor.Entry.Y}";
+        byte[] hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(payload));
+        return Convert.ToHexString(hash);
+    }
+
+    [Theory]
+    [InlineData(1L)]
+    [InlineData(42L)]
+    public void patch_ground_is_deterministic(long seed)
+    {
+        LoadFakeRegistry();
+        DungeonFloor a = Generate(seed, PatchBiome());
+        DungeonFloor b = Generate(seed, PatchBiome());
+        Assert.Equal(a.Ground, b.Ground);
+    }
+
+    [Fact]
+    public void floor_contains_ids_from_both_families()
+    {
+        LoadFakeRegistry();
+        DungeonFloor floor = Generate(42L, PatchBiome());
+        ushort[] familyA = [1001, 1002];
+        ushort[] familyB = [2001, 2002, 2003];
+        bool hasA = false, hasB = false;
+        for (int i = 0; i < floor.Ground.Length; i++)
+        {
+            if (floor.Blocked[i]) continue;
+            if (familyA.Contains(floor.Ground[i])) hasA = true;
+            if (familyB.Contains(floor.Ground[i])) hasB = true;
+        }
+        Assert.True(hasA, "no open cell uses family 'a' ground ids");
+        Assert.True(hasB, "no open cell uses family 'b' ground ids");
+    }
+
+    [Fact]
+    public void every_open_cell_uses_a_family_id()
+    {
+        LoadFakeRegistry();
+        DungeonFloor floor = Generate(7L, PatchBiome());
+        HashSet<ushort> union = [1001, 1002, 2001, 2002, 2003];
+        for (int i = 0; i < floor.Ground.Length; i++)
+        {
+            if (floor.Blocked[i]) continue;
+            Assert.True(union.Contains(floor.Ground[i]),
+                $"open cell {i % floor.W},{i / floor.W} ground {floor.Ground[i]} outside family union");
+        }
+    }
+
+    [Fact]
+    public void legacy_biome_output_is_byte_identical_to_pre_patch_generator()
+    {
+        // Hash captured on 2026-07-07 BEFORE the voronoi patch pass existed (seed 42, tier-1 legacy
+        // biome). The legacy path must not consume any new rng draw, so this must never change.
+        LoadFakeRegistry();
+        DungeonFloor floor = Generate(42L, LegacyBiome());
+        Assert.Equal("F9B15983DB89884A4EB3D290B3468E40B082EEAB8C30D5B33BF8C7D5029536CA", FloorHash(floor));
     }
 }

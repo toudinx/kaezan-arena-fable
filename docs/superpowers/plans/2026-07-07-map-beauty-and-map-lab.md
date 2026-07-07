@@ -422,7 +422,12 @@ E um resolver estático: `Biomes.Resolve(BiomeDef def)` → devolve o `def` com 
 
 ---
 
-### Task 7: Manchas coerentes de chão (Voronoi jitterado)
+### [x] Task 7: Manchas coerentes de chão (Voronoi jitterado)
+
+Resumo: `PaintGround` extraído retornando `familyOf`; grade Voronoi jitterada (célula 6, bias 0.55)
+pinta as `GroundFamilies` via `TilesetRegistry`; boss hall fora do patch; legado byte-idêntico
+(hash pré-mudança fixado em teste); `DungeonGeneratorTests`/`DungeonValidatorTests` entraram na
+collection do registry carregando o `tilesets.json` real.
 
 **Model · Effort:** Fable 5 · medium
 
@@ -433,7 +438,7 @@ E um resolver estático: `Biomes.Resolve(BiomeDef def)` → devolve o `def` com 
 **Interfaces:**
 - Produces: `PaintTiles` interno ganha um array `familyOf` (índice de família por célula) que a Task 8 consome na passada de borders. Expor como retorno interno privado (`int[] PaintGround(...)`) — não muda assinatura pública.
 
-- [ ] **Step 1: Constantes em `GameConfig.cs`:**
+- [x] **Step 1: Constantes em `GameConfig.cs`:**
 
 ```csharp
 // Map beauty (2026-07-07): coherent ground patches (jittered-Voronoi family regions)
@@ -441,9 +446,9 @@ public const int GroundPatchCellSize = 6;        // Voronoi grid cell in tiles
 public const double GroundPrimaryFamilyBias = 0.55; // chance a patch uses families[0]
 ```
 
-- [ ] **Step 2: Testes que falham:** com um `BiomeDef` de teste com `GroundFamilies = ["a","b"]` (registry fake via `TilesetRegistry.LoadFrom` de um JSON temp): (a) determinismo — mesmo seed → mesmo `Ground` array; (b) um floor 48×48 contém ids das 2 famílias; (c) toda célula aberta tem id ∈ união das famílias; (d) biome legado (`GroundFamilies` null) → byte-idêntico ao comportamento atual (comparar com hash pré-mudança de um seed fixo — capturar o hash ANTES de mexer e fixá-lo no teste).
-- [ ] **Step 3: Implementar.** Em `PaintTiles`, antes do loop de células: se `biome.GroundFamilies is { Length: > 0 }`, montar a grade Voronoi — para cada célula da grade `(gx, gy)` em ordem fixa y,x: centro jitterado (`rng.Range` dentro da célula) + família (`rng.Chance(GroundPrimaryFamilyBias)` → família 0, senão `rng.Next` uniforme nas restantes; 1 família → sempre 0). Para cada célula aberta do mapa, família = a do centro mais próximo (distância euclidiana², desempate por índice de grade menor). Id da célula: `rng.Pick(family.Items)`. Boss hall continua `BossGround` (células de sala boss ficam fora do patch/border). Caminho legado (`GroundFamilies` null/vazio) **não consome nenhum draw novo** (guard antes de qualquer `rng.*` novo — mesmo padrão LM-08).
-- [ ] **Step 4: Testes passam + build + commit** (`feat(engine): coherent ground patches via jittered voronoi`)
+- [x] **Step 2: Testes que falham:** com um `BiomeDef` de teste com `GroundFamilies = ["a","b"]` (registry fake via `TilesetRegistry.LoadFrom` de um JSON temp): (a) determinismo — mesmo seed → mesmo `Ground` array; (b) um floor 48×48 contém ids das 2 famílias; (c) toda célula aberta tem id ∈ união das famílias; (d) biome legado (`GroundFamilies` null) → byte-idêntico ao comportamento atual (comparar com hash pré-mudança de um seed fixo — capturar o hash ANTES de mexer e fixá-lo no teste).
+- [x] **Step 3: Implementar.** Em `PaintTiles`, antes do loop de células: se `biome.GroundFamilies is { Length: > 0 }`, montar a grade Voronoi — para cada célula da grade `(gx, gy)` em ordem fixa y,x: centro jitterado (`rng.Range` dentro da célula) + família (`rng.Chance(GroundPrimaryFamilyBias)` → família 0, senão `rng.Next` uniforme nas restantes; 1 família → sempre 0). Para cada célula aberta do mapa, família = a do centro mais próximo (distância euclidiana², desempate por índice de grade menor). Id da célula: `rng.Pick(family.Items)`. Boss hall continua `BossGround` (células de sala boss ficam fora do patch/border). Caminho legado (`GroundFamilies` null/vazio) **não consome nenhum draw novo** (guard antes de qualquer `rng.*` novo — mesmo padrão LM-08).
+- [x] **Step 4: Testes passam + build + commit** (`feat(engine): coherent ground patches via jittered voronoi`)
 
 ---
 

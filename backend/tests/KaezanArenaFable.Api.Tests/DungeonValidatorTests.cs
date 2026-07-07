@@ -1,10 +1,19 @@
+using KaezanArenaFable.Api.Content;
 using KaezanArenaFable.Api.Domain;
 using KaezanArenaFable.Api.Engine;
 
 namespace KaezanArenaFable.Api.Tests;
 
+[Collection("Tileset registry")]
 public class DungeonValidatorTests
 {
+    public DungeonValidatorTests()
+    {
+        // Default biomes carry GroundFamilies, so generation reads the real tileset registry;
+        // reload it per test because other classes in this collection load fakes.
+        TilesetRegistry.LoadFrom(Path.Combine(AppContext.BaseDirectory, "Content", "tilesets.json"));
+    }
+
     [Fact]
     public void valid_floor_passes()
     {

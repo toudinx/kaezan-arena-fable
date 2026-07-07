@@ -29,7 +29,9 @@
 
 ## Entrega ① — Tilesets (Tasks 1–4)
 
-### Task 1: Parser dos XMLs de materials do RME (`lib/rme.mjs`)
+### [x] Task 1: Parser dos XMLs de materials do RME (`lib/rme.mjs`)
+
+Resumo: parser RME criado para border sets e ground brushes, com config do checkout externo e testes Node cobrindo `grass`/`mountain`.
 
 **Model · Effort:** Sonnet 5 · medium
 
@@ -43,7 +45,7 @@
   - `loadBorders(materialsDir)` → `Map<number, Record<string, number>>` — border id → `{ n, e, s, w, cnw, cne, csw, cse, dnw, dne, dsw, dse }` (edges ausentes omitidos; valores = item ids).
   - `loadGroundBrushes(materialsDir)` → `Map<string, GroundBrush>` onde `GroundBrush = { name, lookid, zOrder, items: number[], borders: [{ align: "outer"|"inner", to: string|null, id: number }] }` (ordem dos `<border>` preservada — o RME resolve por primeira regra que casa).
 
-- [ ] **Step 1: Config.** Adicionar ao `tools/map-importer/config.json`:
+- [x] **Step 1: Config.** Adicionar ao `tools/map-importer/config.json`:
 
 ```json
 "rmeMaterials": "C:/Kaezan/kaezan/remeres-map-editor/data/materials"
@@ -51,7 +53,7 @@
 
 Clonar o repo se ainda não existir: `git clone --depth 1 https://github.com/opentibiabr/remeres-map-editor C:\Kaezan\kaezan\remeres-map-editor`
 
-- [ ] **Step 2: Teste que falha (`test/rme.test.mjs`)**
+- [x] **Step 2: Teste que falha (`test/rme.test.mjs`)**
 
 ```js
 import { test } from "node:test";
@@ -85,7 +87,7 @@ test("loadGroundBrushes parses items, z-order and border refs", () => {
 
 Rodar `node --test test/rme.test.mjs` (em `tools/map-importer/`) → FAIL (módulo inexistente).
 
-- [ ] **Step 3: Implementar `lib/rme.mjs`.** Parser regex linha-a-linha (padrão do `spawns.mjs` — sem dependência). Atenção: `borders.xml` e `brushs.xml` na raiz de materials são só `<include file="..."/>` — seguir os includes (ler `borders/borders.xml` e todos os XMLs em `brushs/`). Estruturas reais (verificadas no repo em 2026-07-07):
+- [x] **Step 3: Implementar `lib/rme.mjs`.** Parser regex linha-a-linha (padrão do `spawns.mjs` — sem dependência). Atenção: `borders.xml` e `brushs.xml` na raiz de materials são só `<include file="..."/>` — seguir os includes (ler `borders/borders.xml` e todos os XMLs em `brushs/`). Estruturas reais (verificadas no repo em 2026-07-07):
 
 ```xml
 <border id="1">
@@ -140,8 +142,8 @@ export function loadGroundBrushes(materialsDir) {
 
 Atenção: a ordem/presença dos atributos (`lookid` antes de `z-order`?) pode variar — inspecionar os XMLs reais e ajustar as regex (atributos opcionais, qualquer ordem). Se um brush usar `server_lookid` em vez de `lookid`, aceitar ambos.
 
-- [ ] **Step 4: Rodar testes e ver passar:** `node --test test/rme.test.mjs` → 2 pass.
-- [ ] **Step 5: Commit**
+- [x] **Step 4: Rodar testes e ver passar:** `node --test test/rme.test.mjs` → 2 pass.
+- [x] **Step 5: Commit**
 
 ```powershell
 git add tools/map-importer/lib/rme.mjs tools/map-importer/test/rme.test.mjs tools/map-importer/config.json

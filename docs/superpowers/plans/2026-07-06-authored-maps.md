@@ -430,11 +430,11 @@ git commit -m "feat(tools): map-importer prefab exporter with gap report"
 - Consumes: gap report da Task 5.
 - Produces: manifest do frontend com todos os ids dos prefabs; prefabs JSON commitados — input da Task 7.
 
-- [ ] **Step 1:** Rodar `node export.mjs --report-only`; copiar os ids faltantes para grupos `semantic` novos em `content-config.json`, nomeados `"prefab.<tema>"` (ex.: `"prefab.cave-extra": [...]`) — o padrão dos grupos existentes (`"ground.cave"`, `"wall.stone"`).
-- [ ] **Step 2:** Re-rodar o AssetExtractor (instruções no `README.md` raiz — mesmo fluxo usado para monstro/bioma novo) e verificar que o manifest do frontend agora contém os ids.
-- [ ] **Step 3:** `node export.mjs` → agora escreve os prefabs. Conferir 6–10 arquivos em `backend/src/KaezanArenaFable.Api/Content/prefabs/`.
-- [ ] **Step 4:** Espécies faltantes que a curadoria considerar essenciais (ex.: o boss temático de uma hunt): adicionar o `.lua` em `tools/convert-monsters/config.json` e re-rodar `node convert.mjs` (fluxo documentado no README). Opcional nesta fatia; senão, deixar registrado no relatório.
-- [ ] **Step 5: Commit**
+- [x] **Step 1:** Rodar `node export.mjs --report-only`; copiar os ids faltantes para grupos `semantic` novos em `content-config.json`, nomeados `"prefab.<tema>"` (ex.: `"prefab.cave-extra": [...]`) — o padrão dos grupos existentes (`"ground.cave"`, `"wall.stone"`).
+- [x] **Step 2:** Re-rodar o AssetExtractor (instruções no `README.md` raiz — mesmo fluxo usado para monstro/bioma novo) e verificar que o manifest do frontend agora contém os ids.
+- [x] **Step 3:** `node export.mjs` → agora escreve os prefabs. Conferir 6–10 arquivos em `backend/src/KaezanArenaFable.Api/Content/prefabs/`.
+- [x] **Step 4:** Espécies faltantes que a curadoria considerar essenciais (ex.: o boss temático de uma hunt): adicionar o `.lua` em `tools/convert-monsters/config.json` e re-rodar `node convert.mjs` (fluxo documentado no README). Opcional nesta fatia; senão, deixar registrado no relatório.
+- [x] **Step 5: Commit**
 
 ```powershell
 git add tools/AssetExtractor/content-config.json backend/src/KaezanArenaFable.Api/Content/prefabs frontend/src/assets

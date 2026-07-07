@@ -339,7 +339,9 @@ git commit -m "feat(content): tilesets.json from RME + sprite extraction + size 
 
 ## Entrega ② — Painter v2 (Tasks 5–10)
 
-### Task 5: `TilesetRegistry` no backend (load + validação fail-fast)
+### [x] Task 5: `TilesetRegistry` no backend (load + validação fail-fast)
+
+Resumo: registry backend carrega `Content/tilesets.json`, expõe famílias/borders/wallsets em ordem estável, valida masks/famílias fail-fast e é carregado no startup antes dos prefabs.
 
 **Model · Effort:** Sonnet 5 · medium
 
@@ -371,8 +373,8 @@ public static class TilesetRegistry
 
 Padrão do `PrefabRegistry`: parse `System.Text.Json` com DTO privado, validações → `InvalidDataException` com caminho+motivo: wall set com chave não-numérica ou fora dos 47 masks canônicos; família referenciada por borderSet inexistente (exceto sufixos `none`/`OPEN`); items vazios. Sem `var`.
 
-- [ ] **Step 1: Teste que falha** (padrão `PrefabRegistryTests`: escrever JSON temporário, `LoadFrom`, asserts de família/border/wallset + 2 casos inválidos com `Assert.Throws<InvalidDataException>`).
-- [ ] **Step 2: Implementar; wiring no `Program.cs`** logo antes do `PrefabRegistry.LoadFrom` existente:
+- [x] **Step 1: Teste que falha** (padrão `PrefabRegistryTests`: escrever JSON temporário, `LoadFrom`, asserts de família/border/wallset + 2 casos inválidos com `Assert.Throws<InvalidDataException>`).
+- [x] **Step 2: Implementar; wiring no `Program.cs`** logo antes do `PrefabRegistry.LoadFrom` existente:
 
 ```csharp
 TilesetRegistry.LoadFrom(Path.Combine(AppContext.BaseDirectory, "Content", "tilesets.json"));
@@ -380,8 +382,8 @@ TilesetRegistry.LoadFrom(Path.Combine(AppContext.BaseDirectory, "Content", "tile
 
 E no `.csproj`, garantir copy: `<Content Include="Content\tilesets.json" CopyToOutputDirectory="PreserveNewest" />`
 
-- [ ] **Step 3: Testes + build:** `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter TilesetRegistry` → PASS; `dotnet build backend/src/KaezanArenaFable.Api` limpo.
-- [ ] **Step 4: Commit** (`feat(content): TilesetRegistry with fail-fast validation`)
+- [x] **Step 3: Testes + build:** `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter TilesetRegistry` → PASS; `dotnet build backend/src/KaezanArenaFable.Api` limpo.
+- [x] **Step 4: Commit** (`feat(content): TilesetRegistry with fail-fast validation`)
 
 ---
 

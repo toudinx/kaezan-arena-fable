@@ -1,0 +1,267 @@
+using System.Text.Json;
+using KaezanArenaFable.Api.Domain;
+
+namespace KaezanArenaFable.Api.Content;
+
+public sealed record TileFamily(string Name, string Kind, ushort[] Items, int ZOrder);
+public sealed record BorderSet(IReadOnlyDictionary<string, ushort> Edges);
+
+public static class TilesetRegistry
+{
+    private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    private static readonly HashSet<string> SpecialBorderTargets = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "none",
+        "OPEN"
+    };
+
+    private static readonly HashSet<int> CanonicalMasks = BuildCanonicalMasks();
+
+    private static IReadOnlyDictionary<string, TileFamily> families =
+        new Dictionary<string, TileFamily>(StringComparer.Ordinal);
+    private static IReadOnlyDictionary<string, WallTileSet> wallSets =
+        new Dictionary<string, WallTileSet>(StringComparer.Ordinal);
+    private static IReadOnlyDictionary<string, BorderSet> borderSets =
+        new Dictionary<string, BorderSet>(StringComparer.Ordinal);
+    private static IReadOnlyList<string> familyNames = Array.Empty<string>();
+
+    public static IReadOnlyList<string> FamilyNames => familyNames;
+
+    public static void LoadFrom(string path)
+    {
+        if (!File.Exists(path))
+        {
+            Clear();
+            return;
+        }
+
+        string json = File.ReadAllText(path);
+        TilesetDto? dto = JsonSerializer.Deserialize<TilesetDto>(json, JsonOptions);
+        if (dto is null)
+        {
+            throw Invalid(path, "JSON root is empty");
+        }
+
+        Dictionary<string, TileFamily> loadedFamilies = LoadFamilies(path, dto.Families);
+        Dictionary<string, BorderSet> loadedBorders = LoadBorderSets(path, dto.BorderSets, loadedFamilies);
+        Dictionary<string, WallTileSet> loadedWallSets = LoadWallSets(path, dto.WallSets, loadedFamilies);
+
+        families = loadedFamilies
+            .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        borderSets = loadedBorders
+            .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        wallSets = loadedWallSets
+            .OrderBy(pair => pair.Key, StringComparer.Ordinal)
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        familyNames = families.Keys
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    public static bool HasFamily(string name) => families.ContainsKey(name);
+
+    public static TileFamily Family(string name) => families[name];
+
+    public static WallTileSet? WallSet(string family) =>
+        wallSets.TryGetValue(family, out WallTileSet? set) ? set : null;
+
+    public static BorderSet? Borders(string from, string to)
+    {
+        string exact = $"{from}->{to}";
+        if (borderSets.TryGetValue(exact, out BorderSet? set))
+        {
+            return set;
+        }
+
+        string fallback = $"{from}->none";
+        return borderSets.TryGetValue(fallback, out BorderSet? fallbackSet) ? fallbackSet : null;
+    }
+
+    private static void Clear()
+    {
+        families = new Dictionary<string, TileFamily>(StringComparer.Ordinal);
+        borderSets = new Dictionary<string, BorderSet>(StringComparer.Ordinal);
+        wallSets = new Dictionary<string, WallTileSet>(StringComparer.Ordinal);
+        familyNames = Array.Empty<string>();
+    }
+
+    private static Dictionary<string, TileFamily> LoadFamilies(
+        string path,
+        Dictionary<string, FamilyDto>? source)
+    {
+        if (source is null)
+        {
+            throw Invalid(path, "families is required");
+        }
+
+        Dictionary<string, TileFamily> loaded = new Dictionary<string, TileFamily>(StringComparer.Ordinal);
+        foreach (KeyValuePair<string, FamilyDto> pair in source.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            if (string.IsNullOrWhiteSpace(pair.Key))
+            {
+                throw Invalid(path, "family name must be non-empty");
+            }
+
+            FamilyDto family = pair.Value;
+            if (string.IsNullOrWhiteSpace(family.Kind))
+            {
+                throw Invalid(path, $"family '{pair.Key}' kind is required");
+            }
+
+            if (family.Items is null || family.Items.Length == 0)
+            {
+                throw Invalid(path, $"family '{pair.Key}' items must be non-empty");
+            }
+
+            loaded[pair.Key] = new TileFamily(pair.Key, family.Kind, family.Items, family.ZOrder);
+        }
+
+        return loaded;
+    }
+
+    private static Dictionary<string, BorderSet> LoadBorderSets(
+        string path,
+        Dictionary<string, Dictionary<string, ushort>>? source,
+        IReadOnlyDictionary<string, TileFamily> loadedFamilies)
+    {
+        Dictionary<string, BorderSet> loaded = new Dictionary<string, BorderSet>(StringComparer.Ordinal);
+        if (source is null)
+        {
+            return loaded;
+        }
+
+        foreach (KeyValuePair<string, Dictionary<string, ushort>> pair in source.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            string[] parts = pair.Key.Split("->", StringSplitOptions.None);
+            if (parts.Length != 2 || string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
+            {
+                throw Invalid(path, $"border set '{pair.Key}' must use 'from->to'");
+            }
+
+            if (!loadedFamilies.ContainsKey(parts[0]))
+            {
+                throw Invalid(path, $"border set '{pair.Key}' references unknown family '{parts[0]}'");
+            }
+
+            if (!loadedFamilies.ContainsKey(parts[1]) && !SpecialBorderTargets.Contains(parts[1]))
+            {
+                throw Invalid(path, $"border set '{pair.Key}' references unknown family '{parts[1]}'");
+            }
+
+            if (pair.Value.Count == 0)
+            {
+                throw Invalid(path, $"border set '{pair.Key}' edges must be non-empty");
+            }
+
+            Dictionary<string, ushort> edges = pair.Value
+                .OrderBy(edge => edge.Key, StringComparer.Ordinal)
+                .ToDictionary(edge => edge.Key, edge => edge.Value, StringComparer.Ordinal);
+            loaded[pair.Key] = new BorderSet(edges);
+        }
+
+        return loaded;
+    }
+
+    private static Dictionary<string, WallTileSet> LoadWallSets(
+        string path,
+        Dictionary<string, Dictionary<string, ushort>>? source,
+        IReadOnlyDictionary<string, TileFamily> loadedFamilies)
+    {
+        Dictionary<string, WallTileSet> loaded = new Dictionary<string, WallTileSet>(StringComparer.Ordinal);
+        if (source is null)
+        {
+            return loaded;
+        }
+
+        foreach (KeyValuePair<string, Dictionary<string, ushort>> pair in source.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        {
+            if (!loadedFamilies.ContainsKey(pair.Key))
+            {
+                throw Invalid(path, $"wall set '{pair.Key}' references unknown family");
+            }
+
+            if (pair.Value.Count == 0)
+            {
+                throw Invalid(path, $"wall set '{pair.Key}' tiles must be non-empty");
+            }
+
+            Dictionary<int, ushort> tiles = new Dictionary<int, ushort>();
+            foreach (KeyValuePair<string, ushort> tile in pair.Value.OrderBy(tile => tile.Key, StringComparer.Ordinal))
+            {
+                if (!int.TryParse(tile.Key, out int mask) || !CanonicalMasks.Contains(mask))
+                {
+                    throw Invalid(path, $"wall set '{pair.Key}' has invalid blob mask '{tile.Key}'");
+                }
+
+                tiles[mask] = tile.Value;
+            }
+
+            loaded[pair.Key] = new WallTileSet(tiles);
+        }
+
+        return loaded;
+    }
+
+    private static HashSet<int> BuildCanonicalMasks()
+    {
+        HashSet<int> masks = new HashSet<int>();
+        for (int mask = 0; mask < 256; mask++)
+        {
+            masks.Add(Canonical(mask));
+        }
+
+        return masks;
+    }
+
+    private static int Canonical(int mask)
+    {
+        bool n = (mask & 1) != 0;
+        bool e = (mask & 4) != 0;
+        bool s = (mask & 16) != 0;
+        bool w = (mask & 64) != 0;
+        if (!(n && e))
+        {
+            mask &= ~2;
+        }
+
+        if (!(s && e))
+        {
+            mask &= ~8;
+        }
+
+        if (!(s && w))
+        {
+            mask &= ~32;
+        }
+
+        if (!(n && w))
+        {
+            mask &= ~128;
+        }
+
+        return mask;
+    }
+
+    private static InvalidDataException Invalid(string path, string reason) =>
+        new InvalidDataException($"{path}: {reason}");
+
+    private sealed class TilesetDto
+    {
+        public Dictionary<string, FamilyDto>? Families { get; set; }
+        public Dictionary<string, Dictionary<string, ushort>>? BorderSets { get; set; }
+        public Dictionary<string, Dictionary<string, ushort>>? WallSets { get; set; }
+    }
+
+    private sealed class FamilyDto
+    {
+        public string? Kind { get; set; }
+        public ushort[]? Items { get; set; }
+        public int ZOrder { get; set; }
+    }
+}

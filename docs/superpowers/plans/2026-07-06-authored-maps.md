@@ -293,11 +293,11 @@ git commit -m "docs(mapping): hunt + boss room anatomy with curated prefab candi
 - Consumes: `crop.mjs`, `spawns-query.mjs`, `otservbr-npc.xml`, pasta `C:\Kaezan\kaezan\canary-3.4.1\data-otservbr-global\world\quest\`, baseline `canary/gameplay/quests.md` e `canary/systems/rewards.md` (repo kaezan).
 - Produces: docs de referência para as fatias futuras "cidade hub" e "quests/tesouro". Nenhum código depende deles nesta fatia.
 
-- [ ] **Step 1: `city_anatomy.md`** — dissecar 1 cidade (ex.: Thais): estrutura (templo, depot, lojas, guildhall), como NPCs são colocados (`otservbr-npc.xml`: posição + arquivo de comportamento), o que uma "cidade hub" do arena-fable precisaria (zonas seguras, portal de expedition, NPCs de lore). Crops ASCII ilustrando.
+- [x] **Step 1: `city_anatomy.md`** — dissecar 1 cidade (ex.: Thais): estrutura (templo, depot, lojas, guildhall), como NPCs são colocados (`otservbr-npc.xml`: posição + arquivo de comportamento), o que uma "cidade hub" do arena-fable precisaria (zonas seguras, portal de expedition, NPCs de lore). Crops ASCII ilustrando.
 
-- [ ] **Step 2: `quest_treasure_anatomy.md`** — padrões de sala de tesouro/quest: baús com actionid/uniqueid (cite `ATTR_ACTION_ID`/`ATTR_UNIQUE_ID` do baseline map.md), storages como gating, salas seladas atrás de portas/alavancas; mapear 2 quests clássicas do otservbr; traduzir para o modelo do arena-fable (sala `role: treasure` com `BenefitChests` hoje; quest chain = fatia futura).
+- [x] **Step 2: `quest_treasure_anatomy.md`** — padrões de sala de tesouro/quest: baús com actionid/uniqueid (cite `ATTR_ACTION_ID`/`ATTR_UNIQUE_ID` do baseline map.md), storages como gating, salas seladas atrás de portas/alavancas; mapear 2 quests clássicas do otservbr; traduzir para o modelo do arena-fable (sala `role: treasure` com `BenefitChests` hoje; quest chain = fatia futura).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```powershell
 git add docs/mapping/city_anatomy.md docs/mapping/quest_treasure_anatomy.md

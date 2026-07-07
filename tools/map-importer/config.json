@@ -1,0 +1,6 @@
+{
+  "otbm": "C:/Kaezan/kaezan/canary-3.4.1/data-otservbr-global/world/otservbr.otbm",
+  "monsterXml": "C:/Kaezan/kaezan/canary-3.4.1/data-otservbr-global/world/otservbr-monster.xml",
+  "flags": "./data/appearance-flags.json",
+  "monstersJson": "../../backend/src/KaezanArenaFable.Api/Data/monsters.json"
+}

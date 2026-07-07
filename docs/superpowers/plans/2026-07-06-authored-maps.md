@@ -89,7 +89,7 @@ git commit -m "feat(tools): AssetExtractor --dump-flags emits appearance flags f
 - Consumes: `tools/map-importer/data/appearance-flags.json` (Task 1).
 - Produces: `loadMap(config)` → índice `Map<"x,y,z", Tile>` onde `Tile = { ground: number, items: number[] }` (ids de appearance); `cropTiles(index, {x,y,z,w,h})` → array `w*h` de `Tile|null`; `spawnsInBBox(xmlPath, bbox)` → `[{ name, count }]` ordenado por count desc. `crop.mjs` (CLI) imprime ASCII do crop; `spawns-query.mjs` (CLI) imprime espécies da região. Tasks 3–5 consomem.
 
-- [ ] **Step 1: Scaffold + vendorar OTBM2JSON**
+- [x] **Step 1: Scaffold + vendorar OTBM2JSON**
 
 `package.json`:
 
@@ -123,7 +123,7 @@ Invoke-WebRequest https://raw.githubusercontent.com/Inconcessus/OTBM2JSON/master
 
 (Confirme o caminho real do `monsters.json` gerado pelo convert-monsters — veja `tools/convert-monsters/config.json` — e corrija a chave.)
 
-- [ ] **Step 2: Escrever o teste que falha (`test/otbm.test.mjs`)**
+- [x] **Step 2: Escrever o teste que falha (`test/otbm.test.mjs`)**
 
 ```js
 import { test } from "node:test";
@@ -147,7 +147,7 @@ test("cropTiles returns w*h cells", () => {
 });
 ```
 
-- [ ] **Step 3: Rodar o teste e ver falhar**
+- [x] **Step 3: Rodar o teste e ver falhar**
 
 ```powershell
 cd tools/map-importer; node --test test/
@@ -155,7 +155,7 @@ cd tools/map-importer; node --test test/
 
 Esperado: FAIL (`Cannot find module '../lib/otbm.mjs'`).
 
-- [ ] **Step 4: Implementar `lib/otbm.mjs`**
+- [x] **Step 4: Implementar `lib/otbm.mjs`**
 
 Usando o vendor + a doc do formato (`C:\Kaezan\kaezan\mapping\baseline\canary\systems\map.md` §36.1): percorrer `OTBM_MAP_DATA → OTBM_TILE_AREA → OTBM_TILE`, coordenada final = `(base_x + offset_x, base_y + offset_y, base_z)`. Cachear o parse num módulo-level `let cached` (o arquivo tem dezenas de MB; parsear uma vez por processo).
 
@@ -192,7 +192,7 @@ export function cropTiles(index, { x, y, z, w, h }) {
 
 Atenção: os nomes de campo (`tileid`, `items`, `position`) variam conforme o vendor — inspecione a saída real do `otbm2json.read` num node REPL e ajuste. Tiles OTBM podem ter o ground como atributo OU como primeiro item com flag `ground` — normalizar aqui usando `appearance-flags.json` (se `ground === 0` e o primeiro item tem flag ground, promova-o).
 
-- [ ] **Step 5: Rodar o teste e ver passar**
+- [x] **Step 5: Rodar o teste e ver passar**
 
 ```powershell
 node --test test/
@@ -200,7 +200,7 @@ node --test test/
 
 Esperado: 2 pass. (O primeiro run é lento — parse completo; ok.)
 
-- [ ] **Step 6: Verificação de semântica de ids (crítico)**
+- [x] **Step 6: Verificação de semântica de ids (crítico)**
 
 Os ids do OTBM do Canary 3.x são os mesmos ids do `items.xml` (que o convert-monsters já trata como appearance/client id — ver comentário em `tools/convert-monsters/convert.mjs:12`). Verificar empiricamente: escrever `crop.mjs` (CLI) que imprime o crop em ASCII (`#` blocked-candidato, `.` ground, id numérico opcional com `--ids`) e rodar sobre uma área de grama conhecida; conferir que os ids de ground batem com ids que existem em `appearance-flags.json` com `ground:true`.
 
@@ -210,7 +210,7 @@ node crop.mjs --x 32360 --y 32210 --z 7 --w 20 --h 14 --ids
 
 Esperado: grid 20×14 com ids de ground plausíveis (existentes no flags JSON como ground). Se NÃO baterem (ids sem entrada ou não-ground em massa), PARE e investigue o mapeamento server↔client id antes de prosseguir — o resto do pipeline depende disso.
 
-- [ ] **Step 7: `lib/spawns.mjs` + `spawns-query.mjs`**
+- [x] **Step 7: `lib/spawns.mjs` + `spawns-query.mjs`**
 
 Parser leve do XML (regex linha-a-linha, padrão do `loadItemNames` do convert-monsters — sem dependência):
 
@@ -240,7 +240,7 @@ export function spawnsInBBox(xmlPath, { x, y, z, w, h }) {
 
 `spawns-query.mjs` (CLI): mesmos args de bbox do crop.mjs; imprime a tabela de espécies. Adicionar um teste em `test/otbm.test.mjs` com uma bbox grande (ex.: 2000×2000 em z=7 ao redor de Thais) assertando `length > 0`.
 
-- [ ] **Step 8: Testes + commit**
+- [x] **Step 8: Testes + commit**
 
 ```powershell
 node --test test/

@@ -1,0 +1,8 @@
+{
+  "name": "map-importer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --max-old-space-size=8192 --test \"test/**/*.mjs\""
+  }
+}

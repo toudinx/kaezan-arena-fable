@@ -1,0 +1,10 @@
+[
+  { "id": "prefab:rotworm-cave-sternum", "role": "mob", "tier": 1, "theme": "cave", "x": 32144, "y": 32328, "z": 9, "w": 20, "h": 14 },
+  { "id": "prefab:troll-cave-thais", "role": "mob", "tier": 1, "theme": "cave", "x": 32327, "y": 32134, "z": 8, "w": 26, "h": 17 },
+  { "id": "prefab:ancient-temple-upper", "role": "mob", "tier": 3, "theme": "crypt", "x": 32416, "y": 32019, "z": 9, "w": 24, "h": 16 },
+  { "id": "prefab:ancient-temple-lower", "role": "mob", "tier": 3, "theme": "crypt", "x": 32423, "y": 32018, "z": 10, "w": 25, "h": 14 },
+  { "id": "prefab:vampire-crypt", "role": "treasure", "tier": 3, "theme": "tomb", "x": 33108, "y": 32967, "z": 14, "w": 31, "h": 13 },
+  { "id": "prefab:mintwallin-block", "role": "mob", "tier": 4, "theme": "city", "x": 32391, "y": 32099, "z": 15, "w": 26, "h": 21 },
+  { "id": "prefab:orc-warlord-throne", "role": "boss", "tier": 2, "theme": "fortress", "x": 32952, "y": 31761, "z": 8, "w": 17, "h": 14 },
+  { "id": "prefab:demon-hall", "role": "boss", "tier": 5, "theme": "demon-halls", "x": 33417, "y": 31780, "z": 8, "w": 26, "h": 20 }
+]

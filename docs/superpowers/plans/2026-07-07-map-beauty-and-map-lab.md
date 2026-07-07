@@ -154,7 +154,7 @@ git commit -m "feat(tools): RME materials XML parser (borders + ground brushes)"
 
 ### [x] Task 2: Tradutor RME → tilesets (`lib/tilesets.mjs`)
 
-Resumo: tradutor implementado com fill por prioridade de face (corner → S/E/N/W, perspectiva do Tibia) + fallback Hamming; 11 famílias, 11 border sets, 3 wall sets 47-slot com só 8 slots sintéticos.
+Resumo: tradutor implementado com fill por prioridade de face (corner → S/E/N/W, perspectiva do Tibia); 11 famílias, 11 border sets, 3 wall sets 47-slot. (Calibrado na Task 3: nomes c*/d* do RME normalizados e fallback de slot sem peça = corpo, 8 slots sintéticos.)
 
 **Model · Effort:** Fable 5 · high
 
@@ -263,7 +263,13 @@ git commit -m "feat(tools): translate RME brushes into blob wall sets + border s
 
 ---
 
-### Task 3: Gate de predição contra o mapa real + CLI `convert-tilesets.mjs`
+### [x] Task 3: Gate de predição contra o mapa real + CLI `convert-tilesets.mjs`
+
+Resumo: gate implementado (2 regiões wilderness z=7; walls 98.0%, borders 95.8%) e ele pegou a
+inversão prevista: os nomes c*/d* do RME são trocados vs. a convenção canônica (d* = corner de
+2 lados, c* = diagonal) — corrigido em `normalizeRmeEdges` no tilesets.mjs, com fallback de wall
+slot sem peça indo pro corpo (Tibia não desenha face N/W). CLI com gap report (178 sprites → Task 4);
+sem `--report-only` aborta se houver gap.
 
 **Model · Effort:** Fable 5 · high
 
@@ -276,7 +282,7 @@ git commit -m "feat(tools): translate RME brushes into blob wall sets + border s
 - Consumes: `buildTilesets` (Task 2), `loadMap`/`cropTiles` (map-importer core), `appearance-flags.json`.
 - Produces: `tilesets.json` commitado no caminho acima; CLI com `--report-only`.
 
-- [ ] **Step 1: Teste de predição (o GATE desta entrega — `test/predict.test.mjs`).** Escolher 2 regiões do otservbr com montanha + grama/terra conhecidas (usar `crop.mjs` para achar; ex.: arredores de Thais z=7). Para cada célula da região:
+- [x] **Step 1: Teste de predição (o GATE desta entrega — `test/predict.test.mjs`).** Escolher 2 regiões do otservbr com montanha + grama/terra conhecidas (usar `crop.mjs` para achar; ex.: arredores de Thais z=7). Para cada célula da região:
   - célula **impassável de montanha** (item ∈ família): computar o mask blob de vizinhança aberta e conferir que o wall set traduzido prevê um item que **está presente na célula real** (a célula real tem o corpo + as faces como items);
   - célula **aberta na costura** (vizinho de família ≠): conferir que os border ids previstos pelo border set estão entre os items reais da célula.
 
@@ -289,10 +295,10 @@ test("translated tilesets predict the real map (>=95%)", () => {
 
 (Implementar de verdade — o esqueleto acima é o contrato; o corpo usa `loadMap`, a região fixa e imprime os misses agrupados por mask no `assert` message.) **Se a acurácia ficar < 95%, PARE: a convenção de edge→mask está errada (provável inversão N/S ou inner/outer) — corrija a tabela `EDGE_TO_MASK` antes de prosseguir.** Nada depois faz sentido com a tradução errada.
 
-- [ ] **Step 2: Rodar e calibrar até passar:** `node --test test/predict.test.mjs` → PASS com ≥95%.
-- [ ] **Step 3: CLI `convert-tilesets.mjs`:** roda `buildTilesets`, imprime o report (famílias, cobertura, sintéticos, ids sem sprite no manifest do frontend — mesmo check de gap do `export.mjs`); `--report-only` só imprime; sem `--report-only` escreve `backend/src/KaezanArenaFable.Api/Content/tilesets.json` (ordenado por chave, `JSON.stringify(_, null, 2)` — diffs legíveis).
-- [ ] **Step 4: Rodar `node convert-tilesets.mjs --report-only`** e revisar o gap report (ids de sprite faltantes vão pra Task 4).
-- [ ] **Step 5: Commit**
+- [x] **Step 2: Rodar e calibrar até passar:** `node --test test/predict.test.mjs` → PASS com ≥95%.
+- [x] **Step 3: CLI `convert-tilesets.mjs`:** roda `buildTilesets`, imprime o report (famílias, cobertura, sintéticos, ids sem sprite no manifest do frontend — mesmo check de gap do `export.mjs`); `--report-only` só imprime; sem `--report-only` escreve `backend/src/KaezanArenaFable.Api/Content/tilesets.json` (ordenado por chave, `JSON.stringify(_, null, 2)` — diffs legíveis).
+- [x] **Step 4: Rodar `node convert-tilesets.mjs --report-only`** e revisar o gap report (ids de sprite faltantes vão pra Task 4).
+- [x] **Step 5: Commit**
 
 ```powershell
 git add tools/map-importer/convert-tilesets.mjs tools/map-importer/test/predict.test.mjs

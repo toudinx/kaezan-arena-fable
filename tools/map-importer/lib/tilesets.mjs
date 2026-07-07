@@ -1,14 +1,33 @@
 import { readFileSync } from "node:fs";
 import { loadBorders, loadGroundBrushes } from "./rme.mjs";
 
-// RME edge name -> blob mask of OPEN neighbours (bit 0=N,1=NE,2=E,3=SE,4=S,5=SW,6=W,7=NW).
-// The d* masks are NOT canonical (a lone open diagonal collapses to the closed body case
+// Canonical edge name -> blob mask of OPEN neighbours (bit 0=N,1=NE,2=E,3=SE,4=S,5=SW,6=W,7=NW).
+// Canonical semantics: c* = two adjacent open sides (wrap-around corner), d* = diagonal-only
+// open. The d* masks are NOT canonical (a lone open diagonal collapses to the closed body case
 // in WallAutotile.Canonical), so those edges never occupy a wall-set slot on their own.
 export const EDGE_TO_MASK = {
   n: 1, e: 4, s: 16, w: 64,               // one open side
   cnw: 1 | 64, cne: 1 | 4, cse: 4 | 16, csw: 16 | 64, // two open sides (corner)
   dnw: 128, dne: 2, dse: 8, dsw: 32,      // diagonal-only open
 };
+
+// RME's borderitem edge names use the OPPOSITE c/d convention: in borders.xml a `dnw` piece
+// is the one auto-bordering draws when the foreign brush wraps N+W, and `cnw` is drawn on
+// diagonal-only contact. Verified against otservbr.otbm (test/predict.test.mjs): pre-swap the
+// prediction gate scores ~44%, post-swap ~97%. Every border set loaded from RME is normalized
+// to the canonical naming above through this swap.
+const RME_CORNER_DIAGONAL_SWAP = [["cnw", "dnw"], ["cne", "dne"], ["csw", "dsw"], ["cse", "dse"]];
+
+export function normalizeRmeEdges(edges) {
+  const out = { ...edges };
+  for (const [c, d] of RME_CORNER_DIAGONAL_SWAP) {
+    delete out[c];
+    delete out[d];
+    if (edges[d] !== undefined) out[c] = edges[d];
+    if (edges[c] !== undefined) out[d] = edges[c];
+  }
+  return out;
+}
 
 // Same rule as WallAutotile.Canonical (C#): a diagonal bit survives only when both of its
 // adjacent edge bits are open.
@@ -41,12 +60,6 @@ const PIECE_PRIORITY = [
 
 const ALL_EDGES = Object.keys(EDGE_TO_MASK);
 
-function popcount(v) {
-  let count = 0;
-  while (v) { v &= v - 1; count++; }
-  return count;
-}
-
 // Prefer the generic rule (no `to`), then the explicit "none" rule; pair-specific rules
 // (e.g. mountain inner to="icy mountain") are transitions between wall families we skip.
 function pickBorderRef(brush, align) {
@@ -66,28 +79,20 @@ function buildWallSet(name, brush, edges, report) {
     if (piece !== undefined) slots[mask] = edges[piece.edge];
   }
 
-  // Remaining slots (masks whose visible faces have no piece in this set, e.g. N/W-only
-  // exposure on the classic mountain) borrow from the nearest filled mask by Hamming
-  // distance on the blob bits, tiebreak lower mask. Recorded as synthetic.
+  // Remaining slots (masks whose open sides have no piece in this set, e.g. N/W-only
+  // exposure on the classic mountain) fall back to the body tile: Tibia's perspective
+  // draws no rock face there, and otservbr confirms those cells carry the bare body
+  // (the transition lives on the neighbouring open tile as the ->OPEN foot border).
+  // Recorded as synthetic so the report shows how much of the set is inferred.
   const unfilled = CANONICAL_MASKS.filter((mask) => slots[mask] === undefined);
-  const donors = CANONICAL_MASKS.filter((mask) => slots[mask] !== undefined);
   for (const mask of unfilled) {
-    let best = -1;
-    let bestDist = Number.MAX_SAFE_INTEGER;
-    for (const donor of donors) {
-      const dist = popcount(mask ^ donor);
-      if (dist < bestDist || (dist === bestDist && donor < best)) {
-        bestDist = dist;
-        best = donor;
-      }
-    }
-    slots[mask] = slots[best];
-    report.synthetic.push({ family: name, mask, from: best });
+    slots[mask] = brush.items[0];
+    report.synthetic.push({ family: name, mask, from: 0 });
   }
 
   const missing = ALL_EDGES.filter((edge) => edges[edge] === undefined);
   if (missing.length > 0) report.missingEdges[name] = missing;
-  report.wallSets[name] = { direct: donors.length, synthetic: unfilled.length };
+  report.wallSets[name] = { direct: CANONICAL_MASKS.length - unfilled.length, synthetic: unfilled.length };
   return slots;
 }
 
@@ -115,7 +120,7 @@ export function buildTilesets(config) {
       report.skipped.push(`${name}: border id ${ref.id} not found or empty`);
       return null;
     }
-    return { ...edges };
+    return normalizeRmeEdges(edges);
   };
 
   const emitOuterBorders = (name, brush, genericKey) => {

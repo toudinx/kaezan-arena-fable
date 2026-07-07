@@ -603,7 +603,7 @@ public static DungeonFloor Generate(Rng rng, int floorIndex, bool isBossFloor, B
     IReadOnlyList<PrefabDef>? prefabs = null)
 ```
 
-- [ ] **Step 1: Constantes em `GameConfig.cs`**
+- [x] **Step 1: Constantes em `GameConfig.cs`**
 
 ```csharp
 // LM-08 authored prefabs (OTBM crops stamped into procedural floors)
@@ -612,7 +612,7 @@ public const double PrefabRoomChance = 0.6;  // chance each slot actually attemp
 public const double PrefabBossChance = 0.5;  // chance the boss hall uses an authored boss prefab
 ```
 
-- [ ] **Step 2: Testes que falham (adicionar a `DungeonGeneratorTests.cs`)**
+- [x] **Step 2: Testes que falham (adicionar a `DungeonGeneratorTests.cs`)**
 
 Helper de prefab de teste (arena 12×10 com anel de parede, mouth a oeste, construído em código — sem arquivo). Adicionar `using KaezanArenaFable.Api.Content;` ao topo do arquivo de testes:
 
@@ -683,7 +683,7 @@ public void prefab_room_stamps_its_ground_ids()
 
 Rodar `dotnet test --filter DungeonGenerator` → FAIL (assinatura/`PrefabId` inexistentes).
 
-- [ ] **Step 3: Implementar no `DungeonGenerator.cs`**
+- [x] **Step 3: Implementar no `DungeonGenerator.cs`**
 
 Mudanças, na ordem do `Generate` atual:
 
@@ -737,7 +737,7 @@ private static void StampVisuals(DungeonFloor floor, Room room, PrefabDef p)
 
 7. **Call sites:** `GameWorld` passa `PrefabRegistry.ForTier(<tier da run>)` (achar o call site de `DungeonGenerator.Generate` e o número do tier — `Tier.Tier`); `GenerateTrainingRoom` não muda.
 
-- [ ] **Step 4: Testes passam**
+- [x] **Step 4: Testes passam**
 
 ```powershell
 dotnet test backend/tests/KaezanArenaFable.Api.Tests
@@ -745,11 +745,11 @@ dotnet test backend/tests/KaezanArenaFable.Api.Tests
 
 Esperado: todos os existentes + novos PASS (os existentes chamam `Generate` sem prefabs → comportamento byte-idêntico).
 
-- [ ] **Step 5: `Golden.cs` — incluir prefabs**
+- [x] **Step 5: `Golden.cs` — incluir prefabs**
 
 Em `tools/BalanceSim/Golden.cs`: no `Compute`, carregar `PrefabRegistry.LoadFrom(Path.Combine(RepoRoot(), "backend", "src", "KaezanArenaFable.Api", "Content", "prefabs"), _ => true)` uma vez e passar `PrefabRegistry.ForTier(tier)` ao `Generate` (espelha o GameWorld). Incluir `PrefabId` na string hasheada da sequência de Rooms (junto de `Role`).
 
-- [ ] **Step 6: Rebaseline deliberado + verificação**
+- [x] **Step 6: Rebaseline deliberado + verificação**
 
 ```powershell
 dotnet run --project tools/BalanceSim -- --golden
@@ -758,7 +758,7 @@ dotnet run --project tools/BalanceSim -- --golden-check
 
 Esperado: baseline reescrito (`docs/balance/golden_dungeon.txt`), check verde. Diff do baseline vai no commit (mudança deliberada).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add backend/src/KaezanArenaFable.Api/Engine/DungeonGenerator.cs backend/src/KaezanArenaFable.Api/Domain/GameConfig.cs backend/src/KaezanArenaFable.Api/Engine/GameWorld.cs backend/tests/KaezanArenaFable.Api.Tests/DungeonGeneratorTests.cs tools/BalanceSim/Golden.cs docs/balance/golden_dungeon.txt

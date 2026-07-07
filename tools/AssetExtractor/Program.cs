@@ -24,6 +24,7 @@ internal static class Program
     {
         string? thingsDir = null, outDir = null, configPath = null, monstersPath = null, appearancesPath = null, itemsOutPath = null;
         string? itemsXmlPath = null, mountsXmlPath = null, outfitsXmlPath = null, staticItemsDir = null;
+        string? dumpFlagsPath = null;
         var dumpNames = false;
         var dumpWalls = false;
         var itemsOnly = false;
@@ -50,17 +51,21 @@ internal static class Program
                 case "--static-items": staticItemsDir = args[++i]; break;
                 case "--dump-names": dumpNames = true; break;
                 case "--dump-walls": dumpWalls = true; break;
+                case "--dump-flags": dumpFlagsPath = args[++i]; break;
             }
         }
 
-        if (thingsDir is null || (!itemsOnly && outDir is null))
+        if (thingsDir is null && dumpFlagsPath is not null)
+            thingsDir = @"C:\Kaezan\kaezan\otclient-4.0\data\things\1500";
+
+        if (thingsDir is null || (!itemsOnly && outDir is null && dumpFlagsPath is null))
         {
             Console.Error.WriteLine(
                 "usage: AssetExtractor --things <things/1500 dir> --out <output dir> " +
                 "[--config content-config.json] [--monsters monsters.json] [--monster-appearances monster-appearances.json] " +
                 "[--items-out items.json] [--items-xml items.xml] [--mounts-xml mounts.xml] [--outfits-xml outfits.xml] " +
                 "[--items-only] [--equipment] [--dry-run] [--sprites-only] " +
-                "[--static-items <legacy assets dir>] [--dump-names] [--dump-walls]");
+                "[--static-items <legacy assets dir>] [--dump-names] [--dump-walls] [--dump-flags <outPath>]");
             return 1;
         }
 
@@ -68,6 +73,12 @@ internal static class Program
         var appearances = LoadAppearances(thingsDir, catalog);
         var xmlItems = LoadXmlItems(itemsXmlPath);
         Console.WriteLine($"appearances: {appearances.Object.Count} objects, {appearances.Outfit.Count} outfits, {appearances.Effect.Count} effects, {appearances.Missile.Count} missiles");
+
+        if (dumpFlagsPath is not null)
+        {
+            DumpFlags(appearances.Object, dumpFlagsPath);
+            return 0;
+        }
 
         if (configPath is null)
         {
@@ -719,6 +730,29 @@ internal static class Program
             };
         }
         return flags;
+    }
+
+    private static void DumpFlags(IEnumerable<Appearance> objects, string outPath)
+    {
+        JsonObject root = new JsonObject();
+        foreach (Appearance app in objects.OrderBy(a => a.Id))
+        {
+            JsonObject entry = new JsonObject
+            {
+                ["ground"] = app.Flags?.Bank is not null,
+                ["unpass"] = app.Flags?.Unpass == true,
+                ["top"] = app.Flags?.Top == true,
+                ["clip"] = app.Flags?.Clip == true
+            };
+            root[app.Id.ToString()] = entry;
+        }
+
+        string? dir = Path.GetDirectoryName(outPath);
+        if (!string.IsNullOrEmpty(dir))
+            Directory.CreateDirectory(dir);
+
+        File.WriteAllText(outPath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = false }));
+        Console.WriteLine($"appearance flags dumped: {root.Count} → {outPath}");
     }
 
     private sealed class StaticItemSource

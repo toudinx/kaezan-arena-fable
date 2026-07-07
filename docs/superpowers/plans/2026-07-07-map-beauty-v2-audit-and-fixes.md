@@ -36,7 +36,13 @@
 
 ---
 
-### [ ] Task 1: Auditoria — causa raiz verificada por classe de artefato
+### [x] Task 1: Auditoria — causa raiz verificada por classe de artefato
+
+> **Concluída 2026-07-07.** Doc: `docs/superpowers/specs/2026-07-07-map-beauty-v2-audit.md`. Descoberta-chave:
+> renderer/sprites são fiéis (provado renderizando dados REAIS do Tibia) — todo artefato é de dados do
+> gerador/preview, não de render. Correções à premissa: 0 gaps de manifest; guarda 1×1 só vale p/ borders
+> de CHÃO (walls/`*->OPEN` são multi-tile legítimos); ilhas Voronoi raríssimas (1/15 mapas); costura nua
+> real = cap de 2 slots vencido pelo foot-border de parede. 26 screenshots em `audit-shots/`.
 
 **Model · Effort:** Fable 5 · high
 
@@ -47,7 +53,7 @@
 **Interfaces:**
 - Produces: o doc de auditoria com UMA seção por classe de artefato, cada uma com: evidência (screenshot + tier/seed), causa raiz **confirmada no código/dados** (não hipótese), e a task deste plano que a conserta (2–6). As Tasks 4, 5 e 6 leem este doc como entrada.
 
-- [ ] **Step 1: Gap report programático.** Em `tools/map-importer/`:
+- [x] **Step 1: Gap report programático.** Em `tools/map-importer/`:
 
 ```powershell
 node convert-tilesets.mjs --report-only
@@ -56,16 +62,16 @@ node export.mjs --report-only
 
 Anotar TODOS os ids sem sprite no manifest (`frontend/public/assets/tibia/manifest.json`). Depois, cross-check dos ids que o backend usa fora do tilesets: escrever um script one-off (não commitado) que carrega `backend/src/KaezanArenaFable.Api/Content/tilesets.json`, os `Content/prefabs/*.json` e os defaults de `Domain/Biomes.cs` (palettes `Decor`/`Accent`/`Ground`/`BossGround` — copiar os arrays na mão se preciso) e lista: (a) ids ausentes do manifest; (b) ids com `w>1||h>1` no `Content/appearance-sizes.json`. Colar o resultado no doc de auditoria.
 
-- [ ] **Step 2: Screenshots sistemáticos no Map Lab.** Subir backend (`tools/run-backend.ps1`) + frontend (`npx ng serve` em `frontend/`). Na aba admin Map Lab: gerar **5 tiers × seeds {101, 202, 303}**, floor normal, zoom 2×; +1 boss floor por tier no seed 101. Screenshot de cada um em `docs/superpowers/specs/audit-shots/t<tier>-s<seed>[-boss].png` (20 arquivos). Usar as ferramentas de preview do harness; não pedir screenshot manual ao usuário.
+- [x] **Step 2: Screenshots sistemáticos no Map Lab.** Subir backend (`tools/run-backend.ps1`) + frontend (`npx ng serve` em `frontend/`). Na aba admin Map Lab: gerar **5 tiers × seeds {101, 202, 303}**, floor normal, zoom 2×; +1 boss floor por tier no seed 101. Screenshot de cada um em `docs/superpowers/specs/audit-shots/t<tier>-s<seed>[-boss].png` (20 arquivos). Usar as ferramentas de preview do harness; não pedir screenshot manual ao usuário.
 
-- [ ] **Step 3: Confirmar/refutar cada hipótese, no código.** Para cada classe, achar a instância no screenshot, identificar o item id envolvido (o preview desenha por id — inspecionar via o JSON do endpoint `POST /mapgen/preview` com o mesmo tier/seed e ler `ground/borderA/borderB/decor/wall` da célula), e rastrear a causa:
+- [x] **Step 3: Confirmar/refutar cada hipótese, no código.** Para cada classe, achar a instância no screenshot, identificar o item id envolvido (o preview desenha por id — inspecionar via o JSON do endpoint `POST /mapgen/preview` com o mesmo tier/seed e ler `ground/borderA/borderB/decor/wall` da célula), e rastrear a causa:
   - **Triângulos pretos (Uruk Fort):** o id da célula está no manifest? Se não → gap de extração (Task 4). Se sim, o sprite é 64px (`appearance-sizes.json`)? → corte de render (Task 4). Se 32px e presente → bug de draw order no renderer (Task 4, com repro mínimo anotado).
   - **Boulders/pedras cortadas:** de onde vem o id — palette `Decor` de bioma, decor de prefab, ou slot de wall set? (procurar o id nos três). Anotar a superfície que passou por fora da guarda 1×1 da fatia anterior (Task 4).
   - **Casa ilegível:** identificar o prefab (comparar screenshot com os 8 `Content/prefabs/*.json` — w/h e tema). O render bate com o Tibia real (paredes com topo, 64px inteiros)? Se não → defeito de render (Task 5); se sim mas continua confuso → re-curar o crop (Task 5).
   - **Costuras "tiles justapostos":** seguir 3 costuras longas por tier no zoom 2×; para cada quebra de continuidade anotar o padrão: (i) peça ausente (célula de costura com `borderA == 0`), (ii) mancha serrilhada de 1 célula (ruído Voronoi), (iii) peça errada (corner onde devia edge), (iv) peça dropada pelo cap de 2 slots (célula com 3+ famílias maiores na vizinhança). Contar ocorrências por padrão — a Task 3 prioriza pelo ranking.
   - **Crystal wall chapado (T4/T5):** confirmar que o wall set desenha corpo sem faces nos masks N/W-only (esperado — Tibia não tem face N/W) e avaliar se o problema é a falta do foot border (`crystal wall->OPEN` existe no tilesets.json — está sendo pintado? conferir `borderA` das células abertas ao pé da parede) ou a arte da família em si (Task 6).
-- [ ] **Step 4: Escrever o doc de auditoria** com o formato: `## <classe>` → Evidência / Causa raiz confirmada / Fix (task N) / Notas. Incluir o ranking de padrões de quebra de costura e a lista de ids com gap.
-- [ ] **Step 5: Commit**
+- [x] **Step 4: Escrever o doc de auditoria** com o formato: `## <classe>` → Evidência / Causa raiz confirmada / Fix (task N) / Notas. Incluir o ranking de padrões de quebra de costura e a lista de ids com gap.
+- [x] **Step 5: Commit**
 
 ```powershell
 git add docs/superpowers/specs/2026-07-07-map-beauty-v2-audit.md docs/superpowers/specs/audit-shots

@@ -599,6 +599,8 @@ public static class GameConfig
     public const double ClusterFalloff = 0.45;
     /// <summary>Scales the number of clusters per room (area × biome chance × this). Keeps decor sparse.</summary>
     public const double DecorDensityScale = 0.7;
+    /// <summary>Admin biome authoring cap for decor/accent density. Higher values can flood rooms with props.</summary>
+    public const double BiomeAuthoringMaxDecorChance = 0.2;
 
     // ---- Map beauty (2026-07-07): coherent ground patches (jittered-Voronoi family regions) ----
     /// <summary>Voronoi grid cell in tiles: one jittered patch centre per grid cell.</summary>

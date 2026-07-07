@@ -31,6 +31,9 @@ public static class TilesetRegistry
     private static HashSet<int> multiTileIds = new HashSet<int>();
 
     public static IReadOnlyList<string> FamilyNames => familyNames;
+    public static IReadOnlyList<string> BorderSetNames => borderSets.Keys.ToArray();
+    public static IReadOnlyList<string> WallSetNames => wallSets.Keys.ToArray();
+    public static int CanonicalMaskCount => CanonicalMasks.Count;
 
     public static void LoadFrom(string path)
     {
@@ -76,6 +79,9 @@ public static class TilesetRegistry
 
     public static WallTileSet? WallSet(string family) =>
         wallSets.TryGetValue(family, out WallTileSet? set) ? set : null;
+
+    public static int WallSetSlotCount(string family) =>
+        wallSets.TryGetValue(family, out WallTileSet? set) ? set.Tiles.Count : 0;
 
     /// <summary>True when the appearance sprite spans more than 1x1 tiles — the per-cell renderer
     /// clips such sprites, so biome Decor/Accent palettes must never use them (Task 9 guard).</summary>

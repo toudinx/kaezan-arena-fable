@@ -564,7 +564,9 @@ if (decor) this.assets.drawObject(ctx, decor, sx(x), sy(y), SCALE, x, y, nowPerf
 
 ## Entrega ③ — Map Lab (Tasks 11–14)
 
-### Task 11: Endpoints admin (biomes GET/PUT · mapgen/preview · tilesets)
+### [x] Task 11: Endpoints admin (biomes GET/PUT · mapgen/preview · tilesets)
+
+Resumo: endpoints Map Lab adicionados com CRUD de biomas validado, preview determinístico sem criar run e resumo dos tilesets para o frontend.
 
 **Model · Effort:** Sonnet 5 · medium
 
@@ -589,9 +591,9 @@ public sealed record MapPreviewRequest(
 
 Preview: `BiomeDef resolved = Biomes.Resolve(req.Biome ?? content.Biome(req.Tier) ?? Biomes.ForTier(req.Tier)); Rng rng = new Rng((ulong)req.Seed); DungeonFloor floor = DungeonGenerator.Generate(rng, req.FloorIndex, req.BossFloor, resolved, PrefabRegistry.ForTier(req.Tier)); return Results.Ok(MapDto.FromFloor(floor, resolved.Atmosphere, req.FloorIndex, []));` — nenhuma run criada; POIs vazios (o preview mostra chests/sanctuaries pelos `Rooms`, suficiente pra v1).
 
-- [ ] **Step 1: Testes que falham** (determinismo do preview: mesmo request → DTOs iguais campo a campo; PUT inválido → erro com família inexistente).
-- [ ] **Step 2: Implementar os 4 endpoints** (padrão dos admin existentes — MetaEndpoints.cs:424 `content/tiers` é o gêmeo do GET/PUT).
-- [ ] **Step 3: Testes + build + commit** (`feat(api): Map Lab admin endpoints (biomes CRUD + mapgen preview)`)
+- [x] **Step 1: Testes que falham** (determinismo do preview: mesmo request → DTOs iguais campo a campo; PUT inválido → erro com família inexistente).
+- [x] **Step 2: Implementar os 4 endpoints** (padrão dos admin existentes — MetaEndpoints.cs:424 `content/tiers` é o gêmeo do GET/PUT).
+- [x] **Step 3: Testes + build + commit** (`feat(api): Map Lab admin endpoints (biomes CRUD + mapgen preview)`)
 
 ---
 

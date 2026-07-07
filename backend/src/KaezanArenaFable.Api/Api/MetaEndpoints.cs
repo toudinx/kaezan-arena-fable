@@ -482,6 +482,40 @@ public static class MetaEndpoints
             catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
         });
 
+        // ---- admin: Map Lab (biome presets + seeded preview) ----
+        admin.MapGet("/content/biomes", (ContentStore content) => Results.Ok(content.Biomes));
+
+        admin.MapPut("/content/biomes", (List<BiomeRow> rows, ContentStore content) =>
+        {
+            string? error = ValidateMapLabBiomes(rows);
+            if (error is not null)
+            {
+                return Results.BadRequest(new { error });
+            }
+
+            return Results.Ok(content.ReplaceBiomes(rows));
+        });
+
+        admin.MapPost("/mapgen/preview", (MapPreviewRequest req, ContentStore content) =>
+        {
+            if (req.Tier < 1 || req.Tier > 5)
+            {
+                return Results.BadRequest(new { error = "tier must be in 1..5" });
+            }
+
+            try
+            {
+                BiomeDef? storedBiome = content.Biome(req.Tier);
+                return Results.Ok(BuildMapPreview(req, storedBiome));
+            }
+            catch (InvalidDataException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        admin.MapGet("/tilesets", () => Results.Ok(BuildTilesetSummary()));
+
         // ---- admin: Outfit Studio (authored Kaeli skins) ----
 
         // support metadata: roster (for assigning skins), unlock rules and palette size
@@ -731,6 +765,163 @@ public static class MetaEndpoints
         };
     }
 
+    public static MapDto BuildMapPreview(MapPreviewRequest req, BiomeDef? storedBiome)
+    {
+        BiomeDef source = req.Biome ?? storedBiome ?? Biomes.ForTier(req.Tier);
+        BiomeDef resolved = Biomes.Resolve(source);
+        Rng rng = new Rng((ulong)req.Seed);
+        DungeonFloor floor = DungeonGenerator.Generate(
+            rng,
+            req.FloorIndex,
+            req.BossFloor,
+            resolved,
+            PrefabRegistry.ForTier(req.Tier));
+        return MapDto.FromFloor(floor, resolved.Atmosphere, req.FloorIndex, Array.Empty<PoiDto>());
+    }
+
+    public static TilesetSummaryDto BuildTilesetSummary()
+    {
+        List<TilesetFamilyDto> families = new List<TilesetFamilyDto>();
+        foreach (string name in TilesetRegistry.FamilyNames)
+        {
+            TileFamily family = TilesetRegistry.Family(name);
+            families.Add(new TilesetFamilyDto(name, family.Kind, family.Items.Length, family.ZOrder));
+        }
+
+        int canonicalSlots = TilesetRegistry.CanonicalMaskCount;
+        List<TilesetWallSetDto> wallSets = new List<TilesetWallSetDto>();
+        foreach (string name in TilesetRegistry.WallSetNames)
+        {
+            int slots = TilesetRegistry.WallSetSlotCount(name);
+            wallSets.Add(new TilesetWallSetDto(
+                name,
+                slots,
+                canonicalSlots,
+                Math.Max(0, canonicalSlots - slots)));
+        }
+
+        return new TilesetSummaryDto(
+            families,
+            TilesetRegistry.BorderSetNames.ToList(),
+            wallSets);
+    }
+
+    public static string? ValidateMapLabBiomes(IReadOnlyList<BiomeRow>? rows)
+    {
+        if (rows is null || rows.Count != 5)
+        {
+            return "provide exactly 5 biome rows";
+        }
+
+        HashSet<int> seenTiers = new HashSet<int>();
+        foreach (BiomeRow row in rows)
+        {
+            if (row.Tier < 1 || row.Tier > 5)
+            {
+                return $"tier {row.Tier}: tier must be in 1..5";
+            }
+
+            if (!seenTiers.Add(row.Tier))
+            {
+                return $"duplicate biome tier {row.Tier}";
+            }
+
+            string? error = ValidateMapLabBiome(row);
+            if (error is not null)
+            {
+                return $"tier {row.Tier}: {error}";
+            }
+        }
+
+        for (int tier = 1; tier <= 5; tier++)
+        {
+            if (!seenTiers.Contains(tier))
+            {
+                return $"missing biome tier {tier}";
+            }
+        }
+
+        return null;
+    }
+
+    private static string? ValidateMapLabBiome(BiomeRow row)
+    {
+        if (string.IsNullOrWhiteSpace(row.Name))
+        {
+            return "name is required";
+        }
+
+        BiomeDef def = row.Def;
+        if (string.IsNullOrWhiteSpace(def.WallFamily))
+        {
+            return "wall family is required";
+        }
+
+        if (!TilesetRegistry.HasFamily(def.WallFamily))
+        {
+            return $"unknown wall family '{def.WallFamily}'";
+        }
+
+        TileFamily wallFamily = TilesetRegistry.Family(def.WallFamily);
+        if (!wallFamily.Kind.Equals("mountain", StringComparison.Ordinal))
+        {
+            return $"wall family '{def.WallFamily}' must be a mountain family";
+        }
+
+        if (TilesetRegistry.WallSet(def.WallFamily) is null)
+        {
+            return $"wall family '{def.WallFamily}' has no wall set";
+        }
+
+        if (def.GroundFamilies is null || def.GroundFamilies.Length == 0)
+        {
+            return "provide at least one ground family";
+        }
+
+        HashSet<string> seenGroundFamilies = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string groundFamilyName in def.GroundFamilies)
+        {
+            if (string.IsNullOrWhiteSpace(groundFamilyName))
+            {
+                return "ground family names must be non-empty";
+            }
+
+            if (!seenGroundFamilies.Add(groundFamilyName))
+            {
+                return $"duplicate ground family '{groundFamilyName}'";
+            }
+
+            if (!TilesetRegistry.HasFamily(groundFamilyName))
+            {
+                return $"unknown ground family '{groundFamilyName}'";
+            }
+
+            TileFamily groundFamily = TilesetRegistry.Family(groundFamilyName);
+            if (!groundFamily.Kind.Equals("ground", StringComparison.Ordinal))
+            {
+                return $"ground family '{groundFamilyName}' must be a ground family";
+            }
+        }
+
+        string? decorError = ValidateBiomeChance("DecorChance", def.DecorChance);
+        if (decorError is not null)
+        {
+            return decorError;
+        }
+
+        return ValidateBiomeChance("AccentChance", def.AccentChance);
+    }
+
+    private static string? ValidateBiomeChance(string name, double value)
+    {
+        if (double.IsNaN(value) || value < 0 || value > GameConfig.BiomeAuthoringMaxDecorChance)
+        {
+            return $"{name} must be between 0 and {GameConfig.BiomeAuthoringMaxDecorChance:0.###}";
+        }
+
+        return null;
+    }
+
     private static string? ValidateKaeliSkin(
         KaeliSkinDefinition definition, ContentStore content, string? currentId = null)
     {
@@ -802,3 +993,14 @@ public static class MetaEndpoints
         int Tier, List<string> WaifuRotation, int MaxRuns, int StopAfterConsecutiveLosses,
         int TierUpWins, int MaxTier, bool StopWhenOutOfEnergy);
 }
+
+public sealed record MapPreviewRequest(int Tier, long Seed, int FloorIndex, bool BossFloor, BiomeDef? Biome);
+
+public sealed record TilesetSummaryDto(
+    IReadOnlyList<TilesetFamilyDto> Families,
+    IReadOnlyList<string> BorderSets,
+    IReadOnlyList<TilesetWallSetDto> WallSets);
+
+public sealed record TilesetFamilyDto(string Name, string Kind, int ItemCount, int ZOrder);
+
+public sealed record TilesetWallSetDto(string Name, int Slots, int CanonicalSlots, int MissingSlots);

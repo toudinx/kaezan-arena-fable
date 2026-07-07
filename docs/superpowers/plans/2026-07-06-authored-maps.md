@@ -261,19 +261,19 @@ git commit -m "feat(tools): map-importer scaffold - OTBM reader, crop/spawn quer
 - Consumes: `crop.mjs` / `spawns-query.mjs` (Task 2); sites de curadoria ([TibiaWiki Hunting Places](https://tibia.fandom.com/wiki/Hunting_Places), [intibia](https://intibia.com/hunts), [tibiaroute](https://tibiaroute.com/hunting-places), [TibiaWiki BR](https://www.tibiawiki.com.br/wiki/Locais_de_Ca%C3%A7a)); minimapa visual em [tibiamaps/tibia-map-data](https://github.com/tibiamaps/tibia-map-data) para achar coordenadas.
 - Produces: **Tabela curada de 15–20 hunts candidatas** em `hunt_anatomy.md` com colunas exatas: `nome · x · y · z · w · h · tema · tier (1-5) · espécies (nomes do monsters.json) · espécies faltantes · role (mob|treasure|boss)`. Task 5 lê essa tabela para montar o `prefabs-config.json`.
 
-- [ ] **Step 1: Levantar candidatas**
+- [x] **Step 1: Levantar candidatas**
 
 Cruzar os sites de hunt (nível baixo→alto) com espécies **já presentes** no `monsters.json` do backend (listar com `node -e` sobre o JSON). Priorizar hunts cujas espécies já existem no jogo (rotworms, orcs, minotaurs, dragons, etc. — conferir no arquivo real). Para cada candidata, localizar coordenadas no otservbr via tibiamaps (as coordenadas do Tibia real valem no otservbr, que replica o mapa global) e confirmar com `crop.mjs` (a ASCII deve mostrar a dungeon) e `spawns-query.mjs` (as espécies devem bater com o site).
 
-- [ ] **Step 2: Escrever `hunt_anatomy.md`**
+- [x] **Step 2: Escrever `hunt_anatomy.md`**
 
 Seções obrigatórias: (1) **Como uma hunt é montada no OTServBR** — zona de spawn (center/radius/densidade do monster.xml), layout (corredores vs salas, chokepoints, escadas), relação nível↔faixa de dificuldade; use 3 exemplos dissecados com ASCII de crops reais e a saída do spawns-query. (2) **Tabela curada** (schema acima, 15–20 linhas, cobrindo tiers 1–5, pelo menos 2 temas por tier onde possível). (3) **Critérios de seleção** usados. Documento em PT; ids e nomes de espécie verbatim.
 
-- [ ] **Step 3: Escrever `boss_room_anatomy.md`**
+- [x] **Step 3: Escrever `boss_room_anatomy.md`**
 
 Seções: (1) padrões de arena de boss no otservbr (formato, tamanho típico, gating por alavanca/teleport — dissecar 2–3 exemplos com crops ASCII); (2) o que traduzimos para prefab `role: boss` (arena aberta + entrada única ao sul, compatível com o `CarveAmphitheater` atual) e o que fica fora (mecânica de alavanca = fatia futura); (3) 3–5 candidatas a boss room na tabela (mesmo schema).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```powershell
 git add docs/mapping/hunt_anatomy.md docs/mapping/boss_room_anatomy.md

@@ -85,10 +85,10 @@ fina**. A abstração de modos amadurece quando tivermos 2–3 modos — nada de
 | — | **Sub-trilha: Editor de Biomas/Tiles** (detalhes na seção própria) | — | — | — | 7–10 |
 | LM-08 ✅ | Biomas data-driven no `ContentStore` (fundação) | Opus 4.8 | high | LM-07 | 7 |
 | LM-13 | Enriquecer catálogo de tiles (semantic + extractor) | GPT-5.5 (Codex) | medium | LM-07 | 7 |
-| LM-09 | Endpoints admin de bioma (GET/PUT + preview) | Opus 4.8 | medium | LM-08 | 8 |
-| LM-10 | Frontend: tipos + api + aba "Biomes" | GPT-5.5 (Codex) | medium | LM-09 | 9 |
-| LM-11 | Tile picker visual (semantic + busca) | GPT-5.5 (Codex) | medium | LM-10, LM-13* | 10 |
-| LM-12 | Preview de andar gerado no editor | GPT-5.5 (Codex) | medium | LM-10, LM-09 | 10 |
+| LM-09 [x] | Endpoints admin de bioma (GET/PUT + preview) | Opus 4.8 | medium | LM-08 | 8 |
+| LM-10 [x] | Frontend: tipos + api + aba "Biomes" | GPT-5.5 (Codex) | medium | LM-09 | 9 |
+| LM-11 [x] | Tile picker visual (semantic + busca) | GPT-5.5 (Codex) | medium | LM-10, LM-13* | 10 |
+| LM-12 [x] | Preview de andar gerado no editor | GPT-5.5 (Codex) | medium | LM-10, LM-09 | 10 |
 
 > O `*` em LM-04 marca dependência **branda**: LM-02 *informa* o design da arena (spec de "layout de
 > arena"), mas não bloqueia o código. Se o doc não estiver pronto, use o padrão sugerido no próprio LM-04.
@@ -482,10 +482,10 @@ e, via preview MCP, comparar screenshots antes/depois — sem vazios pretos, par
 | Prompt | Tema | Modelo | Effort | Depende de | Onda |
 |---|---|---|---|---|---|
 | LM-08 ✅ | Biomas data-driven no `ContentStore` (fundação) | Opus 4.8 | high | LM-07 | 7 |
-| LM-09 | Endpoints admin de bioma (GET/PUT + preview) | Opus 4.8 | medium | LM-08 | 8 |
-| LM-10 | Frontend: tipos + api + aba "Biomes" (editor de campos) | GPT-5.5 (Codex) | medium | LM-09 | 9 |
-| LM-11 | Tile picker visual reusável (semantic + busca) | GPT-5.5 (Codex) | medium | LM-10, LM-13* | 10 |
-| LM-12 | Preview de andar gerado no editor (canvas) | GPT-5.5 (Codex) | medium | LM-10, LM-09 | 10 |
+| LM-09 [x] | Endpoints admin de bioma (GET/PUT + preview) | Opus 4.8 | medium | LM-08 | 8 |
+| LM-10 [x] | Frontend: tipos + api + aba "Biomes" (editor de campos) | GPT-5.5 (Codex) | medium | LM-09 | 9 |
+| LM-11 [x] | Tile picker visual reusável (semantic + busca) | GPT-5.5 (Codex) | medium | LM-10, LM-13* | 10 |
+| LM-12 [x] | Preview de andar gerado no editor (canvas) | GPT-5.5 (Codex) | medium | LM-10, LM-09 | 10 |
 | LM-13 | Enriquecer catálogo de tiles (semantic + extractor) | GPT-5.5 (Codex) | medium | LM-07 | 7 |
 
 ```
@@ -573,6 +573,7 @@ admin (LM-09) e a edição visual (LM-10+).
 # LM-09 — Endpoints admin de bioma (GET/PUT + preview de andar)
 
 - **Modelo:** Claude Code Opus 4.8 · **Effort:** medium · **Skill:** nenhuma (`use context7` p/ ASP.NET minimal API) · **Depende de:** LM-08 · **Paraleliza com:** — (solo, Onda 8)
+- **[x] Concluído.** Endpoints admin `GET/PUT /content/biomes`, preview determinístico e validação de biomas entregues via `MetaEndpoints`.
 
 **Objetivo:** expor os biomas para o admin: ler/salvar (espelhando `/content/tiers`) e um endpoint de
 **preview** que gera um andar real com o bioma enviado (edições não salvas) e devolve um `MapDto` para o
@@ -610,6 +611,7 @@ canvas do editor. É o que fecha o loop visual "mudei o tile → vi o andar".
 # LM-10 — Frontend: tipos + api + aba "Biomes" (editor de campos)
 
 - **Modelo:** GPT-5.5 (Codex) · **Effort:** medium · **Skill:** nenhuma (`use context7` p/ Angular signals) · **Depende de:** LM-09 · **Paraleliza com:** — (solo, Onda 9)
+- **[x] Concluído.** Tipos/API frontend e aba admin **Map Lab** com editor de preset de bioma, save/reset e estado de erro/loading entregues.
 
 **Objetivo:** dar a base de UI: espelhar os tipos, ligar as chamadas REST e criar a aba **Biomes** no
 `/admin` com edição dos campos do bioma (paletas como listas de ids editáveis + atmosfera) e salvar. Sem o
@@ -644,6 +646,7 @@ tile picker visual (LM-11) nem o preview de andar (LM-12) ainda — só o esquel
 # LM-11 — Tile picker visual reusável (grupos semantic + busca)
 
 - **Modelo:** GPT-5.5 (Codex) · **Effort:** medium · **Skill:** nenhuma · **Depende de:** LM-10, LM-13 (branda) · **Paraleliza com:** — (solo, Onda 10; sequencial vs LM-12 — mesmo arquivo)
+- **[x] Concluído.** Picker visual integrado ao Map Lab usando `AssetsService`, filtros por grupos semantic/tilesets e chips com thumbnails.
 
 **Objetivo:** trocar a edição textual de ids por uma **escolha visual**: tiles rendados agrupados pelas
 categorias `semantic` (ground.*/wall.*/decor.*/accent.*), com busca livre em todos os objects para
@@ -682,6 +685,7 @@ do print. **Crítico:** mostrar os 2483 objects num grid plano é inútil (≈24
 # LM-13 — Enriquecer o catálogo de tiles (semantic + re-extractor)
 
 - **Modelo:** GPT-5.5 (Codex) · **Effort:** medium · **Skill:** nenhuma · **Depende de:** LM-07 · **Paraleliza com:** LM-08 (Onda 7)
+- **Nota Task 14:** o conversor RME já cobre famílias de ground, border sets, wall sets canônicos e gate de predição contra `otservbr.otbm`; LM-13 permanece para enriquecer semantic/extractor incremental quando faltarem famílias visuais novas.
 
 **Objetivo:** ampliar a variedade de tiles disponíveis para curadoria de bioma. Hoje só 60 dos 2483 objects
 estão marcados como tile (3 famílias de chão, 2 de parede) — magro para fazer estratos visualmente
@@ -718,6 +722,7 @@ não populando do zero.
 # LM-12 — Preview de andar gerado no editor (canvas)
 
 - **Modelo:** GPT-5.5 (Codex) · **Effort:** medium · **Skill:** nenhuma · **Depende de:** LM-10, LM-09 · **Paraleliza com:** — (solo, Onda 10; sequencial vs LM-11 — mesmo arquivo)
+- **[x] Concluído.** Canvas de preview do Map Lab desenha `MapDto` com ground/borders/decor/walls, usa draft inline e preserva determinismo por seed.
 
 **Objetivo:** fechar o loop visual: um canvas no editor que chama o endpoint de preview com o bioma **em
 edição** e desenha o andar gerado, para o usuário ver ground+parede+decor **lendo juntos** — que é onde o

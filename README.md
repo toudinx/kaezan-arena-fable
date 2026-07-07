@@ -493,6 +493,27 @@ e re-rode o extractor de sprites quando algum appearance novo precisar aparecer 
 alterar prefabs que afetem geração, rebaseline o golden de dungeon e refresque a bateria de replays
 com `tools/BalanceSim`.
 
+## Map beauty & Map Lab
+
+O visual procedural usa dados curados do Remere's Map Editor como fonte offline. O fluxo é:
+`tools/map-importer/convert-tilesets.mjs` lê os XMLs externos do RME (`data/materials`) e o
+`otservbr.otbm` local para validação, combina isso com
+`tools/map-importer/data/appearance-flags.json` e escreve o tileset derivado em
+`backend/src/KaezanArenaFable.Api/Content/tilesets.json`. Esse JSON é commitado; o checkout do RME
+e o mapa OTBM continuam fora do repo.
+
+Quando novos ids de tile precisam de sprite, atualize `tools/AssetExtractor/content-config.json` e
+re-rode o AssetExtractor. As sprites entram em `frontend/public/assets/tibia/` e no
+`manifest.json`; o renderer e o Map Lab continuam desenhando objetos somente via `AssetsService`.
+
+O backend carrega `tilesets.json` no startup, valida as famílias referenciadas pelos biomas e pinta
+os andares com manchas coerentes de chão, borders e wall sets 47-blob. Os presets editáveis ficam em
+`.data/content/biomes.json`, seedados dos defaults canônicos de `Domain/Biomes.cs`.
+
+No admin, a aba **Map Lab** permite escolher tier/seed/floor, visualizar o andar gerado, editar o
+preset de bioma como rascunho, usar **Preview draft** sem salvar e persistir com **Save**. Runs novas
+usam o preset salvo; runs em andamento mantêm o bioma resolvido no início da run.
+
 ## Pipeline de assets (re-rodar quando quiser mais conteúdo)
 
 ```powershell

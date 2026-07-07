@@ -243,7 +243,11 @@ engine) · algoritmicamente sutil (achar fontes de não-determinismo) · habilit
 
 ---
 
-## F-D — Geração procedural v2: prefabs, pacing e set-pieces
+## [x] F-D — Geração procedural v2: prefabs, pacing e set-pieces
+
+> ✅ **ENTREGUE 2026-07-07.** Fatia de authored maps concluída: OTBM → prefabs JSON, validação
+> fail-fast, stamping determinístico no gerador, spawn theme por sala, golden/replay battery e docs
+> do pipeline.
 
 **Owner: Opus 4.8 → Fable 5.** Algorítmico com garantias (conectividade, pacing) e rodando no
 seed (determinístico). Opus dá conta do desenho; escale para Fable se o encaixe de prefabs +

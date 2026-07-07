@@ -855,7 +855,7 @@ git commit -m "feat(engine): prefab rooms spawn from authored species theme"
 - Modify: `README.md`, `docs/FABLE_TRACK.md` (marcar a feature `[x]` com 1 linha), `docs/balance/golden_dungeon.txt` (se rebaseline adicional)
 - Delete: replays obsoletos em `backend/src/KaezanArenaFable.Api/.data/replays/` (gravados antes da mudança do gerador — não re-simulam mais, esperado)
 
-- [ ] **Step 1: Builds completos**
+- [x] **Step 1: Builds completos**
 
 ```powershell
 dotnet build backend/src/KaezanArenaFable.Api
@@ -864,7 +864,7 @@ cd frontend; npx ng build
 
 Esperado: ambos sem erros.
 
-- [ ] **Step 2: Regravar a bateria de replays + replay-check**
+- [x] **Step 2: Regravar a bateria de replays + replay-check**
 
 A mudança no gerador invalida replays antigos (mesma seed → mapa diferente). Apagar os `.replay.json.gz` antigos, rodar o BalanceSim normal (ele grava replay de cada run terminada — ver `tools/BalanceSim/Program.cs:118` e os args no help do próprio Program.cs), e então:
 
@@ -874,16 +874,16 @@ dotnet run --project tools/BalanceSim -- --replay-check backend/src/KaezanArenaF
 
 Esperado: `== replay-check: N replay(s) ==` com 0 divergências.
 
-- [ ] **Step 3: Verificação visual no preview**
+- [x] **Step 3: Verificação visual no preview**
 
 Subir backend (fluxo canônico `tools/run-backend.ps1`, Release) + frontend, iniciar uma run tier 1 e confirmar: (a) em alguma seed um prefab aparece (visual distinto do procedural, sem buracos de sprite/magenta); (b) monstros da sala prefab são do spawn theme; (c) corredor conecta pela boca (sem parede atravessada). Screenshot como prova. Lembrete operacional: screenshot trava durante combate por freeze de rAF — capturar fora de combate ou usar o truque de rAF hold (ver memória de verificação de HUD).
 
-- [ ] **Step 4: Docs**
+- [x] **Step 4: Docs**
 
 - `README.md`: seção curta "Authored prefabs" — o que é, como gerar (`--dump-flags` → curadoria → `export.mjs` → extractor), onde ficam.
 - `docs/FABLE_TRACK.md`: marcar a feature `[x]` com resumo de 1 linha.
 
-- [ ] **Step 5: Commit final + push**
+- [x] **Step 5: Commit final + push**
 
 ```powershell
 git add README.md docs/FABLE_TRACK.md backend/src/KaezanArenaFable.Api/.data/replays

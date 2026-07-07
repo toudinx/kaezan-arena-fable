@@ -478,6 +478,21 @@ docs/FABLE_TRACK.md   fila de features complexas/cross-cutting (track Claude Fab
   Claude-only (specs, research, lore, marketing) roda em qualquer dia; 🟡 GPT Image (skins, social)
   precisa de tempo + gerador de imagem. Regras em [docs_web/CLAUDE_WEB.md](docs_web/CLAUDE_WEB.md).
 
+## Authored prefabs
+
+O pipeline de mapas autorais importa crops do `otservbr.otbm` como prefabs JSON commitados em
+`backend/src/KaezanArenaFable.Api/Content/prefabs/`. Eles entram deterministicamente no
+`DungeonGenerator`: o backend carrega e valida os prefabs no startup, estampa ground/wall/decor no
+floor, conecta corredores pelas `mouths` declaradas e usa `spawnTheme` para a composição comum da
+sala, mantendo budget/tier e replay sob o mesmo `Rng` da run.
+
+Fluxo de atualização: rode o AssetExtractor com `--dump-flags` para atualizar
+`tools/map-importer/data/appearance-flags.json`, ajuste a curadoria em
+`tools/map-importer/prefabs-config.json`, gere os prefabs com `node tools/map-importer/export.mjs`,
+e re-rode o extractor de sprites quando algum appearance novo precisar aparecer no renderer. Após
+alterar prefabs que afetem geração, rebaseline o golden de dungeon e refresque a bateria de replays
+com `tools/BalanceSim`.
+
 ## Pipeline de assets (re-rodar quando quiser mais conteúdo)
 
 ```powershell

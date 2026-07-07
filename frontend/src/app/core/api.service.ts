@@ -3,16 +3,20 @@ import {
   Account,
   AdminItem,
   AdminItemsPayload,
+  BiomeRow,
   Catalog,
   DungeonTier,
   KaeliAuthoringMetadata,
   KaeliSkinDefinition,
+  MapDto,
+  MapPreviewRequest,
   MonsterAuthoringMetadata,
   MonsterDefinition,
   PullResponse,
   RoleTuningRow,
   SessionPlanRequest,
   SessionStateDto,
+  TilesetSummaryDto,
 } from './types';
 
 /** REST client for meta systems (account, gacha, dailies, inventory). */
@@ -63,6 +67,23 @@ export class ApiService {
 
   async saveAdminRoleTuning(rows: RoleTuningRow[]): Promise<RoleTuningRow[]> {
     return this.request<RoleTuningRow[]>('PUT', '/admin/content/role-tuning', rows);
+  }
+
+  // ---- admin: Map Lab ----
+  async adminBiomes(): Promise<BiomeRow[]> {
+    return this.request<BiomeRow[]>('GET', '/admin/content/biomes');
+  }
+
+  async adminSaveBiomes(rows: BiomeRow[]): Promise<BiomeRow[]> {
+    return this.request<BiomeRow[]>('PUT', '/admin/content/biomes', rows);
+  }
+
+  async adminMapPreview(req: MapPreviewRequest): Promise<MapDto> {
+    return this.request<MapDto>('POST', '/admin/mapgen/preview', req);
+  }
+
+  async adminTilesets(): Promise<TilesetSummaryDto> {
+    return this.request<TilesetSummaryDto>('GET', '/admin/tilesets');
   }
 
   async getMonsterAuthoringMetadata(): Promise<MonsterAuthoringMetadata> {

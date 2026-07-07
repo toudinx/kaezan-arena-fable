@@ -597,7 +597,9 @@ Preview: `BiomeDef resolved = Biomes.Resolve(req.Biome ?? content.Biome(req.Tier
 
 ---
 
-### Task 12: Map Lab — aba admin com canvas de preview
+### [x] Task 12: Map Lab — aba admin com canvas de preview
+
+Resumo: aba Map Lab adicionada ao Admin com tipos/API, preview por seed/tier/boss floor em canvas estatico, zoom 1x/2x e overlays de blocked/rooms; teste cobre a ordem ground→borderA→borderB→decor→wall.
 
 **Model · Effort:** GPT-5.5 (Codex) · medium
 
@@ -609,10 +611,10 @@ Preview: `BiomeDef resolved = Biomes.Resolve(req.Biome ?? content.Biome(req.Tier
 - Consumes: endpoints da Task 11; `MapDto` (types.ts, com borders da Task 10); `AssetsService.drawObject(ctx, id, px, py, scale, x, y, now)`.
 - Produces: componente `<app-map-lab />`; métodos `api.adminBiomes()`, `api.adminSaveBiomes(rows)`, `api.adminMapPreview(req)`, `api.adminTilesets()` (padrão dos métodos admin existentes no api.service.ts).
 
-- [ ] **Step 1:** Tab nova em `admin.ts`: `AdminMode` ganha `'maplab'`; botão "Map Lab" nas page-tabs; `@else if (pageMode() === 'maplab') { <app-map-lab /> }`.
-- [ ] **Step 2:** `map-lab.ts` (standalone, template inline, signals — padrão `role-tuning-editor.ts`): controles tier (1–5), seed (number input + botão Reroll = seed aleatório client-side, só UX), floor (Normal/Boss), botão Generate. Ao gerar: `adminMapPreview` → desenhar o `MapDto` num `<canvas>`: para cada célula, ground → borderA → borderB → decor → wall via `AssetsService.drawObject` (pinta 1×, sem rAF loop; `now = 0`). Antes de desenhar, aguardar o carregamento de assets do jeito que `game.ts` faz (inspecionar `assets.service.ts` para a API de ready/load e reusar). Zoom simples: fator 1×/2× (re-render). Overlay checkbox: blocked (retângulo semi-transparente vermelho), rooms (contorno + label do role; prefab room com contorno distinto — `RoomDto` já tem `role`).
-- [ ] **Step 3:** `npx ng build` limpo; verificação manual: tier 2, dois seeds, boss floor, overlays.
-- [ ] **Step 4: Commit** (`feat(admin): Map Lab tab with seeded floor preview canvas`)
+- [x] **Step 1:** Tab nova em `admin.ts`: `AdminMode` ganha `'maplab'`; botão "Map Lab" nas page-tabs; `@else if (pageMode() === 'maplab') { <app-map-lab /> }`.
+- [x] **Step 2:** `map-lab.ts` (standalone, template inline, signals — padrão `role-tuning-editor.ts`): controles tier (1–5), seed (number input + botão Reroll = seed aleatório client-side, só UX), floor (Normal/Boss), botão Generate. Ao gerar: `adminMapPreview` → desenhar o `MapDto` num `<canvas>`: para cada célula, ground → borderA → borderB → decor → wall via `AssetsService.drawObject` (pinta 1×, sem rAF loop; `now = 0`). Antes de desenhar, aguardar o carregamento de assets do jeito que `game.ts` faz (inspecionar `assets.service.ts` para a API de ready/load e reusar). Zoom simples: fator 1×/2× (re-render). Overlay checkbox: blocked (retângulo semi-transparente vermelho), rooms (contorno + label do role; prefab room com contorno distinto — `RoomDto` já tem `role`).
+- [x] **Step 3:** `npx ng build` limpo; verificação manual: tier 2, dois seeds, boss floor, overlays.
+- [x] **Step 4: Commit** (`feat(admin): Map Lab tab with seeded floor preview canvas`)
 
 ---
 

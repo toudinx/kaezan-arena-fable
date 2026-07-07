@@ -5,11 +5,12 @@ import { CreaturePreview } from './creature-preview';
 import { MonsterEditor } from './monster-editor';
 import { KaeliManager } from './kaeli-manager';
 import { ItemEditor } from './item-editor';
+import { MapLab } from './map-lab';
 import { RoleTuningEditor } from './role-tuning-editor';
 import { KaeliArtService } from '../../core/kaeli-art.service';
 import { OutfitPreview } from '../../core/outfit-preview';
 
-type AdminMode = 'dungeons' | 'monsters' | 'kaelis' | 'items' | 'banners' | 'roles';
+type AdminMode = 'dungeons' | 'monsters' | 'kaelis' | 'items' | 'banners' | 'roles' | 'maplab';
 type CatalogMode = 'monsters' | 'elites' | 'bosses';
 type MobKind = 'commonMobs' | 'eliteMobs';
 type DropZone = MobKind | 'boss';
@@ -17,7 +18,7 @@ type DropZone = MobKind | 'boss';
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CreaturePreview, MonsterEditor, KaeliManager, ItemEditor, RoleTuningEditor, OutfitPreview],
+  imports: [CreaturePreview, MonsterEditor, KaeliManager, ItemEditor, MapLab, RoleTuningEditor, OutfitPreview],
   template: `
     <div class="page">
       <header class="titlebar">
@@ -31,6 +32,7 @@ type DropZone = MobKind | 'boss';
             <button type="button" [class.active]="pageMode() === 'monsters'" (click)="pageMode.set('monsters')">Monsters</button>
             <button type="button" [class.active]="pageMode() === 'items'" (click)="pageMode.set('items')">Items</button>
             <button type="button" [class.active]="pageMode() === 'dungeons'" (click)="pageMode.set('dungeons')">Dungeons</button>
+            <button type="button" [class.active]="pageMode() === 'maplab'" (click)="pageMode.set('maplab')">Map Lab</button>
             <button type="button" [class.active]="pageMode() === 'kaelis'" (click)="pageMode.set('kaelis')">Skins</button>
             <button type="button" [class.active]="pageMode() === 'roles'" (click)="pageMode.set('roles')">Roles</button>
             <button type="button" [class.active]="pageMode() === 'banners'" (click)="openBanners()">Banners</button>
@@ -46,6 +48,8 @@ type DropZone = MobKind | 'boss';
         <app-item-editor />
       } @else if (pageMode() === 'roles') {
         <app-role-tuning-editor />
+      } @else if (pageMode() === 'maplab') {
+        <app-map-lab />
       } @else if (pageMode() === 'banners') {
         <section class="banners-editor">
           @if (bannerStatus(); as st) {

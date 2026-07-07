@@ -200,6 +200,80 @@ export interface RoleTuningRow {
   aoeScale: number;
 }
 
+export interface BiomeAtmosphereDef {
+  name: string;
+  tintR: number;
+  tintG: number;
+  tintB: number;
+  tintStrength: number;
+  fogR: number;
+  fogG: number;
+  fogB: number;
+  fogStrength: number;
+  vignette: number;
+  particleR: number;
+  particleG: number;
+  particleB: number;
+  particleDensity: number;
+  particleDrift: number;
+}
+
+export interface WallTileSetDef {
+  tiles: Record<string, number>;
+}
+
+export interface BiomeDef {
+  ground: number[];
+  bossGround: number[];
+  bedrock: number;
+  wallH: number;
+  wallV: number;
+  wallPole: number;
+  wallCorner: number;
+  decor: number[];
+  decorChance: number;
+  accent: number[];
+  accentChance: number;
+  atmosphere: BiomeAtmosphereDef;
+  wallSet: WallTileSetDef | null;
+  wallFamily: string;
+  groundFamilies: string[] | null;
+}
+
+export interface BiomeRow {
+  tier: number;
+  name: string;
+  def: BiomeDef;
+}
+
+export interface MapPreviewRequest {
+  tier: number;
+  seed: number;
+  floorIndex: number;
+  bossFloor: boolean;
+  biome: BiomeDef | null;
+}
+
+export interface TilesetFamilyDto {
+  name: string;
+  kind: string;
+  itemCount: number;
+  zOrder: number;
+}
+
+export interface TilesetWallSetDto {
+  name: string;
+  slots: number;
+  canonicalSlots: number;
+  missingSlots: number;
+}
+
+export interface TilesetSummaryDto {
+  families: TilesetFamilyDto[];
+  borderSets: string[];
+  wallSets: TilesetWallSetDto[];
+}
+
 export interface BannerDef {
   id: string;
   name: string;

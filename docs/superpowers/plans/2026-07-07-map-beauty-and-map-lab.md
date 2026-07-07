@@ -618,7 +618,9 @@ Resumo: aba Map Lab adicionada ao Admin com tipos/API, preview por seed/tier/bos
 
 ---
 
-### Task 13: Map Lab — editor de preset com Preview/Save
+### [x] Task 13: Map Lab — editor de preset com Preview/Save
+
+Resumo: Map Lab agora tem editor de preset por tier com famílias de wall/ground, sliders de decor/accent, paletas com thumbnails, atmosfera editável, preview draft sem salvar, save validado via PUT dos 5 rows e reset pelo GET.
 
 **Model · Effort:** GPT-5.5 (Codex) · medium
 
@@ -628,10 +630,10 @@ Resumo: aba Map Lab adicionada ao Admin com tipos/API, preview por seed/tier/bos
 **Interfaces:**
 - Consumes: `api.adminBiomes()` / `adminSaveBiomes` / `adminTilesets` (Task 12), `MapPreviewRequest.Biome` (Task 11).
 
-- [ ] **Step 1:** Coluna direita do Map Lab: formulário do `BiomeRow` do tier selecionado — `WallFamily` (select das famílias `kind === "mountain"` do `adminTilesets`), `GroundFamilies` (multi-select ordenado, 1–3, das famílias `ground`), `DecorChance`/`AccentChance` (range sliders 0–0.2), palettes `Decor`/`Accent` (chips de id com thumbnail — reusar o padrão de thumbnail de item do `item-editor.ts`; sem picker novo nesta fatia: input de id + add), atmosfera (inputs numéricos/color — dado puro).
-- [ ] **Step 2:** Botões: **Preview draft** (envia o `BiomeDef` editado inline no `MapPreviewRequest.Biome`, mesmo seed — NÃO salva), **Save** (PUT completo dos 5 rows com o row editado substituído; mostrar erro de validação do backend), **Reset row** (recarrega do GET).
-- [ ] **Step 3:** `npx ng build` limpo; verificação manual: editar densidade de decor → Preview draft muda com mesmo seed → Save → GET devolve o salvo → iniciar uma run real do tier e confirmar o preset aplicado.
-- [ ] **Step 4: Commit** (`feat(admin): Map Lab biome preset editor with draft preview`)
+- [x] **Step 1:** Coluna direita do Map Lab: formulário do `BiomeRow` do tier selecionado — `WallFamily` (select das famílias `kind === "mountain"` do `adminTilesets`), `GroundFamilies` (multi-select ordenado, 1–3, das famílias `ground`), `DecorChance`/`AccentChance` (range sliders 0–0.2), palettes `Decor`/`Accent` (chips de id com thumbnail — reusar o padrão de thumbnail de item do `item-editor.ts`; sem picker novo nesta fatia: input de id + add), atmosfera (inputs numéricos/color — dado puro).
+- [x] **Step 2:** Botões: **Preview draft** (envia o `BiomeDef` editado inline no `MapPreviewRequest.Biome`, mesmo seed — NÃO salva), **Save** (PUT completo dos 5 rows com o row editado substituído; mostrar erro de validação do backend), **Reset row** (recarrega do GET).
+- [x] **Step 3:** `npx ng build` limpo; verificação manual: editar densidade de decor → Preview draft muda com mesmo seed → Save → GET devolve o salvo → iniciar uma run real do tier e confirmar o preset aplicado.
+- [x] **Step 4: Commit** (`feat(admin): Map Lab biome preset editor with draft preview`)
 
 ---
 

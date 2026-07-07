@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using KaezanArenaFable.Api.Content;
 using KaezanArenaFable.Api.Domain;
 using KaezanArenaFable.Api.Engine;
 
@@ -81,16 +82,22 @@ internal static class Golden
     /// <summary>Hashes ordered by (tier, seed, floor) — stable key "T{tier} seed{seed} f{floor}".</summary>
     private static SortedDictionary<string, string> Compute()
     {
+        // LM-08: mirror GameWorld — the committed authored prefabs are part of the generated layout.
+        PrefabRegistry.LoadFrom(
+            Path.Combine(RepoRoot(), "backend", "src", "KaezanArenaFable.Api", "Content", "prefabs"),
+            _ => true);
+
         var result = new SortedDictionary<string, string>(StringComparer.Ordinal);
         foreach (var tier in Tiers)
         {
             var biome = Biomes.ForTier(tier);
+            var prefabs = PrefabRegistry.ForTier(tier);
             foreach (var seed in Seeds)
             {
                 // Mirrors GameWorld: one Rng((ulong)seed) generates both floors in sequence.
                 var rng = new Rng((ulong)seed);
-                var f0 = DungeonGenerator.Generate(rng, 0, isBossFloor: false, biome);
-                var f1 = DungeonGenerator.Generate(rng, 1, isBossFloor: true, biome);
+                var f0 = DungeonGenerator.Generate(rng, 0, isBossFloor: false, biome, prefabs);
+                var f1 = DungeonGenerator.Generate(rng, 1, isBossFloor: true, biome, prefabs);
                 result[Key(tier, seed, 0)] = HashFloor(f0);
                 result[Key(tier, seed, 1)] = HashFloor(f1);
             }
@@ -125,6 +132,7 @@ internal static class Golden
             {
                 w.Write(r.X); w.Write(r.Y); w.Write(r.W); w.Write(r.H);
                 w.Write(r.Role);
+                w.Write(r.PrefabId); // LM-08: an authored room must hash differently from a procedural twin
             }
 
             w.Write(f.Entry.X); w.Write(f.Entry.Y);

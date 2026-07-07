@@ -1,3 +1,4 @@
+using KaezanArenaFable.Api.Content;
 using KaezanArenaFable.Api.Domain;
 using KaezanArenaFable.Api.Engine;
 
@@ -141,6 +142,70 @@ public class DungeonGeneratorTests
         Assert.True(f.Blocked[room.Y * f.W + room.X + room.W - 1], "NE room corner should be rock");
         Assert.True(f.Blocked[(room.Y + room.H - 1) * f.W + room.X], "SW room corner should be rock");
         Assert.True(f.Blocked[(room.Y + room.H - 1) * f.W + room.X + room.W - 1], "SE room corner should be rock");
+    }
+
+    /// <summary>12x10 authored arena: full wall ring, open interior, one mouth on the west edge.</summary>
+    private static PrefabDef TestPrefab(string role = "mob")
+    {
+        const int w = 12, h = 10;
+        ushort[] ground = new ushort[w * h];
+        ushort[] wall = new ushort[w * h];
+        ushort[] decor = new ushort[w * h];
+        bool[] blocked = new bool[w * h];
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                int i = y * w + x;
+                bool edge = x == 0 || y == 0 || x == w - 1 || y == h - 1;
+                blocked[i] = edge;
+                ground[i] = 351;
+                if (edge) wall[i] = 356;
+            }
+        int mouth = (h / 2) * w; // (0, h/2)
+        blocked[mouth] = false; wall[mouth] = 0;
+        return new PrefabDef($"prefab:test-{role}", role, 1, "cave", w, h,
+            ground, wall, decor, blocked,
+            [new PrefabPoi(0, h / 2)], [], ["Rotworm"]);
+    }
+
+    [Theory]
+    [InlineData(1L)]
+    [InlineData(42L)]
+    public void prefab_floor_is_deterministic_and_connected(long seed)
+    {
+        PrefabDef[] pool = [TestPrefab()];
+        Rng rngA = new Rng((ulong)seed);
+        Rng rngB = new Rng((ulong)seed);
+        DungeonFloor a = DungeonGenerator.Generate(rngA, 0, isBossFloor: false, Biomes.ForTier(1), pool);
+        DungeonFloor b = DungeonGenerator.Generate(rngB, 0, isBossFloor: false, Biomes.ForTier(1), pool);
+        Assert.Equal(a.Blocked, b.Blocked);
+        Assert.Equal(a.Ground, b.Ground);
+        // if a prefab room landed, its open interior must be reachable from entry
+        Room? prefabRoom = a.Rooms.FirstOrDefault(r => r.PrefabId != "");
+        if (prefabRoom is not null)
+        {
+            bool[] live = Flood(a);
+            Assert.True(live[prefabRoom.CenterY * a.W + prefabRoom.CenterX],
+                "prefab interior unreachable from entry");
+        }
+    }
+
+    [Fact]
+    public void prefab_room_stamps_its_ground_ids()
+    {
+        // seed chosen to guarantee placement (PrefabRoomChance=0.6): iterate seeds until one lands
+        for (long seed = 1; seed < 50; seed++)
+        {
+            Rng rng = new Rng((ulong)seed);
+            DungeonFloor f = DungeonGenerator.Generate(rng, 0, false, Biomes.ForTier(1), [TestPrefab()]);
+            Room? room = f.Rooms.FirstOrDefault(r => r.PrefabId != "");
+            if (room is null) continue;
+            // interior cell (center) must carry the prefab's ground id
+            Assert.Equal(351, f.Ground[room.CenterY * f.W + room.CenterX]);
+            Assert.Equal(["Rotworm"], room.SpawnTheme);
+            return;
+        }
+        Assert.Fail("no seed in 1..49 placed a prefab — placement is broken");
     }
 
     [Theory]

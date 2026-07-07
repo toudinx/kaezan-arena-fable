@@ -1,3 +1,4 @@
+using KaezanArenaFable.Api.Content;
 using KaezanArenaFable.Api.Domain;
 
 namespace KaezanArenaFable.Api.Engine;
@@ -436,7 +437,8 @@ public sealed partial class GameWorld
         // callers without a store (for example, the simulator measuring against the stable baseline). Resolved here once.
         _biome = biome ?? Biomes.ForTier(tier.Tier);
         // LM-03 (1) map source: the mode decides how the place is produced (same Rng sequence in Dungeon).
-        _floors = _modeRules.BuildFloors(_rng, _biome);
+        // LM-08: the tier's authored prefab pool rides along (static content, id-sorted → deterministic).
+        _floors = _modeRules.BuildFloors(_rng, _biome, PrefabRegistry.ForTier(tier.Tier));
 
         var hp = (int)(waifu.BaseHp * (1 + ascension * GameConfig.AscensionAtkBonus)
                        * (1 + _affinityStatBonus) * Loadout.Mastery.HpMult)

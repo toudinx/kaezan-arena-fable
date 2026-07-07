@@ -1,3 +1,4 @@
+using KaezanArenaFable.Api.Content;
 using KaezanArenaFable.Api.Domain;
 
 namespace KaezanArenaFable.Api.Engine;
@@ -22,8 +23,9 @@ public abstract class GameModeStrategy
 {
     public abstract GameMode Id { get; }
 
-    /// <summary>(1) Map source: produces run floors/rooms. Only consumes the run <paramref name="rng"/>.</summary>
-    public abstract DungeonFloor[] BuildFloors(Rng rng, BiomeDef biome);
+    /// <summary>(1) Map source: produces run floors/rooms. Only consumes the run <paramref name="rng"/>.
+    /// <paramref name="prefabs"/> is the tier's authored prefab pool (LM-08); modes may ignore it.</summary>
+    public abstract DungeonFloor[] BuildFloors(Rng rng, BiomeDef biome, IReadOnlyList<PrefabDef> prefabs);
 
     /// <summary>(2) Initial population (pre-spawn). Called once during run construction.</summary>
     public abstract void Populate(GameWorld world);
@@ -53,10 +55,10 @@ public sealed class DungeonModeStrategy : GameModeStrategy
 {
     public override GameMode Id => GameMode.Dungeon;
 
-    public override DungeonFloor[] BuildFloors(Rng rng, BiomeDef biome) =>
+    public override DungeonFloor[] BuildFloors(Rng rng, BiomeDef biome, IReadOnlyList<PrefabDef> prefabs) =>
     [
-        DungeonGenerator.Generate(rng, 0, isBossFloor: false, biome),
-        DungeonGenerator.Generate(rng, 1, isBossFloor: true, biome)
+        DungeonGenerator.Generate(rng, 0, isBossFloor: false, biome, prefabs),
+        DungeonGenerator.Generate(rng, 1, isBossFloor: true, biome, prefabs)
     ];
 
     public override void Populate(GameWorld world)
@@ -82,7 +84,7 @@ public sealed class TrainingModeStrategy : GameModeStrategy
 {
     public override GameMode Id => GameMode.Training;
 
-    public override DungeonFloor[] BuildFloors(Rng rng, BiomeDef biome) =>
+    public override DungeonFloor[] BuildFloors(Rng rng, BiomeDef biome, IReadOnlyList<PrefabDef> prefabs) =>
         [DungeonGenerator.GenerateTrainingRoom(rng, biome)];
 
     public override void Populate(GameWorld world) => world.SpawnTrainingDummy();

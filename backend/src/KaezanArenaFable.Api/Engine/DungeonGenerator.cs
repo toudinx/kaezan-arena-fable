@@ -1,3 +1,4 @@
+using KaezanArenaFable.Api.Content;
 using KaezanArenaFable.Api.Domain;
 
 namespace KaezanArenaFable.Api.Engine;
@@ -7,6 +8,10 @@ public sealed class Room
     public int X, Y, W, H;
     // G-07 taxonomy: entry | mob (combate) | treasure | elite | hazard | miniboss | sanctuary | ladder | boss
     public string Role = "mob";
+    // LM-08 authored prefabs: empty/null for procedural rooms. SpawnTheme drives themed wave composition.
+    public string PrefabId = "";
+    public string[] SpawnTheme = [];
+    public PrefabDef? Prefab;
     public int CenterX => X + W / 2;
     public int CenterY => Y + H / 2;
     public bool Contains(int px, int py) => px >= X && px < X + W && py >= Y && py < Y + H;
@@ -44,7 +49,8 @@ public static class DungeonGenerator
     public const ushort SanctuaryId = 2478; // G-06: gemmed ornate chest = Echo Sanctuary altar
     public const ushort LadderDownId = 386;
 
-    public static DungeonFloor Generate(Rng rng, int floorIndex, bool isBossFloor, BiomeDef biome)
+    public static DungeonFloor Generate(Rng rng, int floorIndex, bool isBossFloor, BiomeDef biome,
+        IReadOnlyList<PrefabDef>? prefabs = null)
     {
         var size = isBossFloor ? GameConfig.Floor2Size : GameConfig.Floor1Size;
         var roomCount = isBossFloor ? GameConfig.RoomsFloor2 : GameConfig.RoomsFloor1;
@@ -65,23 +71,72 @@ public static class DungeonGenerator
         if (roomCount <= 1)
         {
             // SINGLE ARENA: one open room fills the floor (3-tile margin for the biome wall).
-            const int margin = 3;
-            floor.Rooms.Add(new Room { X = margin, Y = margin, W = size - 2 * margin, H = size - 2 * margin });
+            // LM-08: with an authored pool the arena slot itself may become a prefab (centred crop);
+            // a failed roll or an empty/oversized pool keeps the procedural arena byte-identical.
+            Room? prefabArena = TryPickPrefabArena(rng, prefabs, isBossFloor, size);
+            if (prefabArena is not null) floor.Rooms.Add(prefabArena);
+            else
+            {
+                const int margin = 3;
+                floor.Rooms.Add(new Room { X = margin, Y = margin, W = size - 2 * margin, H = size - 2 * margin });
+            }
         }
         else
         {
-            // place non-overlapping rooms
-            for (var attempt = 0; attempt < GameConfig.RoomPlacementAttempts && floor.Rooms.Count < roomCount; attempt++)
+            // place non-overlapping rooms. LM-08: the FIRST room is always procedural (Rooms[0] = entry);
+            // authored prefab rooms are attempted right after it, then the loop fills up to roomCount.
+            // With a null/empty pool no extra rng draw happens, so legacy layouts stay byte-identical.
+            bool TryPlaceRoom(int w, int h, PrefabDef? prefab)
+            {
+                var x = rng.Range(2, size - w - 2);
+                var y = rng.Range(2, size - h - 2);
+                var overlaps = floor.Rooms.Any(r =>
+                    x < r.X + r.W + 2 && x + w + 2 > r.X && y < r.Y + r.H + 2 && y + h + 2 > r.Y);
+                if (overlaps) return false;
+                floor.Rooms.Add(prefab is null
+                    ? new Room { X = x, Y = y, W = w, H = h }
+                    : new Room
+                    {
+                        X = x, Y = y, W = w, H = h, Role = prefab.Role,
+                        PrefabId = prefab.Id, SpawnTheme = prefab.SpawnTheme, Prefab = prefab
+                    });
+                return true;
+            }
+
+            PrefabDef? bossPrefab = PickBossPrefab(rng, prefabs, isBossFloor, size);
+
+            var attempt = 0;
+            for (; attempt < GameConfig.RoomPlacementAttempts && floor.Rooms.Count < 1; attempt++)
             {
                 var w = rng.Range(GameConfig.RoomMin, GameConfig.RoomMax);
                 var h = rng.Range(GameConfig.RoomMin, GameConfig.RoomMax);
-                if (isBossFloor && floor.Rooms.Count == roomCount - 1) { w = 11; h = 9; } // boss hall
-                var x = rng.Range(2, size - w - 2);
-                var y = rng.Range(2, size - h - 2);
-                var candidate = new Room { X = x, Y = y, W = w, H = h };
-                var overlaps = floor.Rooms.Any(r =>
-                    x < r.X + r.W + 2 && x + w + 2 > r.X && y < r.Y + r.H + 2 && y + h + 2 > r.Y);
-                if (!overlaps) floor.Rooms.Add(candidate);
+                TryPlaceRoom(w, h, null);
+            }
+
+            if (!isBossFloor && prefabs is { Count: > 0 })
+            {
+                // fit inside rng.Range(2, size - w - 2): needs w <= size - 4 (same for h)
+                List<PrefabDef> pool = FilterPrefabs(prefabs, boss: false, size - 4, size - 4);
+                for (var slot = 0; slot < GameConfig.PrefabMaxPerFloor && pool.Count > 0; slot++)
+                {
+                    if (!rng.Chance(GameConfig.PrefabRoomChance)) continue;
+                    PrefabDef p = pool[rng.Next(pool.Count)];
+                    for (var t = 0; t < GameConfig.RoomPlacementAttempts; t++)
+                        if (TryPlaceRoom(p.W, p.H, p)) break;
+                }
+            }
+
+            for (; attempt < GameConfig.RoomPlacementAttempts && floor.Rooms.Count < roomCount; attempt++)
+            {
+                var w = rng.Range(GameConfig.RoomMin, GameConfig.RoomMax);
+                var h = rng.Range(GameConfig.RoomMin, GameConfig.RoomMax);
+                if (isBossFloor && floor.Rooms.Count == roomCount - 1)
+                {
+                    // boss hall: authored prefab when one was drawn, else the fixed procedural chamber
+                    if (bossPrefab is not null) { TryPlaceRoom(bossPrefab.W, bossPrefab.H, bossPrefab); continue; }
+                    w = 11; h = 9;
+                }
+                TryPlaceRoom(w, h, null);
             }
         }
 
@@ -91,6 +146,12 @@ public static class DungeonGenerator
         var singleArena = floor.Rooms.Count == 1;
         foreach (var room in floor.Rooms)
         {
+            // LM-08: prefab rooms stamp their authored blocked mask verbatim — no erosion pass.
+            if (room.Prefab is { } stamp)
+            {
+                StampBlocked(floor, room, stamp);
+                continue;
+            }
             for (var yy = room.Y; yy < room.Y + room.H; yy++)
                 for (var xx = room.X; xx < room.X + room.W; xx++)
                     floor.Blocked[yy * size + xx] = false;
@@ -111,12 +172,29 @@ public static class DungeonGenerator
         var tree = ConnectRooms(floor, rng);
         AssignRoles(floor, tree, isBossFloor, rng);
 
+        // LM-08: authored chest POIs join the floor lists (benefit chests for treasure prefabs).
+        foreach (var room in floor.Rooms)
+        {
+            if (room.Prefab is not { } chestSource) continue;
+            foreach (PrefabPoi chest in chestSource.Chests)
+            {
+                (int X, int Y) pos = (room.X + chest.X, room.Y + chest.Y);
+                floor.Chests.Add(pos);
+                if (chestSource.Role == "treasure") floor.BenefitChests.Add(pos);
+            }
+        }
+
         // H-03 (G3): carve a 1-tile-mouth "box" alcove into each combat room (corridors stay wide; the
         // only 1-tile choke is the alcove mouth). Runs after roles/POIs so it can dodge chests/altars.
         // Disabled by GameConfig.EnableBoxNiches for the open-map direction (the choke stalls mobbing).
         if (GameConfig.EnableBoxNiches) CarveBoxNiches(floor, rng);
 
         PaintTiles(floor, rng, biome);
+        // LM-08: authored visuals land after the painter so the prefab's ground/wall/decor ids win inside
+        // its rect, while corridor cells punched through the prefab keep the painter's corridor tiles.
+        foreach (var room in floor.Rooms)
+            if (room.Prefab is { } visuals)
+                StampVisuals(floor, room, visuals);
         DungeonValidator.Validate(floor);
         return floor;
     }
@@ -159,6 +237,104 @@ public static class DungeonGenerator
 
     private static int Manhattan(Room a, Room b) =>
         Math.Abs(a.CenterX - b.CenterX) + Math.Abs(a.CenterY - b.CenterY);
+
+    /// <summary>
+    /// LM-08 single-arena substitution: the whole floor is one room today (RoomsFloorN = 1), so the
+    /// authored slot IS the arena — a fitting prefab (mob/treasure on normal floors, boss on the boss
+    /// floor) replaces the procedural arena, centred on the floor. Guarded so a null/empty/unfitting
+    /// pool consumes zero rng draws, keeping prefab-less generation byte-identical.
+    /// </summary>
+    private static Room? TryPickPrefabArena(Rng rng, IReadOnlyList<PrefabDef>? prefabs, bool isBossFloor, int size)
+    {
+        if (prefabs is null || prefabs.Count == 0 || GameConfig.PrefabMaxPerFloor <= 0) return null;
+        List<PrefabDef> pool = FilterPrefabs(prefabs, isBossFloor, size, size);
+        if (pool.Count == 0) return null;
+        if (!rng.Chance(isBossFloor ? GameConfig.PrefabBossChance : GameConfig.PrefabRoomChance)) return null;
+        PrefabDef chosen = pool[rng.Next(pool.Count)];
+        return new Room
+        {
+            X = (size - chosen.W) / 2, Y = (size - chosen.H) / 2, W = chosen.W, H = chosen.H,
+            Role = chosen.Role, PrefabId = chosen.Id, SpawnTheme = chosen.SpawnTheme, Prefab = chosen
+        };
+    }
+
+    /// <summary>LM-08 multi-room boss hall: one up-front draw (never per attempt) picks whether the boss
+    /// hall is an authored arena. Null pool or failed roll → the fixed procedural chamber.</summary>
+    private static PrefabDef? PickBossPrefab(Rng rng, IReadOnlyList<PrefabDef>? prefabs, bool isBossFloor, int size)
+    {
+        if (!isBossFloor || prefabs is null || prefabs.Count == 0 || GameConfig.PrefabMaxPerFloor <= 0) return null;
+        List<PrefabDef> pool = FilterPrefabs(prefabs, boss: true, size - 4, size - 4);
+        if (pool.Count == 0) return null;
+        if (!rng.Chance(GameConfig.PrefabBossChance)) return null;
+        return pool[rng.Next(pool.Count)];
+    }
+
+    /// <summary>Deterministic role/fit filter over the (id-sorted) registry pool. Boss floors draw only
+    /// <c>role: boss</c>; normal floors draw mob/treasure. Prefabs larger than the available span never
+    /// enter the pool, so the draw space depends only on static data.</summary>
+    private static List<PrefabDef> FilterPrefabs(IReadOnlyList<PrefabDef> prefabs, bool boss, int maxW, int maxH)
+    {
+        List<PrefabDef> pool = new List<PrefabDef>();
+        foreach (PrefabDef p in prefabs)
+        {
+            bool roleOk = boss ? p.Role == "boss" : p.Role != "boss";
+            if (roleOk && p.W <= maxW && p.H <= maxH) pool.Add(p);
+        }
+        return pool;
+    }
+
+    /// <summary>Stamps the prefab's authored blocked mask into the floor (row-major, room offset).</summary>
+    private static void StampBlocked(DungeonFloor floor, Room room, PrefabDef p)
+    {
+        int size = floor.W;
+        for (int ly = 0; ly < p.H; ly++)
+            for (int lx = 0; lx < p.W; lx++)
+                floor.Blocked[(room.Y + ly) * size + (room.X + lx)] = p.Blocked[ly * p.W + lx];
+    }
+
+    /// <summary>
+    /// Overwrites the painter's tiles with the prefab's authored visuals. Open cells take the authored
+    /// ground/decor and clear any wall; still-blocked cells take the authored wall (and ground where the
+    /// prefab declares one). A prefab-blocked cell that a corridor punched open keeps the painter's
+    /// corridor tiles — that seam is exactly where procedural and authored terrain meet.
+    /// </summary>
+    private static void StampVisuals(DungeonFloor floor, Room room, PrefabDef p)
+    {
+        int size = floor.W;
+        for (int ly = 0; ly < p.H; ly++)
+            for (int lx = 0; lx < p.W; lx++)
+            {
+                int fi = (room.Y + ly) * size + (room.X + lx);
+                int pi = ly * p.W + lx;
+                if (!p.Blocked[pi])
+                {
+                    floor.Ground[fi] = p.Ground[pi];
+                    floor.Decor[fi] = p.Decor[pi];
+                    floor.Wall[fi] = 0;
+                }
+                else if (floor.Blocked[fi])
+                {
+                    if (p.Ground[pi] != 0) floor.Ground[fi] = p.Ground[pi];
+                    floor.Wall[fi] = p.Wall[pi];
+                }
+                // prefab-blocked cell punched open by a corridor: keep the painter's corridor tiles
+            }
+    }
+
+    /// <summary>LM-08: corridor endpoint for a room. Procedural rooms connect centre-to-centre as before;
+    /// prefab rooms connect through the authored mouth nearest to the room being joined.</summary>
+    private static (int X, int Y) ConnectionPoint(Room room, Room toward)
+    {
+        if (room.Prefab is not { } p || p.Mouths.Length == 0) return (room.CenterX, room.CenterY);
+        PrefabPoi best = p.Mouths[0];
+        int bestDist = int.MaxValue;
+        foreach (PrefabPoi m in p.Mouths)
+        {
+            int d = Math.Abs(room.X + m.X - toward.CenterX) + Math.Abs(room.Y + m.Y - toward.CenterY);
+            if (d < bestDist) { bestDist = d; best = m; }
+        }
+        return (room.X + best.X, room.Y + best.Y);
+    }
 
     /// <summary>
     /// H-02 (B1): erodes a freshly-carved rectangular room into an organic blob with a deterministic
@@ -584,16 +760,32 @@ public static class DungeonGenerator
             return;
         }
 
-        var entry = rooms[0];
+        var entry = rooms[0]; // always procedural (first placed room), never a prefab
         entry.Role = "entry";
         floor.Entry = (entry.CenterX, entry.CenterY);
 
-        var exitIdx = 1;
-        var bestDist = -1;
-        for (var i = 1; i < rooms.Count; i++)
+        // LM-08: prefab rooms keep their authored role, so the exit never lands on one — EXCEPT the
+        // authored boss hall on the boss floor, which IS the exit.
+        var exitIdx = -1;
+        if (isBossFloor)
+            for (var i = 1; i < rooms.Count; i++)
+                if (rooms[i].Prefab is { Role: "boss" }) { exitIdx = i; break; }
+        if (exitIdx < 0)
         {
-            var d = Manhattan(entry, rooms[i]);
-            if (d > bestDist) { bestDist = d; exitIdx = i; }
+            var bestDist = -1;
+            for (var i = 1; i < rooms.Count; i++)
+            {
+                if (rooms[i].PrefabId != "") continue;
+                var d = Manhattan(entry, rooms[i]);
+                if (d > bestDist) { bestDist = d; exitIdx = i; }
+            }
+            // degenerate fallback: every non-entry room is a prefab — take the farthest one anyway
+            if (exitIdx < 0)
+                for (var i = 1; i < rooms.Count; i++)
+                {
+                    var d = Manhattan(entry, rooms[i]);
+                    if (d > bestDist) { bestDist = d; exitIdx = i; }
+                }
         }
         var exit = rooms[exitIdx];
         exit.Role = isBossFloor ? "boss" : "ladder";
@@ -605,6 +797,7 @@ public static class DungeonGenerator
         for (var i = 1; i < rooms.Count; i++)
         {
             if (i == exitIdx) continue;
+            if (rooms[i].PrefabId != "") continue; // authored rooms keep their prefab role
             (onPath.Contains(i) ? mainMid : detours).Add(rooms[i]);
         }
 
@@ -636,11 +829,12 @@ public static class DungeonGenerator
         // plus a couple of random extra caches in combat rooms.
         foreach (var room in rooms)
         {
+            if (room.PrefabId != "") continue; // prefab POIs are authored (added after AssignRoles)
             if (room.Role == "treasure") floor.Chests.Add((room.CenterX, room.CenterY));
             else if (room.Role == "elite") floor.Chests.Add(OpenCellInRoom(floor, room, room.X + 1, room.Y + 1));
             else if (room.Role == "sanctuary") floor.Sanctuaries.Add((room.CenterX, room.CenterY));
         }
-        var mobRooms = rooms.Where(r => r.Role == "mob").ToList();
+        var mobRooms = rooms.Where(r => r.Role == "mob" && r.PrefabId == "").ToList();
         for (var i = 0; i < GameConfig.ChestsPerFloor - 1 && mobRooms.Count > 0; i++)
         {
             var room = rng.Pick(mobRooms);
@@ -694,9 +888,12 @@ public static class DungeonGenerator
         return path;
     }
 
-    private static void CarveCorridor(DungeonFloor floor, Room a, Room b, Rng rng)
+    private static void CarveCorridor(DungeonFloor floor, Room a, Room b, Rng rng) =>
+        CarveCorridor(floor, ConnectionPoint(a, b), ConnectionPoint(b, a), rng);
+
+    private static void CarveCorridor(DungeonFloor floor, (int X, int Y) from, (int X, int Y) to, Rng rng)
     {
-        int x = a.CenterX, y = a.CenterY;
+        int x = from.X, y = from.Y;
         var horizontalFirst = rng.Chance(0.5);
         // Corridor width is 2 or 3 tiles, never 1: a 1-sqm corridor pinches movement (no side-by-side
         // passing, reads as a crack). A square brush of `width` tiles per step guarantees that thickness
@@ -711,11 +908,11 @@ public static class DungeonGenerator
                         floor.Blocked[(cy + dy) * floor.W + cx + dx] = false;
         }
         Brush(x, y);
-        while (x != b.CenterX || y != b.CenterY)
+        while (x != to.X || y != to.Y)
         {
-            if (horizontalFirst && x != b.CenterX) x += Math.Sign(b.CenterX - x);
-            else if (y != b.CenterY) y += Math.Sign(b.CenterY - y);
-            else if (x != b.CenterX) x += Math.Sign(b.CenterX - x);
+            if (horizontalFirst && x != to.X) x += Math.Sign(to.X - x);
+            else if (y != to.Y) y += Math.Sign(to.Y - y);
+            else if (x != to.X) x += Math.Sign(to.X - x);
             Brush(x, y);
         }
     }

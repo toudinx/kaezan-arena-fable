@@ -482,6 +482,10 @@ public static class GameConfig
     /// <summary>H-01: room placement attempts (large rooms fill more of the floor → more overlap rejections,
     /// so the attempt margin rises to guarantee the target count).</summary>
     public const int RoomPlacementAttempts = 300;
+    // LM-08 authored prefabs (OTBM crops stamped into procedural floors)
+    public const int PrefabMaxPerFloor = 1;      // authored room slots per normal floor (0 disables)
+    public const double PrefabRoomChance = 0.6;  // chance each slot actually attempts a prefab
+    public const double PrefabBossChance = 0.5;  // chance the boss hall uses an authored boss prefab
     public const int ChestsPerFloor = 2;
     // Dynamic loot (feel feedback 2026-06-29, 8th pass): instead of fixed chests scattered around (the Kaeli
     // would go "straight to them", which felt odd), a chest DROPS on the corpse every N kills — spawns mid-fight

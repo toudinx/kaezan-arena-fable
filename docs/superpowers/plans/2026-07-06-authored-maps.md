@@ -476,7 +476,7 @@ public static class PrefabRegistry
 
 E em `MonsterRegistry`: `public bool Has(string name)` (mesmo lookup do `Get`, sem lançar).
 
-- [ ] **Step 1: Teste que falha (`PrefabRegistryTests.cs`)**
+- [x] **Step 1: Teste que falha (`PrefabRegistryTests.cs`)**
 
 ```csharp
 using KaezanArenaFable.Api.Content;
@@ -539,7 +539,7 @@ public class PrefabRegistryTests
 
 Rodar: `dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter PrefabRegistry` → FAIL (tipo não existe).
 
-- [ ] **Step 2: Implementar `PrefabRegistry.cs`**
+- [x] **Step 2: Implementar `PrefabRegistry.cs`**
 
 Parse com `System.Text.Json` (`PropertyNameCaseInsensitive = true`; `blocked` chega como `int[]` → converter para `bool[]`; usar um DTO intermediário privado). Validações (todas → `InvalidDataException` com o caminho do arquivo e o motivo):
 - `Id` começa com `"prefab:"`; `Role` ∈ {`mob`,`treasure`,`boss`}; `Tier` ∈ 1..5; `W`,`H` ≥ 4.
@@ -550,7 +550,7 @@ Parse com `System.Text.Json` (`PropertyNameCaseInsensitive = true`; `blocked` ch
 `LoadFrom` lê `Directory.GetFiles(dir, "*.json").OrderBy(p => p, StringComparer.Ordinal)`, e `All`/`ForTier` devolvem listas ordenadas por `Id` ordinal (determinismo). Diretório inexistente = lista vazia (não é erro: permite rodar sem prefabs).
 Sem `var`; tipos explícitos.
 
-- [ ] **Step 3: `MonsterRegistry.Has` + wiring**
+- [x] **Step 3: `MonsterRegistry.Has` + wiring**
 
 Adicionar `public bool Has(string name)` ao `MonsterRegistry` (mesma normalização de nome do `Get`). Em `Program.cs`, após o `MonsterRegistry` existir e antes de registrar o `RunManager`:
 
@@ -568,7 +568,7 @@ No `.csproj`:
 </ItemGroup>
 ```
 
-- [ ] **Step 4: Testes passam + build**
+- [x] **Step 4: Testes passam + build**
 
 ```powershell
 dotnet test backend/tests/KaezanArenaFable.Api.Tests --filter PrefabRegistry
@@ -577,7 +577,7 @@ dotnet build backend/src/KaezanArenaFable.Api
 
 Esperado: 3 pass; build limpo; o backend sobe com os prefabs da Task 6 carregados (rodar `dotnet run` rápido e conferir ausência de exceção).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add backend/src/KaezanArenaFable.Api/Content/PrefabRegistry.cs backend/src/KaezanArenaFable.Api/KaezanArenaFable.Api.csproj backend/src/KaezanArenaFable.Api/Program.cs backend/src/KaezanArenaFable.Api/Domain/MonsterRegistry.cs backend/tests/KaezanArenaFable.Api.Tests/PrefabRegistryTests.cs

@@ -16,7 +16,7 @@ public sealed class MonsterRegistry(GameData legacy, ContentStore content)
 
     public bool TryGet(string reference, out MonsterType monster)
     {
-        var authored = content.Monsters.FirstOrDefault(m =>
+        MonsterDefinition? authored = content.Monsters.FirstOrDefault(m =>
             m.Enabled && (m.Id.Equals(reference, StringComparison.OrdinalIgnoreCase)
                           || m.Name.Equals(reference, StringComparison.OrdinalIgnoreCase)));
         if (authored is not null)
@@ -29,9 +29,11 @@ public sealed class MonsterRegistry(GameData legacy, ContentStore content)
     }
 
     public MonsterType Get(string reference) =>
-        TryGet(reference, out var monster)
+        TryGet(reference, out MonsterType monster)
             ? monster
             : throw new KeyNotFoundException($"unknown monster: {reference}");
 
     public bool Contains(string reference) => TryGet(reference, out _);
+
+    public bool Has(string name) => TryGet(name, out _);
 }

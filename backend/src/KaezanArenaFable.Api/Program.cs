@@ -6,7 +6,7 @@ using KaezanArenaFable.Api.Hubs;
 using KaezanArenaFable.Api.Meta;
 using KaezanArenaFable.Api.Meta.Persistence;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<GameData>();
 builder.Services.AddSingleton<ContentStore>();
@@ -33,7 +33,12 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
         .AllowAnyMethod()
         .AllowCredentials()));
 
-var app = builder.Build();
+WebApplication app = builder.Build();
+
+MonsterRegistry monsterRegistry = app.Services.GetRequiredService<MonsterRegistry>();
+PrefabRegistry.LoadFrom(
+    Path.Combine(AppContext.BaseDirectory, "Content", "prefabs"),
+    monsterRegistry.Has);
 
 app.UseCors();
 app.MapMetaEndpoints();

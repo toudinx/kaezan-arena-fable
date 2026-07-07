@@ -339,7 +339,7 @@ git commit -m "docs(mapping): city + quest/treasure anatomy for future slices"
 
 Arrays `w*h` row-major (`i = y*w + x`), ids de appearance (ushort), `blocked` 0|1. Todo prefab: ≥1 mouth em célula de borda aberta; células abertas 4-conectadas; `spawnTheme` não-vazio para `role: mob`.
 
-- [ ] **Step 1: Teste que falha (`test/prefab.test.mjs`)**
+- [x] **Step 1: Teste que falha (`test/prefab.test.mjs`)**
 
 ```js
 import { test } from "node:test";
@@ -380,7 +380,7 @@ function openCellsConnected(p) {
 
 Rodar `node --test test/` → FAIL (módulo inexistente).
 
-- [ ] **Step 2: Implementar `lib/prefab.mjs`**
+- [x] **Step 2: Implementar `lib/prefab.mjs`**
 
 `buildPrefab(config, entry)` → `{ prefab, gaps }`:
 
@@ -394,7 +394,7 @@ Rodar `node --test test/` → FAIL (módulo inexistente).
 4. **spawnTheme:** `spawnsInBBox` na região; mapear nomes case-insensitive contra as espécies do `monsters.json`; presentes → `spawnTheme`; ausentes → `gaps.missingSpecies`.
 5. **gaps.missingSprites:** todo id emitido (ground/wall/decor) ausente do manifest do frontend.
 
-- [ ] **Step 3: Teste passa**
+- [x] **Step 3: Teste passa**
 
 ```powershell
 node --test test/
@@ -402,11 +402,11 @@ node --test test/
 
 Esperado: PASS (com as coords reais da tabela curada no teste).
 
-- [ ] **Step 4: `export.mjs` + `prefabs-config.json`**
+- [x] **Step 4: `export.mjs` + `prefabs-config.json`**
 
 `prefabs-config.json`: array de entries (schema do teste acima) — preencher com **6–10 linhas da tabela curada** (Task 3): mix de `mob`/`treasure` em 2–3 temas + 1–2 `boss`. `export.mjs`: para cada entry roda `buildPrefab`; se qualquer `gaps.missingSprites` → imprime relatório consolidado (`== GAP REPORT ==` com ids por prefab + espécies faltantes) e **exit 1 sem escrever nada**; com `--report-only` só imprime; sem gaps de sprite → escreve `backend/src/KaezanArenaFable.Api/Content/prefabs/<id-sem-prefixo>.json` (ex.: `rotworm-cave.json`). Espécies faltantes NÃO são fatais (vão pro relatório; spawnTheme sai só com as presentes, desde que ≥1).
 
-- [ ] **Step 5: Rodar com `--report-only` e commitar**
+- [x] **Step 5: Rodar com `--report-only` e commitar**
 
 ```powershell
 node export.mjs --report-only

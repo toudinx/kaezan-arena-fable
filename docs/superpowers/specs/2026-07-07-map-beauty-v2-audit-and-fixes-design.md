@@ -31,6 +31,10 @@ Scaled Lair ×2, Shadowed Crypt, Uruk Fort):
 - Nenhum triângulo preto, sprite cortado ou terreno sem borda em 5 tiers × 3 seeds no Map Lab.
 - Toda costura entre famílias de chão usa a transição específica do RME quando ela existe;
   `->none` só quando o RME também não tem par específico.
+- **Continuidade das bordas:** bordas laterais e internas entre terrenos devem formar linhas
+  contínuas e orgânicas (edges emendando com corners/diagonais sem furo nem degrau) — o
+  resultado não pode parecer tiles justapostos, como está hoje. Critério de inspeção: seguir
+  qualquer costura no preview do Map Lab e não encontrar quebra de continuidade.
 - Estruturas autorais legíveis: consertar render primeiro; crop que continuar confuso mesmo
   renderizando certo é **re-curado** (trocado por crop melhor do otservbr), não removido.
 - Mapas devem parecer feitos no Remere's Map Editor.

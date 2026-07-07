@@ -35,7 +35,7 @@
 
 O extractor já parseia `appearances-*.dat` (protobuf) e tem `BuildFlags(app)` (Program.cs:699). Este task adiciona um modo CLI que despeja as flags de todos os objetos.
 
-- [ ] **Step 1: Adicionar o modo `--dump-flags`**
+- [x] **Step 1: Adicionar o modo `--dump-flags`**
 
 No `Program.cs`, junto aos outros modos CLI (siga o padrão do dump `wall-candidates` em ~linha 816), adicionar:
 
@@ -60,7 +60,7 @@ private static void DumpFlags(IEnumerable<Appearance> objects, string outPath)
 
 Ligar ao arg parsing: `--dump-flags <outPath>` roda `DumpFlags` sobre a lista completa de object appearances já carregada e sai (sem extrair sprites). Ajustar nomes de tipo conforme o código real (`Appearance` é o tipo do proto; conferir o nome usado no arquivo).
 
-- [ ] **Step 2: Rodar e verificar**
+- [x] **Step 2: Rodar e verificar**
 
 ```powershell
 dotnet run --project tools/AssetExtractor -- --dump-flags tools/map-importer/data/appearance-flags.json
@@ -68,7 +68,7 @@ dotnet run --project tools/AssetExtractor -- --dump-flags tools/map-importer/dat
 
 Esperado: linha `appearance flags dumped: N → ...` com N na casa de dezenas de milhares; o JSON contém `"351":{"ground":true,...}` (chão de caverna conhecido do `Biomes.cs`).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```powershell
 git add tools/AssetExtractor/Program.cs tools/map-importer/data/appearance-flags.json

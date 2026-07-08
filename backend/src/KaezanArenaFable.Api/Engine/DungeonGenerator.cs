@@ -1157,13 +1157,13 @@ public static class DungeonGenerator
     }
 
     /// <summary>
-    /// Pass 1: ground + walls. A blocked cell that borders walkable area is an edge wall (oriented
-    /// sprite via WallAutotile); a fully-enclosed blocked cell is bedrock: opaque rock + the solid
-    /// corner piece, so the map's negative reads as a massif instead of a hard-edged black void.
-    /// With named <see cref="BiomeDef.GroundFamilies"/> the open floor is painted in coherent
+    /// Pass 1: ground + walls. T3 mountain brush: every blocked cell is opaque <see cref="BiomeDef.Bedrock"/>
+    /// backing plus the wall piece its blob mask resolves to (edge/talus where floor is adjacent, the
+    /// family body — WallSet slot 0 — where fully enclosed), so the map's negative reads as a solid
+    /// massif of its own material instead of a grey corner or a hard-edged black void. The wall pass is
+    /// rng-free. With named <see cref="BiomeDef.GroundFamilies"/> the open floor is painted in coherent
     /// jittered-Voronoi patches instead of per-cell noise. Returns the per-cell family index
     /// (-1 = blocked or boss hall; null = legacy palette) for the border pass to consume.
-    /// The legacy path must not consume any extra rng draw (replay/golden compatibility).
     /// </summary>
     private static int[]? PaintGround(DungeonFloor floor, Rng rng, BiomeDef biome)
     {
@@ -1206,23 +1206,15 @@ public static class DungeonGenerator
                     continue;
                 }
 
-                var touchesFloor = false;
-                for (var dy = -1; dy <= 1 && !touchesFloor; dy++)
-                    for (var dx = -1; dx <= 1 && !touchesFloor; dx++)
-                        if (floor.InBounds(x + dx, y + dy) && !floor.Blocked[(y + dy) * size + x + dx])
-                            touchesFloor = true;
-
-                if (touchesFloor)
-                {
-                    floor.Ground[i] = rng.Pick(biome.Ground); // shows through alpha (stone) walls
-                    floor.Wall[i] = WallAutotile.Resolve(WallAutotile.Mask(floor, x, y), biome);
-                }
-                else
-                {
-                    // bedrock fill: no rng (a fixed massif tile keeps the rock reading uniform/solid).
-                    floor.Ground[i] = biome.Bedrock;
-                    floor.Wall[i] = biome.WallCorner;
-                }
+                // T3 mountain brush (rng-free): every blocked cell is opaque bedrock backing plus the
+                // wall piece its blob mask resolves to. The bedrock never shows black under an alpha
+                // wall sprite; the blob mask picks an edge/talus piece where floor is adjacent and the
+                // family body (WallSet slot 0) where the cell is fully enclosed — so the map's negative
+                // reads as a massif of its own material instead of a grey corner. Where the family has
+                // no WallSet (legacy biomes) Resolve falls back to the 4-piece heuristic, still over
+                // opaque bedrock (never black).
+                floor.Ground[i] = biome.Bedrock;
+                floor.Wall[i] = WallAutotile.Resolve(WallAutotile.Mask(floor, x, y), biome);
             }
         }
 

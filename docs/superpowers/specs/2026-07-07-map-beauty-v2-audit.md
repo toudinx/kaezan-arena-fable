@@ -244,3 +244,25 @@ certo. Alternativamente, reavaliar a família de cristal se a leitura continuar 
 ## Resultado (preenchido na Task 7)
 
 _(antes/depois por classe após as tasks 2–6)_
+
+### T3 — brush de montanha (2026-07-07, verificado)
+
+O brush de montanha do rewrite (plano `2026-07-07-map-composition-rewrite.md`, Task 3) unificou o
+tratamento de célula bloqueada em `DungeonGenerator.PaintGround`: **toda** célula bloqueada recebe
+`Flat = [biome.Bedrock]` (respaldo opaco) e `Tall = [WallAutotile.Resolve(mask)]`. O mask 0 (célula
+cercada) resolve para o corpo da família (slot 0 do WallSet: mountain `1128`, mossy `15347`, crystal
+`15290`) em vez do genérico `1116`/`WallCorner`. O passe passou a ser rng-free.
+
+Classes de artefato fechadas por T3:
+
+- **Triângulos pretos / boulders cortados:** eliminados — nenhuma célula bloqueada fica sem respaldo
+  opaco, então nenhuma peça de parede com alpha revela vazio preto. Provado por
+  `NoBlockedCellLacksOpaqueBacking` (5 tiers × seeds 101/202/303) e conferido no Map Lab (T2 s101: pé
+  de maciço com talude orientado sobre pedra opaca, zero triângulo).
+- **Crystal wall / maciço cinza "chapado":** o interior do maciço agora lê como a família (crystal em
+  T4/T5, stone/mountain em T1/T2), não mais `1116` cinza. Provado por `MassifInteriorUsesFamilyBody` e
+  conferido no Map Lab (T4 s303: maciço de cristal sólido; T2 s101: maciço de pedra sólido).
+
+Pendências que continuam com T4/T5 (fora do escopo de T3): lava sem borda (accents como famílias) e
+curadoria de paleta. Prefabs autorais (ex. troll-cave em T1 s202) mantêm seus tiles carimbados por
+design (LM-08) — o brush procedural não os toca.

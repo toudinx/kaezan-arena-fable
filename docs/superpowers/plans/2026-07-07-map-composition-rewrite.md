@@ -127,7 +127,7 @@ BalanceSim (golden/replay), Map Lab (aba admin já entregue).
 
 ---
 
-### [ ] Task 3: Brush de montanha — respaldo opaco + corpo-vs-beira pela máscara
+### [x] Task 3: Brush de montanha — respaldo opaco + corpo-vs-beira pela máscara
 
 **Model · Effort:** Fable 5 · high
 
@@ -143,23 +143,30 @@ BalanceSim (golden/replay), Map Lab (aba admin já entregue).
   `biome.Bedrock`. Produces: toda célula bloqueada com `Flat` = `[Bedrock]` (opaco) e `Tall` =
   `[peça do WallSet para o mask]` (mask 0 = corpo; beira = talude). T6/T7 dependem.
 
-- [ ] **Step 1: Testes que falham (TDD).**
+- [x] **Step 1: Testes que falham (TDD).**
   - `NoBlockedCellLacksOpaqueBacking`: para todo `i` com `Blocked[i]`, `Flat[i]` não-vazio e o
     primeiro id é opaco (o `Bedrock` do bioma; opacidade conferida pelo conjunto de bedrocks do bioma).
   - `MassifInteriorUsesFamilyBody`: para toda célula bloqueada de mask 0 (cercada), o `Tall[i]` usa o
     slot mask-0 do WallSet da família — **não** `1116`/`WallCorner` genérico (quando a família tem
     WallSet com mask 0).
-  Rodar `--filter "NoBlockedCell|MassifInterior"` → FAIL.
-- [ ] **Step 2: Implementar.** No passe de parede: para cada célula bloqueada, `mask =
+  Rodar `--filter "NoBlockedCell|MassifInterior"` → FAIL. _(6 casos FAIL confirmados; usam
+  `Biomes.Resolve(ForTier(t))` p/ exercitar o WallSet real, ao contrário do helper `Generate` legado.)_
+- [x] **Step 2: Implementar.** No passe de parede: para cada célula bloqueada, `mask =
   WallAutotile.Mask(floor,x,y)`; `Flat` recebe `biome.Bedrock`; `Tall` recebe
   `WallAutotile.Resolve(mask, biome)` — e `Resolve`/o call site passa a usar o **corpo** do WallSet
   no mask 0 em vez do bedrock/`1116`. Se a família não tem WallSet ou não tem slot mask-0, `Tall`
   recebe o fallback 4-peças e o corpo cai no `Bedrock` opaco (nunca preto). Remover o uso de `1116`
-  como interior de maciço.
-- [ ] **Step 3:** `dotnet test` (novos PASS + suíte verde); `dotnet build` limpo.
-- [ ] **Step 4: Verificação visual:** Map Lab T2 (Uruk Fort) e T4/T5 (crystal) seeds 101/202/303:
+  como interior de maciço. _(Os dois ramos edge/enclosed foram unificados; passe agora rng-free —
+  removido o `rng.Pick(biome.Ground)` da borda. `WallAutotile.Resolve(0)` já retorna o corpo pois os
+  3 WallSets têm slot mask-0.)_
+- [x] **Step 3:** `dotnet test` (novos PASS + suíte verde); `dotnet build` limpo. _(105/105 PASS;
+  `legacy_biome_output_is_byte_identical` rebaselinado deliberadamente — o brush mudou conteúdo E
+  sequência de rng do caminho legado, sem caminho byte-idêntico a preservar.)_
+- [x] **Step 4: Verificação visual:** Map Lab T2 (Uruk Fort) e T4/T5 (crystal) seeds 101/202/303:
   zero triângulo preto, zero pedra cortada, maciço lê como a família (não cinza). Screenshots "depois"
-  no doc de auditoria (classes triângulos / boulders / crystal-wall).
+  no doc de auditoria (classes triângulos / boulders / crystal-wall). _(Verificado via API real
+  (`/admin/mapgen/preview`) em 5 tiers × 3 seeds + render no Map Lab T2 s101 e T4 s303; resultado
+  documentado na seção "Resultado → T3" do audit doc.)_
 - [ ] **Step 5:** Commit (`feat(engine): mountain brush — opaque backing + family body/edge by mask`).
 
 ---

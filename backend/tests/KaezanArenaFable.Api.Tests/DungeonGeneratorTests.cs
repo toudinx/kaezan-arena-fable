@@ -84,6 +84,65 @@ public class DungeonGeneratorTests
         }
     }
 
+    /// <summary>Generate with the WallSet resolved from the registry (production path), so the
+    /// mountain brush can read the authored 47-slot family — the test <see cref="Generate(long,bool)"/>
+    /// helper uses unresolved biomes (WallSet null) and only exercises the 4-piece fallback.</summary>
+    private static DungeonFloor GenerateResolved(long seed, int tier)
+    {
+        Rng rng = new Rng((ulong)seed);
+        return DungeonGenerator.Generate(rng, 0, isBossFloor: false, Biomes.Resolve(Biomes.ForTier(tier)));
+    }
+
+    [Theory]
+    [InlineData(101L)]
+    [InlineData(202L)]
+    [InlineData(303L)]
+    public void NoBlockedCellLacksOpaqueBacking(long seed)
+    {
+        // T3 mountain brush: every blocked cell carries an opaque bedrock backing under its wall
+        // sprite, so no alpha wall piece ever reveals a black void beneath it.
+        for (int tier = 1; tier <= 5; tier++)
+        {
+            BiomeDef biome = Biomes.Resolve(Biomes.ForTier(tier));
+            DungeonFloor floor = GenerateResolved(seed, tier);
+            for (int i = 0; i < floor.Blocked.Length; i++)
+            {
+                if (!floor.Blocked[i]) continue;
+                Assert.True(floor.Flat[i].Length > 0,
+                    $"tier {tier} blocked cell {i % floor.W},{i / floor.W} has no opaque backing");
+                Assert.Equal(biome.Bedrock, floor.Flat[i][0]);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(101L)]
+    [InlineData(202L)]
+    [InlineData(303L)]
+    public void MassifInteriorUsesFamilyBody(long seed)
+    {
+        // A fully-enclosed blocked cell (blob mask 0) must draw the WallSet's mask-0 body piece —
+        // the family massif — not the generic solid corner (1116/DirtCorner).
+        for (int tier = 1; tier <= 5; tier++)
+        {
+            BiomeDef biome = Biomes.Resolve(Biomes.ForTier(tier));
+            Assert.NotNull(biome.WallSet);
+            ushort body = biome.WallSet!.Tiles[0];
+            DungeonFloor floor = GenerateResolved(seed, tier);
+            int enclosed = 0;
+            for (int y = 0; y < floor.H; y++)
+                for (int x = 0; x < floor.W; x++)
+                {
+                    int i = y * floor.W + x;
+                    if (!floor.Blocked[i]) continue;
+                    if (WallAutotile.Mask(floor, x, y) != 0) continue;
+                    enclosed++;
+                    Assert.Equal(new ushort[] { body }, floor.Tall[i]);
+                }
+            Assert.True(enclosed > 0, $"tier {tier} seed {seed} has no enclosed massif cell to check");
+        }
+    }
+
     [Theory]
     [InlineData(1L)]
     [InlineData(7L)]
@@ -371,11 +430,14 @@ public class DungeonGroundPatchTests
     [Fact]
     public void legacy_biome_output_is_byte_identical_to_pre_patch_generator()
     {
-        // Hash captured on 2026-07-07 BEFORE the voronoi patch pass existed (seed 42, tier-1 legacy
-        // biome). The legacy path must not consume any new rng draw, so this must never change.
+        // Regression pin for the legacy (no-family) generator path, seed 42 / tier-1 legacy biome.
+        // Rebaselined 2026-07-07 by the T3 mountain brush: blocked cells now back onto opaque Bedrock
+        // (was rng-picked ground on edge cells), so the wall pass is rng-free and both the ground
+        // content and the downstream rng sequence changed deliberately. Off this new baseline the
+        // hash must stay stable to catch accidental drift.
         LoadFakeRegistry();
         DungeonFloor floor = Generate(42L, LegacyBiome());
-        Assert.Equal("F9B15983DB89884A4EB3D290B3468E40B082EEAB8C30D5B33BF8C7D5029536CA", FloorHash(floor));
+        Assert.Equal("BDB173594505EAA3CB325F4797AF0026F3DAF168D6AACFE235C929E479F20426", FloorHash(floor));
     }
 }
 

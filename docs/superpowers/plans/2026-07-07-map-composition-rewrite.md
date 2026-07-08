@@ -167,7 +167,7 @@ BalanceSim (golden/replay), Map Lab (aba admin já entregue).
   no doc de auditoria (classes triângulos / boulders / crystal-wall). _(Verificado via API real
   (`/admin/mapgen/preview`) em 5 tiers × 3 seeds + render no Map Lab T2 s101 e T4 s303; resultado
   documentado na seção "Resultado → T3" do audit doc.)_
-- [ ] **Step 5:** Commit (`feat(engine): mountain brush — opaque backing + family body/edge by mask`).
+- [x] **Step 5:** Commit (`feat(engine): mountain brush — opaque backing + family body/edge by mask`).
 
 ---
 

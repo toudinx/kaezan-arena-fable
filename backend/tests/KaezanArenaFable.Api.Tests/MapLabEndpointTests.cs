@@ -26,11 +26,8 @@ public class MapLabEndpointTests
         Assert.Equal(first.Floor, second.Floor);
         Assert.Equal(first.W, second.W);
         Assert.Equal(first.H, second.H);
-        Assert.Equal(first.Ground, second.Ground);
-        Assert.Equal(first.Wall, second.Wall);
-        Assert.Equal(first.Decor, second.Decor);
-        Assert.Equal(first.BorderA, second.BorderA);
-        Assert.Equal(first.BorderB, second.BorderB);
+        Assert.Equal(first.Flat, second.Flat);
+        Assert.Equal(first.Tall, second.Tall);
         Assert.Equal(first.Blocked, second.Blocked);
         Assert.Equal(first.EntryX, second.EntryX);
         Assert.Equal(first.EntryY, second.EntryY);

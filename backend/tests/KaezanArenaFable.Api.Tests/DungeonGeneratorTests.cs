@@ -60,6 +60,30 @@ public class DungeonGeneratorTests
         Assert.Equal(a.Entry, b.Entry);
     }
 
+    [Fact]
+    public void PackedStacksMatchLegacyLayers()
+    {
+        DungeonFloor floor = Generate(42L);
+        MapDto dto = MapDto.FromFloor(floor, Biomes.ForTier(1).Atmosphere, floor.Index, []);
+
+        for (int i = 0; i < floor.W * floor.H; i++)
+        {
+            ushort[] expectedFlat = [.. new[]
+            {
+                floor.Ground[i],
+                floor.BorderA[i],
+                floor.BorderB[i],
+                floor.Decor[i]
+            }.Where(id => id != 0)];
+            ushort[] expectedTall = floor.Wall[i] == 0 ? [] : [floor.Wall[i]];
+
+            Assert.Equal(expectedFlat, floor.Flat[i]);
+            Assert.Equal(expectedTall, floor.Tall[i]);
+            Assert.Equal(expectedFlat, dto.Flat[i]);
+            Assert.Equal(expectedTall, dto.Tall[i]);
+        }
+    }
+
     [Theory]
     [InlineData(1L)]
     [InlineData(7L)]

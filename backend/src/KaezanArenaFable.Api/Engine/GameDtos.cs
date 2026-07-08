@@ -4,8 +4,7 @@ namespace KaezanArenaFable.Api.Engine;
 
 public sealed record MapDto(
     int Floor, int W, int H,
-    // BorderA/BorderB: map beauty Task 8 ground border layer, drawn between ground and decor.
-    ushort[] Ground, ushort[] Wall, ushort[] Decor, ushort[] BorderA, ushort[] BorderB, bool[] Blocked,
+    ushort[][] Flat, ushort[][] Tall, bool[] Blocked,
     int EntryX, int EntryY, int? LadderX, int? LadderY,
     List<PoiDto> Pois,
     // G-07: room graph + biome. Rooms exposes each room type (combat/elite/treasure/echo/
@@ -19,10 +18,16 @@ public sealed record MapDto(
     /// (each mode decides what to telegraph); the helper only stitches ground/wall/decor + rooms + biome.
     /// </summary>
     public static MapDto FromFloor(
-        DungeonFloor floor, BiomeAtmosphere atmo, int floorIndex, IReadOnlyList<PoiDto> pois) =>
-        new(
+        DungeonFloor floor, BiomeAtmosphere atmo, int floorIndex, IReadOnlyList<PoiDto> pois)
+    {
+        if (floor.Flat.Length != floor.W * floor.H || floor.Tall.Length != floor.W * floor.H)
+        {
+            floor.PackStacks();
+        }
+
+        return new(
             floorIndex, floor.W, floor.H,
-            floor.Ground, floor.Wall, floor.Decor, floor.BorderA, floor.BorderB, floor.Blocked,
+            floor.Flat, floor.Tall, floor.Blocked,
             floor.Entry.X, floor.Entry.Y,
             floor.LadderDown?.X, floor.LadderDown?.Y,
             pois.ToList(),
@@ -33,6 +38,7 @@ public sealed record MapDto(
                 atmo.FogR, atmo.FogG, atmo.FogB, atmo.FogStrength,
                 atmo.Vignette,
                 atmo.ParticleR, atmo.ParticleG, atmo.ParticleB, atmo.ParticleDensity, atmo.ParticleDrift));
+    }
 }
 
 // G-09: Variant exposes only "cursed" (telegraphed) or ""; mimics arrive as "" (surprise).

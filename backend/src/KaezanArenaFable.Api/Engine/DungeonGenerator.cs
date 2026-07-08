@@ -22,6 +22,11 @@ public sealed class DungeonFloor
     public required int Index;
     public required int W;
     public required int H;
+    // T1 map composition rewrite: the generator still uses the legacy work layers below, then packs
+    // equivalent per-cell draw stacks once painting is complete. This keeps the format migration
+    // isolated from composition changes.
+    public ushort[][] Flat { get; private set; } = [];
+    public ushort[][] Tall { get; private set; } = [];
     public required ushort[] Ground;
     public required ushort[] Wall;     // 0 = none
     public required ushort[] Decor;    // 0 = none
@@ -41,6 +46,34 @@ public sealed class DungeonFloor
 
     public bool InBounds(int x, int y) => x >= 0 && x < W && y >= 0 && y < H;
     public bool IsBlocked(int x, int y) => !InBounds(x, y) || Blocked[y * W + x];
+
+    public void PackStacks()
+    {
+        int length = W * H;
+        Flat = new ushort[length][];
+        Tall = new ushort[length][];
+
+        for (int i = 0; i < length; i++)
+        {
+            Flat[i] = PackNonZero(Ground[i], BorderA[i], BorderB[i], Decor[i]);
+            Tall[i] = Wall[i] == 0 ? [] : [Wall[i]];
+        }
+    }
+
+    private static ushort[] PackNonZero(params ushort[] ids)
+    {
+        int count = 0;
+        for (int i = 0; i < ids.Length; i++)
+            if (ids[i] != 0) count++;
+
+        if (count == 0) return [];
+
+        ushort[] packed = new ushort[count];
+        int target = 0;
+        for (int i = 0; i < ids.Length; i++)
+            if (ids[i] != 0) packed[target++] = ids[i];
+        return packed;
+    }
 }
 
 /// <summary>
@@ -201,6 +234,7 @@ public static class DungeonGenerator
         foreach (var room in floor.Rooms)
             if (room.Prefab is { } visuals)
                 StampVisuals(floor, room, visuals);
+        floor.PackStacks();
         DungeonValidator.Validate(floor);
         return floor;
     }
@@ -239,6 +273,7 @@ public static class DungeonGenerator
 
         floor.Entry = (room.CenterX, room.Y + room.H - 2); // player stands near the bottom, dummy at center
         PaintTiles(floor, rng, biome);
+        floor.PackStacks();
         DungeonValidator.Validate(floor);
         return floor;
     }

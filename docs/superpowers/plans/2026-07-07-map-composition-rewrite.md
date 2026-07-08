@@ -67,7 +67,7 @@ BalanceSim (golden/replay), Map Lab (aba admin já entregue).
 
 ---
 
-### [ ] Task 1: Modelo de duas pilhas no backend (migração de formato, conteúdo equivalente)
+### [x] Task 1: Modelo de duas pilhas no backend (migração de formato, conteúdo equivalente)
 
 **Model · Effort:** Sonnet 5 · high
 
@@ -85,20 +85,20 @@ BalanceSim (golden/replay), Map Lab (aba admin já entregue).
   = `[Ground[i]?, BorderA[i]?, BorderB[i]?, Decor[i]?]` (não-zero, nessa ordem); `Tall[i]` =
   `[Wall[i]?]`. Nenhuma mudança visual.
 
-- [ ] **Step 1:** Introduzir `Flat`/`Tall` no `DungeonFloor`. Manter os 5 arrays internos por
+- [x] **Step 1:** Introduzir `Flat`/`Tall` no `DungeonFloor`. Manter os 5 arrays internos por
   enquanto **ou** trocá-los direto — decisão de menor blast radius: manter os 5 como campos de
   trabalho durante a geração e derivar `Flat`/`Tall` num passe final `PackStacks(floor)` (rng-free)
   é o caminho mais seguro para T1 (conteúdo idêntico garantido). Documentar a escolha no commit.
-- [ ] **Step 2:** `MapDto.FromFloor` emite `Flat`/`Tall` (chamar `PackStacks` ou ler os campos já
+- [x] **Step 2:** `MapDto.FromFloor` emite `Flat`/`Tall` (chamar `PackStacks` ou ler os campos já
   empacotados). Remover `Ground/Wall/Decor/BorderA/BorderB` do DTO.
-- [ ] **Step 3:** Ajustar `DungeonValidator` e qualquer leitor backend dos 5 arrays (grep
+- [x] **Step 3:** Ajustar `DungeonValidator` e qualquer leitor backend dos 5 arrays (grep
   `\.Ground\[|\.Wall\[|\.Decor\[|\.BorderA\[|\.BorderB\[` em `backend/src`) para ler via `Flat`/`Tall`
   ou via os campos de trabalho, conforme o Step 1.
-- [ ] **Step 4:** Testes: um teste novo `PackedStacksMatchLegacyLayers` que gera um floor e assevera
+- [x] **Step 4:** Testes: um teste novo `PackedStacksMatchLegacyLayers` que gera um floor e assevera
   que `Flat[i]`/`Tall[i]` contêm exatamente os ids não-zero das 5 camadas na ordem definida. Os testes
   existentes que liam `.Ground[]`/`.Wall[]` etc. são reescritos para ler as pilhas (equivalência).
-- [ ] **Step 5:** `dotnet test backend/tests/KaezanArenaFable.Api.Tests` PASS; `dotnet build` limpo.
-- [ ] **Step 6:** Commit (`refactor(engine): per-cell Flat/Tall tile stacks (equivalent content)`).
+- [x] **Step 5:** `dotnet test backend/tests/KaezanArenaFable.Api.Tests` PASS; `dotnet build` limpo.
+- [x] **Step 6:** Commit (`refactor(engine): per-cell Flat/Tall tile stacks (equivalent content)`).
 
 ---
 

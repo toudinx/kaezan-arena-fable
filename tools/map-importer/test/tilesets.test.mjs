@@ -50,3 +50,12 @@ test("mountain families emit the ->OPEN foot border and reference only curated f
     assert.ok(to === "none" || to === "OPEN" || familyNames.has(to), `border set ${key}: unknown target family`);
   }
 });
+
+test("lava is emitted as a bordered ground family", () => {
+  const { tilesets } = buildTilesets(config);
+  const lava = tilesets.families["lava"];
+  assert.ok(lava, "lava must be available as an accent ground family");
+  assert.equal(lava.kind, "ground");
+  assert.ok(lava.items.length >= 1, "lava needs at least one ground tile");
+  assert.ok(tilesets.borderSets["lava->none"], "lava needs an outer border set");
+});

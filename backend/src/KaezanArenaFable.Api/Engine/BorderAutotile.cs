@@ -3,13 +3,13 @@ using KaezanArenaFable.Api.Content;
 namespace KaezanArenaFable.Api.Engine;
 
 /// <summary>
-/// Ground border pass (map beauty Task 8): fills the 2-slot border layer of every open cell from
+/// Ground border pass (map beauty Task 8/T4): fills the border stack of every open cell from
 /// the RME border sets in <see cref="TilesetRegistry"/>. RME rule: the neighbouring family with
 /// the HIGHER z-order draws ITS outer border over the lower tile, so a cell of family A receives
 /// pieces from each higher family B present in its 8-neighbourhood, edges named after where B
 /// sits. Blocked neighbours count as the biome's wall family through its "-&gt;OPEN" set (the rock
 /// foot at the base of mountain walls). Pure resolution: no rng draw, fixed y,x scan order,
-/// neighbour families visited in z-order desc then ordinal name, first 2 pieces win.
+/// neighbour families visited in z-order desc then ordinal name, every resolved piece is preserved.
 /// Bit layout matches <see cref="WallAutotile"/>: 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW.
 /// </summary>
 public static class BorderAutotile
@@ -21,7 +21,7 @@ public static class BorderAutotile
     ];
 
     /// <summary>
-    /// Paints <see cref="DungeonFloor.BorderA"/>/<see cref="DungeonFloor.BorderB"/> for every open
+    /// Paints border draw stacks for every open
     /// cell with a ground family (<paramref name="familyOf"/> index &gt;= 0; -1 = blocked or boss
     /// hall, which never receives borders). <paramref name="wallFamily"/> may be empty or unknown
     /// to the registry — strict validation lives in Biomes.Resolve; here it just paints nothing.
@@ -100,11 +100,9 @@ public static class BorderAutotile
                     BorderSet? set = sets[b, cellFamily];
                     if (set is null) continue;
                     ResolvePieces(masks[b], set, pieces);
-                    if (pieces.Count >= 2) break;
                 }
 
-                if (pieces.Count > 0) floor.BorderA[i] = pieces[0];
-                if (pieces.Count > 1) floor.BorderB[i] = pieces[1];
+                if (pieces.Count > 0) floor.SetBorderPieces(i, pieces);
             }
         }
     }

@@ -68,13 +68,13 @@ public class DungeonGeneratorTests
 
         for (int i = 0; i < floor.W * floor.H; i++)
         {
-            ushort[] expectedFlat = [.. new[]
-            {
-                floor.Ground[i],
-                floor.BorderA[i],
-                floor.BorderB[i],
-                floor.Decor[i]
-            }.Where(id => id != 0)];
+            ushort[] borders = floor.BorderStack.Length == floor.W * floor.H && floor.BorderStack[i].Length > 0
+                ? floor.BorderStack[i]
+                : [.. new[] { floor.BorderA[i], floor.BorderB[i] }.Where(id => id != 0)];
+            ushort[] expectedFlat = [.. new[] { floor.Ground[i] }
+                .Concat(borders)
+                .Concat([floor.Decor[i]])
+                .Where(id => id != 0)];
             ushort[] expectedTall = floor.Wall[i] == 0 ? [] : [floor.Wall[i]];
 
             Assert.Equal(expectedFlat, floor.Flat[i]);
@@ -441,6 +441,116 @@ public class DungeonGroundPatchTests
     }
 }
 
+/// <summary>Map composition T4: accent terrain is painted as a ground family, not decor.</summary>
+[Collection("Tileset registry")]
+public class DungeonAccentFamilyTests
+{
+    private const string FakeTilesets = """
+    {
+      "families": {
+        "low": { "kind": "ground", "items": [1001, 1002], "zOrder": 100 },
+        "lava": { "kind": "ground", "items": [3001, 3002], "zOrder": 7700 }
+      },
+      "borderSets": {
+        "lava->low": { "n": 51, "e": 52, "s": 53, "w": 54, "cnw": 55, "cne": 56, "cse": 57, "csw": 58, "dnw": 59, "dne": 60, "dse": 61, "dsw": 62 }
+      }
+    }
+    """;
+
+    private static void LoadFakeRegistry()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+        string path = Path.Combine(dir, "tilesets.json");
+        File.WriteAllText(path, FakeTilesets);
+        TilesetRegistry.LoadFrom(path);
+    }
+
+    private static BiomeDef AccentBiome() =>
+        Biomes.Cave with
+        {
+            WallSet = null,
+            WallFamily = "",
+            GroundFamilies = ["low"],
+            Accent = [],
+            AccentChance = 0.12,
+            AccentFamily = "lava"
+        };
+
+    [Fact]
+    public void DefaultLairAndAbyssUseLavaAccentFamily()
+    {
+        TilesetRegistry.LoadFrom(Path.Combine(AppContext.BaseDirectory, "Content", "tilesets.json"));
+
+        Assert.Equal("lava", Biomes.ForTier(4).AccentFamily);
+        Assert.Equal("lava", Biomes.ForTier(5).AccentFamily);
+        Assert.Equal("lava", Biomes.Resolve(Biomes.ForTier(4)).AccentFamily);
+    }
+
+    [Fact]
+    public void AccentPatchesAreBordered()
+    {
+        LoadFakeRegistry();
+        HashSet<ushort> lava = TilesetRegistry.Family("lava").Items.ToHashSet();
+        HashSet<ushort> lavaBorders = new HashSet<ushort>(Enumerable.Range(51, 12).Select(id => (ushort)id));
+
+        for (long seed = 1; seed <= 50; seed++)
+        {
+            Rng rng = new Rng((ulong)seed);
+            DungeonFloor floor = DungeonGenerator.Generate(rng, 0, isBossFloor: false, AccentBiome());
+            int seamCells = 0;
+            int nakedSeams = 0;
+
+            for (int y = 1; y < floor.H - 1; y++)
+            {
+                for (int x = 1; x < floor.W - 1; x++)
+                {
+                    int i = y * floor.W + x;
+                    if (floor.Blocked[i] || lava.Contains(floor.Ground[i]))
+                    {
+                        continue;
+                    }
+
+                    bool touchesLava = false;
+                    for (int dy = -1; dy <= 1 && !touchesLava; dy++)
+                    {
+                        for (int dx = -1; dx <= 1 && !touchesLava; dx++)
+                        {
+                            if (dx == 0 && dy == 0)
+                            {
+                                continue;
+                            }
+
+                            touchesLava = lava.Contains(floor.Ground[(y + dy) * floor.W + x + dx]);
+                        }
+                    }
+
+                    if (!touchesLava)
+                    {
+                        continue;
+                    }
+
+                    seamCells++;
+                    if (!floor.Flat[i].Any(lavaBorders.Contains))
+                    {
+                        nakedSeams++;
+                    }
+                }
+            }
+
+            if (seamCells == 0)
+            {
+                continue;
+            }
+
+            Assert.Equal(0, nakedSeams);
+            return;
+        }
+
+        Assert.Fail("no generated accent seam found in seeds 1..50");
+    }
+}
+
 /// <summary>Map beauty Task 8: 2-slot ground border layer resolved from RME border sets.</summary>
 [Collection("Tileset registry")]
 public class DungeonBorderTests
@@ -452,10 +562,12 @@ public class DungeonBorderTests
     {
       "families": {
         "low":  { "kind": "ground", "items": [1001], "zOrder": 100 },
+        "mid":  { "kind": "ground", "items": [1501], "zOrder": 150 },
         "high": { "kind": "ground", "items": [2001], "zOrder": 200 },
         "rock": { "kind": "mountain", "items": [3001], "zOrder": 9000 }
       },
       "borderSets": {
+        "mid->low": { "n": 51, "e": 52, "s": 53, "w": 54, "cnw": 55, "cne": 56, "cse": 57, "csw": 58, "dnw": 59, "dne": 60, "dse": 61, "dsw": 62 },
         "high->low": { "n": 11, "e": 12, "s": 13, "w": 14, "cnw": 15, "cne": 16, "cse": 17, "csw": 18, "dnw": 19, "dne": 20, "dse": 21, "dsw": 22 },
         "rock->OPEN": { "n": 31, "e": 32, "s": 33, "w": 34, "cnw": 35, "cne": 36, "cse": 37, "csw": 38, "dnw": 39, "dne": 40, "dse": 41, "dsw": 42 }
       }
@@ -557,6 +669,23 @@ public class DungeonBorderTests
         BorderAutotile.Paint(floor, familyOf, ["low", "high"], "rock");
         Assert.Equal((ushort)33, floor.BorderA[Center]); // rock "s" first
         Assert.Equal((ushort)11, floor.BorderB[Center]); // then high "n"
+    }
+
+    [Fact]
+    public void border_stack_keeps_every_resolved_piece_in_draw_order()
+    {
+        LoadFakeRegistry();
+        (DungeonFloor floor, int[] familyOf) = OpenFloor();
+        floor.Ground[Center] = 1001;
+        familyOf[1 * Size + 2] = 2;         // "high" to the N
+        familyOf[2 * Size + 3] = 1;         // "mid" to the E
+        floor.Blocked[3 * Size + 2] = true; // "rock" to the S
+        familyOf[3 * Size + 2] = -1;
+
+        BorderAutotile.Paint(floor, familyOf, ["low", "mid", "high"], "rock");
+        floor.PackStacks();
+
+        Assert.Equal(new ushort[] { 1001, 33, 11, 52 }, floor.Flat[Center]);
     }
 
     private static BiomeDef BorderBiome() =>

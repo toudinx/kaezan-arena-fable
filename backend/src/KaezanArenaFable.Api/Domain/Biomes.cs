@@ -25,6 +25,7 @@ namespace KaezanArenaFable.Api.Domain;
 /// data the frontend renders as a post-process; the engine never reads it.</param>
 /// <param name="WallFamily">RME tilesets.json wall family. Empty keeps the legacy 4-piece fallback.</param>
 /// <param name="GroundFamilies">RME tilesets.json ground families. Null or empty keeps the legacy ground palette.</param>
+/// <param name="AccentFamily">Optional RME ground family painted as terrain patches before borders.</param>
 public sealed record BiomeDef(
     ushort[] Ground, ushort[] BossGround, ushort Bedrock,
     ushort WallH, ushort WallV, ushort WallPole, ushort WallCorner,
@@ -33,7 +34,8 @@ public sealed record BiomeDef(
     BiomeAtmosphere Atmosphere,
     WallTileSet? WallSet = null,
     string WallFamily = "",
-    string[]? GroundFamilies = null);
+    string[]? GroundFamilies = null,
+    string AccentFamily = "");
 
 /// <summary>Authored 47-case blob wall set (Wave 4 tilesets), keyed by canonical blob mask.
 /// Missing slots fall back to the biome's 4-piece family via <see cref="Engine.WallAutotile"/>.</summary>
@@ -127,22 +129,26 @@ public static class Biomes
     /// <summary>Tier 4 — Scaled Lair: dark stone lair with decorative lava pools.</summary>
     public static readonly BiomeDef Lair = new(
         DarkStone, StoneGround, StoneBedrock, StoneH, StoneV, StonePole, StoneCorner,
-        CaveRocks, 0.02, Lava, 0.05, LairAtmo,
+        CaveRocks, 0.02, [], 0.05, LairAtmo,
         WallFamily: "crystal wall",
-        GroundFamilies: ["dark dirt", "rocky ground"]);
+        GroundFamilies: ["dark dirt", "rocky ground"],
+        AccentFamily: "lava");
 
     /// <summary>Tier 5 — Echoing Abyss: stone abyss flooded with lava and bone.</summary>
     public static readonly BiomeDef Abyss = new(
         DarkStone, StoneGround, StoneBedrock, StoneH, StoneV, StonePole, StoneCorner,
-        Bones, 0.02, Lava, 0.055, AbyssAtmo,
+        Bones, 0.02, [], 0.055, AbyssAtmo,
         WallFamily: "crystal wall",
-        GroundFamilies: ["dark dirt", "rock soil"]);
+        GroundFamilies: ["dark dirt", "rock soil"],
+        AccentFamily: "lava");
 
     // Map Beauty v2 named-family pairings from Content/tilesets.json:
     // T1 mountain + cave/dirt, T2 mountain + grass/dirt, T3 mossy wall mountain + mossy floor/rocky ground,
     // T4 crystal wall + dark dirt/rocky ground, T5 crystal wall + dark dirt/rock soil.
     public static BiomeDef Resolve(BiomeDef def)
     {
+        ValidateAccentFamily(def);
+
         if (string.IsNullOrWhiteSpace(def.WallFamily))
         {
             return def;
@@ -160,6 +166,25 @@ public static class Biomes
         }
 
         return def with { WallSet = wallSet };
+    }
+
+    private static void ValidateAccentFamily(BiomeDef def)
+    {
+        if (string.IsNullOrWhiteSpace(def.AccentFamily))
+        {
+            return;
+        }
+
+        if (!TilesetRegistry.HasFamily(def.AccentFamily))
+        {
+            throw new InvalidDataException($"unknown biome accent family '{def.AccentFamily}'");
+        }
+
+        TileFamily accentFamily = TilesetRegistry.Family(def.AccentFamily);
+        if (!accentFamily.Kind.Equals("ground", StringComparison.Ordinal))
+        {
+            throw new InvalidDataException($"biome accent family '{def.AccentFamily}' must be a ground family");
+        }
     }
 
     /// <summary>

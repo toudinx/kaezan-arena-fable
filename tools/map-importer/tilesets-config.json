@@ -5,6 +5,6 @@
     "mountains: 'mountain' = classic grey rock (inner faces e/s/cse only in canonical naming - Tibia perspective; full 12-edge outer foot), 'mossy wall mountain' = full 12-edge inner+outer (t3), 'crystal wall' = inner e/s/cse/dse (t4-5 arcane).",
     "rejected mountains: 'earth mountain', 'grotto', 'basalt', 'purple crystal mountain' have no inner border set, so no rock faces for the wall autotiler."
   ],
-  "grounds": ["cave", "dark dirt", "dirt", "earth floor", "grass", "mossy floor", "rock soil", "rocky ground"],
+  "grounds": ["cave", "dark dirt", "dirt", "earth floor", "grass", "lava", "mossy floor", "rock soil", "rocky ground"],
   "mountains": ["crystal wall", "mossy wall mountain", "mountain"]
 }

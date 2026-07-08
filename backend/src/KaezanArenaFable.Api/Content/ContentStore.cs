@@ -113,7 +113,8 @@ public sealed class ContentStore
     private static bool ShouldSeedBiomes(IReadOnlyList<BiomeRow> biomes) =>
         biomes.Count != KaezanContentSeed.Biomes.Count
         || biomes.Select(b => b.Tier).OrderBy(t => t).SequenceEqual([1, 2, 3, 4, 5]) == false
-        || biomes.Any(b => string.IsNullOrEmpty(b.Def.WallFamily));
+        || biomes.Any(b => string.IsNullOrEmpty(b.Def.WallFamily))
+        || biomes.Any(b => (b.Tier == 4 || b.Tier == 5) && b.Def.AccentFamily != "lava");
 
     private List<MonsterDefinition> LoadMonsters()
     {

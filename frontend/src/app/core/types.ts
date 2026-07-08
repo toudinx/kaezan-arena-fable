@@ -238,6 +238,7 @@ export interface BiomeDef {
   wallSet: WallTileSetDef | null;
   wallFamily: string;
   groundFamilies: string[] | null;
+  accentFamily: string;
 }
 
 export interface BiomeRow {

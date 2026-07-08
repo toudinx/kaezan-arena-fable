@@ -171,7 +171,7 @@ BalanceSim (golden/replay), Map Lab (aba admin já entregue).
 
 ---
 
-### [ ] Task 4: Brush de chão — borda sem cap + accents (lava) como famílias
+### [x] Task 4: Brush de chão — borda sem cap + accents (lava) como famílias
 
 **Model · Effort:** Sonnet 5 · high
 
@@ -188,24 +188,34 @@ BalanceSim (golden/replay), Map Lab (aba admin já entregue).
   `string AccentFamily = ""`; `BorderAutotile.Paint` escreve N peças no `Flat` da célula (não 2);
   poças de accent entram no sistema de famílias.
 
-- [ ] **Step 1: Família lava no conversor.** Adicionar `"lava"` a `grounds` em `tilesets-config.json`;
+- [x] **Step 1: Família lava no conversor.** Adicionar `"lava"` a `grounds` em `tilesets-config.json`;
   teste em `tilesets.test.mjs` (`lava family + border set emitidos`); `node convert-tilesets.mjs`
   (fechar gap de sprite no `content-config.json` + re-extrair se reportar). Commit parcial dos dados.
-- [ ] **Step 2: Borda sem cap.** Em `BorderAutotile.Paint`, remover o `if (pieces.Count >= 2) break;`
+  _(Feito: `lava` emitida; gap de 17 sprites fechado via `content-config.json` + AssetExtractor
+  `--sprites-only`; `tilesets.json` regenerado com 12 famílias/12 border sets.)_
+- [x] **Step 2: Borda sem cap.** Em `BorderAutotile.Paint`, remover o `if (pieces.Count >= 2) break;`
   e o limite de 2 slots — empurrar todas as peças resolvidas no `Flat[i]` (após o ground, antes do
   decor), preservando a ordem determinística (z-order desc, ordinal). Teste
   `EverySeamCellCarriesABorderPiece` (portado do v2, sem cap): célula aberta com vizinho de z maior
   tem ≥1 peça de borda.
-- [ ] **Step 3: Accents como famílias.** `BiomeDef.AccentFamily`; T4/T5 = `"lava"`; `Biomes.Resolve`
+  _(Feito via `BorderStack`; `border_stack_keeps_every_resolved_piece_in_draw_order` cobre 3 peças
+  resolvidas na mesma célula.)_
+- [x] **Step 3: Accents como famílias.** `BiomeDef.AccentFamily`; T4/T5 = `"lava"`; `Biomes.Resolve`
   valida contra `TilesetRegistry.HasFamily`; reseed em `ContentStore` (documentado). `PaintAccentPatches`
   (espelha `PaintClusters` mas escreve `ground` + `familyOf = accentIndex`); o passe de bordas inclui
   a família de accent (`[..familyNames, AccentFamily]`). Teste `AccentPatchesAreBordered` (portado do
   v2): poça de lava com borda em toda a volta, 0 costura nua.
-- [ ] **Step 4:** `dotnet test` + `npm test` (map-importer) PASS; `dotnet build` limpo; regenerar/commitar
+  _(Feito: defaults T4/T5 usam `AccentFamily = "lava"`; biomas antigos sem lava reseedam; admin valida
+  família de accent.)_
+- [x] **Step 4:** `dotnet test` + `npm test` (map-importer) PASS; `dotnet build` limpo; regenerar/commitar
   `tilesets.json`.
-- [ ] **Step 5: Verificação visual:** Map Lab T4 seed 101: lava com borda orgânica; seguir 3 costuras
+  _(PASS: `dotnet test backend/tests/KaezanArenaFable.Api.Tests`, `npm test` em `tools/map-importer`,
+  `dotnet build backend/src/KaezanArenaFable.Api`, `npx ng build`.)_
+- [x] **Step 5: Verificação visual:** Map Lab T4 seed 101: lava com borda orgânica; seguir 3 costuras
   longas por mapa (T2/T4) no zoom 2× sem quebra. Screenshots "depois" no doc de auditoria.
-- [ ] **Step 6:** Commit (`feat(engine): ground brush — uncapped seam borders + accent families`).
+  _(Feito: `audit-shots/t4-s101-t4-after.png`; API preview T4 seed 101 confirmou 43 tiles de lava e
+  42/42 costuras abertas cardinais com borda `lava->none`.)_
+- [x] **Step 6:** Commit (`feat(engine): ground brush — uncapped seam borders + accent families`).
 
 ---
 

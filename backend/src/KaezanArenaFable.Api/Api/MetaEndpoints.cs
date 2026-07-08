@@ -903,6 +903,20 @@ public static class MetaEndpoints
             }
         }
 
+        if (!string.IsNullOrWhiteSpace(def.AccentFamily))
+        {
+            if (!TilesetRegistry.HasFamily(def.AccentFamily))
+            {
+                return $"unknown accent family '{def.AccentFamily}'";
+            }
+
+            TileFamily accentFamily = TilesetRegistry.Family(def.AccentFamily);
+            if (!accentFamily.Kind.Equals("ground", StringComparison.Ordinal))
+            {
+                return $"accent family '{def.AccentFamily}' must be a ground family";
+            }
+        }
+
         string? decorError = ValidateBiomeChance("DecorChance", def.DecorChance);
         if (decorError is not null)
         {

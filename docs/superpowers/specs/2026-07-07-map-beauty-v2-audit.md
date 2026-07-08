@@ -266,3 +266,19 @@ Classes de artefato fechadas por T3:
 Pendências que continuam com T4/T5 (fora do escopo de T3): lava sem borda (accents como famílias) e
 curadoria de paleta. Prefabs autorais (ex. troll-cave em T1 s202) mantêm seus tiles carimbados por
 design (LM-08) — o brush procedural não os toca.
+
+### T4 — brush de chão/accent (2026-07-07, verificado)
+
+O brush de chão do rewrite (plano `2026-07-07-map-composition-rewrite.md`, Task 4) removeu o cap de
+2 peças de borda por célula: `BorderAutotile` agora preserva todas as peças resolvidas em ordem
+determinística (z-order desc + nome ordinal) no `Flat`, mantendo `BorderA/B` apenas como espelho dos
+dois primeiros slots legados. A família RME `lava` foi adicionada ao pipeline de tilesets e extraída
+para o manifest; T4/T5 usam `AccentFamily = "lava"` em vez de lava como `Decor`.
+
+Evidência rápida:
+
+- Screenshot depois: `audit-shots/t4-s101-t4-after.png` (Map Lab T4, seed 101, zoom 2x).
+- API preview T4 seed 101: `12` famílias, `12` border sets, `43` tiles de lava; `42/42` costuras
+  abertas cardinais tocando lava carregam uma peça de `lava->none` no `Flat`.
+- Testes: `border_stack_keeps_every_resolved_piece_in_draw_order`, `AccentPatchesAreBordered` e
+  `lava is emitted as a bordered ground family`.

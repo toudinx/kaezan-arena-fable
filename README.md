@@ -509,6 +509,8 @@ re-rode o AssetExtractor. As sprites entram em `frontend/public/assets/tibia/` e
 O backend carrega `tilesets.json` no startup, valida as famílias referenciadas pelos biomas e pinta
 os andares com manchas coerentes de chão, borders e wall sets 47-blob. Os presets editáveis ficam em
 `.data/content/biomes.json`, seedados dos defaults canônicos de `Domain/Biomes.cs`.
+Accents de terreno, como lava em T4/T5, também usam famílias do tileset (`AccentFamily`) e recebem
+borda orgânica no mesmo passe de auto-border do chão, em vez de aparecerem como decor solto.
 
 No admin, a aba **Map Lab** permite escolher tier/seed/floor, visualizar o andar gerado, editar o
 preset de bioma como rascunho, usar **Preview draft** sem salvar e persistir com **Save**. Runs novas

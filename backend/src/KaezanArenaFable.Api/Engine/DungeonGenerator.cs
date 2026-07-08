@@ -30,10 +30,12 @@ public sealed class DungeonFloor
     public required ushort[] Ground;
     public required ushort[] Wall;     // 0 = none
     public required ushort[] Decor;    // 0 = none
-    // Map beauty Task 8: ground border pieces drawn between ground and decor (0 = none).
-    // Up to 2 seam pieces per cell, resolved by BorderAutotile from the RME border sets.
+    // Map beauty Task 8/T4: ground border pieces drawn between ground and decor (0 = none).
+    // BorderA/BorderB mirror the first two seam pieces for legacy assertions; BorderStack keeps
+    // every piece resolved by BorderAutotile for the final Flat draw stack.
     public required ushort[] BorderA;
     public required ushort[] BorderB;
+    public ushort[][] BorderStack { get; private set; } = [];
     public required bool[] Blocked;
     public required List<Room> Rooms;
     public (int X, int Y) Entry;
@@ -55,9 +57,76 @@ public sealed class DungeonFloor
 
         for (int i = 0; i < length; i++)
         {
-            Flat[i] = PackNonZero(Ground[i], BorderA[i], BorderB[i], Decor[i]);
+            ushort[] borders = BorderStack.Length == length && BorderStack[i].Length > 0
+                ? BorderStack[i]
+                : PackNonZero(BorderA[i], BorderB[i]);
+            Flat[i] = PackFlat(i, borders);
             Tall[i] = Wall[i] == 0 ? [] : [Wall[i]];
         }
+    }
+
+    public void SetBorderPieces(int index, IReadOnlyList<ushort> pieces)
+    {
+        EnsureBorderStack();
+
+        ushort[] packed = new ushort[pieces.Count];
+        for (int i = 0; i < pieces.Count; i++)
+        {
+            packed[i] = pieces[i];
+        }
+
+        BorderStack[index] = packed;
+        BorderA[index] = pieces.Count > 0 ? pieces[0] : (ushort)0;
+        BorderB[index] = pieces.Count > 1 ? pieces[1] : (ushort)0;
+    }
+
+    public void ClearBorderPieces(int index)
+    {
+        BorderA[index] = 0;
+        BorderB[index] = 0;
+        if (BorderStack.Length == W * H)
+        {
+            BorderStack[index] = [];
+        }
+    }
+
+    private void EnsureBorderStack()
+    {
+        int length = W * H;
+        if (BorderStack.Length == length)
+        {
+            return;
+        }
+
+        BorderStack = new ushort[length][];
+        for (int i = 0; i < length; i++)
+        {
+            BorderStack[i] = [];
+        }
+    }
+
+    private ushort[] PackFlat(int index, ushort[] borders)
+    {
+        List<ushort> ids = new List<ushort>(2 + borders.Length);
+        if (Ground[index] != 0)
+        {
+            ids.Add(Ground[index]);
+        }
+
+        for (int i = 0; i < borders.Length; i++)
+        {
+            if (borders[i] != 0)
+            {
+                ids.Add(borders[i]);
+            }
+        }
+
+        if (Decor[index] != 0)
+        {
+            ids.Add(Decor[index]);
+        }
+
+        return ids.Count == 0 ? [] : ids.ToArray();
     }
 
     private static ushort[] PackNonZero(params ushort[] ids)
@@ -351,8 +420,7 @@ public static class DungeonGenerator
                 int pi = ly * p.W + lx;
                 // authored crops carry their own borders as decor: clear the painter's border
                 // layer across the whole prefab rect (open and blocked cells alike)
-                floor.BorderA[fi] = 0;
-                floor.BorderB[fi] = 0;
+                floor.ClearBorderPieces(fi);
                 if (!p.Blocked[pi])
                 {
                     floor.Ground[fi] = p.Ground[pi];
@@ -1139,21 +1207,61 @@ public static class DungeonGenerator
     private static void PaintTiles(DungeonFloor floor, Rng rng, BiomeDef biome)
     {
         int[]? familyOf = PaintGround(floor, rng, biome);
+        HashSet<(int X, int Y)> reserved = ReservedCells(floor);
+        string[]? borderFamilies = null;
+        ushort[] accentItems = [];
+        int accentFamilyIndex = -1;
+
+        if (familyOf is not null && biome.GroundFamilies is { Length: > 0 } familyNames)
+        {
+            borderFamilies = familyNames;
+            if (!string.IsNullOrWhiteSpace(biome.AccentFamily))
+            {
+                if (!TilesetRegistry.HasFamily(biome.AccentFamily))
+                {
+                    throw new InvalidDataException($"unknown biome accent family '{biome.AccentFamily}'");
+                }
+
+                TileFamily accentFamily = TilesetRegistry.Family(biome.AccentFamily);
+                if (!accentFamily.Kind.Equals("ground", StringComparison.Ordinal))
+                {
+                    throw new InvalidDataException($"biome accent family '{biome.AccentFamily}' must be a ground family");
+                }
+
+                accentItems = accentFamily.Items;
+                accentFamilyIndex = familyNames.Length;
+                borderFamilies = new string[familyNames.Length + 1];
+                Array.Copy(familyNames, borderFamilies, familyNames.Length);
+                borderFamilies[familyNames.Length] = biome.AccentFamily;
+            }
+        }
 
         // Pass 2: ambient decor/accent, clustered inside rooms only (corridors stay clean). Accent (e.g.
         // lava) pools first so it reads as terrain, then ambient props; both on the non-blocking Decor
         // layer, skipping POI tiles so chests/altars/ladder stay legible.
-        var reserved = ReservedCells(floor);
-        foreach (var room in floor.Rooms)
+        foreach (Room room in floor.Rooms)
         {
-            PaintClusters(floor, room, rng, biome.Accent, biome.AccentChance, GameConfig.AccentClusterRadius, reserved);
-            PaintClusters(floor, room, rng, biome.Decor, biome.DecorChance, GameConfig.DecorClusterRadius, reserved);
+            if (accentFamilyIndex >= 0)
+            {
+                PaintAccentPatches(floor, room, rng, accentItems, biome.AccentChance,
+                    GameConfig.AccentClusterRadius, reserved, familyOf!, accentFamilyIndex);
+            }
+            else
+            {
+                PaintClusters(floor, room, rng, biome.Accent, biome.AccentChance,
+                    GameConfig.AccentClusterRadius, reserved);
+            }
+
+            PaintClusters(floor, room, rng, biome.Decor, biome.DecorChance,
+                GameConfig.DecorClusterRadius, reserved);
         }
 
         // Pass 3 (map beauty Task 8): the 2-slot border layer over the family patches. Pure
         // resolution — zero rng draws — so the legacy path stays byte-identical by construction.
-        if (familyOf is not null && biome.GroundFamilies is { Length: > 0 } familyNames)
-            BorderAutotile.Paint(floor, familyOf, familyNames, biome.WallFamily);
+        if (familyOf is not null && borderFamilies is not null)
+        {
+            BorderAutotile.Paint(floor, familyOf, borderFamilies, biome.WallFamily);
+        }
     }
 
     /// <summary>
@@ -1305,6 +1413,54 @@ public static class DungeonGenerator
                     var ring = Math.Max(Math.Abs(dx), Math.Abs(dy));
                     if (ring > 0 && !rng.Chance(1.0 - ring * GameConfig.ClusterFalloff)) continue;
                     floor.Decor[i] = rng.Pick(palette);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Paints accent terrain as a ground family so regular seam borders can outline each pool.
+    /// </summary>
+    private static void PaintAccentPatches(
+        DungeonFloor floor, Room room, Rng rng, ushort[] palette, double chance, int radius,
+        HashSet<(int X, int Y)> reserved, int[] familyOf, int accentFamilyIndex)
+    {
+        if (palette.Length == 0 || chance <= 0)
+        {
+            return;
+        }
+
+        int size = floor.W;
+        int clusters = (int)Math.Round(room.W * room.H * chance * GameConfig.DecorDensityScale);
+        for (int c = 0; c < clusters; c++)
+        {
+            int cx = rng.Range(room.X, room.X + room.W - 1);
+            int cy = rng.Range(room.Y, room.Y + room.H - 1);
+            for (int dy = -radius; dy <= radius; dy++)
+            {
+                for (int dx = -radius; dx <= radius; dx++)
+                {
+                    int x = cx + dx;
+                    int y = cy + dy;
+                    if (!room.Contains(x, y))
+                    {
+                        continue;
+                    }
+
+                    int i = y * size + x;
+                    if (floor.Blocked[i] || familyOf[i] < 0 || reserved.Contains((x, y)))
+                    {
+                        continue;
+                    }
+
+                    int ring = Math.Max(Math.Abs(dx), Math.Abs(dy));
+                    if (ring > 0 && !rng.Chance(1.0 - ring * GameConfig.ClusterFalloff))
+                    {
+                        continue;
+                    }
+
+                    floor.Ground[i] = rng.Pick(palette);
+                    familyOf[i] = accentFamilyIndex;
                 }
             }
         }

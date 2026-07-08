@@ -76,6 +76,7 @@ function biomeDef(name: string): BiomeDef {
     wallSet: null,
     wallFamily: 'mountain',
     groundFamilies: ['cave', 'earth floor'],
+    accentFamily: '',
   };
 }
 

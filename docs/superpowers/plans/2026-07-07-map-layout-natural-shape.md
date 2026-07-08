@@ -53,7 +53,7 @@ composição (T3).
 
 ### [ ] Task 1: Carver — área consistente + forma orgânica arredondada
 
-**Model · Effort:** Fable 5 · high
+**Model · Effort:** Sonnet 5 · high
 
 **Files:**
 - Modify: `backend/src/KaezanArenaFable.Api/Engine/DungeonGenerator.cs` (SeedArenaRock, ApplyRockToFloor —
@@ -85,7 +85,7 @@ composição (T3).
 
 ### [ ] Task 2: Limpeza morfológica — mata lasca de 1 célula e beira em escada
 
-**Model · Effort:** Fable 5 · high
+**Model · Effort:** Sonnet 5 · high
 
 **Files:**
 - Modify: `backend/src/KaezanArenaFable.Api/Engine/DungeonGenerator.cs` (novo `SmoothArenaShape`; chamá-lo

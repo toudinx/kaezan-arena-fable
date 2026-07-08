@@ -219,7 +219,7 @@ BalanceSim (golden/replay), Map Lab (aba admin já entregue).
 
 ---
 
-### [ ] Task 5: Curadoria de material por bioma (enxugar o ruído)
+### [x] Task 5: Curadoria de material por bioma (enxugar o ruído)
 
 **Model · Effort:** Sonnet 5 · medium
 
@@ -231,17 +231,22 @@ BalanceSim (golden/replay), Map Lab (aba admin já entregue).
 **Interfaces:**
 - Consumes: Map Lab (Preview draft) para julgar contraste/leitura; T3/T4 aplicados.
 
-- [ ] **Step 1:** Com T3/T4 no ar, revisar os 5 tiers no Map Lab. Reduzir `GroundFamilies` por bioma
+- [x] **Step 1:** Com T3/T4 no ar, revisar os 5 tiers no Map Lab. Reduzir `GroundFamilies` por bioma
   ao conjunto curado (alvo: 1 primária + 1 secundária de contraste); confirmar 1 `WallFamily` e a
   `AccentFamily` onde faz sentido. Ajustar no editor (Preview draft, sem salvar) até a leitura ficar
   calma e coesa.
-- [ ] **Step 2:** Consolidar as escolhas finais nos defaults de `Biomes.cs` com comentário do porquê
+- [x] **Step 2:** Consolidar as escolhas finais nos defaults de `Biomes.cs` com comentário do porquê
   (padrão da fatia anterior); reseed se necessário (mesmo mecanismo do T4). Se alguma família precisar
   de corpo (mask 0) minerado, adicionar em `tilesets-config.json` e reconverter/re-extrair.
-- [ ] **Step 3:** `dotnet test` PASS; `dotnet build` limpo.
-- [ ] **Step 4: Verificação visual:** 5 tiers seed 101 lado a lado com `audit-shots/` — leitura de
+- [x] **Step 3:** `dotnet test` PASS; `dotnet build` limpo.
+  _(Feito: `dotnet test backend/tests/KaezanArenaFable.Api.Tests` = 110/110 PASS;
+  `dotnet build backend/src/KaezanArenaFable.Api` = 0 warnings/0 errors; `npx ng build` = exit 0
+  com warnings de budget CSS já existentes em páginas não tocadas.)_
+- [x] **Step 4: Verificação visual:** 5 tiers seed 101 lado a lado com `audit-shots/` — leitura de
   parede e chão aprovada, menos ruído. Screenshots "depois" no doc de auditoria.
-- [ ] **Step 5:** Commit (`feat(content): curated per-biome material palette`).
+  _(Feito: `audit-shots/t1-s101-t5-after.png` … `t5-s101-t5-after.png`; Map Lab confirmou T4/T5
+  `rocky ground, dark dirt` com `crystal wall`, PNGs 1270×714 não vazios.)_
+- [x] **Step 5:** Commit (`feat(content): curated per-biome material palette`).
 
 ---
 

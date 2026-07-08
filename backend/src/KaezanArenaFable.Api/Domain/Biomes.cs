@@ -105,6 +105,10 @@ public static class Biomes
         "Echoing Abyss", 182, 92, 202, 0.24, 30, 12, 38, 0.30, 0.52,
         222, 122, 232, 0.56, -1);                 // violet abyss, rising ash
 
+    // Curated material pairs: the first ground family is the calm primary field
+    // (GameConfig.GroundPrimaryFamilyBias), the second is a contrast patch. Keep each tier at
+    // one wall family, one primary ground, one contrast ground, and only one terrain accent.
+
     /// <summary>Tier 1 — Echoing Den: brown dirt cavern with boulders.</summary>
     public static readonly BiomeDef Cave = new(
         CaveGround, StoneGround, DirtBedrock, DirtH, DirtV, DirtPole, DirtCorner,
@@ -131,7 +135,7 @@ public static class Biomes
         DarkStone, StoneGround, StoneBedrock, StoneH, StoneV, StonePole, StoneCorner,
         CaveRocks, 0.02, [], 0.05, LairAtmo,
         WallFamily: "crystal wall",
-        GroundFamilies: ["dark dirt", "rocky ground"],
+        GroundFamilies: ["rocky ground", "dark dirt"],
         AccentFamily: "lava");
 
     /// <summary>Tier 5 — Echoing Abyss: stone abyss flooded with lava and bone.</summary>
@@ -139,12 +143,13 @@ public static class Biomes
         DarkStone, StoneGround, StoneBedrock, StoneH, StoneV, StonePole, StoneCorner,
         Bones, 0.02, [], 0.055, AbyssAtmo,
         WallFamily: "crystal wall",
-        GroundFamilies: ["dark dirt", "rock soil"],
+        GroundFamilies: ["rocky ground", "dark dirt"],
         AccentFamily: "lava");
 
     // Map Beauty v2 named-family pairings from Content/tilesets.json:
     // T1 mountain + cave/dirt, T2 mountain + grass/dirt, T3 mossy wall mountain + mossy floor/rocky ground,
-    // T4 crystal wall + dark dirt/rocky ground, T5 crystal wall + dark dirt/rock soil.
+    // T4/T5 crystal wall + rocky ground/dark dirt + lava. The endgame tiers intentionally share a
+    // calmer base so lava and crystal remain the visual stars instead of competing with rock soil.
     public static BiomeDef Resolve(BiomeDef def)
     {
         ValidateAccentFamily(def);

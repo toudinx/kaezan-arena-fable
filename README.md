@@ -515,6 +515,9 @@ borda orgânica no mesmo passe de auto-border do chão, em vez de aparecerem com
 No admin, a aba **Map Lab** permite escolher tier/seed/floor, visualizar o andar gerado, editar o
 preset de bioma como rascunho, usar **Preview draft** sem salvar e persistir com **Save**. Runs novas
 usam o preset salvo; runs em andamento mantêm o bioma resolvido no início da run.
+Os defaults canônicos usam uma paleta curada e enxuta por tier (1 família de parede, 2 famílias de
+chão e no máximo 1 accent); T4/T5 compartilham `rocky ground` + `dark dirt` com lava como família
+bordeada para manter o cristal e a lava como foco visual.
 
 ## Pipeline de assets (re-rodar quando quiser mais conteúdo)
 

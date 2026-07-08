@@ -114,7 +114,27 @@ public sealed class ContentStore
         biomes.Count != KaezanContentSeed.Biomes.Count
         || biomes.Select(b => b.Tier).OrderBy(t => t).SequenceEqual([1, 2, 3, 4, 5]) == false
         || biomes.Any(b => string.IsNullOrEmpty(b.Def.WallFamily))
-        || biomes.Any(b => (b.Tier == 4 || b.Tier == 5) && b.Def.AccentFamily != "lava");
+        || biomes.Any(b => (b.Tier == 4 || b.Tier == 5) && b.Def.AccentFamily != "lava")
+        || biomes.Any(HasProvisionalMapCompositionPalette);
+
+    private static bool HasProvisionalMapCompositionPalette(BiomeRow row)
+    {
+        if (row.Tier == 4)
+        {
+            return MatchesGroundFamilies(row.Def, ["dark dirt", "rocky ground"]);
+        }
+
+        if (row.Tier == 5)
+        {
+            return MatchesGroundFamilies(row.Def, ["dark dirt", "rock soil"]);
+        }
+
+        return false;
+    }
+
+    private static bool MatchesGroundFamilies(BiomeDef def, string[] expected) =>
+        def.GroundFamilies is not null
+        && def.GroundFamilies.SequenceEqual(expected, StringComparer.Ordinal);
 
     private List<MonsterDefinition> LoadMonsters()
     {

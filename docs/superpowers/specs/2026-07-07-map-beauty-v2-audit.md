@@ -282,3 +282,22 @@ Evidência rápida:
   abertas cardinais tocando lava carregam uma peça de `lava->none` no `Flat`.
 - Testes: `border_stack_keeps_every_resolved_piece_in_draw_order`, `AccentPatchesAreBordered` e
   `lava is emitted as a bordered ground family`.
+
+### T5 — curadoria de material por bioma (2026-07-07, verificado)
+
+O T5 consolidou a paleta canônica enxuta em `Domain/Biomes.cs`: cada tier tem 1 família de parede,
+2 famílias de chão no máximo (a primeira é a primária, por `GroundPrimaryFamilyBias`) e só T4/T5
+mantêm `AccentFamily = "lava"`. A mudança visual deliberada é no endgame: T4/T5 usam
+`rocky ground, dark dirt` com `crystal wall`, em vez de deixar `dark dirt`/`rock soil` competir com
+lava e cristal.
+
+Evidência rápida:
+
+- Screenshots depois, seed 101: `audit-shots/t1-s101-t5-after.png`,
+  `audit-shots/t2-s101-t5-after.png`, `audit-shots/t3-s101-t5-after.png`,
+  `audit-shots/t4-s101-t5-after.png`, `audit-shots/t5-s101-t5-after.png`.
+- Map Lab confirmou os resumos visíveis: T1 `cave, dirt`; T2 `grass, dirt`;
+  T3 `mossy floor, rocky ground`; T4/T5 `rocky ground, dark dirt`, com T4/T5 em `crystal wall`.
+- Os cinco PNGs gravados têm `1270x714` e amostra de `560+` cores, evitando screenshot vazio.
+- Testes: `default_biomes_use_curated_low_noise_material_pairs` e
+  `content_store_reseeds_provisional_biome_palettes`.

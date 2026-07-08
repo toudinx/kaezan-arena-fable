@@ -102,7 +102,7 @@ BalanceSim (golden/replay), Map Lab (aba admin já entregue).
 
 ---
 
-### [ ] Task 2: Frontend consome as pilhas (render idêntico)
+### [x] Task 2: Frontend consome as pilhas (render idêntico)
 
 **Model · Effort:** Sonnet 5 · medium
 
@@ -114,16 +114,16 @@ BalanceSim (golden/replay), Map Lab (aba admin já entregue).
 **Interfaces:**
 - Consumes: `MapDto.Flat: number[][]`, `MapDto.Tall: number[][]` (T1).
 
-- [ ] **Step 1:** `types.ts`: `MapDto` troca `ground/wall/borderA/borderB/decor: number[]` por
+- [x] **Step 1:** `types.ts`: `MapDto` troca `ground/wall/borderA/borderB/decor: number[]` por
   `flat: number[][]; tall: number[][]`.
-- [ ] **Step 2:** `renderer.ts` passada 1: em vez de desenhar `ground`, `borderA`, `borderB`, `decor`
+- [x] **Step 2:** `renderer.ts` passada 1: em vez de desenhar `ground`, `borderA`, `borderB`, `decor`
   em sequência, iterar `map.flat[i]` e `drawObject` cada id na ordem. Passada 4 (y-sorted): iterar
   `map.tall[y*w+x]` e desenhar cada id (hoje só `wall`).
-- [ ] **Step 3:** Ajustar o Map Lab e o `tile-shade` se lerem as camadas antigas (o shade usa a
+- [x] **Step 3:** Ajustar o Map Lab e o `tile-shade` se lerem as camadas antigas (o shade usa a
   vizinhança de `Blocked`/parede — se lê `wall[]`, trocar por "`tall[]` não-vazio").
-- [ ] **Step 4:** `npx ng build` limpo. Verificação visual: Map Lab T2 seed 101 **idêntico** ao antes
+- [x] **Step 4:** `npx ng build` limpo. Verificação visual: Map Lab T2 seed 101 **idêntico** ao antes
   do T1/T2 (nenhuma mudança de composição ainda). Screenshot de sanidade.
-- [ ] **Step 5:** Commit (`refactor(render): draw Flat/Tall tile stacks`).
+- [x] **Step 5:** Commit (`refactor(render): draw Flat/Tall tile stacks`).
 
 ---
 

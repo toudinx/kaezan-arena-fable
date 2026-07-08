@@ -34,16 +34,13 @@ export function drawMapPreviewCanvas(
   for (let y = 0; y < map.h; y++) {
     for (let x = 0; x < map.w; x++) {
       const i = y * map.w + x;
-      draw(map.ground[i], x, y);
-      draw(map.borderA[i], x, y);
-      draw(map.borderB[i], x, y);
-      draw(map.decor[i], x, y);
+      for (const id of map.flat[i]) draw(id, x, y);
     }
   }
 
   for (let y = 0; y < map.h; y++) {
     for (let x = 0; x < map.w; x++) {
-      draw(map.wall[y * map.w + x], x, y);
+      for (const id of map.tall[y * map.w + x]) draw(id, x, y);
     }
   }
 

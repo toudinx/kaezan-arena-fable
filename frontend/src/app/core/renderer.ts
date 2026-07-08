@@ -788,18 +788,13 @@ export class GameRenderer {
       ctx.fillRect(sx(0), sy(0), map.w * TS, map.h * TS);
     }
 
-    // 1. ground + borders + decor
+    // 1. flat tile stack: ground + borders + decor, already ordered by the backend.
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
         const i = y * map.w + x;
-        const ground = map.ground[i];
-        if (ground) this.assets.drawObject(ctx, ground, sx(x), sy(y), SCALE, x, y, nowPerf);
-        const borderA = map.borderA[i];
-        if (borderA) this.assets.drawObject(ctx, borderA, sx(x), sy(y), SCALE, x, y, nowPerf);
-        const borderB = map.borderB[i];
-        if (borderB) this.assets.drawObject(ctx, borderB, sx(x), sy(y), SCALE, x, y, nowPerf);
-        const decor = map.decor[i];
-        if (decor) this.assets.drawObject(ctx, decor, sx(x), sy(y), SCALE, x, y, nowPerf);
+        for (const id of map.flat[i]) {
+          if (id) this.assets.drawObject(ctx, id, sx(x), sy(y), SCALE, x, y, nowPerf);
+        }
       }
     }
 
@@ -916,8 +911,9 @@ export class GameRenderer {
         ci++;
       }
       for (let x = x0; x <= x1; x++) {
-        const wall = map.wall[y * map.w + x];
-        if (wall) this.assets.drawObject(ctx, wall, sx(x), sy(y), SCALE, x, y, nowPerf);
+        for (const id of map.tall[y * map.w + x]) {
+          if (id) this.assets.drawObject(ctx, id, sx(x), sy(y), SCALE, x, y, nowPerf);
+        }
       }
     }
     while (ci < creatures.length) creatures[ci++].draw();

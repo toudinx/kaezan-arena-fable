@@ -692,11 +692,8 @@ export interface MapDto {
   floor: number;
   w: number;
   h: number;
-  ground: number[];
-  wall: number[];
-  borderA: number[];
-  borderB: number[];
-  decor: number[];
+  flat: number[][];
+  tall: number[][];
   blocked: boolean[];
   entryX: number;
   entryY: number;

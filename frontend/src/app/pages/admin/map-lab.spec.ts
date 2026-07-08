@@ -8,11 +8,14 @@ function previewMap(): MapDto {
     floor: 0,
     w: 2,
     h: 1,
-    ground: [11, 12],
-    borderA: [21, 0],
-    borderB: [31, 0],
-    decor: [41, 0],
-    wall: [0, 52],
+    flat: [
+      [11, 21, 31, 41],
+      [12],
+    ],
+    tall: [
+      [],
+      [52, 62],
+    ],
     blocked: [false, true],
     entryX: 0,
     entryY: 0,
@@ -113,7 +116,7 @@ describe('drawMapPreviewCanvas', () => {
 
     expect(canvas.width).toBe(64);
     expect(canvas.height).toBe(32);
-    expect(drawObject.mock.calls.map((call) => call[1])).toEqual([11, 21, 31, 41, 12, 52]);
+    expect(drawObject.mock.calls.map((call) => call[1])).toEqual([11, 21, 31, 41, 12, 52, 62]);
   });
 });
 

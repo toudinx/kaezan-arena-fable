@@ -142,7 +142,6 @@ interface Dissolve {
   cellW?: number; cellH?: number;
 }
 interface Bubble { x: number; y: number; text: string; start: number; }
-interface Corpse { x: number; y: number; itemId: number; start: number; }
 /** Skill footprint used to telegraph what the helper is about to land (from the catalog). */
 interface SkillShape { shape: string; range: number; radius: number; }
 /** Expanding ring spawned at the boss tile when an Echo Break fires. */
@@ -175,7 +174,6 @@ export class GameRenderer {
   private lootChain = 0;
   private texts: FloatText[] = [];
   private bubbles: Bubble[] = [];
-  private corpses: Corpse[] = [];
 
   // G-02 juice state
   private hits = new Map<number, HitFx>();
@@ -240,7 +238,6 @@ export class GameRenderer {
     this.effects = [];
     this.projectiles = [];
     this.loot = [];
-    this.corpses = [];
     this.hits.clear();
     this.dissolves = [];
     this.shakeMag = 0;
@@ -400,7 +397,6 @@ export class GameRenderer {
         this.bubbles.push({ x: ev.x, y: ev.y, text: ev.text, start: now });
         break;
       case 'death':
-        this.corpses.push({ x: ev.x, y: ev.y, itemId: ev.value, start: now });
         this.spawnDissolve(ev.actorId, ev.x, ev.y, now);
         break;
     }
@@ -470,7 +466,7 @@ export class GameRenderer {
   /** Capture the dying creature's outfit so it can dissolve away pixel by pixel. */
   private spawnDissolve(id: number, x: number, y: number, now: number): void {
     const m = this.snapshot?.monsters.find((mm) => mm.id === id) ?? this.deathLookup.get(id);
-    if (!m) return; // no outfit to dissolve (e.g. corpse-only event) — corpse fade handles it
+    if (!m) return; // no outfit captured for this death → nothing to dissolve (silently skip)
     this.dissolves.push({
       x: m.x, y: m.y, dir: m.dir, start: now,
       lookType: m.outfit.lookType, head: m.outfit.head, body: m.outfit.body,
@@ -800,17 +796,6 @@ export class GameRenderer {
 
     // 1.5 cosmetic depth pass (client-only, pure function of the grid — never touches determinism)
     this.drawTileShade(ctx, map, x0, y0, x1, y1, sx, sy);
-
-    // 2. corpses (fade after a while)
-    const corpseAlive = 28000;
-    this.corpses = this.corpses.filter((c) => nowPerf - c.start < corpseAlive);
-    for (const c of this.corpses) {
-      if (c.x < x0 || c.x > x1 || c.y < y0 || c.y > y1) continue;
-      const age = nowPerf - c.start;
-      ctx.globalAlpha = age > corpseAlive - 3000 ? (corpseAlive - age) / 3000 : 1;
-      this.assets.drawObject(ctx, c.itemId, sx(c.x), sy(c.y), SCALE, c.x, c.y, nowPerf - c.start);
-      ctx.globalAlpha = 1;
-    }
 
     // 3. ground items + POIs
     for (const item of snap.items) {

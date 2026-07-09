@@ -27,14 +27,21 @@ export interface WatchSessionResult {
   watching: boolean;
 }
 
+/** Live connection status, surfaced to the HUD (#5 reconnect UX). */
+export type ConnectionState = 'connected' | 'reconnecting' | 'disconnected';
+
 /** SignalR channel for the live dungeon run. */
 @Injectable({ providedIn: 'root' })
 export class GameClientService {
   private connection: signalR.HubConnection | null = null;
+  /** #5: how to re-attach to the parked run after an automatic reconnect (new connectionId). */
+  private reattach: (() => Promise<unknown>) | null = null;
 
   readonly snapshot = signal<SnapshotDto | null>(null);
   readonly map = signal<MapDto | null>(null);
   readonly connected = signal(false);
+  /** #5: 'reconnecting' while SignalR retries, back to 'connected' once the run is re-attached. */
+  readonly connectionState = signal<ConnectionState>('disconnected');
 
   async connect(): Promise<void> {
     if (this.connection?.state === signalR.HubConnectionState.Connected) return;
@@ -46,8 +53,21 @@ export class GameClientService {
     this.connection.on('snapshot', (snap: SnapshotDto) => this.snapshot.set(snap));
     this.connection.on('map', (map: MapDto) => this.map.set(map));
 
+    // #5: automatic reconnect gets a NEW connectionId, so the server-side run is orphaned (parked for
+    // RunReconnectGraceMs). Re-attach with resume=true so snapshots resume on the new connection.
+    this.connection.onreconnecting(() => this.connectionState.set('reconnecting'));
+    this.connection.onreconnected(async () => {
+      try { await this.reattach?.(); } catch { /* run may have expired; the HUD shows the state */ }
+      this.connectionState.set('connected');
+    });
+    this.connection.onclose(() => {
+      this.connected.set(false);
+      this.connectionState.set('disconnected');
+    });
+
     await this.connection.start();
     this.connected.set(true);
+    this.connectionState.set('connected');
   }
 
   async joinRun(
@@ -60,6 +80,8 @@ export class GameClientService {
     this.snapshot.set(null);
     this.map.set(null);
     await this.connect();
+    // #5: after a reconnect, re-attach to the parked run (force resume, keep tier/waifu/mode/seed).
+    this.reattach = () => this.connection!.invoke('JoinRun', tier, waifuId ?? null, seed ?? null, true, mode);
     // The hub requires exact arity (SignalR does not support a missing optional argument), so always
     // send the mode. Default Dungeon keeps the legacy flow identical; Arena (LM-04/05) passes GameMode.Arena.
     return this.connection!.invoke<JoinRunResult>('JoinRun', tier, waifuId ?? null, seed ?? null, resume, mode);
@@ -70,6 +92,7 @@ export class GameClientService {
     this.snapshot.set(null);
     this.map.set(null);
     await this.connect();
+    this.reattach = () => this.connection!.invoke('WatchSession'); // #5: re-attach spectator on reconnect
     return this.connection!.invoke<WatchSessionResult>('WatchSession');
   }
 
@@ -85,7 +108,9 @@ export class GameClientService {
       await this.connection.stop();
     } finally {
       this.connection = null;
+      this.reattach = null;
       this.connected.set(false);
+      this.connectionState.set('disconnected');
       this.snapshot.set(null);
       this.map.set(null);
     }

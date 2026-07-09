@@ -41,12 +41,23 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
       @if (resumeToast()) {
         <div class="resume-toast">Run resumed</div>
       }
+      <!-- #5 reconnect UX: surfaces a dropped/recovering SignalR connection instead of freezing silently.
+           'disconnected' only shows once a run is live, so the initial connect doesn't flash "lost". -->
+      @if (connState() === 'reconnecting' || (connState() === 'disconnected' && snapshot())) {
+        <div class="conn-toast" [class.lost]="connState() === 'disconnected'" role="status">
+          <span class="conn-dot" aria-hidden="true"></span>
+          {{ connState() === 'reconnecting' ? 'Reconnecting…' : 'Connection lost' }}
+        </div>
+      }
       @if (visiblePerfReadout(); as perf) {
         <div class="perf-overlay">
           <div>frame p50 {{ perf.frameP50.toFixed(1) }}ms &middot; p95 {{ perf.frameP95.toFixed(1) }}ms</div>
           <div>draw p95 {{ perf.drawP95.toFixed(1) }}ms &middot; long frames {{ perf.longFrames }}</div>
           <div>snapshot age {{ perf.snapAgeMs.toFixed(0) }}ms</div>
           <div>events {{ perf.eventsIngested }} (+{{ perf.eventsDeduped }} deduped)</div>
+          <div class="seedline" (click)="copySeed()" title="Copy seed — replay it in Training with ?seed=">
+            seed {{ snapshot()?.run?.seed }} {{ seedCopied() ? '✓ copied' : '⧉' }}
+          </div>
         </div>
       }
 
@@ -255,6 +266,14 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
           <span>Free cast</span>
           <small>no cooldown / energy</small>
         </button>
+        <!-- #3 seed reproducibility: replay the exact same room from a seed (Training only) -->
+        <div class="seed-panel" title="Reproduce a run: same seed regenerates the same map & spawns">
+          <span class="seed-label">Seed</span>
+          <input class="seed-input" #seedInput [value]="s.run.seed"
+                 (keydown.enter)="replaySeed(seedInput.value)" aria-label="Run seed" />
+          <button (click)="replaySeed(seedInput.value)" title="Restart the room with this seed">Replay</button>
+          <button (click)="randomSeed()" title="Restart with a fresh random seed">Random</button>
+        </div>
       }
 
       <!-- skill bar: cathedral windows — four arches, the ultimate rose window, two votive coins -->
@@ -378,6 +397,16 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
             <div class="stat"><b>{{ end.accountXpEarned }}</b><span>Account XP</span></div>
             <div class="stat"><b>{{ formatTime(end.durationMs) }}</b><span>Duration</span></div>
           </div>
+          <!-- #4 post-run recap: combat totals tallied client-side from the event stream -->
+          <div class="stats combat">
+            <div class="stat"><b>{{ formatNum(runDmgDealt()) }}</b><span>Damage dealt</span></div>
+            <div class="stat"><b>{{ formatNum(runBiggestHit()) }}</b><span>Biggest hit</span></div>
+            <div class="stat"><b>{{ runCrits() }}</b><span>Crits</span></div>
+            @if (runBreaks() > 0) {
+              <div class="stat"><b>{{ runBreaks() }}</b><span>Echo Breaks</span></div>
+            }
+            <div class="stat"><b>{{ formatNum(runDmgTaken()) }}</b><span>Damage taken</span></div>
+          </div>
           @if (end.items.length) {
             <div class="loot">
               @for (item of end.items; track item.itemId) {
@@ -396,6 +425,10 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
             <button class="btn" (click)="again()">Play again</button>
             <button class="btn secondary" (click)="leave()">Back to Hunt</button>
           </div>
+          <!-- #3: copy this run's seed to reproduce it in the Training Room -->
+          <button class="seed-copy" (click)="copySeed()" title="Copy this run's seed (replay in Training)">
+            Seed {{ snapshot()?.run?.seed }} {{ seedCopied() ? '✓ copied' : '⧉' }}
+          </button>
         </div>
       }
 
@@ -450,6 +483,66 @@ const MOVE_KEYS: Readonly<Record<string, Readonly<{ x: number; y: number }>>> = 
       background: rgba(0, 0, 0, 0.55); padding: 6px 9px;
       border-radius: 6px; pointer-events: none;
     }
+    .perf-overlay .seedline {
+      pointer-events: auto; cursor: pointer; margin-top: 3px;
+      color: #d9c489; border-top: 1px solid rgba(255, 255, 255, 0.12); padding-top: 3px;
+    }
+    .perf-overlay .seedline:hover { color: var(--gold-bright, #e8a93c); }
+
+    /* #5 reconnect UX: amber "reconnecting" / red "connection lost" toast (mirrors resume-toast) */
+    .conn-toast {
+      position: absolute; top: 18px; left: 50%; z-index: 60; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 18px; border-radius: var(--r-full);
+      border: 1px solid color-mix(in srgb, var(--gold-bright, #e8a93c) 55%, transparent);
+      background: var(--glass-bg-strong);
+      -webkit-backdrop-filter: blur(var(--glass-blur)); backdrop-filter: blur(var(--glass-blur));
+      box-shadow: var(--glass-edge), var(--sh-2);
+      color: var(--gold-bright, #e8a93c); font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+    }
+    .conn-toast.lost {
+      border-color: color-mix(in srgb, var(--danger, #d4564b) 60%, transparent);
+      color: var(--danger, #d4564b);
+    }
+    .conn-toast .conn-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: currentColor;
+      animation: conn-pulse 1s ease-in-out infinite;
+    }
+    @keyframes conn-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .conn-toast .conn-dot { animation: none; } }
+
+    /* #3 seed panel (Training only) — sits under the free-cast toggle */
+    .seed-panel {
+      position: absolute; top: 96px; left: 16px; z-index: 12;
+      display: flex; align-items: center; gap: 6px; pointer-events: auto;
+      padding: 6px 8px; border-radius: var(--r-md);
+      background: var(--glass-bg); border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.1));
+      -webkit-backdrop-filter: blur(var(--glass-blur)); backdrop-filter: blur(var(--glass-blur));
+      font-size: 11px; color: var(--text-1, #e8e6f0);
+    }
+    .seed-panel .seed-label { font-weight: 700; letter-spacing: 0.04em; opacity: 0.8; }
+    .seed-panel .seed-input {
+      width: 128px; font: 11px monospace; padding: 3px 6px; border-radius: 5px;
+      background: rgba(0, 0, 0, 0.3); color: inherit;
+      border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.12));
+    }
+    .seed-panel button {
+      font: 700 11px var(--font-ui); padding: 3px 9px; border-radius: 5px; cursor: pointer;
+      background: var(--glass-bg-strong); color: inherit;
+      border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.14));
+    }
+    .seed-panel button:hover { border-color: var(--gold-bright, #e8a93c); color: var(--gold-bright, #e8a93c); }
+
+    /* #4 recap: the combat totals row reuses .stats but tints softer than the reward row */
+    .overlay.end .stats.combat { margin-top: 6px; opacity: 0.92; }
+    .overlay.end .stats.combat .stat b { color: var(--el-bright, #cbb8f0); }
+    .seed-copy {
+      margin-top: 12px; align-self: center; cursor: pointer;
+      font: 600 11px monospace; letter-spacing: 0.03em; padding: 5px 12px; border-radius: var(--r-full);
+      background: rgba(0, 0, 0, 0.25); color: #d9c489;
+      border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.14));
+    }
+    .seed-copy:hover { color: var(--gold-bright, #e8a93c); border-color: var(--gold-bright, #e8a93c); }
 
     /* ---- top chrome ---------------------------------------------------- */
     .hud.top {
@@ -948,6 +1041,18 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   } | null>(null);
   readonly visiblePerfReadout = computed(() => this.showPerf() ? this.perfReadout() : null);
 
+  // #3 seed reproducibility: feedback for the copy-seed affordance (F3 overlay, recap, training).
+  readonly seedCopied = signal(false);
+  // #4 post-run recap: run totals accumulated client-side from the event stream (engine untouched,
+  // determinism preserved). Reset when a new run starts (snapshot null / tick reset).
+  readonly runDmgDealt = signal(0);
+  readonly runDmgTaken = signal(0);
+  readonly runBiggestHit = signal(0);
+  readonly runCrits = signal(0);
+  readonly runBreaks = signal(0);
+  // #5 reconnect UX: live connection status, drives the HUD toast.
+  readonly connState = computed(() => this.client.connectionState());
+
   private renderer: GameRenderer | null = null;
   private raf = 0;
   private readonly framePerf = new PerfRing(300);
@@ -958,6 +1063,11 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   private tier = 1;
   private waifuId: string | undefined;
   private mode: GameMode = GameMode.Dungeon;
+  // #3: seed override (from ?seed= or the training Replay button); honored only in Training server-side.
+  private seedOverride: number | undefined;
+  // #4: dedup cursor for run-stat accumulation (events carry a monotonic seq; tick resets = new run).
+  private statsLastSeq = -1;
+  private statsLastTick = -1;
   private keys = new Set<string>();
   private lastDir = { x: 0, y: 0 };
   private moveHeartbeat = 0;
@@ -984,6 +1094,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     });
     effect(() => {
       const snap = this.client.snapshot();
+      this.accumulateRunStats(snap);
       if (snap && this.renderer) this.renderer.setSnapshot(snap, performance.now());
       if (snap && !snap.run.ended && !snap.run.offer) this.tryAutoLadder(snap);
       if (snap?.run.ended) this.maybeScheduleAutoRepeat(snap);
@@ -996,6 +1107,9 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     this.waifuId = this.route.snapshot.queryParamMap.get('waifu') ?? undefined;
     this.mode = this.route.snapshot.queryParamMap.get('mode') === 'training' ? GameMode.Training : GameMode.Dungeon;
     this.isTraining.set(this.mode === GameMode.Training);
+    // #3: optional seed override (?seed=). Honored server-side only in Training (repro/debug).
+    const seedParam = Math.trunc(Number(this.route.snapshot.queryParamMap.get('seed')));
+    this.seedOverride = Number.isFinite(seedParam) && seedParam > 0 ? seedParam : undefined;
     this.sessionMode = this.route.snapshot.queryParamMap.get('session') === '1';
     const runs = normalizeFarmRunCount(Number(this.route.snapshot.queryParamMap.get('runs') ?? readFarmRunCount()));
     this.plannedRuns.set(runs);
@@ -1027,7 +1141,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
         await this.client.watchSession();
         this.startSessionPolling();
       } else {
-        const joined = await this.client.joinRun(this.tier, this.waifuId, undefined, true, this.mode);
+        const joined = await this.client.joinRun(this.tier, this.waifuId, this.seedOverride, true, this.mode);
         if (joined.resumed) {
           this.resumeToast.set(true);
           this.resumeToastTimer = window.setTimeout(() => this.resumeToast.set(false), RESUME_TOAST_MS);
@@ -1438,6 +1552,71 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
 
+  /** #4: thousands-separated integer for the recap (avoids importing DecimalPipe). */
+  formatNum(n: number): string {
+    return Math.round(n).toLocaleString('en-US');
+  }
+
+  // ---- #4 post-run recap: accumulate run totals from the event stream (client-side, engine untouched) ----
+  private accumulateRunStats(snap: SnapshotDto | null): void {
+    if (!snap) { this.resetRunStats(); return; }
+    // A new run restarts the clock; tick going backwards is the reset signal.
+    if (snap.tick < this.statsLastTick) this.resetRunStats();
+    this.statsLastTick = snap.tick;
+
+    const playerId = snap.player.id;
+    for (const e of snap.events) {
+      if (e.seq <= this.statsLastSeq || e.kind !== 'damage' || e.value <= 0) continue;
+      // "damage" actorId is the TARGET: the player id means damage taken, anything else = damage dealt.
+      if (e.actorId === playerId) {
+        this.runDmgTaken.update((v) => v + e.value);
+      } else {
+        this.runDmgDealt.update((v) => v + e.value);
+        // .update() (not the getter) so we don't register these signals as deps of the effect.
+        this.runBiggestHit.update((m) => Math.max(m, e.value));
+        if (e.crit) this.runCrits.update((v) => v + 1);
+      }
+    }
+    // Events carry a global monotonic seq; snapshots resend a replay window, so advance past the batch.
+    this.statsLastSeq = snap.events.reduce((m, e) => Math.max(m, e.seq), this.statsLastSeq);
+    // Echo Breaks = highest posture cycle reached (the boss resets its bar between staggers).
+    this.runBreaks.update((m) => Math.max(m, snap.run.bossPostureCycle));
+  }
+
+  private resetRunStats(): void {
+    this.statsLastSeq = -1;
+    this.statsLastTick = -1;
+    this.runDmgDealt.set(0);
+    this.runDmgTaken.set(0);
+    this.runBiggestHit.set(0);
+    this.runCrits.set(0);
+    this.runBreaks.set(0);
+  }
+
+  // ---- #3 seed reproducibility ----
+  /** Copies the current run seed; replay it in the Training Room with ?seed= or the Replay button. */
+  copySeed(): void {
+    const seed = this.snapshot()?.run?.seed;
+    if (seed == null) return;
+    void navigator.clipboard?.writeText(String(seed)).catch(() => undefined);
+    this.seedCopied.set(true);
+    window.setTimeout(() => this.seedCopied.set(false), 1400);
+  }
+
+  /** Training Room: restart the sandbox with a specific seed (honored server-side only in Training). */
+  replaySeed(value: string | number): void {
+    const n = Math.trunc(Number(value));
+    if (!Number.isFinite(n) || n <= 0) return;
+    this.seedOverride = n;
+    void this.again();
+  }
+
+  /** Training Room: restart with a fresh random seed. */
+  randomSeed(): void {
+    this.seedOverride = undefined;
+    void this.again();
+  }
+
   // ---- F-E: boss posture (echo break) ----
   private readonly staggerMults = [2.5, 3.5, 5.0, 6.5];
 
@@ -1473,7 +1652,7 @@ export class GamePage implements OnInit, AfterViewInit, OnDestroy {
   async again(fromAutoRepeat = false): Promise<void> {
     this.clearAutoRepeatSchedule();
     if (!fromAutoRepeat) this.autoRunsRemaining.set(0);
-    await this.client.joinRun(this.tier, this.waifuId, undefined, false, this.mode);
+    await this.client.joinRun(this.tier, this.waifuId, this.seedOverride, false, this.mode);
     void this.api.refreshAccount();
   }
 

@@ -189,7 +189,17 @@ em `docs/design/gameplay_style_guide.md`.
   duplica FX. Baseline medido e decisão de render (Canvas 2D atual basta) em
   `docs/balance/perf_baseline_2026-07.md`.
 - `F3` alterna um overlay de performance da run com percentis de frame/draw, idade do snapshot,
-  frames longos e contadores de eventos ingeridos/deduplicados.
+  frames longos e contadores de eventos ingeridos/deduplicados. Mostra também a **seed da run**
+  (clique para copiar). **Reprodutibilidade de seed (#3):** o backend só honra uma seed enviada pelo
+  cliente na **Sala de Treino** (`?seed=` na URL ou o painel Seed com **Replay**/**Random**) — runs
+  reais sempre randomizam, então não dá pra farmar uma "seed boa"; o gacha mantém seu Rng próprio.
+  A seed é sempre logada no backend, então qualquer run pode ser reproduzida no Treino.
+- **Reconexão (#5).** O canal SignalR usa auto-reconnect; quando a conexão cai, o HUD mostra um
+  toast **Reconnecting…** (âmbar) / **Connection lost** (vermelho) em vez de congelar em silêncio, e
+  ao reconectar o cliente **re-anexa à run estacionada** (resume) para os snapshots voltarem sozinhos.
+- **Recap de fim de run (#4).** A tela de fim soma, client-side a partir do stream de `EventDto`
+  (engine intocado, determinismo preservado), **dano causado / maior golpe / crits / Echo Breaks /
+  dano sofrido**, ao lado das recompensas (kills, ouro, XP, Kaeros, duração, loot).
 - **Peso de combate (juice).** O impacto é feedback puramente client-side reagindo aos `EventDto`
   (engine intocado, determinismo preservado): hit-stop (pop de escala no alvo), screen-shake decaído
   proporcional à magnitude, números de dano com outline/pop-in — crítico maior e dourado, escala por

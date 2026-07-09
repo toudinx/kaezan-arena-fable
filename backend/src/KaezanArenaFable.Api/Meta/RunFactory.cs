@@ -51,7 +51,12 @@ public sealed class RunFactory(
             throw new HubException($"requires account level {tierDef.RequiredAccountLevel}");
 
         var waifu = kaelis.Find(runWaifuId) ?? kaelis.ById[Waifus.StarterWaifuId];
-        var runSeed = seed ?? Random.Shared.NextInt64(1, long.MaxValue);
+        // #3 seed reproducibility: only honor a client-supplied seed in the Training Room (repro/debug).
+        // Live dungeon/arena runs always randomize so a "good seed" can't be farmed; gacha keeps its own
+        // non-deterministic Rng. The seed is logged below either way, so any run can be reproduced in Training.
+        long runSeed = mode == GameMode.Training && seed is not null
+            ? seed.Value
+            : Random.Shared.NextInt64(1, GameConfig.MaxReproducibleSeed);
 
         var skin = skinId is not null
             ? waifu.Skins.FirstOrDefault(s => s.Id == skinId) ?? waifu.DefaultSkin

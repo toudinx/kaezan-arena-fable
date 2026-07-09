@@ -22,6 +22,10 @@ public static class GameConfig
     // finished-run replays .data/replays/ retains (oldest are deleted).
     public const int ReplayHashEveryTicks = 100;
     public const int ReplayKeepLast = 40;
+    // #3 seed reproducibility: random run seeds are capped to the JS-safe integer range (2^53 - 1) so
+    // the seed survives the round-trip through the client (RunStateDto.seed is a JS number) exactly and
+    // can be copied/replayed. The Rng accepts any long, so this only trims the (still huge) seed space.
+    public const long MaxReproducibleSeed = 9007199254740991L;
     /// <summary>How many ticks of already-sent events each snapshot re-sends so a
     /// dropped/coalesced snapshot never loses FX (client dedups by EventDto.Seq).</summary>
     public const int EventReplayTicks = 10;

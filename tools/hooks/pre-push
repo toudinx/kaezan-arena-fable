@@ -1,0 +1,8 @@
+#!/bin/sh
+# Opt-in determinism/build gate on push. Enable with either:
+#   git config core.hooksPath tools/hooks
+# or copy this file to .git/hooks/pre-push (and chmod +x it).
+#
+# Runs the fast backend gate (build + tests). For the full gate (frontend build +
+# replay-check) run `powershell -File tools/verify.ps1` manually before big engine changes.
+exec powershell -NoProfile -File "$(git rev-parse --show-toplevel)/tools/verify.ps1" -Quick

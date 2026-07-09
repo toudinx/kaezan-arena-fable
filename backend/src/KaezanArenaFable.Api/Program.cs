@@ -35,6 +35,7 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
 
 WebApplication app = builder.Build();
 
+GameConfig.Validate();
 MonsterRegistry monsterRegistry = app.Services.GetRequiredService<MonsterRegistry>();
 TilesetRegistry.LoadFrom(Path.Combine(AppContext.BaseDirectory, "Content", "tilesets.json"));
 Biomes.ValidateDefaults();

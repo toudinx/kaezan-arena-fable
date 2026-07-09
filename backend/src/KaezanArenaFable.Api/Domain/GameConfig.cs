@@ -1341,6 +1341,115 @@ public static class GameConfig
         ["sin", "combo", "curse", "burn", "charge", "frost", "prey", "posture"];
     public const int KeywordResistMin = -100;
     public const int KeywordResistMax = 100;
+
+    // ---- startup fail-fast validation ----
+    /// <summary>
+    /// Asserts the simulation/meta constants above satisfy their invariants and referential
+    /// integrity, throwing <see cref="InvalidOperationException"/> with the offending field named.
+    /// Called once at startup (Program.cs) so a misconfigured value crashes on boot with a clear
+    /// message instead of surfacing as a subtle in-run bug. Mirrors <c>Biomes.ValidateDefaults()</c>.
+    /// </summary>
+    public static void Validate()
+    {
+        // simulation cadence
+        Require(TickMs > 0, nameof(TickMs), "must be positive");
+        Require(ReplayHashEveryTicks > 0, nameof(ReplayHashEveryTicks), "must be positive");
+        Require(ReplayKeepLast > 0, nameof(ReplayKeepLast), "must be positive");
+        Require(EventReplayTicks > 0, nameof(EventReplayTicks), "must be positive");
+
+        // movement
+        Require(PlayerBaseSpeed > 0, nameof(PlayerBaseSpeed), "must be positive");
+        Require(MonsterSpeedMultiplier > 0, nameof(MonsterSpeedMultiplier), "must be positive");
+        Require(MinStepMs > 0, nameof(MinStepMs), "must be positive");
+        Require(MinStepMs <= MaxStepMs, nameof(MinStepMs), $"must be <= {nameof(MaxStepMs)} ({MaxStepMs})");
+        Require(DiagonalStepFactor >= 1.0, nameof(DiagonalStepFactor), "must be >= 1");
+
+        // auto-helper heal thresholds
+        Require(AutoHelperHealPctMin >= 0 && AutoHelperHealPctMax <= 100,
+            nameof(AutoHelperHealPctMin), "heal percent bounds must be within 0..100");
+        Require(AutoHelperHealPctMin <= AutoHelperHealPctDefault && AutoHelperHealPctDefault <= AutoHelperHealPctMax,
+            nameof(AutoHelperHealPctDefault), $"must be within [{AutoHelperHealPctMin}, {AutoHelperHealPctMax}]");
+        Require(AutoHelperHealHpFraction > 0 && AutoHelperHealHpFraction <= 1, nameof(AutoHelperHealHpFraction), "must be in (0, 1]");
+        Require(AutoHelperAoeMinTargets >= 1, nameof(AutoHelperAoeMinTargets), "must be >= 1");
+
+        // combat rolls
+        Require(CritChance >= 0 && CritChance <= 1, nameof(CritChance), "must be in [0, 1]");
+        Require(CritMultiplier >= 1, nameof(CritMultiplier), "must be >= 1");
+        Require(DamageRollMin > 0, nameof(DamageRollMin), "must be positive");
+        Require(DamageRollMin <= DamageRollMax, nameof(DamageRollMin), $"must be <= {nameof(DamageRollMax)} ({DamageRollMax})");
+        Require(PlayerDamageMult > 0, nameof(PlayerDamageMult), "must be positive");
+        Require(PlayerDamageReductionCap >= 0 && PlayerDamageReductionCap < 1, nameof(PlayerDamageReductionCap), "must be in [0, 1)");
+
+        // element field FX: every known element must map to a positive effect id (a zero would drop
+        // the Contagion/dash trail visual and signals a mistyped element key).
+        foreach (string element in new[] { "fire", "ice", "energy", "earth", "holy", "death", "physical" })
+            Require(ElementFieldFx(element) > 0, nameof(ElementFieldFx), $"element '{element}' maps to a non-positive FX id");
+
+        // role tuning: every playable role needs a valid tuning row.
+        foreach (KaeliRole role in Enum.GetValues<KaeliRole>())
+        {
+            Require(Roles.TryGetValue(role, out RoleTuning? t) && t is not null, nameof(Roles), $"role {role} has no RoleTuning");
+            RoleTuning tuning = Roles[role];
+            Require(tuning.AutoDmgMult > 0, nameof(Roles), $"{role}.AutoDmgMult must be positive");
+            Require(tuning.SkillDmgMult > 0, nameof(Roles), $"{role}.SkillDmgMult must be positive");
+            Require(tuning.BaseAutoAttackMs > 0, nameof(Roles), $"{role}.BaseAutoAttackMs must be positive");
+            Require(tuning.AutoRange >= 1, nameof(Roles), $"{role}.AutoRange must be >= 1");
+            Require(tuning.AoeScale > 0, nameof(Roles), $"{role}.AoeScale must be positive");
+        }
+
+        // dungeon tiers: numbered 1..N ascending, non-decreasing level gate, populated pools.
+        Require(Tiers.Length > 0, nameof(Tiers), "must not be empty");
+        for (int i = 0; i < Tiers.Length; i++)
+        {
+            DungeonTier tier = Tiers[i];
+            Require(tier.Tier == i + 1, nameof(Tiers), $"tier at index {i} is numbered {tier.Tier} (expected {i + 1})");
+            Require(tier.StatMultiplier > 0, nameof(Tiers), $"T{tier.Tier} StatMultiplier must be positive");
+            Require(tier.RequiredAccountLevel is >= 0 && tier.RequiredAccountLevel <= MaxAccountLevel,
+                nameof(Tiers), $"T{tier.Tier} RequiredAccountLevel out of range");
+            Require(tier.CommonMobs.Length > 0, nameof(Tiers), $"T{tier.Tier} has no common mobs");
+            Require(tier.EliteMobs.Length > 0, nameof(Tiers), $"T{tier.Tier} has no elite mobs");
+            Require(!string.IsNullOrWhiteSpace(tier.Boss), nameof(Tiers), $"T{tier.Tier} has no boss");
+            if (i > 0)
+                Require(tier.RequiredAccountLevel >= Tiers[i - 1].RequiredAccountLevel,
+                    nameof(Tiers), $"T{tier.Tier} account gate drops below the previous tier");
+        }
+
+        // posture (Echo Break): strictly increasing multipliers, each >= 1.
+        Require(PostureDamageMultipliers.Length > 0, nameof(PostureDamageMultipliers), "must not be empty");
+        for (int i = 0; i < PostureDamageMultipliers.Length; i++)
+        {
+            Require(PostureDamageMultipliers[i] >= 1, nameof(PostureDamageMultipliers), $"cycle {i} multiplier must be >= 1");
+            if (i > 0)
+                Require(PostureDamageMultipliers[i] > PostureDamageMultipliers[i - 1],
+                    nameof(PostureDamageMultipliers), $"cycle {i} must exceed the previous cycle");
+        }
+
+        // gacha
+        Require(PullCostKaeros > 0, nameof(PullCostKaeros), "must be positive");
+        Require(FiveStarSoftPityStart < FiveStarHardPity, nameof(FiveStarSoftPityStart), $"must be < {nameof(FiveStarHardPity)} ({FiveStarHardPity})");
+        Require(FiveStarBaseRate > 0 && FiveStarBaseRate <= 1, nameof(FiveStarBaseRate), "must be in (0, 1]");
+
+        // affinity milestones must fall within the level range.
+        Require(AffinityMaxLevel > 0, nameof(AffinityMaxLevel), "must be positive");
+        foreach (int level in AffinityLoreLevels)
+            Require(level is >= 1 && level <= AffinityMaxLevel, nameof(AffinityLoreLevels), $"lore level {level} out of range 1..{AffinityMaxLevel}");
+        foreach (int level in AffinityKaerosRewards.Keys)
+            Require(level is >= 1 && level <= AffinityMaxLevel, nameof(AffinityKaerosRewards), $"reward level {level} out of range 1..{AffinityMaxLevel}");
+
+        // ascension shard costs: positive and non-decreasing.
+        for (int i = 0; i < AscensionShardCost.Length; i++)
+        {
+            Require(AscensionShardCost[i] > 0, nameof(AscensionShardCost), $"cost at index {i} must be positive");
+            if (i > 0)
+                Require(AscensionShardCost[i] >= AscensionShardCost[i - 1], nameof(AscensionShardCost), $"cost at index {i} drops below the previous");
+        }
+    }
+
+    private static void Require(bool condition, string field, string reason)
+    {
+        if (!condition)
+            throw new InvalidOperationException($"GameConfig.{field} is invalid: {reason}.");
+    }
 }
 
 /// <summary>

@@ -598,7 +598,14 @@ modo recomendado ao atualizar apenas a biblioteca visual do editor de monstros.
   `GameConfig.ReplayKeepLast`); `dotnet run --project tools/BalanceSim -- --replay-check
   <arquivo-ou-pasta>` re-simula e compara os hashes (checkpoints a cada 100 ticks bissectam o
   primeiro tick divergente). `--save-replays <dir>` no sweep gera uma bateria headless. Esse
-  check é o **gate obrigatório de qualquer refactor do engine** (FF-02+).
-- **Todas as constantes de simulação/meta em `GameConfig.cs`.**
+  check é o **gate obrigatório de qualquer refactor do engine** (FF-02+). `powershell -File
+  tools/verify.ps1` roda o gate inteiro num comando (build do backend + testes + build do
+  frontend + replay-check da bateria golden); `-Quick` faz só backend+testes (loop rápido),
+  `-NoFrontend` pula o Angular, e `-Regen` rebaseia a bateria antes de checar. `tools/hooks/pre-push`
+  é um hook opt-in que roda `verify.ps1 -Quick` no push.
+- **Todas as constantes de simulação/meta em `GameConfig.cs`.** `GameConfig.Validate()` roda no
+  startup (`Program.cs`, ao lado de `Biomes.ValidateDefaults()`) e **falha rápido** com o campo
+  ofensor nomeado se alguma constante violar seus invariantes (tick positivo, soft-pity < hard-pity,
+  todo papel com `RoleTuning`, tiers numerados/ordenados, etc.).
 - IDs estáveis: waifus `waifu:*`, cards `card:*`, banners `banner:*`. Não renomear.
 - Assets do Tibia são **propriedade da CipSoft** — uso apenas em projeto privado/educacional.
